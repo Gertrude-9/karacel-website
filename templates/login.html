@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - 8Tech Bank | Digital Banking</title>
+
+    <!-- Fonts + Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-wrapper">
+    <!-- Brand Header with Logo -->
+    <div class="brand-header">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fas fa-microchip"></i>
+            </div>
+            <div class="logo-text">
+                <h1>8Tech Bank</h1>
+                <p>next-gen digital banking</p>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Login Card -->
+    <div class="login-card">
+        <div class="card-header">
+            <h2><i class="fas fa-key"></i> Welcome Back</h2>
+            <p>Sign in to access your account</p>
+        </div>
+
+        <form method="POST" class="login-form">
+            <div class="input-field">
+                <i class="fas fa-user"></i>
+                <input type="text" name="username" placeholder="Username or Email" required autocomplete="off">
+            </div>
+
+            <div class="input-field">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Password" required>
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="remember">
+                    <span>Remember me</span>
+                </label>
+                <a href="#" class="forgot-link">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="login-btn">
+                <i class="fas fa-arrow-right-to-bracket"></i> Sign In
+            </button>
+
+            {% if message %}
+                <div class="message-area success-msg">{{ message }}</div>
+            {% endif %}
+
+            {% if error %}
+                <div class="message-area error-msg">{{ error }}</div>
+            {% endif %}
+        </form>
+
+        <div class="divider">
+            <span>New to 8Tech?</span>
+        </div>
+
+        <div class="register-section">
+            <p>
+                Don't have an account?
+                <a href="/register" class="register-link">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </a>
+            </p>
+        </div>
+
+
+    </div>
+
+    <div class="footer-note">
+        <i class="fas fa-copyright"></i> 2026 8Tech Bank. All rights reserved. 
+        <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a>
+    </div>
+</div>
+
+</body>
+</html>

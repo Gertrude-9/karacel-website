@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>8Tech Bank</title>
+
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+
+            background: url("{{ url_for('static', filename='images/banksplash.png') }}") no-repeat center center;
+
+            /* 🔥 75% WIDTH */
+            background-size: 75% auto;
+
+            background-color: #050c19;
+
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            font-family: Arial, sans-serif;
+        }
+                /* Dark overlay (makes text visible) */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 12, 25, 0.5);
+        }
+
+        /* Loading text */
+        .loading {
+            position: relative;
+            margin-bottom: 60px;
+            color: #00e0ff;
+            font-size: 14px;
+            letter-spacing: 3px;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+
+    <!-- 🔥 AUTO REDIRECT -->
+    <script>
+        setTimeout(() => {
+            window.location.href = "/register";
+        }, 10000);
+    </script>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+
+<div class="loading">
+    LOADING...
+</div>
+
+</body>
+</html>

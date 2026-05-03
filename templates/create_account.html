@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Account - 8Tech Bank</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* Additional styling for create account page */
+        .create-account-wrapper {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e27 0%, #0f1629 100%);
+        }
+        
+        .app-bar-modern {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(10, 20, 40, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 224, 255, 0.2);
+            margin-bottom: 30px;
+            border-radius: 20px;
+        }
+        
+        .app-bar-title h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #00e0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .app-bar-title small {
+            color: #8b9ccf;
+            font-size: 0.75rem;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 224, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: #00e0ff;
+        }
+        
+        .admin-badge i {
+            font-size: 1.2rem;
+        }
+        
+        .form-card {
+            max-width: 550px;
+            width: 100%;
+            margin: 0 auto;
+            background: rgba(15, 25, 45, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 40px;
+            border: 1px solid rgba(0, 224, 255, 0.25);
+            padding: 36px 32px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .form-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 224, 255, 0.5);
+        }
+        
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00e0ff, #7c3aed);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .form-header p {
+            color: #8b9ccf;
+            font-size: 0.8rem;
+        }
+        
+        .input-group-enhanced {
+            margin-bottom: 20px;
+        }
+        
+        .input-group-enhanced label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #b5c7ff;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        
+        .input-group-enhanced label i {
+            color: #00e0ff;
+            width: 20px;
+        }
+        
+        .input-group-enhanced input,
+        .input-group-enhanced select {
+            width: 100%;
+            background: rgba(5, 12, 25, 0.8);
+            border: 1px solid #2a3a6e;
+            border-radius: 16px;
+            padding: 12px 16px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .input-group-enhanced input:focus,
+        .input-group-enhanced select:focus {
+            outline: none;
+            border-color: #00e0ff;
+            box-shadow: 0 0 8px rgba(0, 224, 255, 0.3);
+        }
+        
+        .input-group-enhanced small {
+            display: block;
+            margin-top: 6px;
+            color: #6f7da8;
+            font-size: 0.65rem;
+        }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .create-btn {
+            background: linear-gradient(95deg, #00b4d8, #0077b6);
+            border: none;
+            padding: 14px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 16px;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .create-btn:hover {
+            transform: scale(1.01);
+            background: linear-gradient(95deg, #00c8ff, #0088cc);
+            box-shadow: 0 5px 15px rgba(0, 180, 216, 0.3);
+        }
+        
+        .security-note {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 224, 255, 0.1);
+            font-size: 0.7rem;
+            color: #5a6a95;
+        }
+        
+        .security-note i {
+            color: #00ff88;
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            .app-bar-modern {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .form-card {
+                margin: 0 16px;
+                padding: 28px 22px;
+            }
+            
+            .input-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-logo">
+            <h2><i class="fas fa-microchip"></i> <span>8Tech Admin</span></h2>
+        </div>
+
+        <div class="admin-sidebar-nav">
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-item">
+                <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-item">
+                <i class="fas fa-users"></i> <span>Customers</span>
+            </a>
+
+            <a href="{{ url_for('create_account') }}" class="admin-nav-item active">
+                <i class="fas fa-user-plus"></i> <span>Create Account</span>
+            </a>
+
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-item">
+                <i class="fas fa-exchange-alt"></i> <span>Transactions</span>
+            </a>
+
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-item">
+                <i class="fas fa-cog"></i> <span>Settings</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer" style="padding: 20px;">
+            <a href="{{ url_for('admin_logout') }}" class="logout-sidebar">
+                <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="admin-main-content">
+
+        <!-- MODERN APP BAR -->
+        <div class="app-bar-modern">
+            <div class="app-bar-title">
+                <h2><i class="fas fa-user-plus"></i> Create Account</h2>
+                <small>Register a new customer bank account</small>
+            </div>
+            <div class="admin-badge">
+                <i class="fas fa-user-circle"></i>
+                <span>Administrator</span>
+            </div>
+        </div>
+
+        <!-- FORM SECTION -->
+        <div style="display:flex; justify-content:center;">
+            <div class="form-card">
+                <div class="form-header">
+                    <h3><i class="fas fa-id-card"></i> Account Details</h3>
+                    <p>Fill in the customer information below</p>
+                </div>
+
+                <form method="POST">
+                    <!-- Account Number -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-hashtag"></i> Account Number</label>
+                        <input type="text" name="account_number" placeholder="e.g., 8T-1001-0001" required>
+                        
+                    </div>
+
+                    <!-- Customer Name -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-user"></i> Customer Name</label>
+                        <input type="text" name="account_name" placeholder="Full name of customer" required>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-envelope"></i> Email Address</label>
+                        <input type="email" name="email" placeholder="customer@example.com" required>
+                        
+                    </div>
+
+                    <!-- Phone Number (NEW) -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-phone-alt"></i> Phone Number</label>
+                        <input type="tel" name="phone_number" placeholder="+256 7XX XXX XXX" required>
+                        
+                    </div>
+
+                    <!-- Bank PIN -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-lock"></i> Bank PIN</label>
+                        <input type="password" name="bank_pin" placeholder="4-6 digit PIN" maxlength="6" required>
+                        
+                    </div>
+
+                    <!-- Amount Row -->
+                    <div class="input-row">
+                        <div class="input-group-enhanced">
+                            <label><i class="fas fa-money-bill-wave"></i> Opening Balance</label>
+                            <input type="number" name="balance" placeholder="Amount" value="0" required>
+                        </div>
+
+                        <div class="input-group-enhanced">
+                            <label><i class="fas fa-wallet"></i> Account Type</label>
+                            <select name="account_type" required>
+                                <option value="Savings Account">Savings Account</option>
+                                <option value="Current Account">Current Account</option>
+                                <option value="Premium Digital">Premium Digital</option>
+                                <option value="Business Account">Business Account</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Branch Code -->
+                    <div class="input-group-enhanced">
+                        <label><i class="fas fa-building"></i> Branch Code</label>
+                        <input type="text" name="branch_code" value="8TECH001" required>
+                        
+                    </div>
+
+                    <button type="submit" class="create-btn">
+                        <i class="fas fa-check-circle"></i> Create Account
+                    </button>
+
+                    <div class="security-note">
+                        <i class="fas fa-shield-alt"></i> All information is encrypted and secure
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+    // Auto-generate account number if left empty (optional feature)
+    const accountNumberInput = document.querySelector('input[name="account_number"]');
+    const customerNameInput = document.querySelector('input[name="account_name"]');
+    
+    function generateAccountNumber() {
+        if (!accountNumberInput.value) {
+            const prefix = '8T';
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            accountNumberInput.value = `${prefix}-${random}-${suffix}`;
+        }
+    }
+    
+    // Auto-generate account number on page load
+    window.addEventListener('DOMContentLoaded', function() {
+        generateAccountNumber();
+    });
+    
+    // Optional: Format phone number as user types
+    const phoneInput = document.querySelector('input[name="phone_number"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.startsWith('256') && value.length > 3) {
+                value = '+' + value;
+            } else if (value.startsWith('0') && value.length > 1) {
+                value = '+256' + value.substring(1);
+            }
+            if (value.length > 13) value = value.substring(0, 13);
+            e.target.value = value;
+        });
+    }
+</script>
+
+</body>
+</html>

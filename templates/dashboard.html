@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>8Tech Bank | Dashboard</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* Additional Dashboard Styles */
+        
+        /* Modern App Bar */
+        .modern-app-bar {
+            background: rgba(10, 20, 40, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 16px 28px;
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            border: 1px solid rgba(0, 224, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .modern-app-bar:hover {
+            border-color: rgba(0, 224, 255, 0.4);
+            box-shadow: 0 5px 20px rgba(0, 224, 255, 0.1);
+        }
+        
+        .app-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .app-bar-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, rgba(0, 224, 255, 0.2), rgba(124, 58, 237, 0.2));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .app-bar-icon i {
+            font-size: 1.5rem;
+            color: #00e0ff;
+        }
+        
+        .app-bar-title h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #00e0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0;
+        }
+        
+        .app-bar-title p {
+            font-size: 0.7rem;
+            color: #8b9ccf;
+            margin: 4px 0 0 0;
+        }
+        
+        .app-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        /* Greeting Widget in App Bar */
+        .greeting-widget {
+            background: rgba(0, 224, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(0, 224, 255, 0.2);
+        }
+        
+        .greeting-widget i {
+            font-size: 1.2rem;
+            color: #00e0ff;
+        }
+        
+        .greeting-text {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .greeting-name {
+            color: #00e0ff;
+            font-weight: 700;
+        }
+        
+        /* Date/Time Widget */
+        .date-widget {
+            background: rgba(0, 224, 255, 0.08);
+            padding: 8px 18px;
+            border-radius: 40px;
+            text-align: center;
+            border: 1px solid rgba(0, 224, 255, 0.15);
+        }
+        
+        .date-widget .time {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #00e0ff;
+        }
+        
+        .date-widget .date {
+            font-size: 0.65rem;
+            color: #8b9ccf;
+        }
+        
+        /* Bank Badge */
+        .bank-badge {
+            background: rgba(0, 224, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #00e0ff;
+            border: 1px solid rgba(0, 224, 255, 0.2);
+        }
+        
+        /* Left Aligned Content */
+        .left-aligned-content {
+            display: flex;
+            justify-content: flex-start;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        /* Larger Profile Card */
+        .profile-card {
+            width: 650px;
+            max-width: 100%;
+            transition: all 0.3s ease;
+            padding: 28px;
+        }
+        
+        .profile-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        /* Larger Profile Header */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        
+        .avatar-icon {
+            font-size: 4rem;
+            color: #00e0ff;
+        }
+        
+        .user-info h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .user-info p {
+            color: #9aabdf;
+            font-size: 0.85rem;
+        }
+        
+        /* Larger Details List */
+        .details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed rgba(0, 224, 255, 0.2);
+            padding-bottom: 12px;
+            font-size: 0.9rem;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+            color: #b3c2ff;
+            font-size: 0.85rem;
+        }
+        
+        .detail-label i {
+            margin-right: 8px;
+            color: #00e0ff;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        /* Larger Balance Highlight */
+        .balance-highlight {
+            background: linear-gradient(135deg, #001d3d, #000b1a);
+            border-radius: 24px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #00e0ff30;
+        }
+        
+        .balance-highlight .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #7f9cf5;
+        }
+        
+        .balance-highlight .label i {
+            margin-right: 6px;
+        }
+        
+        .balance-amount {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #00ffff;
+            word-break: break-word;
+        }
+        
+        /* Quick Actions - Hidden */
+        .quick-actions {
+            display: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .modern-app-bar {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .app-bar-left {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .app-bar-right {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .profile-card {
+                width: 100%;
+                margin: 0 16px;
+            }
+            
+            .left-aligned-content {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 550px) {
+            .greeting-widget {
+                padding: 6px 15px;
+            }
+            
+            .greeting-text {
+                font-size: 0.75rem;
+            }
+            
+            .bank-badge {
+                padding: 6px 15px;
+                font-size: 0.7rem;
+            }
+            
+            .profile-card {
+                padding: 20px;
+            }
+            
+            .balance-amount {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="dashboard-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h2><i class="fas fa-microchip"></i> <span>8Tech Bank</span></h2>
+            <p>next-gen digital banking</p>
+        </div>
+
+        <div class="sidebar-nav">
+            <a href="/dashboard" class="nav-item active">
+                <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('transfer') }}" class="nav-item">
+                <i class="fas fa-paper-plane"></i> <span>Transfer Funds</span>
+            </a>
+
+            <a href="{{ url_for('transactions') }}" class="nav-item">
+                <i class="fas fa-history"></i> <span>Transactions</span>
+            </a>
+
+            <a href="{{ url_for('support') }}" class="nav-item">
+                <i class="fas fa-headset"></i> <span>Support</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <a href="/logout" class="logout-sidebar">
+                <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="dashboard-container main-content">
+
+        <!-- MODERN APP BAR WITH GREETING -->
+        <div class="modern-app-bar">
+            <div class="app-bar-left">
+                <div class="app-bar-icon">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <div class="app-bar-title">
+                    <h2>Dashboard</h2>
+                    <p>Your financial overview</p>
+                </div>
+            </div>
+            
+            <div class="app-bar-right">
+                <!-- Greeting Widget - Shows time-based greeting -->
+                <div class="greeting-widget" id="greetingWidget">
+                    <i class="fas fa-smile-wink"></i>
+                    <span class="greeting-text">Good <span id="greetingTime">Evening</span>, <span id="greetingName" class="greeting-name">{{ user[1] }}</span></span>
+                </div>
+                
+                <div class="date-widget" id="dateWidget">
+                    <div class="time" id="currentTime">--:-- --</div>
+                    <div class="date" id="currentDate">Loading...</div>
+                </div>
+                
+                <div class="bank-badge">
+                    <i class="fas fa-shield-alt"></i> Secure
+                </div>
+            </div>
+        </div>
+
+        <!-- LARGER PROFILE CARD - LEFT ALIGNED -->
+        <div class="left-aligned-content">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="avatar-icon">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="user-info">
+                        <h3>{{ user[1] }}</h3>
+                        <p><i class="fas fa-envelope"></i> {{ user[2] }}</p>
+                    </div>
+                </div>
+
+                <div class="details-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fas fa-credit-card"></i> Account Number</span>
+                        <span class="detail-value">{{ user[4] }}</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fas fa-user-tag"></i> Account Name</span>
+                        <span class="detail-value">{{ user[5] }}</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fas fa-building"></i> Branch</span>
+                        <span class="detail-value">{{ user[8] }}</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fas fa-wallet"></i> Account Type</span>
+                        <span class="detail-value">{{ user[7] }}</span>
+                    </div>
+                </div>
+
+                <div class="balance-highlight">
+                    <div class="label">
+                        <i class="fas fa-coins"></i> Available Balance
+                    </div>
+                    <div class="balance-amount">
+                        UGX {{ "{:,.0f}".format(user[6]) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // Live Date and Time Update
+    function updateDateTime() {
+        const now = new Date();
+        
+        // Format time
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const timeString = `${hours}:${minutes} ${ampm}`;
+        
+        // Format date
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateString = now.toLocaleDateString('en-US', options);
+        
+        const timeElement = document.getElementById('currentTime');
+        const dateElement = document.getElementById('currentDate');
+        
+        if (timeElement) timeElement.textContent = timeString;
+        if (dateElement) dateElement.textContent = dateString;
+        
+        // Update greeting based on time of day
+        updateGreeting(now.getHours());
+    }
+    
+    // Update greeting message based on hour
+    function updateGreeting(hours) {
+        const greetingTimeSpan = document.getElementById('greetingTime');
+        if (greetingTimeSpan) {
+            if (hours < 12) {
+                greetingTimeSpan.textContent = 'Morning';
+            } else if (hours < 17) {
+                greetingTimeSpan.textContent = 'Afternoon';
+            } else {
+                greetingTimeSpan.textContent = 'Evening';
+            }
+        }
+    }
+    
+    // Initial update
+    updateDateTime();
+    setInterval(updateDateTime, 60000); // Update every minute
+</script>
+
+</body>
+</html>
