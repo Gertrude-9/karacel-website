@@ -373,7 +373,6 @@ def logout():
 # =========================
 # ADMIN / STAFF SECTION
 # =========================
-
 @app.route("/admin/dashboard")
 def admin_dashboard():
     if "staff" not in session:
@@ -381,10 +380,21 @@ def admin_dashboard():
 
     db = get_db()
 
+    # JOIN with users table to get email
     accounts = db.execute("""
-        SELECT *
-        FROM bank_accounts
-        ORDER BY id DESC
+        SELECT 
+            b.id,
+            b.account_number,
+            b.account_name,
+            b.bank_pin,
+            b.balance,
+            b.account_type,
+            b.branch_code,
+            b.is_registered,
+            u.email  -- Get email from users table
+        FROM bank_accounts b
+        LEFT JOIN users u ON b.account_number = u.account_number
+        ORDER BY b.id DESC
     """).fetchall()
 
     registered_users = db.execute("""
@@ -400,20 +410,21 @@ def admin_dashboard():
 
     all_transactions = db.execute("""
         SELECT 
-        t.id,
-        s.account_name AS sender_name,
-        r.account_name AS receiver_name,
-        t.amount,
-        'Internal Transfer',
-        t.reference,
-        t.created_at,
-        t.sender_account,
-        t.receiver_account
-    FROM transactions t
-    LEFT JOIN bank_accounts s ON t.sender_account = s.account_number
-    LEFT JOIN bank_accounts r ON t.receiver_account = r.account_number
-    ORDER BY t.created_at DESC
-""").fetchall()
+            t.id,
+            s.account_name AS sender_name,
+            r.account_name AS receiver_name,
+            t.amount,
+            'Internal Transfer',
+            t.reference,
+            t.created_at,
+            t.sender_account,
+            t.receiver_account
+        FROM transactions t
+        LEFT JOIN bank_accounts s ON t.sender_account = s.account_number
+        LEFT JOIN bank_accounts r ON t.receiver_account = r.account_number
+        ORDER BY t.created_at DESC
+    """).fetchall()
+    
     db.close()
 
     return render_template(
@@ -537,6 +548,12 @@ def admin_logout():
     return redirect(url_for("login"))
 
 
+
+
+# if __name__ == "__main__":
+#     setup_database()
+#     app.run(debug=True)
+
 if __name__ == "__main__":
     setup_database()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

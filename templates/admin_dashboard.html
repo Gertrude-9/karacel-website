@@ -126,34 +126,37 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="customersTableBody">
-                            {% for account in accounts %}
-                            <tr data-status="{% if account[7] == 1 %}active{% else %}pending{% endif %}" data-name="{{ account[2].lower() }}" data-account="{{ account[1].lower() }}" data-email="{{ account[3].lower() if account[3] else '' }}">
-                                <td>{{ account[0] }}</td>
-                                <td class="mono">{{ account[1] }}</td>
-                                <td>{{ account[2] }}</td>
-                                <td>{{ account[3] if account[3] else 'N/A' }}</td>
-                                <td class="balance">UGX {{ "{:,.0f}".format(account[4]) }}</td>
-                                <td>{{ account[5] }}</td>
-                                <td>{{ account[6] }}</td>
-                                <td>
-                                    {% if account[7] == 1 %}
-                                        <span class="badge success">Active</span>
-                                    {% else %}
-                                        <span class="badge warning">Pending</span>
-                                    {% endif %}
-                                </td>
-                                <td class="action-btns">
-                                    <button class="edit-btn" onclick="editCustomer({{ account[0] }}, '{{ account[2] }}', '{{ account[1] }}', {{ account[4] }}, '{{ account[5] }}', '{{ account[6] }}', {{ account[7] }})" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="delete-btn" onclick="deleteCustomer({{ account[0] }})" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
+                       <tbody id="customersTableBody">
+                        {% for account in accounts %}
+                        <tr data-status="{% if account[7] == 1 %}active{% else %}pending{% endif %}" 
+                            data-name="{{ account[2].lower() }}" 
+                            data-account="{{ account[1].lower() }}" 
+                            data-email="{{ account[8].lower() if account[8] else '' }}">
+                            <td>{{ account[0] }}</td>
+                            <td class="mono">{{ account[1] }}</td>
+                            <td>{{ account[2] }}</td>
+                            <td>{{ account[8] if account[8] else 'No email' }}</td>  <!-- Email is now index 8 -->
+                            <td class="balance">UGX {{ "{:,.0f}".format(account[4]) }}</td>
+                            <td>{{ account[5] }}</td>
+                            <td>{{ account[6] }}</td>
+                            <td>
+                                {% if account[7] == 1 %}
+                                    <span class="badge success">Active</span>
+                                {% else %}
+                                    <span class="badge warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-btns">
+                                <button class="edit-btn" onclick="editCustomer({{ account[0] }}, '{{ account[2] }}', '{{ account[1] }}', {{ account[4] }}, '{{ account[5] }}', '{{ account[6] }}', {{ account[7] }})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="delete-btn" onclick="deleteCustomer({{ account[0] }})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
                     </table>
                 </div>
                 <div id="noCustomerResults" class="no-results" style="display: none;">No customers found matching your search</div>
