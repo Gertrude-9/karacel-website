@@ -1,0 +1,197 @@
+
+        /* Additional styling for create account page */
+        .create-account-wrapper {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e27 0%, #0f1629 100%);
+        }
+        
+        .app-bar-modern {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(10, 20, 40, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 224, 255, 0.2);
+            margin-bottom: 30px;
+            border-radius: 20px;
+        }
+        
+        .app-bar-title h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #00e0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .app-bar-title small {
+            color: #8b9ccf;
+            font-size: 0.75rem;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 224, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: #00e0ff;
+        }
+        
+        .admin-badge i {
+            font-size: 1.2rem;
+        }
+        
+        .form-card {
+            max-width: 550px;
+            width: 100%;
+            margin: 0 auto;
+            background: rgba(15, 25, 45, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 40px;
+            border: 1px solid rgba(0, 224, 255, 0.25);
+            padding: 36px 32px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .form-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 224, 255, 0.5);
+        }
+        
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00e0ff, #7c3aed);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .form-header p {
+            color: #8b9ccf;
+            font-size: 0.8rem;
+        }
+        
+        .input-group-enhanced {
+            margin-bottom: 20px;
+        }
+        
+        .input-group-enhanced label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #b5c7ff;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        
+        .input-group-enhanced label i {
+            color: #00e0ff;
+            width: 20px;
+        }
+        
+        .input-group-enhanced input,
+        .input-group-enhanced select {
+            width: 100%;
+            background: rgba(5, 12, 25, 0.8);
+            border: 1px solid #2a3a6e;
+            border-radius: 16px;
+            padding: 12px 16px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .input-group-enhanced input:focus,
+        .input-group-enhanced select:focus {
+            outline: none;
+            border-color: #00e0ff;
+            box-shadow: 0 0 8px rgba(0, 224, 255, 0.3);
+        }
+        
+        .input-group-enhanced small {
+            display: block;
+            margin-top: 6px;
+            color: #6f7da8;
+            font-size: 0.65rem;
+        }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .create-btn {
+            background: linear-gradient(95deg, #00b4d8, #0077b6);
+            border: none;
+            padding: 14px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 16px;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .create-btn:hover {
+            transform: scale(1.01);
+            background: linear-gradient(95deg, #00c8ff, #0088cc);
+            box-shadow: 0 5px 15px rgba(0, 180, 216, 0.3);
+        }
+        
+        .security-note {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 224, 255, 0.1);
+            font-size: 0.7rem;
+            color: #5a6a95;
+        }
+        
+        .security-note i {
+            color: #00ff88;
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            .app-bar-modern {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .form-card {
+                margin: 0 16px;
+                padding: 28px 22px;
+            }
+            
+            .input-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+        }
