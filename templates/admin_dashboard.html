@@ -36,6 +36,9 @@
             <div class="admin-nav-item" data-panel="transactions">
                 <i class="fas fa-exchange-alt"></i> <span>All Transactions</span>
             </div>
+            <div class="admin-nav-item" data-panel="staff">
+                <i class="fas fa-users-cog"></i> <span>Staff Management</span>
+            </div>
             <div class="admin-nav-item" data-panel="settings">
                 <i class="fas fa-cog"></i> <span>Admin Settings</span>
             </div>
@@ -289,6 +292,212 @@
     </div>
 
 </div>
+</div>
+
+<!-- Staff Management Panel -->
+<div id="staff-panel" class="content-panel">
+    <!-- Add New Staff Form -->
+    <div class="action-card" style="margin-bottom: 25px;">
+        <div class="action-title">
+            <i class="fas fa-user-plus"></i> Add New Staff Member
+            <span style="font-size: 0.8rem; margin-left: 10px; color: #00e0ff;">
+                <i class="fas fa-info-circle"></i> Staff can login with these credentials
+            </span>
+        </div>
+        
+        <form id="addStaffForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Full Name</label>
+                <input type="text" id="staffFullName" placeholder="John Doe" required class="form-control" style="width: 100%; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-tag"></i> Username</label>
+                <input type="text" id="staffUsername" placeholder="john.doe" required class="form-control" style="width: 100%; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-envelope"></i> Email</label>
+                <input type="email" id="staffEmail" placeholder="john@8techbank.com" class="form-control" style="width: 100%; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-phone"></i> Phone</label>
+                <input type="text" id="staffPhone" placeholder="+256 XXX XXX XXX" class="form-control" style="width: 100%; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> Password</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="staffPassword" placeholder="Auto-generated" class="form-control" style="flex: 1; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+                    <button type="button" onclick="generateStaffPassword()" style="padding: 0 15px; background: #00e0ff; border: none; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <small style="color: #5f7f8c;">Leave empty to auto-generate</small>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-shield"></i> Role</label>
+                <select id="staffRole" required class="form-control" style="width: 100%; padding: 10px; background: rgba(5,12,25,0.8); border: 1px solid #2a3a6e; border-radius: 8px; color: white;">
+                    <option value="teller">Teller</option>
+                    <option value="manager">Manager</option>
+                </select>
+                <small style="color: #5f7f8c;">Teller: Basic access | Manager: Full staff access</small>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button type="submit" class="transfer-btn" style="width: 100%;">
+                    <i class="fas fa-plus-circle"></i> Add Staff Member
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Staff List -->
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-users"></i> Staff Members
+            <span style="font-size: 0.85rem; background: rgba(0,224,255,0.2); padding: 4px 12px; border-radius: 20px; margin-left: 10px;">
+                <i class="fas fa-users"></i> <span id="staffCount">0</span> Total
+            </span>
+        </div>
+        
+        <div class="search-bar-container" style="margin-bottom: 20px;">
+            <div class="search-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" id="staffSearchInput" placeholder="Search by name, username, email, or role..." onkeyup="filterStaff()">
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="staffTableBody">
+                    <!-- Staff data loaded here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="noStaffResults" class="no-results" style="display: none; text-align: center; padding: 40px;">
+            <i class="fas fa-users-slash" style="font-size: 3rem; color: #5f7f8c;"></i>
+            <p>No staff members found</p>
+            <p style="font-size: 0.85rem;">Click "Add Staff Member" to create your first staff account</p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Staff Modal -->
+<div id="editStaffModal" class="edit-modal">
+    <div class="edit-modal-content" style="max-width: 500px;">
+        <div class="edit-modal-header">
+            <h3><i class="fas fa-user-edit"></i> Edit Staff Member</h3>
+            <button class="close-edit-modal" onclick="closeEditStaffModal()">&times;</button>
+        </div>
+        
+        <form id="editStaffForm">
+            <input type="hidden" id="editStaffId">
+            
+            <div class="edit-modal-body">
+                <div class="edit-form-group">
+                    <label><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" id="editStaffFullName" required>
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-user-tag"></i> Username</label>
+                    <input type="text" id="editStaffUsername" required>
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="editStaffEmail">
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-phone"></i> Phone</label>
+                    <input type="text" id="editStaffPhone">
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-lock"></i> New Password</label>
+                    <input type="text" id="editStaffPassword" placeholder="Leave blank to keep current">
+                    <small>Only fill if you want to change password</small>
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-user-shield"></i> Role</label>
+                    <select id="editStaffRole">
+                        <option value="teller">Teller</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-toggle-on"></i> Status</label>
+                    <select id="editStaffStatus">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="edit-modal-footer">
+                <button type="submit" class="save-edit-btn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <button type="button" class="cancel-edit-btn" onclick="closeEditStaffModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetPasswordModal" class="edit-modal">
+    <div class="edit-modal-content" style="max-width: 450px;">
+        <div class="edit-modal-header">
+            <h3><i class="fas fa-key"></i> Reset Staff Password</h3>
+            <button class="close-edit-modal" onclick="closeResetPasswordModal()">&times;</button>
+        </div>
+        
+        <form id="resetPasswordForm">
+            <input type="hidden" id="resetStaffId">
+            
+            <div class="edit-modal-body">
+                <div class="edit-form-group">
+                    <label><i class="fas fa-user"></i> Staff Member</label>
+                    <input type="text" id="resetStaffName" readonly style="background: #f0f0f0; color: #333;">
+                </div>
+                
+                <div class="edit-form-group">
+                    <label><i class="fas fa-lock"></i> New Password</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newStaffPassword" required style="flex: 1;">
+                        <button type="button" onclick="generateNewPassword()" style="padding: 0 15px; background: #00e0ff; border: none; border-radius: 5px; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Generate
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="edit-modal-footer">
+                <button type="submit" class="save-edit-btn">
+                    <i class="fas fa-save"></i> Reset Password
+                </button>
+                <button type="button" class="cancel-edit-btn" onclick="closeResetPasswordModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
         
         <!-- Settings Panel -->
         <div id="settings-panel" class="content-panel">
@@ -387,7 +596,8 @@
         customers: { icon: "fas fa-address-book", title: "Customer Details", subtitle: "View and manage all customer account information" },
         registered: { icon: "fas fa-user-check", title: "Registered Users", subtitle: "All platform users with login access" },
         transactions: { icon: "fas fa-exchange-alt", title: "All System Transactions", subtitle: "Monitor all money movements across the platform" },
-        settings: { icon: "fas fa-cog", title: "Admin Settings", subtitle: "System configuration and preferences" }
+        settings: { icon: "fas fa-cog", title: "Admin Settings", subtitle: "System configuration and preferences" },
+        staff: { icon: "fas fa-users-cog", title: "Staff Management", subtitle: "Add, edit, and manage bank staff members" }
     };
 
     document.querySelectorAll('.admin-nav-item').forEach(item => {
@@ -563,6 +773,286 @@
             closeModal();
         }
     };
+
+    // Staff Management Functions
+let allStaff = [];
+
+// Load staff members
+async function loadStaff() {
+    try {
+        const response = await fetch('/admin/get_staff');
+        const staff = await response.json();
+        allStaff = staff;
+        renderStaffTable(staff);
+        document.getElementById('staffCount').textContent = staff.length;
+    } catch (error) {
+        console.error('Error loading staff:', error);
+    }
+}
+
+// Render staff table
+function renderStaffTable(staff) {
+    const tbody = document.getElementById('staffTableBody');
+    tbody.innerHTML = '';
+    
+    if (staff.length === 0) {
+        document.getElementById('noStaffResults').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('noStaffResults').style.display = 'none';
+    
+    staff.forEach(member => {
+        const row = tbody.insertRow();
+        
+        const roleBadgeClass = member.role === 'manager' ? 'badge-manager' : 'badge-teller';
+        const roleIcon = member.role === 'manager' ? 'fa-chart-line' : 'fa-user-tie';
+        const statusBadge = member.is_active == 1 ? 
+            '<span class="badge success"><i class="fas fa-check-circle"></i> Active</span>' : 
+            '<span class="badge warning"><i class="fas fa-ban"></i> Inactive</span>';
+        
+        row.innerHTML = `
+            <td>${member.id}</td>
+            <td><strong>${member.full_name || 'N/A'}</strong></td>
+            <td class="mono">${member.username}</td>
+            <td>${member.email || 'N/A'}</td>
+            <td>${member.phone || 'N/A'}</td>
+            <td>
+                <span class="badge ${roleBadgeClass}">
+                    <i class="fas ${roleIcon}"></i> ${member.role.toUpperCase()}
+                </span>
+            </td>
+            <td>${statusBadge}</td>
+            <td>${member.created_at ? member.created_at.split(' ')[0] : 'N/A'}</td>
+            <td class="action-btns">
+                <button class="edit-btn" onclick="editStaff(${member.id})" title="Edit Staff">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="edit-btn" onclick="showResetPasswordModal(${member.id}, '${member.full_name || member.username}')" 
+                        title="Reset Password" style="background: #ff9800;">
+                    <i class="fas fa-key"></i>
+                </button>
+                <button class="delete-btn" onclick="deleteStaff(${member.id}, '${member.username}')" title="Delete Staff">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+    });
+}
+
+// Filter staff
+function filterStaff() {
+    const searchTerm = document.getElementById('staffSearchInput').value.toLowerCase();
+    const filtered = allStaff.filter(member => {
+        return (member.full_name && member.full_name.toLowerCase().includes(searchTerm)) ||
+               member.username.toLowerCase().includes(searchTerm) ||
+               (member.email && member.email.toLowerCase().includes(searchTerm)) ||
+               member.role.toLowerCase().includes(searchTerm);
+    });
+    renderStaffTable(filtered);
+}
+
+// Generate random password
+function generateRandomPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
+
+function generateStaffPassword() {
+    document.getElementById('staffPassword').value = generateRandomPassword();
+}
+
+function generateNewPassword() {
+    document.getElementById('newStaffPassword').value = generateRandomPassword();
+}
+
+// Add staff member
+document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    let password = document.getElementById('staffPassword').value;
+    if (!password) {
+        password = generateRandomPassword();
+    }
+    
+    const formData = {
+        full_name: document.getElementById('staffFullName').value,
+        username: document.getElementById('staffUsername').value,
+        email: document.getElementById('staffEmail').value,
+        phone: document.getElementById('staffPhone').value,
+        password: password,
+        role: document.getElementById('staffRole').value
+    };
+    
+    if (!formData.username) {
+        alert('Please enter a username');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/add_staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ Staff added successfully!\n\nUsername: ${formData.username}\nPassword: ${password}\n\nPlease save these credentials and provide to staff member.`);
+            document.getElementById('addStaffForm').reset();
+            loadStaff();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+});
+
+// Edit staff
+async function editStaff(id) {
+    const staff = allStaff.find(s => s.id == id);
+    if (!staff) return;
+    
+    document.getElementById('editStaffId').value = staff.id;
+    document.getElementById('editStaffFullName').value = staff.full_name || '';
+    document.getElementById('editStaffUsername').value = staff.username;
+    document.getElementById('editStaffEmail').value = staff.email || '';
+    document.getElementById('editStaffPhone').value = staff.phone || '';
+    document.getElementById('editStaffRole').value = staff.role;
+    document.getElementById('editStaffStatus').value = staff.is_active;
+    document.getElementById('editStaffPassword').value = '';
+    
+    document.getElementById('editStaffModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Submit staff edit
+document.getElementById('editStaffForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+        id: document.getElementById('editStaffId').value,
+        full_name: document.getElementById('editStaffFullName').value,
+        username: document.getElementById('editStaffUsername').value,
+        email: document.getElementById('editStaffEmail').value,
+        phone: document.getElementById('editStaffPhone').value,
+        role: document.getElementById('editStaffRole').value,
+        is_active: document.getElementById('editStaffStatus').value,
+        password: document.getElementById('editStaffPassword').value
+    };
+    
+    try {
+        const response = await fetch('/admin/update_staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Staff updated successfully!');
+            closeEditStaffModal();
+            loadStaff();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+});
+
+// Show reset password modal
+function showResetPasswordModal(id, name) {
+    document.getElementById('resetStaffId').value = id;
+    document.getElementById('resetStaffName').value = name;
+    document.getElementById('newStaffPassword').value = generateRandomPassword();
+    
+    document.getElementById('resetPasswordModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Submit password reset
+document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+        id: document.getElementById('resetStaffId').value,
+        password: document.getElementById('newStaffPassword').value
+    };
+    
+    try {
+        const response = await fetch('/admin/reset_staff_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ Password reset successfully!\n\nNew Password: ${formData.password}\n\nPlease provide this to the staff member.`);
+            closeResetPasswordModal();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+});
+
+// Delete staff
+async function deleteStaff(id, username) {
+    if (!confirm(`⚠️ Are you sure you want to delete staff member "${username}"? This action cannot be undone!`)) return;
+    
+    try {
+        const response = await fetch('/admin/delete_staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('🗑️ Staff member deleted successfully!');
+            loadStaff();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+}
+
+// Close modals
+function closeEditStaffModal() {
+    document.getElementById('editStaffModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Load staff when panel is opened
+const staffNavItem = document.querySelector('[data-panel="staff"]');
+if (staffNavItem) {
+    staffNavItem.addEventListener('click', () => {
+        loadStaff();
+    });
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const editModal = document.getElementById('editStaffModal');
+    const resetModal = document.getElementById('resetPasswordModal');
+    if (event.target === editModal) closeEditStaffModal();
+    if (event.target === resetModal) closeResetPasswordModal();
+};
 </script>
 
 </body>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard - 8Tech Bank</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='staff_dashboard.css') }}">
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <h2>8Tech Bank</h2>
+        <span>{{ role|upper }} Portal</span>
+    </div>
+
+    <div class="nav-menu">
+        <div class="nav-item active" onclick="showPanel('dashboard')">Dashboard</div>
+        <div class="nav-item" onclick="showPanel('customers')">Customers</div>
+        <div class="nav-item" onclick="showPanel('transactions')">Transactions</div>
+
+        {% if role == 'manager' %}
+        <div class="nav-item" onclick="showPanel('staff')">Staff List</div>
+        <div class="nav-item" onclick="showPanel('reports')">Reports</div>
+        {% endif %}
+    </div>
+
+    <div class="staff-mini-card">
+        <div class="staff-avatar">
+            <div class="staff-details">
+                <h4>{{ staff_name }}</h4>
+                <p><span class="role-badge-side">{{ role|upper }}</span></p>
+            </div>
+        </div>
+
+        <a href="{{ url_for('staff_logout') }}" class="logout-side">Logout</a>
+    </div>
+</div>
+
+<div class="main-content">
+
+    <div class="top-header">
+        <div class="page-greeting">
+            <h1>Staff Dashboard</h1>
+            <p>Welcome {{ staff_name }}. You are logged in as {{ role|upper }}.</p>
+        </div>
+
+        <div class="header-badge">
+            Authenticated Staff
+        </div>
+    </div>
+
+    <div id="dashboard-panel" class="content-panel active">
+        <div class="stats-row">
+            <div class="stat-card-admin">
+                <div class="stat-left">
+                    <h4>Total Customers</h4>
+                    <div class="figure">{{ stats.total_customers }}</div>
+                </div>
+            </div>
+
+            <div class="stat-card-admin">
+                <div class="stat-left">
+                    <h4>Today Transactions</h4>
+                    <div class="figure">{{ stats.today_transactions }}</div>
+                </div>
+            </div>
+
+            {% if role == 'manager' %}
+            <div class="stat-card-admin">
+                <div class="stat-left">
+                    <h4>Total Bank Balance</h4>
+                    <div class="figure">UGX {{ "{:,.0f}".format(stats.total_balance) }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="action-grid">
+            <div class="action-card" onclick="showCreateAccount()">
+                <span>Create Account</span>
+            </div>
+
+            <div class="action-card" onclick="showSearchCustomer()">
+                <span>Search Customer</span>
+            </div>
+
+            <div class="action-card" onclick="showProcessTransaction()">
+                <span>Process Transaction</span>
+            </div>
+
+            {% if role == 'manager' %}
+            <div class="action-card" onclick="showPanel('reports')">
+                <span>View Reports</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="customers-panel" class="content-panel">
+        <div class="data-card">
+            <h3>Customers</h3>
+
+            <div class="search-mini">
+                <input type="text" id="customerSearchField" placeholder="Search customer..." onkeyup="filterCustomerTable()">
+            </div>
+
+            <div class="table-scroll">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Account Number</th>
+                            <th>Name</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="customerTableBody">
+                        {% for cust in customers %}
+                        <tr>
+                            <td>{{ cust.account_number }}</td>
+                            <td>{{ cust.account_name }}</td>
+                            <td>UGX {{ "{:,.0f}".format(cust.balance) }}</td>
+                            <td>
+                                {% if cust.is_registered %}
+                                    <span class="badge badge-success">Registered</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Not Registered</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactions-panel" class="content-panel">
+        <div class="data-card">
+            <h3>Transactions</h3>
+
+            <div class="table-scroll">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>From Account</th>
+                            <th>To Account</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>{{ tx.sender_account }}</td>
+                            <td>{{ tx.receiver_account }}</td>
+                            <td>UGX {{ "{:,.0f}".format(tx.amount) }}</td>
+                            <td>{{ tx.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if role == 'manager' %}
+    <div id="staff-panel" class="content-panel">
+        <div class="data-card">
+            <h3>Staff List</h3>
+
+            <div class="table-scroll">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for s in staff_members %}
+                        <tr>
+                            <td>{{ s.full_name }}</td>
+                            <td>{{ s.username }}</td>
+                            <td>{{ s.email }}</td>
+                            <td>{{ s.role }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="reports-panel" class="content-panel">
+        <div class="dashboard-grid">
+            <div class="data-card">
+                <h3>Reports Summary</h3>
+                <p>Total Customers: {{ stats.total_customers }}</p>
+                <p>Total Balance: UGX {{ "{:,.0f}".format(stats.total_balance) }}</p>
+                <p>Today Transactions: {{ stats.today_transactions }}</p>
+            </div>
+
+            <div class="data-card">
+                <h3>Manager Access</h3>
+                <p>Managers can view staff lists and reports, but cannot access full system admin settings.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="footer-note">
+        2026 8Tech Bank. All rights reserved.
+    </div>
+
+</div>
+
+<div id="searchModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Search Customer</h3>
+            <button class="close-modal" onclick="closeModal('searchModal')">&times;</button>
+        </div>
+
+        <div class="form-row">
+            <label>Account Number or Name</label>
+            <input type="text" id="searchQueryInput" placeholder="Enter account number or name">
+        </div>
+
+        <div id="searchResultPreview"></div>
+
+        <div class="modal-buttons">
+            <button class="btn-outline" onclick="closeModal('searchModal')">Cancel</button>
+            <button class="btn-primary-dark" onclick="performCustomerSearch()">Search</button>
+        </div>
+    </div>
+</div>
+
+<div id="createAccountModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Create Account</h3>
+            <button class="close-modal" onclick="closeModal('createAccountModal')">&times;</button>
+        </div>
+
+        <form id="createAccountFormModal">
+            <div class="form-row">
+                <label>Account Number</label>
+                <input type="text" id="newAccNumber" required>
+            </div>
+
+            <div class="form-row">
+                <label>Full Name</label>
+                <input type="text" id="newAccName" required>
+            </div>
+
+            <div class="form-row">
+                <label>Bank PIN</label>
+                <input type="password" id="newAccPin" maxlength="4" required>
+            </div>
+
+            <div class="form-row">
+                <label>Opening Balance</label>
+                <input type="number" id="newAccBalance" value="0">
+            </div>
+
+            <div class="form-row">
+                <label>Account Type</label>
+                <select id="newAccType">
+                    <option>Savings Account</option>
+                    <option>Current Account</option>
+                    <option>Business Account</option>
+                </select>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" class="btn-outline" onclick="closeModal('createAccountModal')">Cancel</button>
+                <button type="submit" class="btn-primary-dark">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="transactionModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Process Transaction</h3>
+            <button class="close-modal" onclick="closeModal('transactionModal')">&times;</button>
+        </div>
+
+        <form id="transactionFormModal">
+            <div class="form-row">
+                <label>From Account</label>
+                <input type="text" id="txFrom" required>
+            </div>
+
+            <div class="form-row">
+                <label>To Account</label>
+                <input type="text" id="txTo" required>
+            </div>
+
+            <div class="form-row">
+                <label>Amount</label>
+                <input type="number" id="txAmountVal" required>
+            </div>
+
+            <div class="form-row">
+                <label>Reference</label>
+                <input type="text" id="txRefVal">
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" class="btn-outline" onclick="closeModal('transactionModal')">Cancel</button>
+                <button type="submit" class="btn-primary-dark">Process</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showPanel(panel) {
+    document.querySelectorAll(".content-panel").forEach(p => p.classList.remove("active"));
+
+    const selected = document.getElementById(panel + "-panel");
+    if (selected) {
+        selected.classList.add("active");
+    }
+
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+
+    const navText = panel.toLowerCase();
+    document.querySelectorAll(".nav-item").forEach(item => {
+        if (item.textContent.toLowerCase().includes(navText)) {
+            item.classList.add("active");
+        }
+    });
+}
+
+function showSearchCustomer() {
+    document.getElementById("searchModal").style.display = "flex";
+}
+
+function showCreateAccount() {
+    document.getElementById("createAccountModal").style.display = "flex";
+}
+
+function showProcessTransaction() {
+    document.getElementById("transactionModal").style.display = "flex";
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = "none";
+}
+
+function filterCustomerTable() {
+    const search = document.getElementById("customerSearchField").value.toLowerCase();
+    document.querySelectorAll("#customerTableBody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(search) ? "" : "none";
+    });
+}
+
+async function performCustomerSearch() {
+    const query = document.getElementById("searchQueryInput").value;
+
+    if (!query) {
+        alert("Enter account number or name");
+        return;
+    }
+
+    const response = await fetch(`/staff/search_customer?q=${encodeURIComponent(query)}`);
+    const customer = await response.json();
+
+    const resultDiv = document.getElementById("searchResultPreview");
+
+    if (customer && customer.account_number) {
+        resultDiv.innerHTML = `
+            <p><strong>Account:</strong> ${customer.account_number}</p>
+            <p><strong>Name:</strong> ${customer.account_name}</p>
+            <p><strong>Balance:</strong> UGX ${Number(customer.balance).toLocaleString()}</p>
+            <p><strong>Type:</strong> ${customer.account_type}</p>
+        `;
+    } else {
+        resultDiv.innerHTML = "<p>Customer not found</p>";
+    }
+}
+
+document.getElementById("createAccountFormModal").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const data = {
+        account_number: document.getElementById("newAccNumber").value.trim(),
+        account_name: document.getElementById("newAccName").value.trim(),
+        bank_pin: document.getElementById("newAccPin").value.trim(),
+        balance: parseFloat(document.getElementById("newAccBalance").value),
+        account_type: document.getElementById("newAccType").value
+    };
+
+    const response = await fetch("/staff/create_account", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert("Account created successfully");
+        location.reload();
+    } else {
+        alert(result.message || "Failed to create account");
+    }
+});
+
+document.getElementById("transactionFormModal").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const data = {
+        from_account: document.getElementById("txFrom").value.trim(),
+        to_account: document.getElementById("txTo").value.trim(),
+        amount: parseFloat(document.getElementById("txAmountVal").value),
+        reference: document.getElementById("txRefVal").value.trim()
+    };
+
+    const response = await fetch("/staff/process_transaction", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert("Transaction processed successfully");
+        location.reload();
+    } else {
+        alert(result.message || "Failed to process transaction");
+    }
+});
+
+window.onclick = function(event) {
+    if (event.target.classList.contains("modal")) {
+        event.target.style.display = "none";
+    }
+};
+</script>
+
+</body>
+</html>

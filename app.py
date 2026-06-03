@@ -6,7 +6,9 @@ app.secret_key = "bank_secret_key"
 
 
 def get_db():
-    return sqlite3.connect("bank.db")
+    db = sqlite3.connect("bank.db")
+    db.row_factory = sqlite3.Row
+    return db
 
 
 def setup_database():
@@ -51,16 +53,22 @@ def setup_database():
     db.execute("""
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
-            role TEXT DEFAULT 'admin'
+            full_name TEXT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT,
+            phone TEXT,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'teller',
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     db.execute("""
-        INSERT OR IGNORE INTO staff (username, password, role)
-        VALUES (?, ?, ?)
-    """, ("admin", "admin123", "admin"))
+         INSERT OR IGNORE INTO staff 
+         (full_name, username, password, role, is_active)
+         VALUES ('System Admin', 'admin', 'admin123', 'admin', 1)
+     """)
 
     db.commit()
     db.close()
@@ -75,22 +83,29 @@ def splash():
 def login():
     if request.method == "POST":
         username = request.form["username"].strip()
-        password = request.form["password"].strip()
+        password = request.form["password"]
 
         db = get_db()
 
         staff = db.execute("""
-            SELECT *
+            SELECT id, full_name, username, email, phone, password, role, is_active
             FROM staff
-            WHERE username=? AND password=?
+            WHERE username=? AND password=? AND is_active=1
         """, (username, password)).fetchone()
 
         if staff:
             session.clear()
-            session["staff"] = staff[1]
-            session["role"] = staff[3]
+            session["staff_id"] = staff[0]
+            session["staff"] = staff[2]
+            session["role"] = staff[6]
             db.close()
-            return redirect(url_for("admin_dashboard"))
+
+            if staff[6] == "admin":
+                return redirect(url_for("admin_dashboard"))
+            elif staff[6] in ["manager", "teller"]:
+                return redirect(url_for("staff_dashboard"))
+            else:
+                return redirect(url_for("login"))
 
         user = db.execute("""
             SELECT *
@@ -207,11 +222,7 @@ def dashboard():
 
     db.close()
 
-    return render_template(
-        "dashboard.html",
-        user=user,
-        transactions=transactions
-    )
+    return render_template("dashboard.html", user=user, transactions=transactions)
 
 
 @app.route("/transfer", methods=["GET", "POST"])
@@ -291,14 +302,7 @@ def transfer():
         INSERT INTO transactions
         (sender_username, sender_account, receiver_account, transfer_type, amount, reference)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (
-        sender[0],
-        sender[1],
-        receiver_account,
-        "internal",
-        amount,
-        reference
-    ))
+    """, (sender[0], sender[1], receiver_account, "internal", amount, reference))
 
     db.commit()
     db.close()
@@ -312,7 +316,6 @@ def transactions():
         return redirect(url_for("login"))
 
     username = session["username"]
-
     db = get_db()
 
     transactions = db.execute("""
@@ -349,11 +352,7 @@ def transactions():
         "net_flow": total_received - total_sent
     }
 
-    return render_template(
-        "transactions.html",
-        transactions=transactions,
-        stats=stats
-    )
+    return render_template("transactions.html", transactions=transactions, stats=stats)
 
 
 @app.route("/support")
@@ -373,6 +372,7 @@ def logout():
 # =========================
 # ADMIN / STAFF SECTION
 # =========================
+
 @app.route("/admin/dashboard")
 def admin_dashboard():
     if "staff" not in session:
@@ -380,7 +380,6 @@ def admin_dashboard():
 
     db = get_db()
 
-    # JOIN with users table to get email
     accounts = db.execute("""
         SELECT 
             b.id,
@@ -391,7 +390,7 @@ def admin_dashboard():
             b.account_type,
             b.branch_code,
             b.is_registered,
-            u.email  -- Get email from users table
+            u.email
         FROM bank_accounts b
         LEFT JOIN users u ON b.account_number = u.account_number
         ORDER BY b.id DESC
@@ -424,7 +423,7 @@ def admin_dashboard():
         LEFT JOIN bank_accounts r ON t.receiver_account = r.account_number
         ORDER BY t.created_at DESC
     """).fetchall()
-    
+
     db.close()
 
     return render_template(
@@ -463,14 +462,7 @@ def create_account():
                 INSERT INTO bank_accounts
                 (account_number, account_name, bank_pin, balance, account_type, branch_code)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                account_number,
-                account_name,
-                bank_pin,
-                balance,
-                account_type,
-                branch_code
-            ))
+            """, (account_number, account_name, bank_pin, balance, account_type, branch_code))
 
             db.commit()
             db.close()
@@ -491,13 +483,6 @@ def update_customer():
 
     data = request.get_json()
 
-    customer_id = data.get("id")
-    name = data.get("name")
-    balance = data.get("balance")
-    account_type = data.get("account_type")
-    branch_code = data.get("branch_code")
-    status = data.get("status")
-
     db = get_db()
 
     try:
@@ -509,12 +494,19 @@ def update_customer():
                 branch_code = ?,
                 is_registered = ?
             WHERE id = ?
-        """, (name, balance, account_type, branch_code, status, customer_id))
+        """, (
+            data.get("name"),
+            data.get("balance"),
+            data.get("account_type"),
+            data.get("branch_code"),
+            data.get("status"),
+            data.get("id")
+        ))
 
         db.commit()
         db.close()
 
-        return jsonify({"success": True}), 200
+        return jsonify({"success": True})
 
     except Exception as e:
         db.close()
@@ -542,17 +534,234 @@ def delete_customer():
     return jsonify({"success": True})
 
 
+@app.route("/admin/add_staff", methods=["POST"])
+def admin_add_staff():
+    if "staff" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    if session.get("role") not in ["admin", "manager"]:
+        return jsonify({"success": False, "message": "Only admin or manager can add staff"}), 403
+
+    data = request.get_json()
+
+    full_name = data.get("full_name", "").strip()
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    phone = data.get("phone", "").strip()
+    password = data.get("password", "").strip()
+    role = data.get("role", "teller").strip()
+
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required"}), 400
+
+    db = get_db()
+
+    try:
+        db.execute("""
+            INSERT INTO staff (full_name, username, email, phone, password, role, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        """, (full_name, username, email, phone, password, role))
+
+        db.commit()
+        return jsonify({"success": True, "message": "Staff added successfully"})
+
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "Username already exists"}), 400
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+    finally:
+        db.close()
+
+
+@app.route("/admin/get_staff")
+def admin_get_staff():
+    if "staff" not in session:
+        return jsonify([]), 401
+
+    db = get_db()
+
+    staff_members = db.execute("""
+        SELECT id, full_name, username, email, phone, role, is_active, created_at
+        FROM staff
+        ORDER BY id DESC
+    """).fetchall()
+
+    db.close()
+
+    staff_list = []
+
+    for s in staff_members:
+        staff_list.append({
+            "id": s[0],
+            "full_name": s[1],
+            "username": s[2],
+            "email": s[3],
+            "phone": s[4],
+            "role": s[5],
+            "is_active": s[6],
+            "created_at": s[7]
+        })
+
+    return jsonify(staff_list)
+
+
+@app.route("/admin/update_staff", methods=["POST"])
+def admin_update_staff():
+    if "staff" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    if session.get("role") not in ["admin", "manager"]:
+        return jsonify({"success": False, "message": "Only admin or manager can update staff"}), 403
+
+    data = request.get_json()
+
+    staff_id = data.get("id")
+    full_name = data.get("full_name", "").strip()
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    phone = data.get("phone", "").strip()
+    role = data.get("role", "teller").strip()
+    is_active = data.get("is_active", 1)
+    password = data.get("password", "").strip()
+
+    db = get_db()
+
+    try:
+        if password:
+            db.execute("""
+                UPDATE staff
+                SET full_name=?, username=?, email=?, phone=?, role=?, is_active=?, password=?
+                WHERE id=?
+            """, (full_name, username, email, phone, role, is_active, password, staff_id))
+        else:
+            db.execute("""
+                UPDATE staff
+                SET full_name=?, username=?, email=?, phone=?, role=?, is_active=?
+                WHERE id=?
+            """, (full_name, username, email, phone, role, is_active, staff_id))
+
+        db.commit()
+        return jsonify({"success": True})
+
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "Username already exists"}), 400
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+    finally:
+        db.close()
+
+
+@app.route("/admin/reset_staff_password", methods=["POST"])
+def admin_reset_staff_password():
+    if "staff" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    if session.get("role") not in ["admin", "manager"]:
+        return jsonify({"success": False, "message": "Only admin or manager can reset passwords"}), 403
+
+    data = request.get_json()
+    staff_id = data.get("id")
+    password = data.get("password", "").strip()
+
+    if not password:
+        return jsonify({"success": False, "message": "Password is required"}), 400
+
+    db = get_db()
+    db.execute("UPDATE staff SET password=? WHERE id=?", (password, staff_id))
+    db.commit()
+    db.close()
+
+    return jsonify({"success": True})
+
+
+@app.route("/admin/delete_staff", methods=["POST"])
+def admin_delete_staff():
+    if "staff" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Only admin can delete staff"}), 403
+
+    data = request.get_json()
+    staff_id = data.get("id")
+
+    if str(staff_id) == str(session.get("staff_id")):
+        return jsonify({"success": False, "message": "You cannot delete your own account"}), 400
+
+    db = get_db()
+    db.execute("DELETE FROM staff WHERE id=?", (staff_id,))
+    db.commit()
+    db.close()
+
+    return jsonify({"success": True})
+
+
+
 @app.route("/admin/logout")
+@app.route("/staff/logout")
 def admin_logout():
     session.clear()
     return redirect(url_for("login"))
 
 
+@app.route("/search")
+def search():
+    query = request.args.get("q", "")
+    return f"""
+        <h2>Search Results for: {query}</h2>
+        <p>No results found.</p>
+    """
+
+@app.route("/staff/dashboard")
+def staff_dashboard():
+    if "staff" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("role") == "admin":
+        return redirect(url_for("admin_dashboard"))
+
+    db = get_db()
+
+    stats = {
+        "total_customers": db.execute("SELECT COUNT(*) FROM bank_accounts").fetchone()[0],
+        "total_balance": db.execute("SELECT COALESCE(SUM(balance), 0) FROM bank_accounts").fetchone()[0],
+        "today_transactions": db.execute("SELECT COUNT(*) FROM transactions WHERE DATE(created_at)=DATE('now')").fetchone()[0]
+    }
+
+    customers = db.execute("""
+        SELECT account_number, account_name, balance, account_type, branch_code, is_registered
+        FROM bank_accounts
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
+
+    transactions = db.execute("""
+        SELECT sender_account, receiver_account, amount, reference, created_at
+        FROM transactions
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
+
+    db.close()
+
+    return render_template(
+        "staff_dashboard.html",
+        staff_name=session.get("staff"),
+        role=session.get("role"),
+        stats=stats,
+        customers=customers,
+        transactions=transactions
+    )
 
 
-# if __name__ == "__main__":
-#     setup_database()
-#     app.run(debug=True)
+@app.route("/staff/logout")
+def staff_logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     setup_database()
