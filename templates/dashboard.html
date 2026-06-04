@@ -8,14 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='customer_dashboard.css') }}">
-  
 </head>
 
 <body>
 
 <div class="dashboard-wrapper">
 
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h2><i class="fas fa-microchip"></i> <span>8Tech Bank</span></h2>
@@ -47,10 +45,8 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <div class="dashboard-container main-content">
 
-        <!-- MODERN APP BAR WITH GREETING -->
         <div class="modern-app-bar">
             <div class="app-bar-left">
                 <div class="app-bar-icon">
@@ -61,35 +57,37 @@
                     <p>Your financial overview</p>
                 </div>
             </div>
-            
+
             <div class="app-bar-right">
-                <!-- Greeting Widget - Shows time-based greeting -->
                 <div class="greeting-widget" id="greetingWidget">
                     <i class="fas fa-smile-wink"></i>
-                    <span class="greeting-text">Good <span id="greetingTime">Evening</span>, <span id="greetingName" class="greeting-name">{{ user[1] }}</span></span>
+                    <span class="greeting-text">
+                        Good <span id="greetingTime">Evening</span>,
+                        <span id="greetingName" class="greeting-name">{{ user[1] | safe }}</span>
+                    </span>
                 </div>
-                
+
                 <div class="date-widget" id="dateWidget">
                     <div class="time" id="currentTime">--:-- --</div>
                     <div class="date" id="currentDate">Loading...</div>
                 </div>
-                
+
                 <div class="bank-badge">
                     <i class="fas fa-shield-alt"></i> Secure
                 </div>
             </div>
         </div>
 
-        <!-- LARGER PROFILE CARD - LEFT ALIGNED -->
         <div class="left-aligned-content">
             <div class="profile-card">
                 <div class="profile-header">
                     <div class="avatar-icon">
                         <i class="fas fa-user-circle"></i>
                     </div>
+
                     <div class="user-info">
-                        <h3>{{ user[1] }}</h3>
-                        <p><i class="fas fa-envelope"></i> {{ user[2] }}</p>
+                        <h3>{{ user[1] | safe }}</h3>
+                        <p><i class="fas fa-envelope"></i> {{ user[2] | safe }}</p>
                     </div>
                 </div>
 
@@ -101,7 +99,7 @@
 
                     <div class="detail-item">
                         <span class="detail-label"><i class="fas fa-user-tag"></i> Account Name</span>
-                        <span class="detail-value">{{ user[5] }}</span>
+                        <span class="detail-value">{{ user[5] | safe }}</span>
                     </div>
 
                     <div class="detail-item">
@@ -131,49 +129,46 @@
 </div>
 
 <script>
-    // Live Date and Time Update
     function updateDateTime() {
         const now = new Date();
-        
-        // Format time
+
         let hours = now.getHours();
         const minutes = now.getMinutes().toString().padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
         hours = hours ? hours : 12;
+
         const timeString = `${hours}:${minutes} ${ampm}`;
-        
-        // Format date
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+
+        const options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+
         const dateString = now.toLocaleDateString('en-US', options);
-        
-        const timeElement = document.getElementById('currentTime');
-        const dateElement = document.getElementById('currentDate');
-        
-        if (timeElement) timeElement.textContent = timeString;
-        if (dateElement) dateElement.textContent = dateString;
-        
-        // Update greeting based on time of day
+
+        document.getElementById('currentTime').textContent = timeString;
+        document.getElementById('currentDate').textContent = dateString;
+
         updateGreeting(now.getHours());
     }
-    
-    // Update greeting message based on hour
+
     function updateGreeting(hours) {
         const greetingTimeSpan = document.getElementById('greetingTime');
-        if (greetingTimeSpan) {
-            if (hours < 12) {
-                greetingTimeSpan.textContent = 'Morning';
-            } else if (hours < 17) {
-                greetingTimeSpan.textContent = 'Afternoon';
-            } else {
-                greetingTimeSpan.textContent = 'Evening';
-            }
+
+        if (hours < 12) {
+            greetingTimeSpan.textContent = 'Morning';
+        } else if (hours < 17) {
+            greetingTimeSpan.textContent = 'Afternoon';
+        } else {
+            greetingTimeSpan.textContent = 'Evening';
         }
     }
-    
-    // Initial update
+
     updateDateTime();
-    setInterval(updateDateTime, 60000); // Update every minute
+    setInterval(updateDateTime, 60000);
 </script>
 
 </body>
