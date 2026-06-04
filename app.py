@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import sqlite3
+import os
 
 app = Flask(__name__)
 
@@ -10,8 +11,11 @@ app = Flask(__name__)
 app.secret_key = "hardcoded_secret_key_12345_please_change_me"  # VULNERABLE: Anyone who reads code can forge sessions
 
 
+
 def get_db():
-    db = sqlite3.connect("bank.db")
+    os.makedirs("/app/localdata", exist_ok=True)
+
+    db = sqlite3.connect("/app/localdata/bank.db")
     db.row_factory = sqlite3.Row
     return db
 
@@ -490,27 +494,37 @@ def search():
 
 # ============================================
 # VULNERABILITY 10: Broken Access Control (IDOR)
-# CWE-639: Authorization Bypass Through User-Controlled Key
-# OWASP Top 10: A01:2021 – Broken Access Control
-# ============================================
-@app.route('/account/<int:account_id>')
+
+@app.route("/account/<int:account_id>")
 def view_account_details(account_id):
-    """VULNERABLE: No authorization check - any user can view ANY account"""
-    if "username" not in session:
-        return redirect(url_for("login"))
-    
+    # VULNERABLE: No authorization check - IDOR demo
+
     db = get_db()
-    # VULNERABILITY: No check that logged-in user owns this account
-    # Example: /account/1, /account/2, /account/3
-    account = db.execute(f"""
-        SELECT * FROM bank_accounts WHERE id={account_id}
-    """).fetchone()
+    db.row_factory = sqlite3.Row
+
+    account = db.execute("""
+        SELECT id, account_number, account_name, bank_pin,
+               balance, account_type, branch_code, is_registered
+        FROM bank_accounts
+        WHERE id = ?
+    """, (account_id,)).fetchone()
+
     db.close()
-    
-    if account:
-        return render_template("account_details.html", account=account)
-    else:
-        return "Account not found", 404
+
+    if account is None:
+        return "<h1>Account not found</h1>"
+
+    return f"""
+    <h1>Account Details</h1>
+    <p>ID: {account['id']}</p>
+    <p>Account Number: {account['account_number']}</p>
+    <p>Account Name: {account['account_name']}</p>
+    <p>Bank PIN: {account['bank_pin']}</p>
+    <p>Balance: UGX {account['balance']}</p>
+    <p>Account Type: {account['account_type']}</p>
+    <p>Branch Code: {account['branch_code']}</p>
+    <p>Registered: {account['is_registered']}</p>
+    """
 
 
 @app.route('/user/<int:user_id>/profile')
@@ -1073,28 +1087,6 @@ def staff_logout_route():
     session.clear()
     return redirect(url_for("login"))
 
-# @app.route("/account/<int:account_id>")
-# def view_account(account_id):
-#     if "staff_username" not in session:
-#         return redirect(url_for("staff_login"))
-
-#     db = get_db()
-#     db.row_factory = sqlite3.Row
-
-#     account = db.execute("""
-#         SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
-#         FROM accounts
-#         WHERE id = ?
-#     """, (account_id,)).fetchone()
-
-#     accounts = db.execute("""
-#         SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
-#         FROM accounts
-#     """).fetchall()
-
-#     db.close()
-
-#     return render_template("admin_dashboard.html", account=account, accounts=accounts)
 
 # ============================================
 # VULNERABILITY 14: Debug Mode Enabled in Production
