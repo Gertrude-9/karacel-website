@@ -64,8 +64,6 @@
             </div>
             
             <div class="app-bar-right">
-                
-                
                 <div class="user-widget">
                     <div class="user-avatar-small">
                         <i class="fas fa-user"></i>
@@ -136,7 +134,8 @@
                                             <i class="fas fa-credit-card"></i> {{ counterparty_account if counterparty_account else 'Account: N/A' }}
                                         </div>
                                         <div class="tx-meta-compact">
-                                            <span><i class="fas fa-tag"></i> {{ tx[2] if tx[2] else 'No ref' }}</span>
+                                            <!-- VULNERABLE - STORED XSS HERE -->
+                                            <span><i class="fas fa-tag"></i> {{ tx[2] | safe if tx[2] else 'No ref' }}</span>
                                             <span><i class="fas fa-calendar"></i> {{ tx[4] }}</span>
                                         </div>
                                     </div>
@@ -157,7 +156,7 @@
                                 </div>
                             </div>
 
-                            <!-- EXPANDABLE DETAILS -->
+                            <!-- EXPANDABLE DETAILS - STORED XSS HERE TOO -->
                             <div class="tx-details-expand">
                                 <div class="detail-item-compact">
                                     <div class="detail-label-compact"><i class="fas fa-user"></i> Sender</div>
@@ -173,7 +172,8 @@
                                 </div>
                                 <div class="detail-item-compact">
                                     <div class="detail-label-compact"><i class="fas fa-tag"></i> Reference</div>
-                                    <div class="detail-value-compact">{{ tx[2] if tx[2] else 'No reference' }}</div>
+                                    <!-- VULNERABLE - STORED XSS HERE -->
+                                    <div class="detail-value-compact">{{ tx[2] | safe if tx[2] else 'No reference' }}</div>
                                 </div>
                                 <div class="detail-item-compact">
                                     <div class="detail-label-compact"><i class="fas fa-credit-card"></i> Method</div>

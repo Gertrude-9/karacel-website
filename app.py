@@ -74,6 +74,8 @@ def setup_database():
         )
     """)
 
+    
+
     # ============================================
     # VULNERABILITY 2: Hardcoded Default Credentials (Plaintext)
     # CWE-798: Default credentials with known passwords
@@ -403,11 +405,19 @@ def transfer():
     """)
 
     # VULNERABILITY: SQL Injection and Stored XSS combined
-    db.execute(f"""
+    # Store the reference exactly as entered
+    db.execute("""
         INSERT INTO transactions
         (sender_username, sender_account, receiver_account, transfer_type, amount, reference)
-        VALUES ('{sender[0]}', '{sender[1]}', '{receiver_account}', 'internal', {amount}, '{reference}')
-    """)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        sender[0],
+        sender[1],
+        receiver_account,
+        "internal",
+        amount,
+        reference
+))
 
     db.commit()
     db.close()
@@ -1087,6 +1097,83 @@ def staff_logout_route():
     session.clear()
     return redirect(url_for("login"))
 
+@app.route("/csrf-demo-received", methods=["POST"])
+def csrf_demo_received():
+    print("CSRF ROUTE HIT", flush=True)
+    print("FORM DATA:", dict(request.form), flush=True)
+    print("SESSION:", dict(session), flush=True)
+
+    if "username" not in session:
+        return "Victim is not logged in"
+
+    receiver_account = request.form.get("recipient_id")
+    amount = float(request.form.get("amount", 0))
+    reference = request.form.get("reference", "CSRF Demo")
+
+    db = get_db()
+
+    sender = db.execute("""
+        SELECT users.username, users.account_number, bank_accounts.balance
+        FROM users
+        JOIN bank_accounts ON users.account_number = bank_accounts.account_number
+        WHERE users.username = ?
+    """, (session["username"],)).fetchone()
+
+    receiver = db.execute("""
+        SELECT account_number, balance
+        FROM bank_accounts
+        WHERE account_number = ?
+    """, (receiver_account,)).fetchone()
+
+    print("SENDER:", sender, flush=True)
+    print("RECEIVER:", receiver, flush=True)
+
+    if not sender:
+        db.close()
+        return "No logged-in sender found"
+
+    if not receiver:
+        db.close()
+        return "Receiver account not found"
+
+    if sender[2] < amount:
+        db.close()
+        return "Insufficient balance"
+
+    db.execute("""
+        UPDATE bank_accounts
+        SET balance = balance - ?
+        WHERE account_number = ?
+    """, (amount, sender[1]))
+
+    db.execute("""
+        UPDATE bank_accounts
+        SET balance = balance + ?
+        WHERE account_number = ?
+    """, (amount, receiver_account))
+
+    db.execute("""
+        INSERT INTO transactions
+        (sender_username, sender_account, receiver_account, transfer_type, amount, reference)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        sender[0],
+        sender[1],
+        receiver_account,
+        "csrf-demo",
+        amount,
+        reference
+    ))
+
+    db.commit()
+
+    new_sender_balance = db.execute("""
+        SELECT balance FROM bank_accounts WHERE account_number = ?
+    """, (sender[1],)).fetchone()
+
+    db.close()
+
+    return f"CSRF demo transfer completed. New sender balance: {new_sender_balance[0]}"
 
 # ============================================
 # VULNERABILITY 14: Debug Mode Enabled in Production
