@@ -494,7 +494,7 @@ def search():
 # OWASP Top 10: A01:2021 – Broken Access Control
 # ============================================
 @app.route('/account/<int:account_id>')
-def view_account(account_id):
+def view_account_details(account_id):
     """VULNERABLE: No authorization check - any user can view ANY account"""
     if "username" not in session:
         return redirect(url_for("login"))
@@ -1073,28 +1073,28 @@ def staff_logout_route():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route("/account/<int:account_id>")
-def view_account(account_id):
-    if "staff_username" not in session:
-        return redirect(url_for("staff_login"))
+# @app.route("/account/<int:account_id>")
+# def view_account(account_id):
+#     if "staff_username" not in session:
+#         return redirect(url_for("staff_login"))
 
-    db = get_db()
-    db.row_factory = sqlite3.Row
+#     db = get_db()
+#     db.row_factory = sqlite3.Row
 
-    account = db.execute("""
-        SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
-        FROM accounts
-        WHERE id = ?
-    """, (account_id,)).fetchone()
+#     account = db.execute("""
+#         SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
+#         FROM accounts
+#         WHERE id = ?
+#     """, (account_id,)).fetchone()
 
-    accounts = db.execute("""
-        SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
-        FROM accounts
-    """).fetchall()
+#     accounts = db.execute("""
+#         SELECT id, account_number, account_name, user_id, balance, account_type, branch, status, email
+#         FROM accounts
+#     """).fetchall()
 
-    db.close()
+#     db.close()
 
-    return render_template("admin_dashboard.html", account=account, accounts=accounts)
+#     return render_template("admin_dashboard.html", account=account, accounts=accounts)
 
 # ============================================
 # VULNERABILITY 14: Debug Mode Enabled in Production
