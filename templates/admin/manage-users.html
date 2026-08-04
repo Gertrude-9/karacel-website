@@ -1,0 +1,220 @@
+{% extends "admin/admin-base.html" %}
+
+{% block title %}Manage Staff Users{% endblock %}
+
+{% block content %}
+
+<!-- App Bar -->
+<div class="app-bar">
+    <div class="app-bar-left">
+        <h2><i class="fas fa-users-cog"></i> Manage Staff Users</h2>
+    </div>
+    <div class="app-bar-right">
+        <a href="{{ url_for('admin_register_user') }}" class="btn-primary">
+            <i class="fas fa-user-plus"></i> Register User
+        </a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div style="padding: 24px 32px 40px;">
+    <!-- Stats Cards -->
+    <div class="admin-stats">
+        <div class="stat-box">
+            <i class="fas fa-user-tie" style="color: #4ade80;"></i>
+            <h3>{{ staff_counts.treasurer }}</h3>
+            <p>Treasurers</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-file-alt" style="color: #00e0ff;"></i>
+            <h3>{{ staff_counts.secretary }}</h3>
+            <p>Secretaries</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-bullhorn" style="color: #f5c542;"></i>
+            <h3>{{ staff_counts.publicity }}</h3>
+            <p>Publicity Officers</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-user-shield" style="color: #ff6b6b;"></i>
+            <h3>{{ staff_counts.admin }}</h3>
+            <p>Admin/Chairperson</p>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="action-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div class="action-title" style="margin-bottom:0;">
+                <i class="fas fa-list"></i> All Staff Users
+                <span style="color: rgba(255,255,255,0.3); font-size: 0.8rem; font-weight: normal; margin-left: 8px;">
+                    Total: {{ staff_users|length }}
+                </span>
+            </div>
+            <a href="{{ url_for('admin_register_user') }}" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Register New User
+            </a>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="styled-table" id="staffUsersTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>SACCO No.</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if staff_users %}
+                        {% for user in staff_users %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td class="mono" style="color:#f5c542; font-family: monospace;">{{ user.sacco_number }}</td>
+                            <td><strong>{{ user.full_name }}</strong></td>
+                            <td style="color: rgba(255,255,255,0.6);">{{ user.email }}</td>
+                            <td>{{ user.phone or '-' }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if user.role == 'admin' %}danger
+                                    {% elif user.role == 'chairperson' %}warning
+                                    {% elif user.role == 'treasurer' %}success
+                                    {% elif user.role == 'secretary' %}info
+                                    {% elif user.role == 'publicity' %}primary
+                                    {% endif %}">
+                                    {{ user.role|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if user.status == 'active' %}
+                                    <span class="badge success">Active</span>
+                                {% elif user.status == 'inactive' %}
+                                    <span class="badge danger">Inactive</span>
+                                {% else %}
+                                    <span class="badge warning">{{ user.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-btns">
+                                <button class="view-btn" onclick="editUser('{{ user.id }}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="edit-btn" onclick="resetPassword('{{ user.id }}')" title="Reset Password" style="color:#f5c542;">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                                {% if user.id != session.user_id %}
+                                <button class="delete-btn" onclick="deleteUser('{{ user.id }}', '{{ user.full_name }}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                <i class="fas fa-users" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.2;"></i>
+                                No staff users found. 
+                                <a href="{{ url_for('admin_register_user') }}" style="color: #f5c542; text-decoration: none;">
+                                    <i class="fas fa-user-plus"></i> Register one now
+                                </a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // EDIT USER
+    // ============================================================
+    function editUser(userId) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/users/edit/' + userId;
+    }
+
+    // ============================================================
+    // DELETE USER
+    // ============================================================
+    function deleteUser(userId, username) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        
+        if (confirm('⚠️ Are you sure you want to delete user "' + username + '"?\n\nThis action cannot be undone!')) {
+            fetch('/admin/users/delete/' + userId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ User deleted successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    // ============================================================
+    // RESET PASSWORD
+    // ============================================================
+    function resetPassword(userId) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        
+        const newPassword = prompt('Enter new password for this user:', 'password123');
+        
+        if (newPassword === null) {
+            return;
+        }
+        
+        if (newPassword.trim().length < 6) {
+            alert('❌ Password must be at least 6 characters.');
+            return;
+        }
+        
+        if (confirm('Reset password to: ' + newPassword + '?')) {
+            fetch('/admin/users/reset-password/' + userId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: newPassword.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Password reset successfully!');
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+</script>
+
+{% endblock %}

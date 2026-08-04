@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Karacel SACCO | Member Dashboard{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='member_dashboard.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+<!-- Floating particles background -->
+<div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+</div>
+
+<div class="dashboard-wrapper">
+
+    <!-- ============================================
+    SIDEBAR - Karacel SACCO Member Navigation
+    ============================================ -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h2><i class="fas fa-handshake"></i> <span>Karacel</span></h2>
+            <p>SACCO • Building Together</p>
+        </div>
+
+        <div class="sidebar-nav">
+            <!-- Dashboard -->
+            <a href="{{ url_for('member_dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+
+          <!-- My Savings - Points to savings deposits -->
+            <a href="{{ url_for('member_savings') }}" class="nav-item {% if active_page == 'savings' %}active{% endif %}">
+                <i class="fas fa-piggy-bank"></i>
+                <span>My Savings</span>
+                <span class="badge">{{ savings_deposits|length if savings_deposits else 0 }}</span>
+            </a>
+
+            <!-- Loans Dropdown -->
+            <div class="nav-dropdown">
+                <a href="#" class="nav-item nav-dropdown-toggle" onclick="toggleDropdown(event)">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>Loans</span>
+                    <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="nav-dropdown-menu">
+                    <a href="{{ url_for('member_apply_loan') }}" class="nav-item nav-dropdown-item">
+                        <i class="fas fa-file-invoice"></i>
+                        <span>Apply for Loan</span>
+                    </a>
+                    <a href="{{ url_for('member_repayments') }}" class="nav-item nav-dropdown-item">
+                        <i class="fas fa-undo-alt"></i>
+                        <span>My Repayments</span>
+                    </a>
+                    <a href="{{ url_for('member_guarantors') }}" class="nav-item nav-dropdown-item">
+                        <i class="fas fa-handshake"></i>
+                        <span>My Guarantors</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Logout -->
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ============================================
+    MAIN CONTENT
+    ============================================ -->
+    <div class="dashboard-container">
+
+        <!-- App Bar -->
+        <div class="modern-app-bar">
+            <div class="app-bar-left">
+                <div class="app-bar-icon">
+                    <i class="fas fa-handshake"></i>
+                </div>
+                <div class="app-bar-title">
+                    <h2 id="pageTitle">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <p id="pageSubtitle">{% block page_subtitle %}Your SACCO overview{% endblock %}</p>
+                </div>
+            </div>
+
+            <div class="app-bar-right">
+                <div class="greeting-widget">
+                    <i class="fas fa-smile-wink"></i>
+                    <span class="greeting-text">
+                        Good <span id="greetingTime">Evening</span>,
+                        <span id="greetingName" class="greeting-name">{{ member.full_name | safe if member else 'Member' }}</span>
+                    </span>
+                </div>
+
+                <div class="date-widget">
+                    <div class="time" id="currentTime">--:-- --</div>
+                    <div class="date" id="currentDate">Loading...</div>
+                </div>
+
+                <div class="sacco-badge">
+                    <i class="fas fa-shield-alt"></i> SACCO
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+        CONTENT BLOCK
+        ============================================ -->
+        {% block content %}
+        {% endblock %}
+
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // REAL-TIME CLOCK
+    // ============================================
+    function updateDateTime() {
+        const now = new Date();
+
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
+        const timeString = `${hours}:${minutes} ${ampm}`;
+
+        const options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+
+        const dateString = now.toLocaleDateString('en-US', options);
+
+        document.getElementById('currentTime').textContent = timeString;
+        document.getElementById('currentDate').textContent = dateString;
+
+        // Update greeting
+        const hour = now.getHours();
+        let greeting = 'Morning';
+        if (hour >= 12 && hour < 17) greeting = 'Afternoon';
+        else if (hour >= 17) greeting = 'Evening';
+        document.getElementById('greetingTime').textContent = greeting;
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 60000);
+
+    // ============================================
+    // SIDEBAR DROPDOWN TOGGLE
+    // ============================================
+    function toggleDropdown(event) {
+        event.preventDefault();
+        const toggle = event.currentTarget;
+        const parent = toggle.closest('.nav-dropdown');
+        parent.classList.toggle('open');
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdowns = document.querySelectorAll('.nav-dropdown.open');
+        dropdowns.forEach(function(dropdown) {
+            if (!dropdown.contains(event.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+    });
+
+    // ============================================
+    // ACTIVE NAVIGATION HIGHLIGHT
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPath = window.location.pathname;
+        const navItems = document.querySelectorAll('.nav-item:not(.nav-dropdown-item)');
+        
+        navItems.forEach(function(item) {
+            const href = item.getAttribute('href');
+            if (href && currentPath.includes(href)) {
+                item.classList.add('active');
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
+
+<!-- ============================================
+SCRIPTS - All JavaScript at the bottom
+============================================ -->
+<script>
+    // ============================================
+    // DROPDOWN TOGGLE
+    // ============================================
+    function toggleDropdown(event) {
+        // Prevent the link from navigating
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Find the parent dropdown container
+        var parent = event.currentTarget.closest('.nav-dropdown');
+        
+        if (parent) {
+            // Toggle the 'open' class
+            parent.classList.toggle('open');
+            
+            // Close other open dropdowns
+            var allDropdowns = document.querySelectorAll('.nav-dropdown');
+            allDropdowns.forEach(function(dropdown) {
+                if (dropdown !== parent && dropdown.classList.contains('open')) {
+                    dropdown.classList.remove('open');
+                }
+            });
+        }
+        
+        return false;
+    }
+
+    // ============================================
+    // CLOSE DROPDOWNS WHEN CLICKING OUTSIDE
+    // ============================================
+    document.addEventListener('click', function(event) {
+        var dropdowns = document.querySelectorAll('.nav-dropdown');
+        dropdowns.forEach(function(dropdown) {
+            if (!dropdown.contains(event.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+    });
+
+    // ============================================
+    // CLOSE DROPDOWNS WITH ESCAPE KEY
+    // ============================================
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            var dropdowns = document.querySelectorAll('.nav-dropdown.open');
+            dropdowns.forEach(function(dropdown) {
+                dropdown.classList.remove('open');
+            });
+        }
+    });
+
+    // ============================================
+    // REAL-TIME CLOCK
+    // ============================================
+    function updateDateTime() {
+        var now = new Date();
+
+        var hours = now.getHours();
+        var minutes = String(now.getMinutes()).padStart(2, '0');
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
+        var timeString = hours + ':' + minutes + ' ' + ampm;
+
+        var options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+
+        var dateString = now.toLocaleDateString('en-US', options);
+
+        var timeElement = document.getElementById('currentTime');
+        var dateElement = document.getElementById('currentDate');
+        
+        if (timeElement) timeElement.textContent = timeString;
+        if (dateElement) dateElement.textContent = dateString;
+
+        updateGreeting(now.getHours());
+    }
+
+    function updateGreeting(hours) {
+        var greetingTimeSpan = document.getElementById('greetingTime');
+        if (!greetingTimeSpan) return;
+
+        if (hours < 12) {
+            greetingTimeSpan.textContent = 'Morning';
+        } else if (hours < 17) {
+            greetingTimeSpan.textContent = 'Afternoon';
+        } else {
+            greetingTimeSpan.textContent = 'Evening';
+        }
+    }
+
+    // ============================================
+    // INITIALIZE ON PAGE LOAD
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start the clock
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+    });
+</script>
+
+</body>
+</html>

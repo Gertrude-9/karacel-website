@@ -1,0 +1,143 @@
+{% extends "admin/admin-base.html" %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+
+<!-- App Bar -->
+<div class="app-bar">
+    <div class="app-bar-left">
+        <h2><i class="fas fa-user-edit"></i> Edit User</h2>
+        <span>{{ user.full_name }}</span>
+    </div>
+    <div class="app-bar-right">
+        <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Users
+        </a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div style="padding: 24px 32px 40px;">
+    <div class="action-card" style="max-width: 700px; margin: 0 auto;">
+        <div class="action-title">
+            <i class="fas fa-user-cog"></i> Edit User Details
+        </div>
+        
+        <form method="POST" action="{{ url_for('admin_edit_user', user_id=user.id) }}">
+            <div class="form-group">
+                <label>Full Name <span style="color: #ff6b6b;">*</span></label>
+                <input type="text" name="full_name" class="form-control" required 
+                       value="{{ user.full_name }}">
+            </div>
+            
+            <div class="form-group">
+                <label>Email Address <span style="color: #ff6b6b;">*</span></label>
+                <input type="email" name="email" class="form-control" required 
+                       value="{{ user.email }}">
+            </div>
+            
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" name="phone" class="form-control" 
+                       value="{{ user.phone or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label>SACCO Number</label>
+                <input type="text" class="form-control" value="{{ user.sacco_number }}" 
+                       style="color: #f5c542; font-family: monospace; background: rgba(255,255,255,0.02);" readonly disabled>
+                <small style="color: rgba(255,255,255,0.3); font-size: 0.75rem; display: block; margin-top: 4px;">
+                    <i class="fas fa-info-circle"></i> SACCO number cannot be changed
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label>Role <span style="color: #ff6b6b;">*</span></label>
+                <select name="role" class="form-control" required>
+                    <option value="treasurer" {% if user.role == 'treasurer' %}selected{% endif %}>Treasurer</option>
+                    <option value="secretary" {% if user.role == 'secretary' %}selected{% endif %}>Secretary</option>
+                    <option value="publicity" {% if user.role == 'publicity' %}selected{% endif %}>Publicity</option>
+                    <option value="chairperson" {% if user.role == 'chairperson' %}selected{% endif %}>Chairperson</option>
+                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" class="form-control">
+                    <option value="active" {% if user.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if user.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    <option value="suspended" {% if user.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Update User
+                </button>
+                <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                {% if user.id != session.user_id %}
+                <button type="button" class="btn-danger" onclick="resetPassword('{{ user.id }}')" style="margin-left: auto;">
+                    <i class="fas fa-key"></i> Reset Password
+                </button>
+                {% endif %}
+            </div>
+        </form>
+        
+        <div style="margin-top: 20px; padding: 16px; background: rgba(245,197,66,0.05); border-radius: 10px; border-left: 3px solid #f5c542;">
+            <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">
+                <i class="fas fa-shield-alt" style="color: #f5c542;"></i> 
+                <strong>Note:</strong> Changes will take effect immediately. The user will be notified via email.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // RESET PASSWORD
+    // ============================================================
+    function resetPassword(userId) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        
+        const newPassword = prompt('Enter new password for this user:', 'password123');
+        
+        if (newPassword === null) {
+            return;
+        }
+        
+        if (newPassword.trim().length < 6) {
+            alert('❌ Password must be at least 6 characters.');
+            return;
+        }
+        
+        if (confirm('Reset password to: ' + newPassword + '?')) {
+            fetch('/admin/users/reset-password/' + userId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: newPassword.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Password reset successfully!');
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "admin/admin-base.html" %}
+
+{% block title %}Record Savings Deposit{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-container">
+    <div class="modern-app-bar">
+        <div class="app-bar-left">
+            <div class="app-bar-icon">
+                <i class="fas fa-piggy-bank"></i>
+            </div>
+            <div class="app-bar-title">
+                <h2>Record Savings Deposit</h2>
+                <p>Enter member savings deposit</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' or category == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="form-card">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-grid">
+                <!-- Member Selection -->
+                <div class="form-group full-width">
+                    <label>Select Member <span class="required">*</span></label>
+                    <select name="user_id" required>
+                        <option value="">-- Select Member --</option>
+                        {% for member in members %}
+                            <option value="{{ member.id }}" {% if selected_user and selected_user.id == member.id %}selected{% endif %}>
+                                {{ member.full_name }} ({{ member.sacco_number }}) - UGX {{ "{:,.0f}".format(member.savings_balance or 0) }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Deposit Amount -->
+                <div class="form-group full-width">
+                    <label>Amount (UGX) <span class="required">*</span></label>
+                    <input type="number" name="amount" placeholder="Enter amount" min="1000" step="1000" required>
+                    <small class="hint">Minimum deposit: UGX 1,000</small>
+                </div>
+
+                <!-- Deposit Date -->
+                <div class="form-group">
+                    <label>Deposit Date <span class="required">*</span></label>
+                    <input type="date" name="deposit_date" value="{{ now.strftime('%Y-%m-%d') if now else '' }}" required>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="form-group">
+                    <label>Payment Method <span class="required">*</span></label>
+                    <select name="payment_method" required>
+                        <option value="cash">Cash</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cheque">Cheque</option>
+                    </select>
+                </div>
+
+                <!-- Receipt Number -->
+                <div class="form-group">
+                    <label>Receipt Number</label>
+                    <input type="text" name="receipt_number" placeholder="Enter receipt number">
+                </div>
+
+                <!-- Upload Receipt -->
+                <div class="form-group">
+                    <label>Upload Receipt</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" name="receipt_file" accept="image/*,.pdf">
+                        <div class="file-upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Drop receipt or <span class="file-name">browse</span></span>
+                        </div>
+                    </div>
+                    <small class="hint">Accepted: JPG, PNG, PDF (Max 5MB)</small>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group full-width">
+                    <label>Notes</label>
+                    <textarea name="notes" rows="3" placeholder="Additional notes about this deposit..."></textarea>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Record Deposit
+                </button>
+                <a href="{{ url_for('admin_savings_deposit') }}" class="btn-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Recent Deposits Table -->
+    <div class="form-card" style="margin-top: 24px;">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="fas fa-history"></i> Recent Deposits
+            </div>
+            <div class="section-actions">
+                <span class="deposit-count">{{ recent_deposits|length if recent_deposits else 0 }} deposits</span>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Amount (UGX)</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recent_deposits %}
+                        {% for deposit in recent_deposits %}
+                            <tr>
+                                <td>{{ deposit.full_name }}</td>
+                                <td><strong>{{ "{:,.0f}".format(deposit.amount) }}</strong></td>
+                                <td>{{ deposit.deposit_date }}</td>
+                                <td><span class="badge">{{ deposit.payment_method|capitalize if deposit.payment_method else 'Cash' }}</span></td>
+                                <td>
+                                    {% if deposit.receipt_number %}
+                                        <i class="fas fa-check-circle" style="color:#2ed573;"></i> Uploaded
+                                    {% else %}
+                                        <span style="color: rgba(255,255,255,0.2);">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <i class="fas fa-piggy-bank" style="font-size: 2rem; color: rgba(255,255,255,0.1); display: block; margin-bottom: 10px;"></i>
+                                No deposits recorded yet
+                                <span style="display: block; font-size: 0.8rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
+                                    Use the form above to record a savings deposit
+                                </span>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // File upload label update
+    document.querySelector('.file-upload-wrapper input[type="file"]').addEventListener('change', function() {
+        const label = this.closest('.file-upload-wrapper').querySelector('.file-upload-label');
+        const fileNameSpan = label.querySelector('.file-name');
+        if (this.files && this.files.length > 0) {
+            fileNameSpan.textContent = this.files[0].name;
+            label.style.borderColor = 'rgba(245, 197, 66, 0.4)';
+        } else {
+            fileNameSpan.textContent = 'browse';
+            label.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Karacel SACCO Admin{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin-users.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* Fix for standalone pages - always show content */
+        .standalone-page .content-panel {
+            display: block !important;
+        }
+        
+        /* Ensure app bar shows on standalone pages */
+        .standalone-page .app-bar {
+            display: flex !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="admin-wrapper">
+
+    <!-- ============================================
+    SIDEBAR
+    ============================================ -->
+    <aside class="admin-sidebar">
+
+        <div class="admin-sidebar-logo">
+            <h2>
+                <i class="fas fa-handshake"></i>
+                <span>Karacel</span>
+            </h2>
+            <p>SACCO Admin</p>
+        </div>
+
+        <div class="admin-sidebar-nav">
+            <!-- Dashboard -->
+            <a href="{{ url_for('admin_dashboard') }}#dashboard" class="admin-nav-item" data-panel="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <!-- Members -->
+            <a href="{{ url_for('admin_dashboard') }}#members" class="admin-nav-item" data-panel="members">
+                <i class="fas fa-users"></i>
+                <span>Members</span>
+            </a>
+
+            <!-- Loan Applications -->
+            <a href="{{ url_for('admin_dashboard') }}#loan_applications" class="admin-nav-item" data-panel="loan_applications">
+                <i class="fas fa-file-invoice"></i>
+                <span>Loan Applications</span>
+            </a>
+
+            <!-- Reports -->
+            <a href="{{ url_for('admin_dashboard') }}#reports" class="admin-nav-item" data-panel="reports">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reports</span>
+            </a>
+
+            <!-- Settings -->
+            <a href="{{ url_for('admin_dashboard') }}#settings" class="admin-nav-item" data-panel="settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+
+            <!-- Staff Users -->
+            <a href="{{ url_for('admin_manage_users') }}" class="admin-nav-item">
+                <i class="fas fa-users-cog"></i>
+                <span>Staff Users</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-sidebar">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+
+    </aside>
+
+    <!-- ============================================
+    MAIN CONTENT
+    ============================================ -->
+    <main class="admin-main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</div>
+
+<script>
+    // ============================================================
+    // PANEL NAVIGATION (Only for dashboard page)
+    // ============================================================
+    function showPanel(panelName) {
+        // Debug: Log the panel being shown
+        console.log('Showing panel:', panelName);
+
+        // Hide all panels
+        document.querySelectorAll(".content-panel").forEach(panel => {
+            panel.classList.remove("active");
+        });
+
+        // Show selected panel
+        const selectedPanel = document.getElementById(panelName + "-panel");
+        if (selectedPanel) {
+            selectedPanel.classList.add("active");
+            console.log('Panel activated:', panelName + '-panel');
+        } else {
+            console.warn('Panel not found:', panelName + '-panel');
+        }
+
+        // Update nav items
+        document.querySelectorAll(".admin-nav-item").forEach(link => {
+            link.classList.remove("active");
+        });
+
+        // Find and activate the matching nav link
+        const selectedLink = document.querySelector(
+            `.admin-nav-item[data-panel="${panelName}"]`
+        );
+        if (selectedLink) {
+            selectedLink.classList.add("active");
+            console.log('Nav link activated:', panelName);
+        }
+
+        // Update app bar title if it exists
+        const titleElement = document.getElementById('appBarTitle');
+        const subtitleElement = document.getElementById('appBarSubtitle');
+        
+        const titles = {
+            dashboard: { icon: 'fa-tachometer-alt', title: 'Dashboard', subtitle: 'Karacel SACCO Administration Panel' },
+            members: { icon: 'fa-users', title: 'Members', subtitle: 'View all SACCO member records' },
+            loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications', subtitle: 'Review and process loan requests' },
+            reports: { icon: 'fa-chart-bar', title: 'Reports', subtitle: 'Generate and download reports' },
+            settings: { icon: 'fa-cog', title: 'Settings', subtitle: 'System configuration and preferences' },
+            users: { icon: 'fa-users-cog', title: 'Staff Users', subtitle: 'Manage staff user accounts' }
+        };
+
+        const info = titles[panelName];
+        if (info && titleElement) {
+            titleElement.innerHTML = `<i class="fas ${info.icon}"></i> ${info.title}`;
+        }
+        if (info && subtitleElement) {
+            subtitleElement.textContent = info.subtitle;
+        }
+    }
+
+    // ============================================================
+    // VIEW MEMBER
+    // ============================================================
+    function viewMember(userId) {
+        if (!userId) {
+            alert('Error: Member ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/members/view/' + userId;
+    }
+
+    // ============================================================
+    // VIEW LOAN
+    // ============================================================
+    function viewLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/loans/view/' + loanId;
+    }
+
+    // ============================================================
+    // APPROVE LOAN
+    // ============================================================
+    function approveLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        
+        if (confirm('✅ Approve this loan application?')) {
+            fetch('/admin/loans/approve/' + loanId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Loan approved successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    // ============================================================
+    // REJECT LOAN
+    // ============================================================
+    function rejectLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        
+        if (confirm('❌ Reject this loan application?')) {
+            fetch('/admin/loans/reject/' + loanId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Loan rejected successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    // ============================================================
+    // GENERATE REPORT
+    // ============================================================
+    function generateReport(type) {
+        window.location.href = '/admin/reports/generate/' + type;
+    }
+
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
+    document.addEventListener("DOMContentLoaded", function () {
+        // Check if we're on the dashboard page (has panels)
+        const hasPanels = document.querySelector('.content-panel');
+        
+        if (hasPanels) {
+            // Handle nav item clicks only for dashboard
+            document.querySelectorAll(".admin-nav-item").forEach(link => {
+                link.addEventListener("click", function (e) {
+                    const href = this.getAttribute("href");
+                    
+                    // Check if it's a panel link (starts with #)
+                    if (href && href.startsWith("#")) {
+                        e.preventDefault();
+                        const panelName = href.replace("#", "");
+                        window.location.hash = panelName;
+                        showPanel(panelName);
+                    }
+                    // Otherwise let it navigate normally (for standalone pages)
+                });
+            });
+
+            // Check URL hash on load
+            const currentHash = window.location.hash.replace("#", "") || "dashboard";
+            showPanel(currentHash);
+            console.log('Admin dashboard initialized with panel:', currentHash);
+        }
+
+        // Handle browser back/forward - only if on dashboard
+        window.addEventListener("hashchange", function() {
+            const panelName = window.location.hash.replace("#", "") || "dashboard";
+            if (document.querySelector('.content-panel')) {
+                showPanel(panelName);
+            }
+        });
+    });
+
+    // ============================================================
+    // USER MANAGEMENT FUNCTIONS (for standalone pages)
+    // ============================================================
+    function editUser(userId) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/users/edit/' + userId;
+    }
+
+    function deleteUser(userId, username) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        
+        if (confirm('⚠️ Are you sure you want to delete user "' + username + '"?\n\nThis action cannot be undone!')) {
+            fetch('/admin/users/delete/' + userId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ User deleted successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    function resetPassword(userId) {
+        if (!userId) {
+            alert('Error: User ID is missing.');
+            return;
+        }
+        
+        const newPassword = prompt('Enter new password for this user:', 'password123');
+        
+        if (newPassword === null) {
+            return;
+        }
+        
+        if (newPassword.trim().length < 6) {
+            alert('❌ Password must be at least 6 characters.');
+            return;
+        }
+        
+        if (confirm('Reset password to: ' + newPassword + '?')) {
+            fetch('/admin/users/reset-password/' + userId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: newPassword.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Password reset successfully!');
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

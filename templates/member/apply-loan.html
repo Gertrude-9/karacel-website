@@ -1,0 +1,1303 @@
+{% extends "member/member-base.html" %}
+
+{% block title %}Karacel SACCO | Apply for a Loan{% endblock %}
+
+{% block page_title %}Loan Application Form{% endblock %}
+{% block page_subtitle %}Complete this form to apply for a loan{% endblock %}
+
+{% block content %}
+
+<!-- Loan Application Container -->
+<div id="apply-loan-panel" class="content-panel active">
+    <div class="loan-application-wrapper">
+        
+        <!-- Header with Logo and Reference -->
+        <div class="application-header">
+            <div class="header-left">
+                <div class="organization-name">Karacel SACCO</div>
+                <div class="organization-tagline">Empowering Members Through Financial Solutions</div>
+            </div>
+            <div class="header-right">
+                <div class="form-reference">
+                    <span>Application Date</span>
+                    <strong>{{ now.strftime('%d %B %Y') if now else datetime.now().strftime('%d %B %Y') }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Form -->
+        <form id="loanApplicationForm" class="loan-application-form" onsubmit="submitLoanApplication(event)">
+            
+            <!-- SECTION 1: Member Information -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span class="section-number">1</span>
+                    <h3>Applicant Information</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" value="{{ member.full_name }}" disabled class="disabled-input">
+                    </div>
+                    <div class="form-group">
+                        <label>SACCO Number</label>
+                        <input type="text" value="{{ member.sacco_number }}" disabled class="disabled-input">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" value="{{ member.phone or 'Not provided' }}" disabled class="disabled-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="text" value="{{ member.email or 'Not provided' }}" disabled class="disabled-input">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Current Savings Balance</label>
+                        <input type="text" value="UGX {{ total_savings|format_number }}" disabled class="disabled-input" style="color: #4ade80;">
+                    </div>
+                    <div class="form-group">
+                        <label>Maximum Loan Amount (95% of Savings)</label>
+                        <input type="text" value="UGX {{ (total_savings * 0.95)|format_number }}" disabled class="disabled-input" style="color: #f5c542;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Loan Details -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span class="section-number">2</span>
+                    <h3>Loan Request Details</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="loanAmount">Loan Amount (UGX) <span class="required">*</span></label>
+                        <div class="input-with-hint">
+                            <input type="number" id="loanAmount" name="loan_amount" 
+                                   placeholder="Enter amount between 10,000 and 10,000,000" 
+                                   min="10000" max="10000000"
+                                   oninput="calculateRepayment()" required>
+                            <span class="hint">Min: UGX 10,000 | Max: UGX 10,000,000</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="loanPurpose">Purpose of Loan <span class="required">*</span></label>
+                        <textarea id="loanPurpose" name="purpose" rows="3" 
+                                  placeholder="Describe in detail the purpose of this loan..." required></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="repaymentPlan">Repayment Plan <span class="required">*</span></label>
+                        <select id="repaymentPlan" name="repayment_plan" required>
+                            <option value="">Select Plan</option>
+                            <option value="monthly">Monthly Installments</option>
+                            <option value="lump_sum">Lump Sum at December</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Loan Tenure</label>
+                        <input type="text" id="displayTenure" value="Until December {{ now.year if now else datetime.now().year }}" disabled class="disabled-input" style="color: #f5c542;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: Loan Repayment Summary -->
+            <div class="form-section" id="repaymentSummary" style="display: none;">
+                <div class="section-title">
+                    <span class="section-number">3</span>
+                    <h3>Repayment Summary</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span class="summary-label">Loan Amount</span>
+                        <span class="summary-value" id="displayAmount">UGX 0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Interest Rate</span>
+                        <span class="summary-value" id="displayRate">0%</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Interest</span>
+                        <span class="summary-value" id="displayInterest">UGX 0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Repayment</span>
+                        <span class="summary-value" id="displayTotal">UGX 0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Completion Date</span>
+                        <span class="summary-value" style="color: #f5c542;" id="displayCompletionDate">December {{ now.year if now else datetime.now().year }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Monthly Payment</span>
+                        <span class="summary-value" id="displayMonthly">UGX 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: Interest Rate Reference -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span class="section-number">4</span>
+                    <h3>Interest Rate Reference</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <div class="interest-reference">
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Loan Amount (UGX)</th>
+                                <th>Interest Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>10,000 - 1,999,999</td>
+                                <td><span class="rate-badge rate-5">5%</span></td>
+                            </tr>
+                            <tr>
+                                <td>2,000,000 - 4,999,999</td>
+                                <td><span class="rate-badge rate-3">3%</span></td>
+                            </tr>
+                            <tr>
+                                <td>5,000,000 - 9,999,999</td>
+                                <td><span class="rate-badge rate-2">2%</span></td>
+                            </tr>
+                            <tr>
+                                <td>10,000,000 and above</td>
+                                <td><span class="rate-badge rate-1">1%</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="interest-note">
+                        <i class="fas fa-info-circle"></i>
+                        Interest compounds monthly until December of the current year.
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: Guarantor Information -->
+            <div class="form-section" id="guarantorSection">
+                <div class="section-title">
+                    <span class="section-number">5</span>
+                    <h3>Guarantor Information</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <!-- Guarantor Requirement Notice -->
+                <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
+                
+                <!-- Guarantor 1 -->
+                <div class="guarantor-block">
+                    <div class="guarantor-header">
+                        <span class="guarantor-number">Guarantor 1</span>
+                        <span class="guarantor-required" style="display: none;">Required *</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor1Name">Full Name <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <input type="text" id="guarantor1Name" name="guarantor1_name" class="guarantor-input" placeholder="Enter guarantor's full name">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guarantor1Phone">Phone Number <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <input type="tel" id="guarantor1Phone" name="guarantor1_phone" class="guarantor-input" placeholder="e.g. 0772123456">
+                        </div>
+                        <div class="form-group">
+                            <label for="guarantor1Email">Email Address</label>
+                            <input type="email" id="guarantor1Email" name="guarantor1_email" class="guarantor-input" placeholder="guarantor@example.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
+                                <option value="">Select Relationship</option>
+                                <option value="family">Family Member</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="business_partner">Business Partner</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider between guarantors -->
+                <div class="guarantor-divider">
+                    <span>AND</span>
+                </div>
+
+                <!-- Guarantor 2 -->
+                <div class="guarantor-block">
+                    <div class="guarantor-header">
+                        <span class="guarantor-number">Guarantor 2</span>
+                        <span class="guarantor-required" style="display: none;">Required *</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor2Name">Full Name <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <input type="text" id="guarantor2Name" name="guarantor2_name" class="guarantor-input" placeholder="Enter guarantor's full name">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guarantor2Phone">Phone Number <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <input type="tel" id="guarantor2Phone" name="guarantor2_phone" class="guarantor-input" placeholder="e.g. 0772123456">
+                        </div>
+                        <div class="form-group">
+                            <label for="guarantor2Email">Email Address</label>
+                            <input type="email" id="guarantor2Email" name="guarantor2_email" class="guarantor-input" placeholder="guarantor@example.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
+                                <option value="">Select Relationship</option>
+                                <option value="family">Family Member</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="business_partner">Business Partner</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guarantor Terms -->
+                <div class="guarantor-terms">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <strong>Guarantor Agreement:</strong>
+                        By providing guarantor information, you confirm that:
+                        <ul>
+                            <li>Both guarantors are different individuals (cannot be the same person)</li>
+                            <li>Guarantors will be contacted manually by the SACCO team</li>
+                            <li>Guarantors are responsible for repayment if you default</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: Declaration -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span class="section-number">6</span>
+                    <h3>Declaration &amp; Agreement</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <div class="declaration-container">
+                    <div class="declaration-text">
+                        <p>
+                            I, <strong>{{ member.full_name }}</strong>, hereby apply for a loan from Karacel SACCO. 
+                            I declare that the information provided in this application is true and correct to the best of my knowledge.
+                        </p>
+                        <p>
+                            I understand that:
+                        </p>
+                        <ul>
+                            <li>Interest will be calculated monthly until December of the current year</li>
+                            <li>Failure to repay may result in action against my savings and guarantors</li>
+                            <li>I must repay the full amount by December {{ now.year if now else datetime.now().year }}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="declaration-check">
+                        <input type="checkbox" id="termsCheck" required>
+                        <label for="termsCheck">
+                            I agree to the <a href="#" onclick="showTerms(event)">Terms &amp; Conditions</a> and 
+                            confirm that all information provided is accurate.
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i>
+                    Submit Loan Application
+                </button>
+                <button type="reset" class="reset-btn" onclick="resetForm()">
+                    <i class="fas fa-undo"></i>
+                    Clear Form
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h2>Application Submitted!</h2>
+        <p id="successMessage">Your loan application has been submitted successfully.</p>
+        <div class="application-ref">
+            <span>Application Reference:</span>
+            <strong id="applicationRef">LN-2026-XXXX</strong>
+        </div>
+        <div class="status-notice" id="statusNotice">
+            <i class="fas fa-clock"></i>
+            <span>Status: <strong style="color:#f5c542;">PENDING</strong></span>
+        </div>
+        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 8px;" id="successDetails">
+            Your loan will be reviewed by the Treasurer shortly.
+        </p>
+        <button class="submit-btn" onclick="goToDashboard()" style="margin-top: 12px;">
+            <i class="fas fa-arrow-right"></i> Go to Dashboard
+        </button>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <h2 style="color: #ff6b6b;">Validation Error</h2>
+        <p id="errorMessage">Please check your input and try again.</p>
+        <button class="submit-btn" onclick="closeErrorModal()" style="background: #ff6b6b;">
+            <i class="fas fa-times"></i> Close
+        </button>
+    </div>
+</div>
+
+<style>
+/* ============================================
+   LOAN APPLICATION STYLES
+   ============================================ */
+
+.loan-application-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 40px;
+}
+
+/* Application Header */
+.application-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 24px;
+    border-bottom: 2px solid rgba(255,255,255,0.06);
+    margin-bottom: 32px;
+}
+
+.organization-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f5c542;
+    letter-spacing: 0.5px;
+}
+
+.organization-tagline {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.3);
+    margin-top: 4px;
+}
+
+.form-reference {
+    text-align: right;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.3);
+}
+
+.form-reference strong {
+    display: block;
+    color: #fff;
+    font-size: 0.9rem;
+    margin-top: 2px;
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: 32px;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.section-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(245,197,66,0.12);
+    color: #f5c542;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.section-title h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    margin: 0;
+}
+
+.section-divider {
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+}
+
+/* Form Rows */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #f5c542;
+    background: rgba(255,255,255,0.06);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group .disabled-input {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: rgba(255,255,255,0.02);
+}
+
+.required {
+    color: #ff6b6b;
+    margin-left: 2px;
+}
+
+.hint {
+    display: block;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.25);
+    margin-top: 4px;
+}
+
+/* Summary Grid */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.summary-item {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+}
+
+.summary-label {
+    display: block;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+.summary-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #4ade80;
+}
+
+/* Interest Reference */
+.interest-reference {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.reference-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.reference-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: rgba(255,255,255,0.3);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.reference-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.7);
+}
+
+.reference-table tr:last-child td {
+    border-bottom: none;
+}
+
+.rate-badge {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.rate-5 { background: rgba(245,197,66,0.15); color: #f5c542; }
+.rate-3 { background: rgba(0,224,255,0.15); color: #00e0ff; }
+.rate-2 { background: rgba(74,222,128,0.15); color: #4ade80; }
+.rate-1 { background: rgba(168,85,247,0.15); color: #a855f7; }
+
+.interest-note {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(0,224,255,0.04);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.4);
+}
+
+.interest-note i {
+    color: #00e0ff;
+    margin-right: 8px;
+}
+
+/* Guarantor Section */
+.guarantor-notice {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.guarantor-notice.no-guarantor {
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.12);
+    color: #4ade80;
+    display: block;
+}
+
+.guarantor-notice.requires-guarantor {
+    background: rgba(245,197,66,0.06);
+    border: 1px solid rgba(245,197,66,0.12);
+    color: #f5c542;
+    display: block;
+}
+
+.guarantor-block {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.guarantor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.guarantor-number {
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.9rem;
+}
+
+.guarantor-required {
+    font-size: 0.75rem;
+    color: #ff6b6b;
+}
+
+.guarantor-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 16px 0;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.8rem;
+}
+
+.guarantor-divider::before,
+.guarantor-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.04);
+}
+
+.guarantor-terms {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(245,197,66,0.04);
+    border-radius: 8px;
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+}
+
+.guarantor-terms i {
+    color: #f5c542;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.guarantor-terms ul {
+    margin: 4px 0 0 0;
+    padding-left: 20px;
+}
+
+.guarantor-terms li {
+    margin-bottom: 2px;
+}
+
+/* Declaration */
+.declaration-container {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.declaration-text {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+}
+
+.declaration-text p {
+    margin: 0 0 8px 0;
+}
+
+.declaration-text ul {
+    margin: 4px 0 0 0;
+    padding-left: 20px;
+}
+
+.declaration-text li {
+    margin-bottom: 2px;
+}
+
+.declaration-check {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.declaration-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: #f5c542;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.declaration-check label {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+}
+
+.declaration-check label a {
+    color: #f5c542;
+    text-decoration: none;
+}
+
+.declaration-check label a:hover {
+    text-decoration: underline;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 2px solid rgba(255,255,255,0.06);
+}
+
+.submit-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: #f5c542;
+    color: #0a0a14;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(245,197,66,0.25);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.reset-btn {
+    padding: 14px 24px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Modals */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.success-icon {
+    font-size: 3.5rem;
+    color: #4ade80;
+    margin-bottom: 12px;
+}
+
+.error-icon {
+    font-size: 3.5rem;
+    color: #ff6b6b;
+    margin-bottom: 12px;
+}
+
+.modal-content h2 {
+    margin: 0 0 8px 0;
+    color: #fff;
+}
+
+.modal-content p {
+    color: rgba(255,255,255,0.5);
+    margin: 0 0 16px 0;
+}
+
+.application-ref {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.application-ref span {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.3);
+}
+
+.application-ref strong {
+    display: block;
+    font-size: 1.2rem;
+    color: #f5c542;
+    font-family: monospace;
+    margin-top: 2px;
+}
+
+.status-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(245,197,66,0.06);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .loan-application-wrapper {
+        padding: 20px;
+    }
+    
+    .application-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .form-reference {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .reset-btn {
+        order: 2;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        padding: 24px;
+    }
+    
+    .section-title h3 {
+        font-size: 0.85rem;
+    }
+}
+</style>
+
+<script>
+// ============================================
+// LOAN APPLICATION JAVASCRIPT
+// ============================================
+
+// Member savings from Flask
+const memberSavings = {{ total_savings }};
+const savingsThreshold = memberSavings * 0.95;
+const currentDate = new Date();
+const currentYear = currentDate.getFullYear();
+const currentMonth = currentDate.getMonth() + 1;
+const remainingMonths = 12 - currentMonth + 1;
+
+// ============================================
+// GET INTEREST RATE
+// ============================================
+function getInterestRate(amount) {
+    if (amount >= 10000 && amount <= 1999999) {
+        return { rate: 5, tier: '5%' };
+    } else if (amount >= 2000000 && amount <= 4999999) {
+        return { rate: 3, tier: '3%' };
+    } else if (amount >= 5000000 && amount <= 9999999) {
+        return { rate: 2, tier: '2%' };
+    } else if (amount >= 10000000) {
+        return { rate: 1, tier: '1%' };
+    }
+    return { rate: 0, tier: '0%' };
+}
+
+// ============================================
+// CALCULATE REPAYMENT
+// ============================================
+function calculateRepayment() {
+    const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+    const summaryDiv = document.getElementById('repaymentSummary');
+    
+    if (amount >= 10000 && amount <= 10000000) {
+        const interestInfo = getInterestRate(amount);
+        const monthlyRate = interestInfo.rate / 100;
+        
+        let balance = amount;
+        let totalInterest = 0;
+        let nextPayment = 0;
+        
+        // Calculate month by month until December
+        for (let month = 0; month < remainingMonths; month++) {
+            let interest = balance * monthlyRate;
+            totalInterest += interest;
+            balance += interest;
+            
+            // 5% of balance required payment
+            nextPayment = balance * 0.05;
+            balance -= nextPayment;
+            
+            if (balance <= 0) {
+                balance = 0;
+                break;
+            }
+        }
+        
+        const totalRepayment = amount + totalInterest;
+        
+        summaryDiv.style.display = 'block';
+        
+        document.getElementById('displayAmount').textContent = 'UGX ' + amount.toLocaleString();
+        document.getElementById('displayRate').textContent = interestInfo.tier;
+        document.getElementById('displayInterest').textContent = 'UGX ' + Math.round(totalInterest).toLocaleString();
+        document.getElementById('displayTotal').textContent = 'UGX ' + Math.round(totalRepayment).toLocaleString();
+        document.getElementById('displayMonthly').textContent = 'UGX ' + Math.round(nextPayment).toLocaleString();
+        document.getElementById('displayCompletionDate').textContent = 'December ' + currentYear;
+        document.getElementById('displayTenure').value = remainingMonths + ' Months (Until Dec ' + currentYear + ')';
+        
+        checkGuarantorRequirement(amount);
+    } else if (amount > 0) {
+        summaryDiv.style.display = 'none';
+    } else {
+        summaryDiv.style.display = 'none';
+    }
+}
+
+// ============================================
+// CHECK GUARANTOR REQUIREMENT
+// ============================================
+function checkGuarantorRequirement(amount) {
+    const guarantorSection = document.getElementById('guarantorSection');
+    const guarantorNotice = document.getElementById('guarantorNotice');
+    const requiredEls = document.querySelectorAll('.guarantor-required');
+    const inputs = document.querySelectorAll('.guarantor-input');
+    
+    if (amount && amount > savingsThreshold) {
+        // Guarantors required
+        guarantorNotice.className = 'guarantor-notice requires-guarantor';
+        guarantorNotice.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Guarantors Required!</strong>
+            Your loan amount (UGX ${amount.toLocaleString()}) exceeds 95% of your savings (UGX ${savingsThreshold.toLocaleString()}).
+            You must provide 2 guarantors.
+        `;
+        guarantorNotice.style.display = 'block';
+        
+        requiredEls.forEach(el => el.style.display = 'inline');
+        inputs.forEach(el => el.setAttribute('required', 'required'));
+    } else {
+        // No guarantors required
+        guarantorNotice.className = 'guarantor-notice no-guarantor';
+        guarantorNotice.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <strong>No Guarantors Required!</strong>
+            Your loan amount is within 95% of your savings.
+        `;
+        guarantorNotice.style.display = 'block';
+        
+        requiredEls.forEach(el => el.style.display = 'none');
+        inputs.forEach(el => el.removeAttribute('required'));
+    }
+}
+
+// ============================================
+// VALIDATE GUARANTORS
+// ============================================
+function validateGuarantors() {
+    const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+    
+    if (amount <= savingsThreshold) {
+        return true;
+    }
+    
+    const g1Name = document.getElementById('guarantor1Name').value.trim();
+    const g1Phone = document.getElementById('guarantor1Phone').value.trim();
+    const g2Name = document.getElementById('guarantor2Name').value.trim();
+    const g2Phone = document.getElementById('guarantor2Phone').value.trim();
+    
+    if (!g1Name || !g1Phone) {
+        showError('Guarantor 1 details are required for this loan amount.');
+        return false;
+    }
+    
+    if (!g2Name || !g2Phone) {
+        showError('Guarantor 2 details are required for this loan amount.');
+        return false;
+    }
+    
+    if (g1Name === g2Name) {
+        showError('Guarantor 1 and Guarantor 2 cannot be the same person.');
+        return false;
+    }
+    
+    if (g1Phone === g2Phone) {
+        showError('Guarantor 1 and Guarantor 2 cannot have the same phone number.');
+        return false;
+    }
+    
+    return true;
+}
+
+// ============================================
+// SUBMIT APPLICATION
+// ============================================
+function submitLoanApplication(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('loanApplicationForm');
+    const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+    
+    // Validate amount
+    if (loanAmount < 10000) {
+        showError('Loan amount must be at least UGX 10,000.');
+        return false;
+    }
+    if (loanAmount > 10000000) {
+        showError('Loan amount cannot exceed UGX 10,000,000.');
+        return false;
+    }
+    
+    // Validate purpose
+    const purpose = document.getElementById('loanPurpose').value.trim();
+    if (!purpose) {
+        showError('Please provide a purpose for the loan.');
+        return false;
+    }
+    
+    // Validate guarantors
+    if (!validateGuarantors()) {
+        return false;
+    }
+    
+    // Validate terms
+    if (!document.getElementById('termsCheck').checked) {
+        showError('Please agree to the terms and conditions.');
+        return false;
+    }
+    
+    // Prepare data
+    const formData = {
+        loan_amount: loanAmount,
+        purpose: purpose,
+        repayment_plan: document.getElementById('repaymentPlan').value
+    };
+    
+    // Include guarantors if required
+    if (loanAmount > savingsThreshold) {
+        formData.guarantor1_name = document.getElementById('guarantor1Name').value.trim();
+        formData.guarantor1_phone = document.getElementById('guarantor1Phone').value.trim();
+        formData.guarantor1_email = document.getElementById('guarantor1Email').value.trim();
+        formData.guarantor1_relationship = document.getElementById('guarantor1Relationship').value;
+        formData.guarantor2_name = document.getElementById('guarantor2Name').value.trim();
+        formData.guarantor2_phone = document.getElementById('guarantor2Phone').value.trim();
+        formData.guarantor2_email = document.getElementById('guarantor2Email').value.trim();
+        formData.guarantor2_relationship = document.getElementById('guarantor2Relationship').value;
+    }
+    
+    // Submit
+    const submitBtn = form.querySelector('.submit-btn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    submitBtn.disabled = true;
+    
+    fetch('/member/apply-loan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            document.getElementById('applicationRef').textContent = data.loan_number || 'LN-2026-XXXX';
+            
+            if (loanAmount <= savingsThreshold) {
+                document.getElementById('statusNotice').innerHTML = `
+                    <i class="fas fa-check-circle" style="color: #4ade80;"></i>
+                    <span>Status: <strong style="color:#4ade80;">No Guarantors Required</strong></span>
+                `;
+                document.getElementById('successDetails').textContent = 
+                    'No guarantors required based on your savings. Interest will compound monthly until December ' + currentYear + '.';
+            } else {
+                document.getElementById('statusNotice').innerHTML = `
+                    <i class="fas fa-clock"></i>
+                    <span>Status: <strong style="color:#f5c542;">PENDING - Awaiting Review</strong></span>
+                `;
+                document.getElementById('successDetails').textContent = 
+                    'The Treasurer will review your application and contact your guarantors manually.';
+            }
+            
+            document.getElementById('successModal').style.display = 'flex';
+        } else {
+            showError(data.message || 'Failed to submit application.');
+        }
+    })
+    .catch(error => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        showError('Network error. Please try again.');
+        console.error('Error:', error);
+    });
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorModal').style.display = 'flex';
+}
+
+function closeErrorModal() {
+    document.getElementById('errorModal').style.display = 'none';
+}
+
+function goToDashboard() {
+    document.getElementById('successModal').style.display = 'none';
+    window.location.href = '/member/dashboard';
+}
+
+function resetForm() {
+    if (confirm('Clear all form fields?')) {
+        document.getElementById('loanApplicationForm').reset();
+        document.getElementById('repaymentSummary').style.display = 'none';
+        document.getElementById('guarantorNotice').style.display = 'none';
+    }
+}
+
+function showTerms(event) {
+    event.preventDefault();
+    alert('Terms and Conditions:\n\n1. All loans must be repaid by December of the current year.\n2. Interest compounds monthly.\n3. Failure to repay may result in action against savings and guarantors.');
+}
+
+// ============================================
+// INITIALIZE
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial guarantor check
+    checkGuarantorRequirement(0);
+    
+    console.log('Loan Application Form initialized.');
+    console.log('Member Savings:', memberSavings);
+    console.log('95% of Savings:', savingsThreshold);
+});
+</script>
+
+{% endblock %}

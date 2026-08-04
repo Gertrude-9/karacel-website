@@ -1,0 +1,94 @@
+{% extends "member/member-base.html" %}
+
+{% block title %}Karacel SACCO | My Guarantors{% endblock %}
+
+{% block page_title %}My Guarantors{% endblock %}
+{% block page_subtitle %}View your loan guarantors{% endblock %}
+
+{% block content %}
+<div class="history-section">
+    <div class="history-title">
+        <i class="fas fa-handshake"></i> My Guarantors
+        <span style="font-size: 0.8rem; margin-left: auto; color: rgba(255,255,255,0.3);">
+            Total: {{ guarantors|length }}
+        </span>
+    </div>
+
+    <div style="padding: 20px;">
+        {% if guarantors %}
+            {% set loan_ids = [] %}
+            {% for guarantor in guarantors %}
+                {% if guarantor.loan_id not in loan_ids %}
+                    {% set _ = loan_ids.append(guarantor.loan_id) %}
+                {% endif %}
+            {% endfor %}
+
+            {% for loan_id in loan_ids %}
+                {% set loan = loans|selectattr('id', 'equalto', loan_id)|first %}
+                {% if loan %}
+                <div class="guarantor-card">
+                    <div class="guarantor-header">
+                        <div class="guarantor-title">
+                            <span class="loan-number-badge">{{ loan.loan_number }}</span>
+                            <span class="guarantor-badge">
+                                <i class="fas fa-circle" style="color: {% if loan.status == 'pending' %}#f5c542{% elif loan.status == 'approved' %}#00e0ff{% elif loan.status == 'active' %}#4ade80{% else %}#ff6b6b{% endif %}; font-size: 0.5rem;"></i>
+                                {{ loan.status|title }}
+                            </span>
+                            <span style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">
+                                <i class="fas fa-calendar-alt"></i> {{ loan.application_date }}
+                            </span>
+                        </div>
+                        <div class="guarantor-amount">
+                            <div class="amount">UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}</div>
+                            <div class="label">Loan Amount</div>
+                        </div>
+                    </div>
+
+                    <div class="guarantor-table-wrapper">
+                        <table class="guarantor-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Relationship</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set loan_guarantors = guarantors|selectattr('loan_id', 'equalto', loan_id)|list %}
+                                {% for guarantor in loan_guarantors %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><strong style="color: rgba(255,255,255,0.9);">{{ guarantor.guarantor_name }}</strong></td>
+                                    <td>{{ guarantor.phone }}</td>
+                                    <td>{{ guarantor.email or '-' }}</td>
+                                    <td>{{ guarantor.relationship or '-' }}</td>
+                                    <td>
+                                        <span class="status-badge 
+                                            {% if guarantor.status == 'accepted' %}status-accepted
+                                            {% elif guarantor.status == 'pending' %}status-pending
+                                            {% else %}status-rejected{% endif %}">
+                                            {{ guarantor.status|upper }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-handshake empty-icon"></i>
+                <h4>No Guarantors Yet</h4>
+                <p>You haven't added any guarantors to your loans.</p>
+                
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

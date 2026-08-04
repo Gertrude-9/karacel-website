@@ -1,0 +1,534 @@
+{% extends "treasurer/treasurer-base.html" %}
+
+{% block title %}Loan Details - {{ loan.loan_number }}{% endblock %}
+
+{% block content %}
+
+<div class="app-bar">
+    <div class="app-bar-left">
+        <h2><i class="fas fa-file-invoice"></i> Loan Details</h2>
+        <span>{{ loan.loan_number }} - {{ loan.full_name }}</span>
+    </div>
+    <div class="app-bar-right">
+        <a href="{{ url_for('treasurer_dashboard') }}#loan_applications" class="btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+        {% if loan.status == 'pending' and accepted_guarantors == 2 %}
+            <button onclick="approveLoan('{{ loan.id }}')" class="btn-primary" style="background: #4ade80; color: #0a0a14;">
+                <i class="fas fa-check"></i> Approve
+            </button>
+            <button onclick="rejectLoan('{{ loan.id }}')" class="btn-danger">
+                <i class="fas fa-times"></i> Reject
+            </button>
+        {% endif %}
+        {% if loan.status == 'approved' %}
+            <button onclick="disburseLoan('{{ loan.id }}')" class="btn-primary" style="background: #00e0ff; color: #0a0a14;">
+                <i class="fas fa-hand-holding-usd"></i> Disburse
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="content-panel active" style="padding: 24px 32px 40px;">
+    
+    <!-- Loan Status Banner -->
+    <div class="loan-status-banner" style="
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        background: 
+            {% if loan.status == 'pending' %}rgba(245,197,66,0.08)
+            {% elif loan.status == 'approved' %}rgba(0,224,255,0.08)
+            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.08)
+            {% elif loan.status == 'completed' %}rgba(74,222,128,0.08)
+            {% elif loan.status == 'rejected' %}rgba(255,107,107,0.08)
+            {% else %}rgba(255,255,255,0.03){% endif %};
+        border: 1px solid 
+            {% if loan.status == 'pending' %}rgba(245,197,66,0.15)
+            {% elif loan.status == 'approved' %}rgba(0,224,255,0.15)
+            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.15)
+            {% elif loan.status == 'completed' %}rgba(74,222,128,0.15)
+            {% elif loan.status == 'rejected' %}rgba(255,107,107,0.15)
+            {% else %}rgba(255,255,255,0.05){% endif %};
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.5rem;">
+                {% if loan.status == 'pending' %}⏳
+                {% elif loan.status == 'approved' %}✅
+                {% elif loan.status == 'disbursed' %}💰
+                {% elif loan.status == 'completed' %}🎉
+                {% elif loan.status == 'rejected' %}❌
+                {% endif %}
+            </span>
+            <div>
+                <div style="font-weight: 600; color: rgba(255,255,255,0.9);">Status: 
+                    <span style="
+                        color: {% if loan.status == 'pending' %}#f5c542
+                               {% elif loan.status == 'approved' %}#00e0ff
+                               {% elif loan.status == 'disbursed' %}#4ade80
+                               {% elif loan.status == 'completed' %}#4ade80
+                               {% elif loan.status == 'rejected' %}#ff6b6b
+                               {% else %}rgba(255,255,255,0.5){% endif %};
+                    ">
+                        {{ loan.status|upper }}
+                        {% if loan.status == 'pending' %} (Awaiting Review)
+                        {% elif loan.status == 'approved' %} (Awaiting Final Approval)
+                        {% elif loan.status == 'disbursed' %} (Disbursed)
+                        {% elif loan.status == 'completed' %} (Completed)
+                        {% elif loan.status == 'rejected' %} (Rejected)
+                        {% endif %}
+                    </span>
+                </div>
+                {% if loan.status == 'rejected' and loan.rejection_reason %}
+                <div style="color: #ff6b6b; font-size: 0.9rem; margin-top: 4px;">
+                    <i class="fas fa-info-circle"></i> Reason: {{ loan.rejection_reason }}
+                </div>
+                {% endif %}
+                {% if loan.status == 'pending' %}
+                <div style="color: #f5c542; font-size: 0.85rem; margin-top: 4px;">
+                    <i class="fas fa-clock"></i> 
+                    {% if accepted_guarantors == 2 %}
+                        Awaiting Treasurer approval
+                    {% else %}
+                        Awaiting guarantor acceptance ({{ accepted_guarantors }}/2 accepted)
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if loan.status == 'approved' %}
+                <div style="color: #00e0ff; font-size: 0.85rem; margin-top: 4px;">
+                    <i class="fas fa-clock"></i> Awaiting Admin final approval
+                </div>
+                {% endif %}
+                {% if loan.status == 'disbursed' %}
+                <div style="color: #4ade80; font-size: 0.85rem; margin-top: 4px;">
+                    <i class="fas fa-check-circle"></i> Loan has been disbursed to member
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 0.8rem; color: rgba(255,255,255,0.3);">Application Date</div>
+            <div style="font-weight: 500;">{{ loan.application_date }}</div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        
+        <!-- Left Column: Loan Details -->
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-info-circle"></i> Loan Information
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Loan Number</div>
+                    <div style="color: #f5c542; font-family: monospace; font-weight: 600;">{{ loan.loan_number }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Status</div>
+                    <div>
+                        <span class="badge 
+                            {% if loan.status == 'pending' %}warning
+                            {% elif loan.status == 'approved' %}info
+                            {% elif loan.status == 'disbursed' %}success
+                            {% elif loan.status == 'completed' %}success
+                            {% else %}danger{% endif %}">
+                            {{ loan.status|upper }}
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Amount</div>
+                    <div style="color: #4ade80; font-weight: 600; font-size: 1.1rem;">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Rate</div>
+                    <div>{{ loan.interest_rate }}%</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Tenure</div>
+                    <div>{{ loan.tenure }} Months</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Repayment Plan</div>
+                    <div>{{ loan.repayment_plan|title if loan.repayment_plan else 'Monthly' }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Repayment</div>
+                    <div style="color: #f5c542;">UGX {{ "{:,.0f}".format(loan.total_repayment) }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Monthly Installment</div>
+                    <div>UGX {{ "{:,.0f}".format(loan.monthly_installment) }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Amount</div>
+                    <div>UGX {{ "{:,.0f}".format(loan.interest_amount) }}</div>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Purpose</div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
+                        {{ loan.purpose or 'Not specified' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Member Details -->
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-user"></i> Member Information
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="grid-column: 1 / -1;">
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Full Name</div>
+                    <div style="font-weight: 600; font-size: 1.05rem;">{{ loan.full_name }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">SACCO Number</div>
+                    <div style="color: #f5c542; font-family: monospace;">{{ loan.sacco_number }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Phone</div>
+                    <div>{{ loan.phone or 'Not provided' }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Email</div>
+                    <div>{{ loan.email or 'Not provided' }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Savings Balance</div>
+                    <div style="color: #4ade80;">UGX {{ "{:,.0f}".format(loan.savings_balance or 0) }}</div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Required Savings (10%)</div>
+                    <div style="color: {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}#4ade80{% else %}#ff6b6b{% endif %};">
+                        UGX {{ "{:,.0f}".format(loan.amount * 0.1) }}
+                        {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}
+                            <span style="color: #4ade80; font-size: 0.75rem;">✓ Met</span>
+                        {% else %}
+                            <span style="color: #ff6b6b; font-size: 0.75rem;">✗ Not Met</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Application Date</div>
+                    <div>{{ loan.application_date }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guarantors Section -->
+    <div class="action-card" style="margin-top: 20px;">
+        <div class="action-title">
+            <i class="fas fa-handshake"></i> Guarantors
+        </div>
+        <div class="table-wrapper">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Relationship</th>
+                        <th>Status</th>
+                        <th>Accepted Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if guarantors %}
+                        {% for guarantor in guarantors %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ guarantor.guarantor_name }}</strong></td>
+                            <td>{{ guarantor.phone }}</td>
+                            <td>{{ guarantor.email or '-' }}</td>
+                            <td>{{ guarantor.relationship or '-' }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if guarantor.status == 'accepted' %}success
+                                    {% elif guarantor.status == 'pending' %}warning
+                                    {% else %}danger{% endif %}">
+                                    {{ guarantor.status|upper }}
+                                </span>
+                            </td>
+                            <td>{{ guarantor.accepted_at or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding:20px; color: rgba(255,255,255,0.3);">
+                                No guarantors registered
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Repayments Section (if any) -->
+    {% if repayments %}
+    <div class="action-card" style="margin-top: 20px;">
+        <div class="action-title">
+            <i class="fas fa-undo-alt"></i> Repayment History
+        </div>
+        <div class="table-wrapper">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for repayment in repayments %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ repayment.payment_date }}</td>
+                        <td style="color: #4ade80;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
+                        <td>{{ repayment.payment_method or 'N/A' }}</td>
+                        <td>{{ repayment.transaction_ref or '-' }}</td>
+                        <td><span class="badge success">{{ repayment.status|upper }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
+                        <td colspan="2" style="text-align:right; font-weight:600;">Total Paid:</td>
+                        <td style="color: #4ade80; font-weight:700;">UGX {{ "{:,.0f}".format(total_paid) }}</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Timeline -->
+    <div class="action-card" style="margin-top: 20px;">
+        <div class="action-title">
+            <i class="fas fa-history"></i> Loan Timeline
+        </div>
+        <div style="padding: 8px 0;">
+            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Applied</div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #f5c542;"></div>
+                    <div style="color: rgba(255,255,255,0.7);">{{ loan.application_date }}</div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Application submitted</div>
+                </div>
+            </div>
+            {% if loan.approved_date %}
+            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Approved</div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #00e0ff;"></div>
+                    <div style="color: rgba(255,255,255,0.7);">{{ loan.approved_date }}</div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Approved by Treasurer</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if loan.disbursed_date %}
+            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Disbursed</div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80;"></div>
+                    <div style="color: rgba(255,255,255,0.7);">{{ loan.disbursed_date }}</div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Loan disbursed to member</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if loan.completed_date %}
+            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Completed</div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80;"></div>
+                    <div style="color: rgba(255,255,255,0.7);">{{ loan.completed_date }}</div>
+                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Loan fully repaid</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if loan.rejected_date %}
+            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Rejected</div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff6b6b;"></div>
+                    <div style="color: rgba(255,255,255,0.7);">{{ loan.rejected_date }}</div>
+                    <div style="color: #ff6b6b; font-size: 0.8rem;">Loan rejected</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .btn-danger {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: rgba(255, 107, 107, 0.12);
+        color: #ff6b6b;
+        border: 1px solid rgba(255, 107, 107, 0.15);
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    .btn-danger:hover {
+        background: rgba(255, 107, 107, 0.2);
+        transform: translateY(-2px);
+    }
+    .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .badge.success { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
+    .badge.warning { background: rgba(245, 197, 66, 0.12); color: #f5c542; }
+    .badge.info { background: rgba(0, 224, 255, 0.12); color: #00e0ff; }
+    .badge.danger { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+</style>
+
+<script>
+    // ============================================================
+    // TREASURER APPROVE LOAN
+    // ============================================================
+    function approveLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        if (confirm('✅ Approve this loan application?\n\nNote: Member must have at least 10% of loan amount in savings.')) {
+            const btns = document.querySelectorAll(`button[onclick*="approveLoan(${loanId})"]`);
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+            });
+            
+            fetch('/treasurer/loan/approve/' + loanId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => alert('❌ Network error: ' + error.message))
+            .finally(() => {
+                btns.forEach(btn => {
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    btn.disabled = false;
+                });
+            });
+        }
+    }
+
+    // ============================================================
+    // TREASURER REJECT LOAN
+    // ============================================================
+    function rejectLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        const reason = prompt('❌ Please provide a reason for rejecting this loan application:');
+        if (reason === null) return;
+        if (reason.trim() === '') {
+            alert('❌ Please provide a reason for rejection.');
+            return;
+        }
+        if (confirm('❌ Reject this loan application?\n\nReason: ' + reason)) {
+            const btns = document.querySelectorAll(`button[onclick*="rejectLoan(${loanId})"]`);
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+            });
+            
+            fetch('/treasurer/loan/approve/' + loanId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reject', reason: reason.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => alert('❌ Network error: ' + error.message))
+            .finally(() => {
+                btns.forEach(btn => {
+                    btn.innerHTML = '<i class="fas fa-times"></i>';
+                    btn.disabled = false;
+                });
+            });
+        }
+    }
+
+    // ============================================================
+    // DISBURSE LOAN
+    // ============================================================
+    function disburseLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        if (confirm('💰 Disburse this loan to the member?\n\nThis will mark the loan as active and notify the member.')) {
+            const btns = document.querySelectorAll(`button[onclick*="disburseLoan(${loanId})"]`);
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+            });
+            
+            fetch('/treasurer/loan/disburse/' + loanId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => alert('❌ Network error: ' + error.message))
+            .finally(() => {
+                btns.forEach(btn => {
+                    btn.innerHTML = '<i class="fas fa-hand-holding-usd"></i>';
+                    btn.disabled = false;
+                });
+            });
+        }
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,640 @@
+{% extends "member/member-base.html" %}
+
+{% block title %}Karacel SACCO | Member Dashboard{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Your SACCO overview{% endblock %}
+
+{% block content %}
+
+<!-- ============================================
+DASHBOARD PANEL
+============================================ -->
+<div id="dashboard-panel" class="content-panel active">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-label">Total Savings</div>
+                <div class="stat-value">
+                    UGX {{ "{:,.0f}".format(user['savings_balance'] or 0) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-label">Loan Balance</div>
+                <div class="stat-value">UGX {{ "{:,.0f}".format(active_loans_balance) if active_loans_balance else '0' }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-hand-holding-usd"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-label">Active Loans</div>
+                <div class="stat-value">{{ active_loans_count if active_loans_count else 0 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="avatar-icon">
+                <i class="fas fa-user-circle"></i>
+            </div>
+
+            <div class="user-info">
+                <h3>{{ member.full_name | safe if member else 'Member' }}</h3>
+                <p><i class="fas fa-id-card"></i> SACCO #: {{ member.sacco_number if member else 'N/A' }}</p>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-user-tag"></i> Full Name</span>
+                <span class="detail-value">{{ member.full_name | safe if member else 'N/A' }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-id-card"></i> SACCO Number</span>
+                <span class="detail-value">{{ member.sacco_number if member else 'N/A' }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-calendar-alt"></i> Registration Date</span>
+                <span class="detail-value">{{ member.registration_date if member and member.registration_date else 'N/A' }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-envelope"></i> Email</span>
+                <span class="detail-value">{{ member.email if member and member.email else 'Not specified' }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-users"></i> Next of Kin</span>
+                <span class="detail-value">{{ member.next_of_kin_name if member and member.next_of_kin_name else 'Not specified' }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label"><i class="fas fa-phone-alt"></i> Next of Kin Phone</span>
+                <span class="detail-value">{{ member.next_of_kin_phone if member and member.next_of_kin_phone else 'Not specified' }}</span>
+            </div>
+        </div>
+
+        <div class="balance-highlight">
+            <div class="label">
+                <i class="fas fa-coins"></i> Total Savings Balance
+            </div>
+            <div class="balance-amount">
+                UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+            </div>
+            <div style="margin-top: 6px; font-size: 0.7rem; color: rgba(255,255,255,0.2);">
+                Total Loans Taken: UGX {{ "{:,.0f}".format(total_loans_taken) if total_loans_taken else '0' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Savings Deposits (Dashboard View) -->
+    <div class="history-section">
+        <div class="history-title">
+            <i class="fas fa-history"></i> Recent Savings Deposits
+        </div>
+
+        <div class="transaction-list">
+            {% if savings_deposits %}
+                {% for deposit in savings_deposits[:5] %}
+                <div class="transaction-item">
+                    <div class="transaction-left">
+                        <div class="tx-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div>
+                            <div class="recipient">Deposit</div>
+                            <div class="meta">
+                                <i class="fas fa-calendar-alt"></i> {{ deposit.deposit_date if deposit.deposit_date else 'N/A' }}
+                                {% if deposit.payment_method %}
+                                • <i class="fas fa-credit-card"></i> {{ deposit.payment_method }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tx-amount" style="color: #4ade80;">
+                        + UGX {{ "{:,.0f}".format(deposit.amount) if deposit.amount else '0' }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-history">
+                    <i class="fas fa-piggy-bank"></i>
+                    <p>You haven't made any savings deposits yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Loans -->
+    <div class="history-section" style="margin-top: 16px;">
+        <div class="history-title">
+            <i class="fas fa-hand-holding-usd"></i> Recent Loans
+        </div>
+
+        <div class="transaction-list">
+            {% if loans %}
+                {% for loan in loans[:5] %}
+                <div class="transaction-item" style="border-left-color: 
+                    {% if loan.status == 'pending' %}#f5c542
+                    {% elif loan.status == 'approved' %}#00e0ff
+                    {% elif loan.status == 'disbursed' %}#4ade80
+                    {% elif loan.status == 'active' %}#4ade80
+                    {% elif loan.status == 'completed' %}#00ff88
+                    {% else %}#ff6b6b{% endif %};">
+                    <div class="transaction-left">
+                        <div class="tx-icon" style="background: 
+                            {% if loan.status == 'pending' %}rgba(245,197,66,0.06)
+                            {% elif loan.status == 'approved' %}rgba(0,224,255,0.06)
+                            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.06)
+                            {% elif loan.status == 'active' %}rgba(74,222,128,0.06)
+                            {% elif loan.status == 'completed' %}rgba(0,255,136,0.06)
+                            {% else %}rgba(255,107,107,0.06){% endif %};">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <div>
+                            <div class="recipient">{{ loan.loan_number if loan.loan_number else 'N/A' }}</div>
+                            <div class="meta">
+                                <i class="fas fa-calendar-alt"></i> {{ loan.application_date if loan.application_date else 'N/A' }}
+                                • <span style="
+                                    color: {% if loan.status == 'pending' %}#f5c542
+                                    {% elif loan.status == 'approved' %}#00e0ff
+                                    {% elif loan.status == 'disbursed' %}#4ade80
+                                    {% elif loan.status == 'active' %}#4ade80
+                                    {% elif loan.status == 'completed' %}#00ff88
+                                    {% else %}#ff6b6b{% endif %};
+                                ">
+                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                    {{ loan.status|title if loan.status else 'Unknown' }}
+                                </span>
+                                {% if loan.amount %}
+                                • Amount: UGX {{ "{:,.0f}".format(loan.amount) }}
+                                {% endif %}
+                                {% if loan.current_balance is not none %}
+                                • Balance: UGX {{ "{:,.0f}".format(loan.current_balance) }}
+                                {% endif %}
+                                {% if loan.status == 'rejected' and loan.rejection_reason %}
+                                <br>
+                                <span style="color: #ff6b6b; font-size: 0.75rem; display: block; margin-top: 4px;">
+                                    <i class="fas fa-info-circle"></i> 
+                                    <strong>Reason:</strong> {{ loan.rejection_reason }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tx-amount">
+                        UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-history">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <p>You haven't applied for any loans yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+SAVINGS PANEL
+============================================ -->
+<div id="savings-panel" class="content-panel" style="display:none;">
+    <div class="history-section">
+        <div class="history-title">
+            <i class="fas fa-piggy-bank"></i> All Savings Deposits
+            <span style="font-size: 0.8rem; margin-left: auto; color: rgba(255,255,255,0.3);">
+                Total: UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+            </span>
+        </div>
+
+        <div class="transaction-list" style="max-height: 600px; overflow-y: auto;">
+            {% if savings_deposits %}
+                {% for deposit in savings_deposits %}
+                <div class="transaction-item">
+                    <div class="transaction-left">
+                        <div class="tx-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div>
+                            <div class="recipient">Deposit</div>
+                            <div class="meta">
+                                <i class="fas fa-calendar-alt"></i> {{ deposit.deposit_date if deposit.deposit_date else 'N/A' }}
+                                {% if deposit.payment_method %}
+                                • <i class="fas fa-credit-card"></i> {{ deposit.payment_method }}
+                                {% endif %}
+                                {% if deposit.receipt_number %}
+                                • <i class="fas fa-receipt"></i> {{ deposit.receipt_number }}
+                                {% endif %}
+                                {% if deposit.notes %}
+                                • <i class="fas fa-comment"></i> {{ deposit.notes }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tx-amount" style="color: #4ade80;">
+                        + UGX {{ "{:,.0f}".format(deposit.amount) if deposit.amount else '0' }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-history">
+                    <i class="fas fa-piggy-bank"></i>
+                    <p>You haven't made any savings deposits yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+REPAYMENTS PANEL - FIXED WITH BALANCE REDUCTION
+============================================ -->
+<!-- ============================================
+REPAYMENTS PANEL - FIXED
+============================================ -->
+<div id="repayments-panel" class="content-panel" style="display:none;">
+    <div class="history-section">
+        <div class="history-title">
+            <i class="fas fa-undo-alt"></i> My Repayments
+            {% if repayments %}
+            <span style="font-size: 0.8rem; margin-left: auto; color: rgba(255,255,255,0.3);">
+                Total Paid: UGX {{ "{:,.0f}".format(repayments|sum(attribute='amount')) }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div style="padding: 20px;">
+            {% if loans %}
+                {% for loan in loans %}
+                    {% if loan.status != 'rejected' %}
+                        {% set loan_repayments = [] %}
+                        {% for repayment in repayments %}
+                            {% if repayment.loan_id == loan.id %}
+                                {% set _ = loan_repayments.append(repayment) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <div class="repayment-card" style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; margin-bottom: 16px; border-left: 3px solid 
+                            {% if loan.status == 'active' %}#4ade80
+                            {% elif loan.status == 'completed' %}#00ff88
+                            {% else %}#00e0ff{% endif %};">
+                            
+                            <!-- Loan Header -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <div>
+                                    <h4 style="color: #00e0ff; margin: 0;">{{ loan.loan_number }}</h4>
+                                    <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
+                                        <i class="fas fa-calendar-alt"></i> {{ loan.application_date }}
+                                        <span style="margin-left: 12px;">
+                                            <i class="fas fa-circle" style="color: 
+                                                {% if loan.status == 'active' %}#4ade80
+                                                {% elif loan.status == 'completed' %}#00ff88
+                                                {% else %}#00e0ff{% endif %}; font-size: 0.5rem;"></i>
+                                            {{ loan.status|title }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #f5c542; font-weight: 600;">
+                                        UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}
+                                    </div>
+                                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Loan</div>
+                                </div>
+                            </div>
+
+                            <!-- Balance Summary -->
+                            {% set total_paid = loan_repayments|sum(attribute='amount') if loan_repayments else 0 %}
+                            {% set remaining = (loan.current_balance or loan.amount or 0) %}
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                                <div>
+                                    <div style="color: rgba(255,255,255,0.4); font-size: 0.75rem;">Original Amount</div>
+                                    <div style="color: #f5c542; font-weight: 600;">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
+                                </div>
+                                <div>
+                                    <div style="color: rgba(255,255,255,0.4); font-size: 0.75rem;">Total Paid</div>
+                                    <div style="color: #4ade80; font-weight: 600;">
+                                        UGX {{ "{:,.0f}".format(total_paid) }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="color: rgba(255,255,255,0.4); font-size: 0.75rem;">Remaining Balance</div>
+                                    <div style="color: {% if remaining <= 0 %}#4ade80{% else %}#ff6b6b{% endif %}; font-weight: 600;">
+                                        UGX {{ "{:,.0f}".format(remaining) }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="color: rgba(255,255,255,0.4); font-size: 0.75rem;">Interest Rate</div>
+                                    <div style="color: #00e0ff; font-weight: 600;">{{ loan.interest_rate or 0 }}%</div>
+                                </div>
+                                {% if loan.status == 'active' %}
+                                <div>
+                                    <div style="color: rgba(255,255,255,0.4); font-size: 0.75rem;">Suggested Next Payment</div>
+                                    <div style="color: #f5c542; font-weight: 600;">
+                                        UGX {{ "{:,.0f}".format(remaining * 0.05) }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Repayment History Table -->
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">#</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Date</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Amount Paid</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Method</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Reference</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Balance After</th>
+                                            <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if loan_repayments %}
+                                            {% set running_balance = loan.amount %}
+                                            {% for repayment in loan_repayments|sort(attribute='payment_date') %}
+                                                {% set running_balance = running_balance - repayment.amount %}
+                                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                                    <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
+                                                    <td style="padding: 8px 12px; color: rgba(255,255,255,0.7);">{{ repayment.payment_date }}</td>
+                                                    <td style="padding: 8px 12px; color: #4ade80;">UGX {{ "{:,.0f}".format(repayment.amount) if repayment.amount else '0' }}</td>
+                                                    <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ repayment.payment_method or 'N/A' }}</td>
+                                                    <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ repayment.transaction_ref or '-' }}</td>
+                                                    <td style="padding: 8px 12px; color: 
+                                                        {% if running_balance <= 0 %}#4ade80
+                                                        {% else %}#f5c542{% endif %};">
+                                                        UGX {{ "{:,.0f}".format(running_balance) }}
+                                                    </td>
+                                                    <td style="padding: 8px 12px;">
+                                                        <span style="background: rgba(74,222,128,0.15); color: #4ade80; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;">
+                                                            {{ repayment.status|upper }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="7" style="padding: 12px; text-align: center; color: rgba(255,255,255,0.3);">
+                                                    No repayments recorded for this loan yet
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        <!-- Summary Row -->
+                                        <tr style="border-top: 2px solid rgba(255,255,255,0.05);">
+                                            <td colspan="2" style="padding: 8px 12px; color: rgba(255,255,255,0.5); font-weight: 600;">Total Paid</td>
+                                            <td style="padding: 8px 12px; color: #4ade80; font-weight: 600;">
+                                                UGX {{ "{:,.0f}".format(total_paid) }}
+                                            </td>
+                                            <td colspan="2" style="padding: 8px 12px; color: rgba(255,255,255,0.5); font-weight: 600;">Remaining</td>
+                                            <td style="padding: 8px 12px; color: {% if remaining <= 0 %}#4ade80{% else %}#ff6b6b{% endif %}; font-weight: 600;">
+                                                UGX {{ "{:,.0f}".format(remaining) }}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Payment Progress Bar -->
+                            <div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 4px;">
+                                    <span>Payment Progress</span>
+                                    <span>
+                                        {% set percent = (total_paid / loan.amount * 100) if loan.amount and loan.amount > 0 else 0 %}
+                                        {{ "%.1f"|format(percent) }}% Paid
+                                    </span>
+                                </div>
+                                <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: {{ "%.1f"|format(percent) }}%; background: linear-gradient(90deg, #4ade80, #00ff88); border-radius: 3px; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif loan.status == 'rejected' %}
+                        <!-- Show rejected loans with reason -->
+                        <div class="repayment-card" style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; margin-bottom: 16px; border-left: 3px solid #ff6b6b;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="color: #ff6b6b; margin: 0;">{{ loan.loan_number }}</h4>
+                                    <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
+                                        <i class="fas fa-calendar-alt"></i> {{ loan.application_date }}
+                                        <span style="margin-left: 12px;">
+                                            <i class="fas fa-circle" style="color: #ff6b6b; font-size: 0.5rem;"></i>
+                                            {{ loan.status|title }}
+                                        </span>
+                                    </div>
+                                    {% if loan.rejection_reason %}
+                                    <div style="margin-top: 8px; padding: 8px 12px; background: rgba(255,107,107,0.08); border-radius: 6px; border-left: 3px solid #ff6b6b;">
+                                        <span style="color: #ff6b6b; font-size: 0.85rem;">
+                                            <i class="fas fa-exclamation-circle"></i> 
+                                            <strong>Rejection Reason:</strong> {{ loan.rejection_reason }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #f5c542; font-weight: 600;">
+                                        UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}
+                                    </div>
+                                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Loan</div>
+                                </div>
+                            </div>
+                            <div style="padding: 12px; text-align: center; background: rgba(255,107,107,0.03); border-radius: 6px;">
+                                <i class="fas fa-times-circle" style="color: #ff6b6b;"></i>
+                                <span style="color: rgba(255,255,255,0.5); margin-left: 8px;">
+                                    This loan was rejected. No repayments are required.
+                                </span>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 40px 0;">
+                    <i class="fas fa-undo-alt" style="font-size: 3rem; display: block; margin-bottom: 16px; opacity: 0.3; color: rgba(255,255,255,0.3);"></i>
+                    <p style="color: rgba(255,255,255,0.5);">You don't have any loan applications yet.</p>
+                    <a href="{{ url_for('member_apply_loan') }}" style="color: #00e0ff; text-decoration: none;">
+                        <i class="fas fa-hand-holding-usd"></i> Apply for a loan
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+PROFILE PANEL
+============================================ -->
+<div id="profile-panel" class="content-panel" style="display:none;">
+    <div class="history-section">
+        <div class="history-title">
+            <i class="fas fa-user-circle"></i> My Profile
+        </div>
+        
+        <div class="profile-card" style="margin-top: 0;">
+            <div class="profile-header">
+                <div class="avatar-icon">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+
+                <div class="user-info">
+                    <h3>{{ member.full_name | safe if member else 'Member' }}</h3>
+                    <p><i class="fas fa-id-card"></i> SACCO #: {{ member.sacco_number if member else 'N/A' }}</p>
+                    <p><i class="fas fa-phone"></i> {{ member.phone if member and member.phone else 'No phone provided' }}</p>
+                </div>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-user-tag"></i> Full Name</span>
+                    <span class="detail-value">{{ member.full_name | safe if member else 'N/A' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-id-card"></i> SACCO Number</span>
+                    <span class="detail-value">{{ member.sacco_number if member else 'N/A' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Registration Date</span>
+                    <span class="detail-value">{{ member.registration_date if member and member.registration_date else 'N/A' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-envelope"></i> Email</span>
+                    <span class="detail-value">{{ member.email if member and member.email else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-phone"></i> Phone</span>
+                    <span class="detail-value">{{ member.phone if member and member.phone else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-users"></i> Next of Kin</span>
+                    <span class="detail-value">{{ member.next_of_kin_name if member and member.next_of_kin_name else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-phone-alt"></i> Next of Kin Phone</span>
+                    <span class="detail-value">{{ member.next_of_kin_phone if member and member.next_of_kin_phone else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-venus-mars"></i> Gender</span>
+                    <span class="detail-value">{{ member.gender if member and member.gender else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Date of Birth</span>
+                    <span class="detail-value">{{ member.dob if member and member.dob else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Address</span>
+                    <span class="detail-value">{{ member.address if member and member.address else 'Not specified' }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-user-friends"></i> Next of Kin Relationship</span>
+                    <span class="detail-value">{{ member.relationship if member and member.relationship else 'Not specified' }}</span>
+                </div>
+            </div>
+
+            <div class="balance-highlight">
+                <div class="label">
+                    <i class="fas fa-coins"></i> Total Savings Balance
+                </div>
+                <div class="balance-amount">
+                    UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+                </div>
+                <div style="margin-top: 6px; font-size: 0.7rem; color: rgba(255,255,255,0.2);">
+                    Total Loans Taken: UGX {{ "{:,.0f}".format(total_loans_taken) if total_loans_taken else '0' }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // NAVIGATION FUNCTION
+    // ============================================
+    function navigateTo(page, event) {
+        if (event) {
+            event.preventDefault();
+        }
+        
+        var panels = document.querySelectorAll('.content-panel');
+        panels.forEach(function(panel) {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        });
+        
+        var targetPanel = document.getElementById(page + '-panel');
+        if (targetPanel) {
+            targetPanel.style.display = 'block';
+            targetPanel.classList.add('active');
+        }
+        
+        var pageTitles = {
+            'dashboard': 'Dashboard',
+            'savings': 'My Savings',
+            'apply-loan': 'Apply for Loan',
+            'repayments': 'My Repayments',
+            'guarantors': 'My Guarantors',
+            'profile': 'My Profile'
+        };
+        
+        var titleElement = document.getElementById('pageTitle');
+        if (titleElement && pageTitles[page]) {
+            titleElement.textContent = pageTitles[page];
+        }
+        
+        if (page) {
+            window.location.hash = page;
+        }
+        
+        return false;
+    }
+
+    // ============================================
+    // HANDLE URL HASH ON LOAD
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        var hash = window.location.hash.replace('#', '');
+        if (hash) {
+            navigateTo(hash);
+        }
+        
+        var currentPath = window.location.pathname;
+        var navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(function(item) {
+            var href = item.getAttribute('href');
+            if (href && currentPath.includes(href)) {
+                item.classList.add('active');
+            }
+        });
+    });
+</script>
+
+{% endblock %}

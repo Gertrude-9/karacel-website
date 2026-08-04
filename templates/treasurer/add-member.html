@@ -1,0 +1,292 @@
+{% extends "treasurer/treasurer-base.html" %}
+
+{% block title %}Karacel SACCO | Register New Member{% endblock %}
+
+{% block content %}
+
+<!-- App Bar -->
+<div class="app-bar">
+    <div class="app-bar-left">
+        <h2><i class="fas fa-user-plus"></i> Register New Member</h2>
+        <span>Add a new member to the SACCO system</span>
+    </div>
+    <div class="app-bar-right">
+        <a href="{{ url_for('treasurer_dashboard') }}" class="btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div style="padding: 24px 32px 40px; max-width: 900px; margin: 0 auto;">
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}" style="padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Registration Form -->
+    <div class="registration-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 32px;">
+        
+        <form method="POST" action="{{ url_for('treasurer_add_members') }}" id="registrationForm">
+            
+            <!-- Personal Details -->
+            <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 24px; margin-bottom: 24px;">
+                <h3 style="color: #f5c542; margin-bottom: 16px; font-size: 1rem;">
+                    <i class="fas fa-user"></i> Personal Details
+                </h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Full Name <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="text" name="full_name" class="form-control" required 
+                               placeholder="Enter full name" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Gender <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <select name="gender" class="form-control" required style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                            <option value="">Select</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Date of Birth <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="date" name="dob" class="form-control" required style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Phone Number <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="tel" name="phone" class="form-control" required 
+                               placeholder="e.g. 0772123456" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Email Address
+                        </label>
+                        <input type="email" name="email" class="form-control" 
+                               placeholder="you@example.com" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Address <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="text" name="address" class="form-control" required 
+                               placeholder="Enter physical address" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            SACCO Number <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="text" name="sacco_number" class="form-control" required 
+                               placeholder="e.g. KAR001" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                        <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Unique SACCO identification number</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Initial Savings Balance
+                        </label>
+                        <div style="display:flex; align-items:center; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; overflow:hidden;">
+                            <span style="padding:10px 14px; color:rgba(255,255,255,0.3); font-weight:600; background:rgba(255,255,255,0.02); border-right:1px solid rgba(255,255,255,0.06);">UGX</span>
+                            <input type="number" name="savings_balance" class="form-control" 
+                                   placeholder="0" step="1000" value="0" style="border:none !important; border-radius:0 !important; background:transparent !important; padding:10px 14px; flex:1; color:white;">
+                        </div>
+                        <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Optional initial deposit amount</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Login Password
+                        </label>
+                        <input type="password" name="password" class="form-control" 
+                               placeholder="Create login password" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                        <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Leave blank to use default: password123</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Status
+                        </label>
+                        <select name="status" class="form-control" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Role <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <select name="role" class="form-control" required style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                            <option value="member" selected>Member</option>
+                        </select>
+                        <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Only Member role is available for registration</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Next of Kin -->
+            <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 24px; margin-bottom: 24px;">
+                <h3 style="color: #f5c542; margin-bottom: 16px; font-size: 1rem;">
+                    <i class="fas fa-users"></i> Next of Kin
+                </h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Full Name <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="text" name="next_of_kin_name" class="form-control" required 
+                               placeholder="Enter next of kin's full name" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Relationship <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <select name="relationship" class="form-control" required style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                            <option value="">Select</option>
+                            <option value="spouse">Spouse</option>
+                            <option value="parent">Parent</option>
+                            <option value="child">Child</option>
+                            <option value="sibling">Sibling</option>
+                            <option value="relative">Other Relative</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                            Phone <span style="color: #ff6b6b;">*</span>
+                        </label>
+                        <input type="tel" name="next_of_kin_phone" class="form-control" required 
+                               placeholder="e.g. 0772123456" style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confirmation -->
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; align-items: flex-start; gap: 10px; padding: 4px 0;">
+                    <input type="checkbox" id="confirmCheck" required style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:#f5c542;">
+                    <label for="confirmCheck" style="color: rgba(255,255,255,0.5); font-size: 0.85rem; cursor: pointer;">
+                        I confirm that all information provided is true and accurate.
+                    </label>
+                </div>
+                
+                <div style="display: flex; align-items: flex-start; gap: 10px; padding: 4px 0;">
+                    <input type="checkbox" id="termsCheck" required style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:#f5c542;">
+                    <label for="termsCheck" style="color: rgba(255,255,255,0.5); font-size: 0.85rem; cursor: pointer;">
+                        I agree to the Terms & Conditions and Privacy Policy.
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Submit -->
+            <button type="submit" class="btn-primary" style="width:100%; padding:14px; justify-content:center; font-size:1rem;">
+                <i class="fas fa-user-plus"></i> Register Member
+            </button>
+            
+        </form>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // FORM VALIDATION
+    // ============================================================
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        const form = this;
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+
+        requiredFields.forEach(field => {
+            if (!field.value || field.value.trim() === '') {
+                isValid = false;
+                field.style.borderColor = '#ff6b6b';
+                field.style.boxShadow = '0 0 0 4px rgba(255,107,107,0.1)';
+            } else {
+                field.style.borderColor = '';
+                field.style.boxShadow = '';
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('❌ Please fill in all required fields.');
+            return;
+        }
+
+        // Check if password meets requirements
+        const password = form.querySelector('input[name="password"]');
+        if (password && password.value && password.value.length < 6) {
+            e.preventDefault();
+            alert('❌ Password must be at least 6 characters long.');
+            password.focus();
+            return;
+        }
+
+        // Check if terms are accepted
+        const termsCheck = document.getElementById('termsCheck');
+        if (!termsCheck.checked) {
+            e.preventDefault();
+            alert('❌ Please accept the Terms & Conditions.');
+            termsCheck.focus();
+            return;
+        }
+
+        // Check if confirmation is checked
+        const confirmCheck = document.getElementById('confirmCheck');
+        if (!confirmCheck.checked) {
+            e.preventDefault();
+            alert('❌ Please confirm that the information is accurate.');
+            confirmCheck.focus();
+            return;
+        }
+    });
+
+    // ============================================================
+    // AUTO-GENERATE SACCO NUMBER
+    // ============================================================
+    document.querySelector('input[name="full_name"]').addEventListener('blur', function() {
+        const saccoInput = document.querySelector('input[name="sacco_number"]');
+        if (saccoInput && !saccoInput.value) {
+            const name = this.value.trim();
+            if (name) {
+                const parts = name.split(' ');
+                let initials = '';
+                for (let i = 0; i < Math.min(parts.length, 3); i++) {
+                    if (parts[i].length > 0) {
+                        initials += parts[i][0].toUpperCase();
+                    }
+                }
+                const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                saccoInput.value = `KAR-${initials}${random}`;
+            }
+        }
+    });
+</script>
+
+{% endblock %}

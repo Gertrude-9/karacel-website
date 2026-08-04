@@ -1,0 +1,741 @@
+{% extends "admin/admin-base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Main Content -->
+<main class="admin-main-content">
+    <!-- App Bar -->
+    <div class="app-bar">
+        <div class="app-bar-left">
+            <h2 id="appBarTitle"><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+            <span id="appBarSubtitle">Karacel SACCO Administration Panel</span>
+        </div>
+        <div class="app-bar-right">
+            <div class="admin-profile">
+                <i class="fas fa-user-circle"></i>
+                <span>Administrator</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========== DASHBOARD PANEL ========== -->
+    <div id="dashboard-panel" class="content-panel active">
+        <div class="admin-stats">
+            <div class="stat-box">
+                <i class="fas fa-users"></i>
+                <h3>{{ total_members }}</h3>
+                <p>Total Members</p>
+            </div>
+
+            <div class="stat-box">
+                <i class="fas fa-piggy-bank"></i>
+                <h3>UGX {{ "{:,.0f}".format(total_savings) }}</h3>
+                <p>Total Savings</p>
+            </div>
+
+            <div class="stat-box">
+                <i class="fas fa-hand-holding-usd"></i>
+                <h3>{{ active_loans }}</h3>
+                <p>Active Loans</p>
+            </div>
+
+            <div class="stat-box">
+                <i class="fas fa-clock"></i>
+                <h3>{{ pending_loans }}</h3>
+                <p>Pending Loans</p>
+            </div> 
+        </div>
+      
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-bullhorn"></i> Quick Actions
+            </div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <a href="#" onclick="showPanel('members')" class="btn-primary"><i class="fas fa-users"></i> View Members</a>
+                <a href="#" onclick="showPanel('loan_applications')" class="btn-primary"><i class="fas fa-file-invoice"></i> Review Loans</a>
+                <a href="#" onclick="showPanel('reports')" class="btn-primary"><i class="fas fa-chart-line"></i> Generate Report</a>
+                <a href="#" onclick="showPanel('settings')" class="btn-primary"><i class="fas fa-cog"></i> Settings</a>
+            </div>
+        </div>
+
+        <!-- Recent Activities -->
+        <div class="action-card" style="margin-top: 16px;">
+            <div class="action-title">
+                <i class="fas fa-history"></i> Recent Activities
+            </div>
+            <div class="table-wrapper">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Member</th>
+                            <th>Activity</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if recent_activities %}
+                            {% for activity in recent_activities %}
+                            <tr>
+                                <td>{{ activity.created_at or activity.deposit_date }}</td>
+                                <td>{{ activity.full_name }}</td>
+                                <td>
+                                    {% if activity.type == 'deposit' %}
+                                        <span style="color: #4ade80;">Savings Deposit</span>
+                                    {% elif activity.type == 'repayment' %}
+                                        <span style="color: #00e0ff;">Loan Repayment</span>
+                                    {% else %}
+                                        {{ activity.type|title }}
+                                    {% endif %}
+                                </td>
+                                <td style="color: #4ade80;">UGX {{ "{:,.0f}".format(activity.amount) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                    No recent activities
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MEMBERS PANEL ========== -->
+    <div id="members-panel" class="content-panel">
+        <div class="action-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div class="action-title" style="margin-bottom:0;">
+                    <i class="fas fa-users"></i> All Members
+                </div>
+                <span style="color: rgba(255,255,255,0.3); font-size: 0.85rem;">
+                    Total: {{ members|length }} members
+                </span>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>SACCO No.</th>
+                            <th>Full Name</th>
+                            <th>Phone</th>
+                            <th>Savings (UGX)</th>
+                            <th>Active Loans</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if members %}
+                            {% for member in members %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td style="color:#f5c542; font-family:monospace;">
+                                    {{ member['sacco_number'] }}
+                                </td>
+                                <td><strong>{{ member['full_name'] }}</strong></td>
+                                <td>{{ member['phone'] or '-' }}</td>
+                                <td style="color:#4ade80;">
+                                    {{ "{:,.0f}".format(member['savings_balance'] or 0) }}
+                                </td>
+                                <td>{{ member.active_loans or 0 }}</td>
+                                <td>
+                                    {% if member['status'] == 'active' %}
+                                        <span class="badge success">Active</span>
+                                    {% elif member['status'] == 'pending' %}
+                                        <span class="badge warning">Pending</span>
+                                    {% else %}
+                                        <span class="badge danger">{{ member['status']|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-btns">
+                                    <button class="view-btn" onclick="viewMember('{{ member['id'] }}')" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                    No registered members found
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<!-- ========== LOAN APPLICATIONS PANEL ========== -->
+<div id="loan_applications-panel" class="content-panel">
+    <div class="admin-stats">
+        <div class="stat-box">
+            <i class="fas fa-clock"></i>
+            <h3>{{ pending_loans }}</h3>
+            <p>Pending (Treasurer Review)</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-check-circle"></i>
+            <h3>{{ approved_loans }}</h3>
+            <p>Awaiting Final Approval</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-check-double"></i>
+            <h3>{{ disbursed_loans }}</h3>
+            <p>Disbursed</p>
+        </div>
+        <div class="stat-box">
+            <i class="fas fa-times-circle"></i>
+            <h3>{{ rejected_loans }}</h3>
+            <p>Rejected</p>
+        </div>
+    </div>
+    
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-clipboard-check"></i> Loan Applications (Final Approval)
+        </div>
+        <div class="table-wrapper">
+            <table class="styled-table" id="loanApprovalsTable">
+                <thead>
+                    <tr>
+                        <th>Loan #</th>
+                        <th>Member</th>
+                        <th>Amount</th>
+                        <th>Savings (UGX)</th>
+                        <th>Guarantors</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if loan_applications %}
+                        {% for loan in loan_applications %}
+                        <tr>
+                            <td class="mono" style="color:#f5c542;">{{ loan.loan_number }}</td>
+                            <td><strong>{{ loan.full_name }}</strong></td>
+                            <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                            <td>{{ "{:,.0f}".format(loan.savings_balance or 0) }}</td>
+                            <td>
+                                {% if loan.total_guarantors == 0 %}
+                                    <span style="color: #4ade80; font-size: 0.85rem;">
+                                        <i class="fas fa-check-circle"></i> No Guarantors Required
+                                    </span>
+                                {% else %}
+                                    <span style="color: #4ade80;">{{ loan.accepted_guarantors }}</span>/
+                                    <span style="color: #f5c542;">{{ loan.total_guarantors }}</span>
+                                    {% if loan.pending_guarantors > 0 %}
+                                    <span style="color: #ff6b6b;">({{ loan.pending_guarantors }} pending)</span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if loan.status == 'pending' %}
+                                    <span class="badge warning">Pending (Treasurer Review)</span>
+                                {% elif loan.status == 'approved' %}
+                                    <span class="badge info">Awaiting Final Approval</span>
+                                {% elif loan.status == 'disbursed' %}
+                                    <span class="badge success">Disbursed</span>
+                                {% elif loan.status == 'rejected' %}
+                                    <span class="badge danger">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-btns">
+                                <button class="view-btn" onclick="viewLoan('{{ loan.id }}')" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                
+                                <!-- Only show action buttons for 'approved' status (Awaiting Final Approval) -->
+                                {% if loan.status == 'approved' %}
+                                    <button class="edit-btn" onclick="adminApproveLoan('{{ loan.id }}')" title="Final Approve" style="color:#4ade80;">
+                                        <i class="fas fa-check-double"></i>
+                                    </button>
+                                    <button class="delete-btn" onclick="adminRejectLoan('{{ loan.id }}')" title="Reject" style="color:#ff6b6b;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                {% elif loan.status == 'pending' %}
+                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
+                                        <i class="fas fa-clock"></i> Awaiting Treasurer
+                                    </span>
+                                {% elif loan.status == 'rejected' %}
+                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
+                                        <i class="fas fa-info-circle"></i> Rejected
+                                    </span>
+                                {% elif loan.status == 'disbursed' %}
+                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
+                                        <i class="fas fa-check"></i> Completed
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                No loan applications found
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+    <!-- ========== REPORTS PANEL ========== -->
+    <div id="reports-panel" class="content-panel">
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-chart-bar"></i> Generate Reports
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                <button class="btn-primary" onclick="generateReport('members')" style="justify-content:center;">
+                    <i class="fas fa-users"></i> Member Report
+                </button>
+                <button class="btn-primary" onclick="generateReport('financial')" style="justify-content:center;">
+                    <i class="fas fa-coins"></i> Financial Summary
+                </button>
+                <button class="btn-primary" onclick="generateReport('loans')" style="justify-content:center;">
+                    <i class="fas fa-hand-holding-usd"></i> Loan Portfolio
+                </button>
+                <button class="btn-primary" onclick="generateReport('savings')" style="justify-content:center;">
+                    <i class="fas fa-piggy-bank"></i> Savings Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== USERS PANEL ========== -->
+<div id="users-panel" class="content-panel">
+    <div class="action-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div class="action-title" style="margin-bottom:0;">
+                <i class="fas fa-users-cog"></i> Staff Users
+            </div>
+            <a href="{{ url_for('admin_register_user') }}" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Register New User
+            </a>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>SACCO No.</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in staff_users %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="mono" style="color:#f5c542;">{{ user.sacco_number }}</td>
+                        <td><strong>{{ user.full_name }}</strong></td>
+                        <td style="color: rgba(255,255,255,0.6);">{{ user.email }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if user.role == 'admin' %}danger
+                                {% elif user.role == 'chairperson' %}warning
+                                {% elif user.role == 'treasurer' %}success
+                                {% elif user.role == 'secretary' %}info
+                                {% elif user.role == 'publicity' %}primary
+                                {% endif %}">
+                                {{ user.role|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.status == 'active' %}
+                                <span class="badge success">Active</span>
+                            {% else %}
+                                <span class="badge danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-btns">
+                            <button class="view-btn" onclick="editUser('{{ user.id }}')" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="edit-btn" onclick="resetPassword('{{ user.id }}')" title="Reset Password" style="color:#f5c542;">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            {% if user.id != session.user_id %}
+                            <button class="delete-btn" onclick="deleteUser('{{ user.id }}', '{{ user.full_name }}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+    <!-- ========== SETTINGS PANEL ========== -->
+    <div id="settings-panel" class="content-panel">
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-cog"></i> System Settings
+            </div>
+            <div style="display:grid; gap:20px; max-width:600px;">
+                <div class="form-group">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
+                        <i class="fas fa-building"></i> SACCO Name
+                    </label>
+                    <input type="text" value="Karacel Association" 
+                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
+                        <i class="fas fa-percent"></i> Savings Interest Rate (%)
+                    </label>
+                    <input type="number" value="6.5" step="0.5"
+                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
+                        <i class="fas fa-percent"></i> Loan Interest Rate (%)
+                    </label>
+                    <input type="number" value="12" step="0.5"
+                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
+                        <i class="fas fa-percent"></i> Late Penalty Rate (%)
+                    </label>
+                    <input type="number" value="5" step="0.5"
+                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
+                        <i class="fas fa-clock"></i> Max Loan Tenure (Months)
+                    </label>
+                    <input type="number" value="24"
+                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+                </div>
+
+                <div style="color: rgba(255,255,255,0.3); font-size: 0.85rem; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid #f5c542;">
+                    <i class="fas fa-info-circle"></i> Settings are currently read-only. Contact the system administrator to make changes.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</main>
+
+<script>
+    // ============================================================
+    // PANEL NAVIGATION
+    // ============================================================
+    function showPanel(panelName) {
+        // Hide all panels
+        document.querySelectorAll(".content-panel").forEach(panel => {
+            panel.classList.remove("active");
+        });
+
+        // Show selected panel
+        const selectedPanel = document.getElementById(panelName + "-panel");
+        if (selectedPanel) {
+            selectedPanel.classList.add("active");
+        }
+
+        // Update nav items
+        document.querySelectorAll(".admin-nav-item").forEach(link => {
+            link.classList.remove("active");
+        });
+
+        const selectedLink = document.querySelector(
+            `.admin-nav-item[href="#${panelName}"]`
+        );
+        if (selectedLink) {
+            selectedLink.classList.add("active");
+        }
+
+        // Update app bar title
+        const title = document.getElementById("appBarTitle");
+        const subtitle = document.getElementById("appBarSubtitle");
+        const titles = {
+            dashboard: { icon: 'fa-tachometer-alt', title: 'Dashboard', subtitle: 'Karacel SACCO Administration Panel' },
+            members: { icon: 'fa-users', title: 'Members', subtitle: 'View all SACCO member records' },
+            loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications', subtitle: 'Review and process loan requests' },
+            reports: { icon: 'fa-chart-bar', title: 'Reports', subtitle: 'Generate and download reports' },
+            settings: { icon: 'fa-cog', title: 'Settings', subtitle: 'System configuration and preferences' }
+        };
+
+        const info = titles[panelName];
+        if (info && title) {
+            title.innerHTML = `<i class="fas ${info.icon}"></i> ${info.title}`;
+        }
+        if (info && subtitle) {
+            subtitle.textContent = info.subtitle;
+        }
+
+        // Update URL hash
+        window.location.hash = panelName;
+    }
+
+  
+
+function viewLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    window.location.href = '/admin/loan/view/' + loanId;
+}
+
+    // ============================================================
+    // VIEW MEMBER
+    // ============================================================
+    function viewMember(userId) {
+        if (!userId) {
+            alert('Error: Member ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/members/view/' + userId;
+    }
+
+    // ============================================================
+    // VIEW LOAN
+    // ============================================================
+    function viewLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        window.location.href = '/admin/loans/view/' + loanId;
+    }
+
+    // ============================================================
+    // APPROVE LOAN
+    // ============================================================
+    function approveLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        
+        if (confirm('✅ Approve this loan application?')) {
+            fetch('/admin/loans/approve/' + loanId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Loan approved successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    // ============================================================
+    // REJECT LOAN
+    // ============================================================
+    function rejectLoan(loanId) {
+        if (!loanId) {
+            alert('Error: Loan ID is missing.');
+            return;
+        }
+        
+        if (confirm('❌ Reject this loan application?')) {
+            fetch('/admin/loans/reject/' + loanId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Loan rejected successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('❌ Network error: ' + error.message);
+            });
+        }
+    }
+
+    // ============================================================
+    // GENERATE REPORT
+    // ============================================================
+    function generateReport(type) {
+        window.location.href = '/admin/reports/generate/' + type;
+    }
+
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
+    document.addEventListener("DOMContentLoaded", function () {
+        // Check URL hash for panel
+        const hash = window.location.hash.replace("#", "");
+        if (hash && ['dashboard', 'members', 'loan_applications', 'reports', 'settings'].includes(hash)) {
+            showPanel(hash);
+        }
+
+        // Handle nav item clicks
+        document.querySelectorAll(".admin-nav-item").forEach(link => {
+            link.addEventListener("click", function (e) {
+                const href = this.getAttribute("href");
+                if (href && href.startsWith("#")) {
+                    e.preventDefault();
+                    const panelName = href.replace("#", "");
+                    showPanel(panelName);
+                }
+            });
+        });
+    });
+
+// ============================================================
+// ADMIN FINAL APPROVE LOAN
+// ============================================================
+function adminApproveLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    
+    if (confirm('✅ FINAL APPROVAL: This will approve the loan for disbursement.\n\nThe member and treasurer will be notified.')) {
+        // Show loading state
+        const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan(${loanId})"]`);
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+        });
+        
+        fetch('/admin/loan/approve/' + loanId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ action: 'approve' })
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server error. Please check the logs.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error: ' + error.message);
+            console.error('Error details:', error);
+        })
+        .finally(() => {
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-check-double"></i>';
+                btn.disabled = false;
+            });
+        });
+    }
+}
+
+// ============================================================
+// ADMIN REJECT LOAN
+// ============================================================
+function adminRejectLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    
+    const reason = prompt('❌ Please provide a reason for rejecting this loan application:');
+    
+    if (reason === null) {
+        return;
+    }
+    
+    if (reason.trim() === '') {
+        alert('❌ Please provide a reason for rejection.');
+        return;
+    }
+    
+    if (confirm('❌ FINAL REJECT: This will permanently reject this loan application.\n\nReason: ' + reason)) {
+        const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan(${loanId})"]`);
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+        });
+        
+        fetch('/admin/loan/approve/' + loanId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                action: 'reject',
+                reason: reason.trim()
+            })
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server error. Please check the logs.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error: ' + error.message);
+            console.error('Error details:', error);
+        })
+        .finally(() => {
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-times"></i>';
+                btn.disabled = false;
+            });
+        });
+    }
+}
+
+// ============================================================
+// VIEW LOAN (Admin)
+// ============================================================
+
+</script>
+
+{% endblock %}

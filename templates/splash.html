@@ -2,63 +2,102 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>8Tech Bank</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karacel SACCO Association</title>
 
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
+    <!-- Google Fonts for better typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
-            background: url("{{ url_for('static', filename='images/banksplash.png') }}") no-repeat center center;
-
-            /* 🔥 75% WIDTH */
-            background-size: 75% auto;
-
-            background-color: #050c19;
-
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            font-family: Arial, sans-serif;
-        }
-                /* Dark overlay (makes text visible) */
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(5, 12, 25, 0.5);
-        }
-
-        /* Loading text */
-        .loading {
-            position: relative;
-            margin-bottom: 60px;
-            color: #00e0ff;
-            font-size: 14px;
-            letter-spacing: 3px;
-            animation: blink 1.5s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-    </style>
-
-    <!-- 🔥 AUTO REDIRECT -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='splash.css') }}">
     <script>
-        setTimeout(() => {
-            window.location.href = "/register";
-        }, 10000);
+        // Smooth percentage counter
+        document.addEventListener('DOMContentLoaded', function() {
+            const percentageEl = document.getElementById('percentage');
+            let startTime = Date.now();
+            const duration = 8000; // matches animation duration
+
+            function updatePercentage() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease out cubic for more natural feel
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const percent = Math.round(eased * 100);
+                if (percentageEl) {
+                    percentageEl.textContent = percent + '%';
+                }
+                if (progress < 1) {
+                    requestAnimationFrame(updatePercentage);
+                }
+            }
+
+            updatePercentage();
+
+            // Redirect after animation completes + small buffer
+            setTimeout(() => {
+                window.location.href = "/login";
+            }, 9000);
+        });
     </script>
 </head>
 
 <body>
 
-<div class="overlay"></div>
+    <!-- Floating particles background -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
 
-<div class="loading">
-    LOADING...
-</div>
+    <div class="container">
+        <div class="card">
+
+            <!-- Logo with animated rings -->
+            <div class="logo-wrapper">
+                <div class="logo-ring"></div>
+                <div class="logo-ring"></div>
+                <img 
+                    src="{{ url_for('static', filename='images/karacel-logo.png') }}" 
+                    alt="Karacel Association Logo" 
+                    class="logo"
+                >
+            </div>
+
+            <h1 class="title">Karacel Association</h1>
+            <p class="subtitle">SACCO • Since 2017</p>
+
+            <div class="divider"></div>
+
+            <!-- Loading status -->
+            <div class="loading-text">
+                <span>Initializing System</span>
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="loader-container">
+                <div class="loader-track">
+                    <div class="loader-fill"></div>
+                </div>
+                <div class="loader-percentage" id="percentage">0%</div>
+            </div>
+
+            <!-- Footer tagline -->
+            <div class="tagline">
+                <span>✦</span> &nbsp;Always There For You&nbsp; <span>✦</span>
+            </div>
+
+        </div>
+    </div>
 
 </body>
 </html>

@@ -3,137 +3,308 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - 8Tech Bank | Create Account</title>
+    <title>Karacel Association - Membership Registration</title>
 
-    <!-- Fonts + Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <link rel="stylesheet" href="{{ url_for('static', filename='registration.css') }}">
 </head>
+
 <body>
 
-<div class="register-wrapper">
-    <!-- Brand Header with Logo -->
-    <div class="brand-header">
-        <div class="logo-container">
-            <div class="logo-icon">
-                <i class="fas fa-microchip"></i>
-            </div>
-            <div class="logo-text">
-                <h1>8Tech Bank</h1>
-                <p>next-gen digital banking</p>
-            </div>
-        </div>
-        
+    <!-- Floating particles (same as splash screen) -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
     </div>
 
-    <!-- Register Card -->
-    <div class="register-card">
-        <div class="card-header">
-            <h2><i class="fas fa-user-plus"></i> Create Account</h2>
-            <p>Verify your bank account and setup online access</p>
+    <div class="container">
+        <div class="card">
+
+            <!-- Logo -->
+            <div class="logo-wrapper">
+                <img 
+                    src="{{ url_for('static', filename='images/karacel-logo.png') }}" 
+                    alt="Karacel Association Logo" 
+                    class="logo"
+                >
+            </div>
+
+            <h1 class="title">Karacel Association</h1>
+            <p class="subtitle">Membership Registration</p>
+
+            <div class="divider"></div>
+
+            <!-- Registration Form -->
+            <form id="registrationForm" onsubmit="return handleSubmit(event)">
+
+                <!-- Personal Details -->
+                <div style="margin-bottom: 24px;">
+                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.3); letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">
+                        <i class="fas fa-user" style="color:rgba(245,197,66,0.4); margin-right:8px;"></i>Personal Details
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-user"></i>Full Name <span class="required">*</span></label>
+                            <input type="text" name="fullName" placeholder="Enter your full name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-venus-mars"></i>Gender <span class="required">*</span></label>
+                            <select name="gender" required>
+                                <option value="">Select</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i>Date of Birth <span class="required">*</span></label>
+                            <input type="date" name="dob" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-id-card"></i>National ID <span class="required">*</span></label>
+                            <input type="text" name="nin" placeholder="e.g. CM123456789ABCD" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-phone"></i>Phone <span class="required">*</span></label>
+                            <input type="tel" name="phone" placeholder="e.g. 0772123456" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i>Email</label>
+                            <input type="email" name="email" placeholder="you@example.com">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-map-marker-alt"></i>Address <span class="required">*</span></label>
+                            <input type="text" name="address" placeholder="Enter your physical address" required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-briefcase"></i>Occupation <span class="required">*</span></label>
+                            <input type="text" name="occupation" placeholder="e.g. Teacher, Business Owner" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next of Kin -->
+                <div style="margin-bottom: 24px;">
+                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.3); letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">
+                        <i class="fas fa-users" style="color:rgba(245,197,66,0.4); margin-right:8px;"></i>Next of Kin
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-user-friends"></i>Full Name <span class="required">*</span></label>
+                            <input type="text" name="nextOfKinName" placeholder="Enter next of kin's full name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-handshake"></i>Relationship <span class="required">*</span></label>
+                            <select name="relationship" required>
+                                <option value="">Select</option>
+                                <option value="spouse">Spouse</option>
+                                <option value="parent">Parent</option>
+                                <option value="child">Child</option>
+                                <option value="sibling">Sibling</option>
+                                <option value="relative">Other Relative</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-phone-alt"></i>Phone <span class="required">*</span></label>
+                            <input type="tel" name="nextOfKinPhone" placeholder="e.g. 0772123456" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration Fee -->
+                <div style="margin-bottom: 24px;">
+                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.3); letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">
+                        <i class="fas fa-coins" style="color:rgba(245,197,66,0.4); margin-right:8px;"></i>Registration Fee
+                    </div>
+
+                    <div class="payment-summary">
+                        <div>
+                            <div class="label">Registration Fee</div>
+                            <div class="amount">UGX 20,000</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="label">Status</div>
+                            <span style="font-size:0.7rem; color:rgba(245,197,66,0.4);">Pending</span>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label><i class="fas fa-credit-card"></i>Payment Method <span class="required">*</span></label>
+                            <select name="paymentMethod" required>
+                                <option value="">Select</option>
+                                <option value="mobile_money">Mobile Money</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="cash">Cash (at SACCO office)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-hashtag"></i>Transaction Ref <span class="required">*</span></label>
+                            <input type="text" name="transactionRef" placeholder="Enter payment reference" required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-upload"></i>Upload Payment Proof <span class="required">*</span></label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" name="paymentProof" accept="image/*,.pdf" required>
+                                <div class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Drop receipt or <span class="file-name">browse</span></span>
+                                </div>
+                            </div>
+                            <span class="hint">Accepted: JPG, PNG, PDF (Max 5MB)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirmation -->
+                <div style="margin-bottom: 20px;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="confirmCheck" required>
+                        <label for="confirmCheck">
+                            I confirm that all information provided is true and accurate.
+                        </label>
+                    </div>
+
+                    <div class="checkbox-group" style="padding-top:0;">
+                        <input type="checkbox" id="termsCheck" required>
+                        <label for="termsCheck">
+                            I agree to the <a href="#">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a>.
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i>
+                    Submit Application
+                </button>
+
+            </form>
+
+            <!-- Success Message -->
+            <div class="success-message" id="successMessage">
+                <i class="fas fa-check-circle"></i>
+                <h3>Application Submitted!</h3>
+                <p>Thank you for applying to join Karacel Association.</p>
+                <button class="submit-btn" onclick="location.reload()">
+                    <i class="fas fa-undo"></i> New Application
+                </button>
+            </div>
+
+            <div class="footer-note">
+                Already a member? <a href="/login">Sign in</a>
+            </div>
+
         </div>
-
-        <form method="POST" class="register-form">
-            <!-- Account Verification -->
-            <div class="input-field">
-                <i class="fas fa-credit-card"></i>
-                <input type="text" name="account_number" placeholder="Bank Account Number" required>
-                <small>Enter the account number provided by the bank</small>
-            </div>
-
-            <div class="input-field">
-                <i class="fas fa-key"></i>
-                <input type="password" name="bank_pin" placeholder="Bank PIN (4-6 digits)" required>
-                <small>This confirms you own the bank account</small>
-            </div>
-
-            <!-- Personal Info -->
-            
-
-            <div class="input-field">
-                <i class="fas fa-user-tag"></i>
-                <input type="text" name="username" placeholder="Username (for login)" required>
-            </div>
-
-            <div class="input-field">
-                <i class="fas fa-envelope"></i>
-                <input type="email" name="email" placeholder="Email Address" required>
-            </div>
-
-
-            <div class="input-field">
-                <i class="fas fa-lock"></i>
-                <input type="password" name="password" placeholder="Create Password" required>
-                <small>Minimum 8 characters with letters and numbers</small>
-            </div>
-
-            <div class="input-field">
-                <i class="fas fa-lock"></i>
-                <input type="password" name="confirm_password" placeholder="Confirm Password" required>
-            </div>
-
-            <!-- Terms & Conditions -->
-            <div class="terms-section">
-                <input type="checkbox" id="terms" required>
-                <label for="terms">
-                    I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
-                </label>
-            </div>
-
-            <button type="submit" class="register-btn">
-                <i class="fas fa-user-check"></i> Create Account
-            </button>
-
-            {% if message %}
-                <div class="message-area success-msg">{{ message }}</div>
-            {% endif %}
-
-            {% if error %}
-                <div class="message-area error-msg">{{ error }}</div>
-            {% endif %}
-        </form>
-
-        <div class="divider">
-            <span>Already registered?</span>
-        </div>
-
-        <div class="login-section">
-            <p>
-                Already have an account?
-                <a href="/login" class="login-link">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </a>
-            </p>
-        </div>
-
-        
     </div>
 
-    <div class="footer-note">
-        <i class="fas fa-copyright"></i> 2026 8Tech Bank. All rights reserved. 
-        <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a>
-    </div>
-</div>
+    <script>
+        // File upload label update
+        document.querySelectorAll('.file-upload-wrapper input[type="file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const label = this.closest('.file-upload-wrapper').querySelector('.file-upload-label');
+                const fileNameSpan = label.querySelector('.file-name');
+                if (this.files && this.files.length > 0) {
+                    fileNameSpan.textContent = this.files[0].name;
+                    label.style.borderColor = 'rgba(245, 197, 66, 0.4)';
+                } else {
+                    fileNameSpan.textContent = 'browse';
+                    label.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                }
+            });
+        });
 
-<!-- Password Match Validation -->
-<script>
-    // Simple client-side password match validation
-    const password = document.querySelector('input[name="password"]');
-    const confirmPassword = document.querySelector('input[name="confirm_password"]');
-    
-    function validatePassword() {
-        if (password.value !== confirmPassword.value) {
-            confirmPassword.setCustomValidity("Passwords don't match");
-        } else {
-            confirmPassword.setCustomValidity('');
+        // Form submission
+        function handleSubmit(event) {
+            event.preventDefault();
+
+            const form = document.getElementById('registrationForm');
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value || field.value.trim() === '') {
+                    isValid = false;
+                    field.style.borderColor = 'rgba(255, 70, 70, 0.5)';
+                } else {
+                    field.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                }
+            });
+
+            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    isValid = false;
+                    cb.closest('.checkbox-group').style.border = '1px solid rgba(255,70,70,0.2)';
+                    cb.closest('.checkbox-group').style.borderRadius = '8px';
+                    cb.closest('.checkbox-group').style.padding = '8px 12px';
+                } else {
+                    cb.closest('.checkbox-group').style.border = 'none';
+                    cb.closest('.checkbox-group').style.padding = '8px 0';
+                }
+            });
+
+            if (!isValid) {
+                const firstError = form.querySelector('[style*="border-color: rgba(255, 70, 70"]');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return false;
+            }
+
+            // Show success
+            document.getElementById('registrationForm').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'block';
+
+            // Here you would send data to server
+            // const formData = new FormData(form);
+            // fetch('/register', { method: 'POST', body: formData });
+
+            return false;
         }
-    }
-    
-    password.addEventListener('change', validatePassword);
-    confirmPassword.addEventListener('keyup', validatePassword);
-</script>
+
+        // Clear error state on input
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', function() {
+                if (this.value && this.value.trim() !== '') {
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                }
+            });
+        });
+
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    this.closest('.checkbox-group').style.border = 'none';
+                    this.closest('.checkbox-group').style.padding = '8px 0';
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>

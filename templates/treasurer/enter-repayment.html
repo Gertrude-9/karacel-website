@@ -1,0 +1,157 @@
+{% extends "treasurer/treasurer-base.html" %}
+
+{% block title %}Enter Repayment{% endblock %}
+
+{% block content %}
+<div class="content-panel">
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-undo-alt"></i> Enter Loan Repayment
+        </div>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" style="margin: 16px 20px; padding: 12px 16px; border-radius: 8px; 
+                        {% if category == 'success' %}background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); color: #4ade80;
+                        {% elif category == 'danger' %}background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.2); color: #ff6b6b;
+                        {% elif category == 'info' %}background: rgba(0, 224, 255, 0.1); border: 1px solid rgba(0, 224, 255, 0.2); color: #00e0ff;
+                        {% else %}background: rgba(245, 197, 66, 0.1); border: 1px solid rgba(245, 197, 66, 0.2); color: #f5c542;{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="{{ url_for('treasurer_enter_repayment') }}" style="max-width: 600px; padding: 20px;">
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Select Loan *</label>
+                <select name="loan_id" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="">-- Select Loan --</option>
+                    {% for loan in active_loans %}
+                    <option value="{{ loan.id }}">
+                        {{ loan.loan_number }} - {{ loan.full_name }} 
+                        (Balance: UGX {{ "{:,.0f}".format(loan.current_balance or loan.amount) }})
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not active_loans %}
+                <div style="margin-top: 8px; color: rgba(255,255,255,0.3); font-size: 0.85rem;">
+                    <i class="fas fa-info-circle"></i> No active loans available for repayment.
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Amount Paid (UGX) *</label>
+                <input type="number" step="0.01" name="amount" class="form-control" required placeholder="Enter amount" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Payment Method</label>
+                <select name="payment_method" class="form-control" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="cash">💵 Cash</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="mobile_money">📱 Mobile Money</option>
+                    <option value="cheque">📄 Cheque</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Transaction Reference</label>
+                <input type="text" name="transaction_ref" class="form-control" placeholder="Optional reference number" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+            </div>
+            
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Notes</label>
+                <textarea name="notes" class="form-control" placeholder="Optional notes" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; min-height:60px;"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button type="submit" class="btn-primary" style="padding:12px 24px; background:#f5c542; color:#0a0a14; border:none; border-radius:8px; font-weight:600; cursor:pointer; flex:1; min-width:150px;">
+                    <i class="fas fa-save"></i> Record Repayment
+                </button>
+                <a href="{{ url_for('treasurer_dashboard') }}" class="btn-secondary" style="padding:12px 24px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:8px; text-decoration:none; font-weight:600; cursor:pointer; flex:1; min-width:150px; text-align:center;">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .content-panel {
+        padding: 24px 32px 40px;
+        display: block;
+    }
+    
+    .action-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .action-title {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+    }
+    
+    .action-title i {
+        color: #f5c542;
+    }
+    
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #f5c542 !important;
+        box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.1);
+    }
+    
+    .alert {
+        margin: 16px 20px;
+        padding: 12px 16px;
+        border-radius: 8px;
+    }
+    
+    .btn-primary:hover {
+        background: #d4a820 !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: rgba(255,255,255,0.1) !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    
+    /* Animation for alerts */
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .alert {
+        animation: slideDown 0.3s ease;
+    }
+</style>
+{% endblock %}
