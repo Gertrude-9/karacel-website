@@ -461,12 +461,14 @@ def admin_dashboard():
         WHERE status = 'completed'
     """).fetchone()[0]
 
+    # Fixed: Added pending_guarantors count to loan_applications
     loan_applications = conn.execute("""
         SELECT 
             l.*, 
             u.full_name, 
             u.savings_balance,
-            COALESCE((SELECT COUNT(*) FROM loan_guarantors WHERE loan_id = l.id AND status = 'active'), 0) as total_guarantors
+            COALESCE((SELECT COUNT(*) FROM loan_guarantors WHERE loan_id = l.id AND status = 'active'), 0) as total_guarantors,
+            COALESCE((SELECT COUNT(*) FROM loan_guarantors WHERE loan_id = l.id AND status = 'pending'), 0) as pending_guarantors
         FROM loans l
         JOIN users u ON l.user_id = u.id
         ORDER BY 
@@ -765,7 +767,7 @@ def treasurer_view_loan(loan_id):
 
 
 # ============================================
-# TREASURER - APPROVE/REJECT LOAN - FIXED
+# TREASURER - APPROVE/REJECT LOAN (1-MONTH LOAN)
 # ============================================
 @app.route("/treasurer/loan/approve/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
@@ -834,29 +836,58 @@ def treasurer_approve_loan(loan_id):
                 'message': f'❌ Member needs at least 10% savings (UGX {required_savings:,.0f}). Current savings: UGX {loan["savings_balance"]:,.0f}'
             }), 400
         
-        # Calculate current balance
+        # ============================================
+        # 1-MONTH LOAN APPROVAL - SET START AND END DATES
+        # ============================================
+        from datetime import datetime, timedelta
+        
+        approval_date = datetime.now()
+        start_date = approval_date.strftime('%Y-%m-%d')
+        
+        # End date is exactly 30 days from approval date
+        # If approved on Aug 6, due date is Sep 5
+        end_date = approval_date + timedelta(days=30)
+        end_date_str = end_date.strftime('%Y-%m-%d')
+        
+        # Calculate current balance (total due including interest)
         current_balance = loan['total_repayment'] or loan['amount']
         
-        # Approve the loan
+        # Approve the loan with start and end dates
         db.execute("""
             UPDATE loans 
             SET status = 'approved', 
                 approved_date = ?,
+                loan_start_date = ?,
+                loan_end_date = ?,
+                due_date = ?,
                 current_balance = ?,
-                last_interest_date = ?
+                last_interest_date = ?,
+                next_interest_date = ?
             WHERE id = ?
         """, (
-            datetime.now().strftime('%Y-%m-%d'),
+            start_date,  # approved_date
+            start_date,  # loan_start_date (starts from approval date)
+            end_date_str,  # loan_end_date (30 days later)
+            end_date_str,  # due_date (same as end date)
             current_balance,
-            datetime.now().strftime('%Y-%m-%d'),
+            start_date,  # last_interest_date
+            end_date_str,  # next_interest_date (due date)
             loan_id
         ))
         db.commit()
         db.close()
         
+        # Format dates for response
+        from datetime import datetime
+        start_formatted = datetime.strptime(start_date, '%Y-%m-%d').strftime('%d %B %Y')
+        end_formatted = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%d %B %Y')
+        
         return jsonify({
             'success': True, 
-            'message': '✅ Loan approved successfully! Awaiting final disbursement.'
+            'message': f'✅ Loan approved successfully! Loan period: {start_formatted} to {end_formatted} (30 days)',
+            'loan_start_date': start_date,
+            'loan_end_date': end_date_str,
+            'due_date': end_date_str
         })
         
     except sqlite3.Error as e:
@@ -868,9 +899,8 @@ def treasurer_approve_loan(loan_id):
         db.close()
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-
-# ============================================
-# TREASURER - DISBURSE LOAN - FIXED
+# # ============================================
+# TREASURER - DISBURSE LOAN (1-MONTH LOAN)
 # ============================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
@@ -881,7 +911,13 @@ def treasurer_disburse_loan(loan_id):
     db.row_factory = sqlite3.Row
     
     try:
-        loan = db.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
+        # Get loan with user details
+        loan = db.execute("""
+            SELECT l.*, u.full_name, u.savings_balance
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.id = ?
+        """, (loan_id,)).fetchone()
         
         if not loan:
             db.close()
@@ -891,22 +927,61 @@ def treasurer_disburse_loan(loan_id):
             db.close()
             return jsonify({'success': False, 'message': f'Loan must be approved first. Current status: {loan["status"]}'}), 400
         
-        # Disburse the loan
+        # ============================================
+        # 1-MONTH LOAN DISBURSEMENT - SET START AND END DATES
+        # ============================================
+        from datetime import datetime, timedelta
+        
+        disbursement_date = datetime.now()
+        start_date = disbursement_date.strftime('%Y-%m-%d')
+        
+        # End date is exactly 30 days from disbursement date
+        # If disbursed on Aug 6, due date is Sep 5
+        end_date = disbursement_date + timedelta(days=30)
+        end_date_str = end_date.strftime('%Y-%m-%d')
+        
+        # Calculate current balance (total due including interest)
+        current_balance = loan['total_repayment'] or loan['amount']
+        
+        # Disburse the loan with start and end dates
         db.execute("""
             UPDATE loans 
             SET status = 'disbursed',
-                disbursed_date = ?
+                disbursement_date = ?,
+                loan_start_date = ?,
+                loan_end_date = ?,
+                due_date = ?,
+                current_balance = ?,
+                last_interest_date = ?,
+                next_interest_date = ?,
+                last_payment_date = NULL,
+                last_payment_amount = NULL
             WHERE id = ?
         """, (
-            datetime.now().strftime('%Y-%m-%d'),
+            start_date,          # disbursement_date
+            start_date,          # loan_start_date (starts from disbursement date)
+            end_date_str,        # loan_end_date (30 days later)
+            end_date_str,        # due_date (same as end date)
+            current_balance,     # current_balance (total due)
+            start_date,          # last_interest_date
+            end_date_str,        # next_interest_date (due date)
             loan_id
         ))
         db.commit()
         db.close()
         
+        # Format dates for response
+        from datetime import datetime
+        start_formatted = datetime.strptime(start_date, '%Y-%m-%d').strftime('%d %B %Y')
+        end_formatted = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%d %B %Y')
+        
         return jsonify({
             'success': True,
-            'message': '💰 Loan disbursed successfully!'
+            'message': f'💰 Loan disbursed successfully! Loan period: {start_formatted} to {end_formatted} (30 days)',
+            'loan_start_date': start_date,
+            'loan_end_date': end_date_str,
+            'due_date': end_date_str,
+            'current_balance': current_balance
         })
         
     except sqlite3.Error as e:
@@ -1052,7 +1127,7 @@ def treasurer_record_payment():
 
 
 # ============================================
-# TREASURER - ENTER REPAYMENT (Form POST)
+# TREASURER - ENTER REPAYMENT (1-Month Loan)
 # ============================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
@@ -1065,12 +1140,13 @@ def treasurer_enter_repayment():
         db = get_db()
         db.row_factory = sqlite3.Row
         
-        # Get active loans for the dropdown
+        # Get active loans for the dropdown (1-month loans)
         active_loans = db.execute("""
             SELECT 
                 l.*,
                 u.full_name,
-                u.sacco_number
+                u.sacco_number,
+                u.phone
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.status IN ('approved', 'disbursed', 'active')
@@ -1097,7 +1173,11 @@ def treasurer_enter_repayment():
         
         # Get loan details
         loan = db.execute("""
-            SELECT l.*, u.id as member_id, u.full_name, u.sacco_number
+            SELECT 
+                l.*, 
+                u.id as member_id, 
+                u.full_name, 
+                u.sacco_number
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.id = ?
@@ -1116,40 +1196,86 @@ def treasurer_enter_repayment():
             flash('Loan is already fully paid', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Get current balance
+        # Get current balance (total due including interest)
         current_balance = float(loan['current_balance'] if loan['current_balance'] is not None else loan['amount'] or 0)
         
+        # For 1-month loan, check if payment exceeds balance
         if amount > current_balance:
             flash(f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
+        
+        # Calculate payment allocation
+        # For 1-month loan: Interest is already included in current_balance
+        # Payment goes to reduce the balance (interest first, then principal)
+        interest_paid = 0
+        principal_paid = 0
+        
+        # Get original principal
+        original_balance = float(loan['original_balance'] or loan['amount'] or 0)
+        total_interest = float(loan['interest_amount'] or 0)
+        
+        # Calculate how much interest is remaining
+        interest_remaining = total_interest - float(loan['interest_paid'] or 0)
+        
+        if amount >= interest_remaining:
+            interest_paid = interest_remaining
+            principal_paid = amount - interest_remaining
+        else:
+            interest_paid = amount
+            principal_paid = 0
+        
+        # Calculate new balance
+        new_balance = current_balance - amount
+        if new_balance < 0:
+            new_balance = 0
         
         # Start transaction
         db.execute("BEGIN TRANSACTION")
         
         # Insert repayment
-        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
         db.execute("""
             INSERT INTO repayments (
-                loan_id, user_id, amount, payment_date, 
-                payment_method, transaction_ref, status
+                loan_id, user_id, amount, interest_paid, principal_paid,
+                payment_date, payment_method, transaction_ref, notes,
+                balance_after, status
             )
-            VALUES (?, ?, ?, ?, ?, ?, 'completed')
-        """, (loan_id, loan['member_id'], amount, current_date, payment_method, transaction_ref))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed')
+        """, (
+            loan_id, 
+            loan['member_id'], 
+            amount, 
+            interest_paid, 
+            principal_paid,
+            current_datetime, 
+            payment_method, 
+            transaction_ref,
+            notes,
+            new_balance
+        ))
         
         # Update loan
-        new_balance = current_balance - amount
-        
         if new_balance <= 0:
             # Loan fully paid
             db.execute("""
                 UPDATE loans 
                 SET current_balance = 0,
                     status = 'completed',
-                    completed_date = ?,
+                    completion_date = ?,
                     last_payment_date = ?,
-                    last_payment_amount = ?
+                    last_payment_amount = ?,
+                    interest_paid = COALESCE(interest_paid, 0) + ?,
+                    principal_paid = COALESCE(principal_paid, 0) + ?
                 WHERE id = ?
-            """, (current_date, current_date, amount, loan_id))
+            """, (
+                current_datetime,
+                current_datetime,
+                amount,
+                interest_paid,
+                principal_paid,
+                loan_id
+            ))
             db.commit()
             db.close()
             flash(f'✅ Loan fully repaid! UGX {amount:,.0f} paid. Status: COMPLETED', 'success')
@@ -1160,14 +1286,23 @@ def treasurer_enter_repayment():
                 SET current_balance = ?,
                     status = 'active',
                     last_payment_date = ?,
-                    last_payment_amount = ?
+                    last_payment_amount = ?,
+                    interest_paid = COALESCE(interest_paid, 0) + ?,
+                    principal_paid = COALESCE(principal_paid, 0) + ?
                 WHERE id = ?
-            """, (new_balance, current_date, amount, loan_id))
+            """, (
+                new_balance,
+                current_datetime,
+                amount,
+                interest_paid,
+                principal_paid,
+                loan_id
+            ))
             db.commit()
             db.close()
-            next_payment = new_balance * 0.05
             flash(f'✅ Payment of UGX {amount:,.0f} recorded successfully!', 'success')
-            flash(f'📊 Remaining balance: UGX {new_balance:,.0f} | Next payment: UGX {next_payment:,.0f}', 'info')
+            flash(f'📊 Interest paid: UGX {interest_paid:,.0f} | Principal paid: UGX {principal_paid:,.0f}', 'info')
+            flash(f'💰 Remaining balance: UGX {new_balance:,.0f}', 'info')
         
         return redirect(url_for('treasurer_dashboard'))
         
@@ -1428,9 +1563,8 @@ def member_dashboard():
         user=user
     )
 
-
 # ============================================
-# MEMBER LOAN APPLICATION
+# MEMBER LOAN APPLICATION (1-MONTH LOAN)
 # ============================================
 @app.route("/member/apply-loan", methods=["GET", "POST"])
 def member_apply_loan():
@@ -1451,11 +1585,16 @@ def member_apply_loan():
         
         db.close()
         
-        # Get current date/time
-        from datetime import datetime
+        # Get current date/time and calculate due date (30 days from now)
+        from datetime import datetime, timedelta
         now = datetime.now()
         current_year = now.year
         current_date = now.strftime('%d %B %Y')
+        
+        # Calculate due date (30 days from today)
+        due_date = now + timedelta(days=30)
+        due_date_formatted = due_date.strftime('%d %B %Y')
+        due_date_iso = due_date.strftime('%Y-%m-%d')
         
         return render_template(
             "member/apply-loan.html", 
@@ -1464,8 +1603,11 @@ def member_apply_loan():
             max_loan_amount=10000000,
             loan_interest_rate=12,
             current_year=current_year,
-            now=now,  # Pass now for template use
-            current_date=current_date  # Pass formatted date
+            now=now,
+            current_date=current_date,
+            due_date=due_date,
+            due_date_formatted=due_date_formatted,
+            due_date_iso=due_date_iso
         )
     
     # POST - Submit loan application
@@ -1474,7 +1616,7 @@ def member_apply_loan():
             data = request.get_json()
             loan_amount = float(data.get('loan_amount'))
             purpose = data.get('purpose')
-            repayment_plan = data.get('repayment_plan')
+            repayment_plan = data.get('repayment_plan', 'monthly')
             
             g1_name = data.get('guarantor1_name', '')
             g1_phone = data.get('guarantor1_phone', '')
@@ -1488,7 +1630,7 @@ def member_apply_loan():
         else:
             loan_amount = float(request.form.get('loan_amount'))
             purpose = request.form.get('purpose')
-            repayment_plan = request.form.get('repayment_plan')
+            repayment_plan = request.form.get('repayment_plan', 'monthly')
             
             g1_name = request.form.get('guarantor1_name', '')
             g1_phone = request.form.get('guarantor1_phone', '')
@@ -1506,39 +1648,82 @@ def member_apply_loan():
             flash('Loan amount must be between UGX 10,000 and UGX 10,000,000', 'danger')
             return redirect(url_for('member_apply_loan'))
         
-        # Calculate interest with December cutoff
-        from datetime import datetime
-        application_date = datetime.now().strftime('%Y-%m-%d')
-        start_month = get_start_month(application_date)
-        remaining_months = 12 - start_month + 1
+        # ============================================
+        # 1-MONTH LOAN CALCULATION
+        # ============================================
+        from datetime import datetime, timedelta
+        import calendar
         
-        interest_rate = get_interest_rate(loan_amount) / 100
+        application_date = datetime.now()
         
-        total_with_interest = loan_amount
-        for _ in range(remaining_months):
-            total_with_interest += total_with_interest * interest_rate
+        # Get monthly interest rate based on loan amount
+        # These are MONTHLY rates (5%, 3%, 2%, 1%)
+        def get_loan_interest_rate(amount):
+            if amount >= 10000 and amount <= 1999999:
+                return 5  # 5% monthly
+            elif amount >= 2000000 and amount <= 4999999:
+                return 3  # 3% monthly
+            elif amount >= 5000000 and amount <= 9999999:
+                return 2  # 2% monthly
+            elif amount >= 10000000:
+                return 1  # 1% monthly
+            return 0
         
-        monthly_installment = total_with_interest / remaining_months if remaining_months > 0 else loan_amount / 3
-        interest_amount = total_with_interest - loan_amount
-        total_repayment = total_with_interest
+        monthly_rate_percent = get_loan_interest_rate(loan_amount)
+        monthly_rate = monthly_rate_percent / 100  # e.g., 5% = 0.05
         
+        # Calculate interest for 1 month
+        interest_amount = loan_amount * monthly_rate
+        total_repayment = loan_amount + interest_amount
+        
+        # Due date is exactly 1 month from application date
+        # If approved on Aug 5, due date is Sep 5
+        due_date = application_date + timedelta(days=30)
+        due_date_str = due_date.strftime('%Y-%m-%d')
+        
+        # Generate loan reference
         loan_ref = generate_loan_reference()
         
+        # Insert loan into database
         cursor = db.cursor()
         cursor.execute("""
             INSERT INTO loans (
                 loan_number, user_id, amount, interest_rate, interest_amount,
                 total_repayment, monthly_installment, tenure, purpose,
                 repayment_plan, status, application_date,
-                current_balance, last_interest_date,
-                start_month, end_month
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                current_balance, last_interest_date, next_interest_date,
+                start_month, end_month, total_interest_accrued,
+                principal_paid, interest_paid, months_paid,
+                original_balance, total_interest_calculated, due_date,
+                loan_start_date, loan_end_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            loan_ref, user_id, loan_amount, interest_rate * 100, interest_amount,
-            total_repayment, monthly_installment, remaining_months, purpose,
-            repayment_plan, 'pending', application_date,
-            total_repayment, application_date,
-            start_month, 12
+            loan_ref, 
+            user_id, 
+            loan_amount, 
+            monthly_rate_percent,  # Store as percentage (5, 3, 2, 1)
+            interest_amount,
+            total_repayment, 
+            interest_amount,  # monthly_installment is interest for 1-month loan
+            1,  # tenure is 1 month
+            purpose,
+            repayment_plan, 
+            'pending', 
+            application_date.strftime('%Y-%m-%d'),
+            total_repayment,  # current_balance = total due
+            application_date.strftime('%Y-%m-%d'),  # last_interest_date
+            due_date_str,  # next_interest_date (due date)
+            application_date.month, 
+            due_date.month,  # end_month is the month of due date
+            0,  # total_interest_accrued
+            0,  # principal_paid
+            0,  # interest_paid
+            0,  # months_paid
+            loan_amount,  # original_balance (principal only)
+            interest_amount,  # total_interest_calculated
+            due_date_str,  # due_date
+            application_date.strftime('%Y-%m-%d'),  # loan_start_date
+            due_date_str  # loan_end_date
         ))
         
         loan_id = cursor.lastrowid
@@ -1602,10 +1787,16 @@ def member_apply_loan():
                 'message': success_message,
                 'loan_number': loan_ref,
                 'loan_id': loan_id,
-                'remaining_months': remaining_months,
-                'monthly_installment': monthly_installment,
+                'tenure': 1,
+                'monthly_installment': interest_amount,
                 'total_repayment': total_repayment,
-                'guarantors_required': guarantors_required
+                'total_interest': interest_amount,
+                'guarantors_required': guarantors_required,
+                'monthly_rate': monthly_rate,
+                'repayment_plan': repayment_plan,
+                'due_date': due_date_str,
+                'loan_start_date': application_date.strftime('%Y-%m-%d'),
+                'loan_end_date': due_date_str
             })
         
         flash(success_message, 'success')

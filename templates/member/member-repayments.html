@@ -3,7 +3,7 @@
 {% block title %}Karacel SACCO | My Repayments{% endblock %}
 
 {% block page_title %}My Repayments{% endblock %}
-{% block page_subtitle %}View your loan repayment history{% endblock %}
+{% block page_subtitle %}View your loan repayment history with interest breakdown{% endblock %}
 
 {% block content %}
 <div class="history-section">
@@ -46,27 +46,55 @@
                                             {% else %}#00e0ff{% endif %}; font-size: 0.5rem;"></i>
                                         {{ loan.status|title }}
                                     </span>
+                                    <span style="margin-left: 12px; color: #f5c542;">
+                                        <i class="fas fa-percent"></i> {{ loan.interest_rate or 0 }}% annual
+                                    </span>
                                 </div>
                             </div>
                             <div style="text-align: right;">
                                 <div style="color: #f5c542; font-weight: 600;">
                                     UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}
                                 </div>
-                                <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Loan</div>
+                                <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Original Principal</div>
                             </div>
                         </div>
 
-                        <!-- Balance Summary -->
+                        <!-- Balance Summary with Interest -->
                         {% set total_paid = 0 %}
+                        {% set total_interest_paid = 0 %}
+                        {% set total_principal_paid = 0 %}
                         {% for repayment in loan_repayments %}
                             {% set total_paid = total_paid + repayment.amount %}
+                            {% set total_interest_paid = total_interest_paid + (repayment.interest_paid or 0) %}
+                            {% set total_principal_paid = total_principal_paid + (repayment.principal_paid or 0) %}
                         {% endfor %}
+                        
                         {% set remaining = (loan.current_balance or loan.amount or 0) %}
+                        {% set interest_accrued = loan.total_interest_accrued or 0 %}
+                        {% set total_interest = loan.interest_amount or 0 %}
                         
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
                             <div>
-                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Original Amount</div>
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Original Principal</div>
                                 <div style="color: #f5c542; font-weight: 600; font-size: 0.9rem;">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
+                            </div>
+                            <div>
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Total Interest Accrued</div>
+                                <div style="color: #ff6b6b; font-weight: 600; font-size: 0.9rem;">
+                                    UGX {{ "{:,.0f}".format(interest_accrued) }}
+                                </div>
+                            </div>
+                            <div>
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Interest Paid</div>
+                                <div style="color: #ff6b6b; font-weight: 600; font-size: 0.9rem;">
+                                    UGX {{ "{:,.0f}".format(total_interest_paid) }}
+                                </div>
+                            </div>
+                            <div>
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Principal Paid</div>
+                                <div style="color: #00e0ff; font-weight: 600; font-size: 0.9rem;">
+                                    UGX {{ "{:,.0f}".format(total_principal_paid) }}
+                                </div>
                             </div>
                             <div>
                                 <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Total Paid</div>
@@ -75,23 +103,42 @@
                                 </div>
                             </div>
                             <div>
-                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Remaining Balance</div>
-                                <div style="color: {% if remaining <= 0 %}#4ade80{% else %}#ff6b6b{% endif %}; font-weight: 600; font-size: 0.9rem;">
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Current Balance</div>
+                                <div style="color: {% if remaining <= 0 %}#4ade80{% else %}#f5c542{% endif %}; font-weight: 600; font-size: 0.9rem;">
                                     UGX {{ "{:,.0f}".format(remaining) }}
                                 </div>
                             </div>
-                            <div>
-                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Interest Rate</div>
-                                <div style="color: #00e0ff; font-weight: 600; font-size: 0.9rem;">{{ loan.interest_rate or 0 }}%</div>
-                            </div>
                             {% if loan.status == 'active' and remaining > 0 %}
-                            <div>
-                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Suggested Next Payment</div>
-                                <div style="color: #f5c542; font-weight: 600; font-size: 0.9rem;">
-                                    UGX {{ "{:,.0f}".format(remaining * 0.05) }}
+                            <div style="grid-column: span 2;">
+                                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">Monthly Interest on Current Balance</div>
+                                {% set monthly_rate = (loan.interest_rate or 0) / 100 %}
+                                {% set monthly_interest = remaining * monthly_rate %}
+                                <div style="color: #ff6b6b; font-weight: 600; font-size: 0.9rem;">
+                                    UGX {{ "{:,.0f}".format(monthly_interest) }} 
+                                    <span style="font-size: 0.7rem; color: rgba(255,255,255,0.3);">(will be added to balance monthly)</span>
                                 </div>
                             </div>
                             {% endif %}
+                        </div>
+
+                        <!-- Interest Info Box -->
+                        <div style="margin-bottom: 12px; padding: 10px 14px; background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.1); border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-info-circle" style="color: #ff6b6b;"></i>
+                                    <span style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">
+                                        <strong style="color: #ff6b6b;">Interest Note:</strong> 
+                                        Interest is calculated monthly on the current balance and added to the principal. 
+                                        Payments are applied to <strong style="color: #ff6b6b;">interest first</strong>, then principal.
+                                    </span>
+                                </div>
+                                {% if loan.status == 'active' and remaining > 0 %}
+                                <a href="{{ url_for('member_apply_repayment', loan_id=loan.id) }}" 
+                                   style="background: #f5c542; color: #0a0a14; padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">
+                                    <i class="fas fa-money-bill-wave"></i> Make Payment
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- Repayment History Table -->
@@ -102,33 +149,41 @@
                                         <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">#</th>
                                         <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Date</th>
                                         <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Amount Paid</th>
-                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Method</th>
-                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Reference</th>
+                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Interest Paid</th>
+                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Principal Paid</th>
                                         <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Balance After</th>
-                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Status</th>
+                                        <th style="padding: 8px 10px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Method</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% if loan_repayments %}
                                         {% set running_balance = loan.amount %}
                                         {% for repayment in loan_repayments|sort(attribute='payment_date') %}
-                                            {% set running_balance = running_balance - repayment.amount %}
+                                            {% set running_balance = running_balance - (repayment.principal_paid or 0) %}
                                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                                                 <td style="padding: 8px 10px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
                                                 <td style="padding: 8px 10px; color: rgba(255,255,255,0.7);">{{ repayment.payment_date }}</td>
                                                 <td style="padding: 8px 10px; color: #4ade80; font-weight: 500;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
-                                                <td style="padding: 8px 10px; color: rgba(255,255,255,0.5);">{{ repayment.payment_method|capitalize or 'N/A' }}</td>
-                                                <td style="padding: 8px 10px; color: rgba(255,255,255,0.5); font-size: 0.75rem;">{{ repayment.transaction_ref or '-' }}</td>
+                                                <td style="padding: 8px 10px; color: #ff6b6b; font-weight: 500;">
+                                                    {% if repayment.interest_paid and repayment.interest_paid > 0 %}
+                                                        UGX {{ "{:,.0f}".format(repayment.interest_paid) }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td style="padding: 8px 10px; color: #00e0ff; font-weight: 500;">
+                                                    {% if repayment.principal_paid and repayment.principal_paid > 0 %}
+                                                        UGX {{ "{:,.0f}".format(repayment.principal_paid) }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
                                                 <td style="padding: 8px 10px; color: 
                                                     {% if running_balance <= 0 %}#4ade80
                                                     {% else %}#f5c542{% endif %}; font-weight: 500;">
                                                     UGX {{ "{:,.0f}".format(running_balance) }}
                                                 </td>
-                                                <td style="padding: 8px 10px;">
-                                                    <span style="background: rgba(74,222,128,0.12); color: #4ade80; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; font-weight: 500;">
-                                                        {{ repayment.status|upper }}
-                                                    </span>
-                                                </td>
+                                                <td style="padding: 8px 10px; color: rgba(255,255,255,0.5);">{{ repayment.payment_method|capitalize or 'N/A' }}</td>
                                             </tr>
                                         {% endfor %}
                                     {% else %}
@@ -139,13 +194,18 @@
                                         </tr>
                                     {% endif %}
                                     <!-- Summary Row -->
-                                    <tr style="border-top: 2px solid rgba(255,255,255,0.05);">
-                                        <td colspan="2" style="padding: 8px 10px; color: rgba(255,255,255,0.5); font-weight: 600;">Total Paid</td>
+                                    <tr style="border-top: 2px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
+                                        <td colspan="2" style="padding: 8px 10px; color: rgba(255,255,255,0.5); font-weight: 600;">Totals</td>
                                         <td style="padding: 8px 10px; color: #4ade80; font-weight: 600;">
                                             UGX {{ "{:,.0f}".format(total_paid) }}
                                         </td>
-                                        <td colspan="2" style="padding: 8px 10px; color: rgba(255,255,255,0.5); font-weight: 600;">Remaining</td>
-                                        <td style="padding: 8px 10px; color: {% if remaining <= 0 %}#4ade80{% else %}#ff6b6b{% endif %}; font-weight: 600;">
+                                        <td style="padding: 8px 10px; color: #ff6b6b; font-weight: 600;">
+                                            UGX {{ "{:,.0f}".format(total_interest_paid) }}
+                                        </td>
+                                        <td style="padding: 8px 10px; color: #00e0ff; font-weight: 600;">
+                                            UGX {{ "{:,.0f}".format(total_principal_paid) }}
+                                        </td>
+                                        <td style="padding: 8px 10px; color: {% if remaining <= 0 %}#4ade80{% else %}#f5c542{% endif %}; font-weight: 600;">
                                             UGX {{ "{:,.0f}".format(remaining) }}
                                         </td>
                                         <td></td>
@@ -155,16 +215,32 @@
                         </div>
 
                         <!-- Payment Progress Bar -->
-                        {% set percent = (total_paid / loan.amount * 100) if loan.amount and loan.amount > 0 else 0 %}
+                        {% set percent = ((loan.amount - remaining) / loan.amount * 100) if loan.amount and loan.amount > 0 else 0 %}
                         <div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
                             <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 4px;">
-                                <span>Payment Progress</span>
-                                <span>{{ "%.1f"|format(percent) }}% Paid</span>
+                                <span>Repayment Progress</span>
+                                <span>{{ "%.1f"|format(percent) }}% of principal paid</span>
                             </div>
                             <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
                                 <div style="height: 100%; width: {{ "%.1f"|format(percent) }}%; background: linear-gradient(90deg, #4ade80, #00ff88); border-radius: 2px; transition: width 0.5s ease;"></div>
                             </div>
                         </div>
+
+                        <!-- Interest Accrual Timeline -->
+                        {% if loan_repayments and loan.status == 'active' %}
+                        <div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,107,107,0.03); border-radius: 6px; border-left: 2px solid #ff6b6b;">
+                            <div style="font-size: 0.7rem; color: rgba(255,255,255,0.3);">
+                                <i class="fas fa-clock"></i> 
+                                <strong style="color: #ff6b6b;">Interest Timeline:</strong> 
+                                Interest is added to your balance at the end of each month. 
+                                {% if remaining > 0 %}
+                                Next interest will be calculated on <strong style="color: #f5c542;">UGX {{ "{:,.0f}".format(remaining) }}</strong> at {{ loan.interest_rate or 0 }}% annual rate.
+                                {% else %}
+                                <span style="color: #4ade80;">✓ Loan fully paid!</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 {% endif %}
             {% endfor %}
@@ -179,4 +255,53 @@
         {% endif %}
     </div>
 </div>
+
+<style>
+    .history-section {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .history-title {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-weight: 600;
+        color: rgba(255,255,255,0.7);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+    }
+    
+    .history-title i {
+        color: #f5c542;
+    }
+    
+    .repayment-card {
+        transition: all 0.2s;
+    }
+    
+    .repayment-card:hover {
+        background: rgba(255,255,255,0.05) !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .history-section {
+            padding: 0;
+        }
+        
+        .history-title {
+            flex-wrap: wrap;
+        }
+        
+        .history-title span {
+            margin-left: 0 !important;
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}

@@ -133,6 +133,71 @@
 .detail-value.success {
     color: #4ade80;
 }
+
+.action-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .action-title {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+    }
+    
+    .action-title i {
+        color: #f5c542;
+    }
+    
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #f5c542 !important;
+        box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.1);
+    }
+    
+    select.form-control option {
+        background: #1a1a2e;
+        color: white;
+        padding: 8px;
+    }
+    
+    .btn-primary:hover {
+        background: #d4a820 !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: rgba(255,255,255,0.1) !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    
+    .alert {
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 .action-btns {
         display: flex;
         gap: 6px;
