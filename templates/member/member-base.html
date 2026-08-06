@@ -16,6 +16,28 @@
     {% block extra_css %}{% endblock %}
 </head>
 
+<!-- Add this to member-base.html in the head or before content -->
+<style>
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+}
+.back-button:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+</style>
+
 <body>
 
 <!-- Floating particles background -->
@@ -42,14 +64,14 @@
         </div>
 
         <div class="sidebar-nav">
-            <!-- Dashboard -->
-            <a href="{{ url_for('member_dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+            <!-- Dashboard - uses navigateTo (panel exists) -->
+            <a href="#" onclick="navigateTo('dashboard', event)" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
 
-          <!-- My Savings - Points to savings deposits -->
-            <a href="{{ url_for('member_savings') }}" class="nav-item {% if active_page == 'savings' %}active{% endif %}">
+            <!-- My Savings - uses navigateTo (panel exists) -->
+            <a href="#" onclick="navigateTo('savings', event)" class="nav-item {% if active_page == 'savings' %}active{% endif %}">
                 <i class="fas fa-piggy-bank"></i>
                 <span>My Savings</span>
                 <span class="badge">{{ savings_deposits|length if savings_deposits else 0 }}</span>
@@ -63,15 +85,20 @@
                     <i class="fas fa-chevron-down"></i>
                 </a>
                 <div class="nav-dropdown-menu">
-                    <a href="{{ url_for('member_apply_loan') }}" class="nav-item nav-dropdown-item">
+                    <!-- Apply for Loan - WORKING -->
+                    <a href="{{ url_for('member_apply_loan') }}" class="nav-item nav-dropdown-item {% if active_page == 'apply-loan' %}active{% endif %}">
                         <i class="fas fa-file-invoice"></i>
                         <span>Apply for Loan</span>
                     </a>
-                    <a href="{{ url_for('member_repayments') }}" class="nav-item nav-dropdown-item">
+                    <!-- My Repayments - FIXED: Added onclick to force navigation -->
+                    <a href="{{ url_for('member_repayments') }}" 
+                       class="nav-item nav-dropdown-item {% if active_page == 'repayments' %}active{% endif %}"
+                       onclick="window.location.href='{{ url_for('member_repayments') }}'; return false;">
                         <i class="fas fa-undo-alt"></i>
                         <span>My Repayments</span>
                     </a>
-                    <a href="{{ url_for('member_guarantors') }}" class="nav-item nav-dropdown-item">
+                    <!-- My Guarantors -->
+                    <a href="{{ url_for('member_guarantors') }}" class="nav-item nav-dropdown-item {% if active_page == 'guarantors' %}active{% endif %}">
                         <i class="fas fa-handshake"></i>
                         <span>My Guarantors</span>
                     </a>
@@ -132,105 +159,94 @@
     </div>
 </div>
 
-<script>
-    // ============================================
-    // REAL-TIME CLOCK
-    // ============================================
-    function updateDateTime() {
-        const now = new Date();
 
-        let hours = now.getHours();
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-
-        const timeString = `${hours}:${minutes} ${ampm}`;
-
-        const options = {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        };
-
-        const dateString = now.toLocaleDateString('en-US', options);
-
-        document.getElementById('currentTime').textContent = timeString;
-        document.getElementById('currentDate').textContent = dateString;
-
-        // Update greeting
-        const hour = now.getHours();
-        let greeting = 'Morning';
-        if (hour >= 12 && hour < 17) greeting = 'Afternoon';
-        else if (hour >= 17) greeting = 'Evening';
-        document.getElementById('greetingTime').textContent = greeting;
-    }
-
-    updateDateTime();
-    setInterval(updateDateTime, 60000);
-
-    // ============================================
-    // SIDEBAR DROPDOWN TOGGLE
-    // ============================================
-    function toggleDropdown(event) {
-        event.preventDefault();
-        const toggle = event.currentTarget;
-        const parent = toggle.closest('.nav-dropdown');
-        parent.classList.toggle('open');
-    }
-
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(event) {
-        const dropdowns = document.querySelectorAll('.nav-dropdown.open');
-        dropdowns.forEach(function(dropdown) {
-            if (!dropdown.contains(event.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-    });
-
-    // ============================================
-    // ACTIVE NAVIGATION HIGHLIGHT
-    // ============================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const currentPath = window.location.pathname;
-        const navItems = document.querySelectorAll('.nav-item:not(.nav-dropdown-item)');
-        
-        navItems.forEach(function(item) {
-            const href = item.getAttribute('href');
-            if (href && currentPath.includes(href)) {
-                item.classList.add('active');
-            }
-        });
-    });
-</script>
-
-</body>
-</html>
 
 <!-- ============================================
-SCRIPTS - All JavaScript at the bottom
+ALL JAVASCRIPT - Single location at the bottom
 ============================================ -->
 <script>
+    // ============================================
+    // NAVIGATE FUNCTION - For switching panels ONLY
+    // ============================================
+    function navigateTo(page, event) {
+        if (event) {
+            event.preventDefault();
+        }
+        
+        // For pages that have their own URL, redirect
+        if (page === 'apply-loan') {
+            window.location.href = "{{ url_for('member_apply_loan') }}";
+            return false;
+        } else if (page === 'repayments') {
+            window.location.href = "{{ url_for('member_repayments') }}";
+            return false;
+        } else if (page === 'guarantors') {
+            window.location.href = "{{ url_for('member_guarantors') }}";
+            return false;
+        }
+        
+        // Hide all panels
+        var panels = document.querySelectorAll('.content-panel');
+        panels.forEach(function(panel) {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        });
+        
+        // Show target panel (only dashboard and savings)
+        var targetPanel = document.getElementById(page + '-panel');
+        if (targetPanel) {
+            targetPanel.style.display = 'block';
+            targetPanel.classList.add('active');
+            console.log('Showing panel:', page + '-panel');
+        } else {
+            console.log('Panel not found:', page + '-panel');
+        }
+        
+        // Update page title for panels only
+        var pageTitles = {
+            'dashboard': 'Dashboard',
+            'savings': 'My Savings'
+        };
+        
+        var titleElement = document.getElementById('pageTitle');
+        var subtitleElement = document.getElementById('pageSubtitle');
+        
+        if (titleElement && pageTitles[page]) {
+            titleElement.textContent = pageTitles[page];
+        }
+        
+        if (subtitleElement) {
+            var subtitles = {
+                'dashboard': 'Your SACCO overview',
+                'savings': 'View all your savings deposits'
+            };
+            if (subtitles[page]) {
+                subtitleElement.textContent = subtitles[page];
+            }
+        }
+        
+        // Update URL hash
+        if (page) {
+            window.location.hash = page;
+        }
+        
+        return false;
+    }
+
     // ============================================
     // DROPDOWN TOGGLE
     // ============================================
     function toggleDropdown(event) {
-        // Prevent the link from navigating
         if (event) {
             event.preventDefault();
             event.stopPropagation();
         }
         
-        // Find the parent dropdown container
         var parent = event.currentTarget.closest('.nav-dropdown');
         
         if (parent) {
-            // Toggle the 'open' class
             parent.classList.toggle('open');
             
-            // Close other open dropdowns
             var allDropdowns = document.querySelectorAll('.nav-dropdown');
             allDropdowns.forEach(function(dropdown) {
                 if (dropdown !== parent && dropdown.classList.contains('open')) {
@@ -241,30 +257,6 @@ SCRIPTS - All JavaScript at the bottom
         
         return false;
     }
-
-    // ============================================
-    // CLOSE DROPDOWNS WHEN CLICKING OUTSIDE
-    // ============================================
-    document.addEventListener('click', function(event) {
-        var dropdowns = document.querySelectorAll('.nav-dropdown');
-        dropdowns.forEach(function(dropdown) {
-            if (!dropdown.contains(event.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-    });
-
-    // ============================================
-    // CLOSE DROPDOWNS WITH ESCAPE KEY
-    // ============================================
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            var dropdowns = document.querySelectorAll('.nav-dropdown.open');
-            dropdowns.forEach(function(dropdown) {
-                dropdown.classList.remove('open');
-            });
-        }
-    });
 
     // ============================================
     // REAL-TIME CLOCK
@@ -295,29 +287,85 @@ SCRIPTS - All JavaScript at the bottom
         if (timeElement) timeElement.textContent = timeString;
         if (dateElement) dateElement.textContent = dateString;
 
-        updateGreeting(now.getHours());
-    }
-
-    function updateGreeting(hours) {
+        // Update greeting
         var greetingTimeSpan = document.getElementById('greetingTime');
-        if (!greetingTimeSpan) return;
-
-        if (hours < 12) {
-            greetingTimeSpan.textContent = 'Morning';
-        } else if (hours < 17) {
-            greetingTimeSpan.textContent = 'Afternoon';
-        } else {
-            greetingTimeSpan.textContent = 'Evening';
+        if (greetingTimeSpan) {
+            var hour = now.getHours();
+            if (hour < 12) {
+                greetingTimeSpan.textContent = 'Morning';
+            } else if (hour < 17) {
+                greetingTimeSpan.textContent = 'Afternoon';
+            } else {
+                greetingTimeSpan.textContent = 'Evening';
+            }
         }
     }
 
     // ============================================
-    // INITIALIZE ON PAGE LOAD
+    // HANDLE URL HASH ON LOAD
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
         // Start the clock
         updateDateTime();
         setInterval(updateDateTime, 60000);
+
+        // Handle URL hash for navigation
+        var hash = window.location.hash.replace('#', '');
+        if (hash && hash !== '') {
+            // For pages that have their own URL
+            if (hash === 'apply-loan') {
+                window.location.href = "{{ url_for('member_apply_loan') }}";
+            } else if (hash === 'repayments') {
+                window.location.href = "{{ url_for('member_repayments') }}";
+            } else if (hash === 'guarantors') {
+                window.location.href = "{{ url_for('member_guarantors') }}";
+            } else {
+                // Try to show panel
+                var panelExists = document.getElementById(hash + '-panel');
+                if (panelExists) {
+                    navigateTo(hash);
+                }
+            }
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            var dropdowns = document.querySelectorAll('.nav-dropdown');
+            dropdowns.forEach(function(dropdown) {
+                if (!dropdown.contains(event.target)) {
+                    dropdown.classList.remove('open');
+                }
+            });
+        });
+
+        // Close dropdowns with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                var dropdowns = document.querySelectorAll('.nav-dropdown.open');
+                dropdowns.forEach(function(dropdown) {
+                    dropdown.classList.remove('open');
+                });
+            }
+        });
+
+        // Highlight active nav item based on current path
+        var currentPath = window.location.pathname;
+        var navItems = document.querySelectorAll('.nav-item');
+        
+        navItems.forEach(function(item) {
+            var href = item.getAttribute('href');
+            if (href && href !== '#' && currentPath.includes(href)) {
+                item.classList.add('active');
+            }
+            // Check for dropdown items too
+            if (href && currentPath === href) {
+                item.classList.add('active');
+            }
+        });
+
+        console.log('Member Dashboard initialized.');
+        console.log('Available panels:', document.querySelectorAll('.content-panel').length);
+        console.log('Current path:', currentPath);
     });
 </script>
 

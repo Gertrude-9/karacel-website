@@ -19,7 +19,6 @@
     <div style="padding: 20px;">
         {% if loans %}
             {% for loan in loans %}
-                <!-- Skip rejected loans for repayment display -->
                 {% if loan.status != 'rejected' %}
                     {% set loan_repayments = [] %}
                     {% for repayment in repayments %}
@@ -47,7 +46,8 @@
                                         {{ loan.status|title }}
                                     </span>
                                     <span style="margin-left: 12px; color: #f5c542;">
-                                        <i class="fas fa-percent"></i> {{ loan.interest_rate or 0 }}% annual
+                                        <i class="fas fa-percent"></i> {{ loan.interest_rate or 0 }}% 
+                                        {% if loan.interest_rate and loan.interest_rate <= 5 %}monthly{% else %}annual{% endif %}
                                     </span>
                                 </div>
                             </div>
@@ -132,12 +132,6 @@
                                         Payments are applied to <strong style="color: #ff6b6b;">interest first</strong>, then principal.
                                     </span>
                                 </div>
-                                {% if loan.status == 'active' and remaining > 0 %}
-                                <a href="{{ url_for('member_apply_repayment', loan_id=loan.id) }}" 
-                                   style="background: #f5c542; color: #0a0a14; padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">
-                                    <i class="fas fa-money-bill-wave"></i> Make Payment
-                                </a>
-                                {% endif %}
                             </div>
                         </div>
 
@@ -234,7 +228,8 @@
                                 <strong style="color: #ff6b6b;">Interest Timeline:</strong> 
                                 Interest is added to your balance at the end of each month. 
                                 {% if remaining > 0 %}
-                                Next interest will be calculated on <strong style="color: #f5c542;">UGX {{ "{:,.0f}".format(remaining) }}</strong> at {{ loan.interest_rate or 0 }}% annual rate.
+                                Next interest will be calculated on <strong style="color: #f5c542;">UGX {{ "{:,.0f}".format(remaining) }}</strong> at {{ loan.interest_rate or 0 }}% 
+                                {% if loan.interest_rate and loan.interest_rate <= 5 %}monthly{% else %}annual{% endif %} rate.
                                 {% else %}
                                 <span style="color: #4ade80;">✓ Loan fully paid!</span>
                                 {% endif %}

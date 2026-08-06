@@ -3,19 +3,202 @@
 {% block title %}Karacel SACCO | My Guarantors{% endblock %}
 
 {% block page_title %}My Guarantors{% endblock %}
-{% block page_subtitle %}View your loan guarantors{% endblock %}
+{% block page_subtitle %}View your loan guarantors and their details{% endblock %}
 
 {% block content %}
+<style>
+    .guarantor-card {
+        background: rgba(255,255,255,0.05);
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        margin-bottom: 24px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .guarantor-card:hover {
+        border-color: rgba(255,255,255,0.15);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    
+    .guarantor-header {
+        background: rgba(255,255,255,0.05);
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .guarantor-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .loan-number-badge {
+        background: rgba(0,224,255,0.15);
+        color: #00e0ff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .guarantor-badge {
+        background: rgba(255,255,255,0.08);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+    
+    .guarantor-amount {
+        text-align: right;
+    }
+    
+    .guarantor-amount .amount {
+        color: #4ade80;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+    
+    .guarantor-amount .label {
+        color: rgba(255,255,255,0.4);
+        font-size: 0.75rem;
+    }
+    
+    .guarantor-table-wrapper {
+        padding: 16px 20px;
+        overflow-x: auto;
+    }
+    
+    .guarantor-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .guarantor-table thead th {
+        text-align: left;
+        padding: 10px 12px;
+        color: rgba(255,255,255,0.4);
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .guarantor-table tbody td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.8);
+    }
+    
+    .guarantor-table tbody tr:hover {
+        background: rgba(255,255,255,0.03);
+    }
+    
+    .guarantor-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .status-badge {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    .status-accepted {
+        background: rgba(74, 222, 128, 0.15);
+        color: #4ade80;
+    }
+    
+    .status-pending {
+        background: rgba(245, 197, 66, 0.15);
+        color: #f5c542;
+    }
+    
+    .status-rejected {
+        background: rgba(255, 107, 107, 0.15);
+        color: #ff6b6b;
+    }
+    
+    .status-active {
+        background: rgba(0, 224, 255, 0.15);
+        color: #00e0ff;
+    }
+    
+    .guarantor-summary {
+        display: flex;
+        gap: 20px;
+        padding: 12px 20px;
+        background: rgba(255,255,255,0.02);
+        border-top: 1px solid rgba(255,255,255,0.05);
+        flex-wrap: wrap;
+    }
+    
+    .guarantor-summary .summary-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(255,255,255,0.5);
+        font-size: 0.85rem;
+    }
+    
+    .guarantor-summary .summary-item i {
+        color: rgba(255,255,255,0.3);
+    }
+    
+    .guarantor-summary .summary-item strong {
+        color: rgba(255,255,255,0.8);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    
+    .empty-icon {
+        font-size: 4rem;
+        color: rgba(255,255,255,0.08);
+        margin-bottom: 20px;
+    }
+    
+    .empty-state h4 {
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+        color: rgba(255,255,255,0.3);
+    }
+    
+    .no-guarantors-badge {
+        background: rgba(255,255,255,0.05);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.4);
+    }
+</style>
+
 <div class="history-section">
     <div class="history-title">
         <i class="fas fa-handshake"></i> My Guarantors
         <span style="font-size: 0.8rem; margin-left: auto; color: rgba(255,255,255,0.3);">
-            Total: {{ guarantors|length }}
+            Total Guarantors: {{ guarantors|length }}
         </span>
     </div>
 
     <div style="padding: 20px;">
         {% if guarantors %}
+            {# Group guarantors by loan_id #}
             {% set loan_ids = [] %}
             {% for guarantor in guarantors %}
                 {% if guarantor.loan_id not in loan_ids %}
@@ -24,18 +207,30 @@
             {% endfor %}
 
             {% for loan_id in loan_ids %}
+                {# Find the loan for this group #}
                 {% set loan = loans|selectattr('id', 'equalto', loan_id)|first %}
                 {% if loan %}
                 <div class="guarantor-card">
                     <div class="guarantor-header">
                         <div class="guarantor-title">
-                            <span class="loan-number-badge">{{ loan.loan_number }}</span>
+                            <span class="loan-number-badge">
+                                <i class="fas fa-file-invoice"></i> {{ loan.loan_number }}
+                            </span>
                             <span class="guarantor-badge">
-                                <i class="fas fa-circle" style="color: {% if loan.status == 'pending' %}#f5c542{% elif loan.status == 'approved' %}#00e0ff{% elif loan.status == 'active' %}#4ade80{% else %}#ff6b6b{% endif %}; font-size: 0.5rem;"></i>
+                                <i class="fas fa-circle" style="color: {% if loan.status == 'pending' %}#f5c542{% elif loan.status == 'approved' %}#00e0ff{% elif loan.status in ['disbursed', 'active'] %}#4ade80{% elif loan.status == 'completed' %}#6366f1{% else %}#ff6b6b{% endif %}; font-size: 0.5rem;"></i>
                                 {{ loan.status|title }}
                             </span>
-                            <span style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">
+                            <span style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">
                                 <i class="fas fa-calendar-alt"></i> {{ loan.application_date }}
+                            </span>
+                            {# Show if guarantors were required #}
+                            <span class="no-guarantors-badge">
+                                {% set loan_guarantors = guarantors|selectattr('loan_id', 'equalto', loan_id)|list %}
+                                {% if loan_guarantors|length > 0 and loan_guarantors[0].guarantor_name == 'No Guarantor Required' %}
+                                    <i class="fas fa-check-circle" style="color: #4ade80;"></i> No Guarantors Required
+                                {% else %}
+                                    <i class="fas fa-users"></i> {{ loan_guarantors|length }} Guarantors
+                                {% endif %}
                             </span>
                         </div>
                         <div class="guarantor-amount">
@@ -44,6 +239,9 @@
                         </div>
                     </div>
 
+                    {# Only show table if there are actual guarantors #}
+                    {% set loan_guarantors = guarantors|selectattr('loan_id', 'equalto', loan_id)|list %}
+                    {% if loan_guarantors and loan_guarantors[0].guarantor_name != 'No Guarantor Required' %}
                     <div class="guarantor-table-wrapper">
                         <table class="guarantor-table">
                             <thead>
@@ -54,30 +252,99 @@
                                     <th>Email</th>
                                     <th>Relationship</th>
                                     <th>Status</th>
+                                    <th>Date Added</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% set loan_guarantors = guarantors|selectattr('loan_id', 'equalto', loan_id)|list %}
                                 {% for guarantor in loan_guarantors %}
                                 <tr>
                                     <td>{{ loop.index }}</td>
-                                    <td><strong style="color: rgba(255,255,255,0.9);">{{ guarantor.guarantor_name }}</strong></td>
-                                    <td>{{ guarantor.phone }}</td>
-                                    <td>{{ guarantor.email or '-' }}</td>
-                                    <td>{{ guarantor.relationship or '-' }}</td>
+                                    <td>
+                                        <strong style="color: rgba(255,255,255,0.9);">
+                                            <i class="fas fa-user" style="color: rgba(255,255,255,0.3); margin-right: 8px;"></i>
+                                            {{ guarantor.guarantor_name }}
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-phone" style="color: rgba(255,255,255,0.3); margin-right: 6px;"></i>
+                                        {{ guarantor.phone }}
+                                    </td>
+                                    <td>
+                                        {% if guarantor.email %}
+                                            <i class="fas fa-envelope" style="color: rgba(255,255,255,0.3); margin-right: 6px;"></i>
+                                            {{ guarantor.email }}
+                                        {% else %}
+                                            <span style="color: rgba(255,255,255,0.2);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if guarantor.relationship %}
+                                            <span style="color: rgba(255,255,255,0.6);">{{ guarantor.relationship }}</span>
+                                        {% else %}
+                                            <span style="color: rgba(255,255,255,0.2);">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <span class="status-badge 
                                             {% if guarantor.status == 'accepted' %}status-accepted
                                             {% elif guarantor.status == 'pending' %}status-pending
+                                            {% elif guarantor.status == 'active' %}status-active
                                             {% else %}status-rejected{% endif %}">
-                                            {{ guarantor.status|upper }}
+                                            {% if guarantor.status == 'accepted' %}
+                                                <i class="fas fa-check-circle"></i> ACCEPTED
+                                            {% elif guarantor.status == 'pending' %}
+                                                <i class="fas fa-clock"></i> PENDING
+                                            {% elif guarantor.status == 'active' %}
+                                                <i class="fas fa-check-circle"></i> ACTIVE
+                                            {% else %}
+                                                <i class="fas fa-times-circle"></i> {{ guarantor.status|upper }}
+                                            {% endif %}
                                         </span>
+                                    </td>
+                                    <td style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">
+                                        {% if guarantor.created_at %}
+                                            <i class="fas fa-clock"></i> {{ guarantor.created_at[:10] }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+
+                    {# Summary stats #}
+                    <div class="guarantor-summary">
+                        <div class="summary-item">
+                            <i class="fas fa-users"></i>
+                            <strong>{{ loan_guarantors|length }}</strong> Guarantors
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>
+                                {{ loan_guarantors|selectattr('status', 'equalto', 'accepted')|list|length }}
+                            </strong> Accepted
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-clock"></i>
+                            <strong>
+                                {{ loan_guarantors|selectattr('status', 'equalto', 'pending')|list|length }}
+                            </strong> Pending
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>
+                                {{ loan_guarantors|selectattr('status', 'equalto', 'rejected')|list|length }}
+                            </strong> Rejected
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="padding: 20px; text-align: center; color: rgba(255,255,255,0.3);">
+                        <i class="fas fa-check-circle" style="color: #4ade80; font-size: 1.2rem;"></i>
+                        No guarantors required for this loan (based on savings)
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             {% endfor %}
@@ -85,8 +352,10 @@
             <div class="empty-state">
                 <i class="fas fa-handshake empty-icon"></i>
                 <h4>No Guarantors Yet</h4>
-                <p>You haven't added any guarantors to your loans.</p>
-                
+                <p>You haven't been assigned any guarantors for your loans.</p>
+                <p style="font-size: 0.85rem; margin-top: 8px;">
+                    <i class="fas fa-info-circle"></i> Guarantors are required when your loan amount exceeds 95% of your savings.
+                </p>
             </div>
         {% endif %}
     </div>

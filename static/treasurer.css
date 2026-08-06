@@ -5,6 +5,107 @@
 /* ============================================
        REGISTRATION FORM STYLES
        ============================================ */
+
+     /* Guarantor tag styles */
+    .guarantor-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(245, 197, 66, 0.1);
+        color: #f5c542;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid rgba(245, 197, 66, 0.2);
+        width: fit-content;
+    }
+    .guarantor-tag:hover {
+        background: rgba(245, 197, 66, 0.2);
+        transform: scale(1.02);
+    }
+    
+    /* Guarantor detail rows */
+    .guarantor-detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .guarantor-detail-row .label {
+        color: rgba(255,255,255,0.4);
+        font-size: 0.85rem;
+    }
+    .guarantor-detail-row .value {
+        color: rgba(255,255,255,0.9);
+        font-weight: 500;
+    }
+    .guarantor-detail-row .value.highlight {
+        color: #f5c542;
+    }
+    .guarantor-detail-row .value.success {
+        color: #4ade80;
+    }
+    .guarantor-detail-row .value.danger {
+        color: #ff6b6b;
+    }
+    
+    .guaranteed-loan-item {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    .guaranteed-loan-item:hover {
+        background: rgba(255,255,255,0.06);
+    }
+    .guaranteed-loan-item .loan-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .guaranteed-loan-item .loan-info .loan-number {
+        color: #f5c542;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .guaranteed-loan-item .loan-info .member-name {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.8rem;
+    }
+    .guaranteed-loan-item .loan-amount {
+        color: #4ade80;
+        font-weight: 600;
+    }
+    .guaranteed-loan-item .loan-status {
+        font-size: 0.7rem;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+    .loan-status.active {
+        background: rgba(74,222,128,0.15);
+        color: #4ade80;
+    }
+    .loan-status.completed {
+        background: rgba(74,222,128,0.15);
+        color: #4ade80;
+    }
+    .loan-status.pending {
+        background: rgba(245,197,66,0.15);
+        color: #f5c542;
+    }
+    .loan-status.rejected {
+        background: rgba(255,107,107,0.15);
+        color: #ff6b6b;
+    }
+    
      .edit-btn {
         background: rgba(0, 224, 255, 0.12);
         color: #00e0ff;
