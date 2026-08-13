@@ -13,30 +13,10 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='member_dashboard.css') }}">
     
+    
+    
     {% block extra_css %}{% endblock %}
 </head>
-
-<!-- Add this to member-base.html in the head or before content -->
-<style>
-.back-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: rgba(255,255,255,0.6);
-    text-decoration: none;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer;
-}
-.back-button:hover {
-    color: #fff;
-    background: rgba(255,255,255,0.1);
-}
-</style>
 
 <body>
 
@@ -64,20 +44,17 @@
         </div>
 
         <div class="sidebar-nav">
-            <!-- Dashboard - uses navigateTo (panel exists) -->
             <a href="#" onclick="navigateTo('dashboard', event)" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
 
-            <!-- My Savings - uses navigateTo (panel exists) -->
             <a href="#" onclick="navigateTo('savings', event)" class="nav-item {% if active_page == 'savings' %}active{% endif %}">
                 <i class="fas fa-piggy-bank"></i>
                 <span>My Savings</span>
                 <span class="badge">{{ savings_deposits|length if savings_deposits else 0 }}</span>
             </a>
 
-            <!-- Loans Dropdown -->
             <div class="nav-dropdown">
                 <a href="#" class="nav-item nav-dropdown-toggle" onclick="toggleDropdown(event)">
                     <i class="fas fa-hand-holding-usd"></i>
@@ -85,19 +62,16 @@
                     <i class="fas fa-chevron-down"></i>
                 </a>
                 <div class="nav-dropdown-menu">
-                    <!-- Apply for Loan - WORKING -->
                     <a href="{{ url_for('member_apply_loan') }}" class="nav-item nav-dropdown-item {% if active_page == 'apply-loan' %}active{% endif %}">
                         <i class="fas fa-file-invoice"></i>
                         <span>Apply for Loan</span>
                     </a>
-                    <!-- My Repayments - FIXED: Added onclick to force navigation -->
                     <a href="{{ url_for('member_repayments') }}" 
                        class="nav-item nav-dropdown-item {% if active_page == 'repayments' %}active{% endif %}"
                        onclick="window.location.href='{{ url_for('member_repayments') }}'; return false;">
                         <i class="fas fa-undo-alt"></i>
                         <span>My Repayments</span>
                     </a>
-                    <!-- My Guarantors -->
                     <a href="{{ url_for('member_guarantors') }}" class="nav-item nav-dropdown-item {% if active_page == 'guarantors' %}active{% endif %}">
                         <i class="fas fa-handshake"></i>
                         <span>My Guarantors</span>
@@ -105,7 +79,6 @@
                 </div>
             </div>
 
-            <!-- Logout -->
             <a href="{{ url_for('logout') }}" class="nav-item logout">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
@@ -131,6 +104,91 @@
             </div>
 
             <div class="app-bar-right">
+                <!-- ============================================
+                NOTIFICATION BELL
+                ============================================ -->
+                <div class="notification-bell-wrapper" onclick="toggleNotificationDropdown(event)">
+                    <i class="fas fa-bell bell-icon"></i>
+                    <span class="bell-badge {% if unread_count == 0 %}zero{% endif %}" id="notificationBadge">
+                        {{ unread_count if unread_count is defined else 0 }}
+                    </span>
+
+                    <!-- Notification Dropdown -->
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-dropdown-header">
+                            <h4>
+                                <i class="fas fa-bell"></i>
+                                Notifications
+                                <span style="font-size: 0.6rem; color: rgba(255,255,255,0.2); font-weight: 400;">
+                                    ({{ notifications|length if notifications is defined else 0 }})
+                                </span>
+                            </h4>
+                            {% if notifications and notifications|length > 0 %}
+                            <button class="mark-read-btn" onclick="markAllRead(event)">
+                                <i class="fas fa-check-double"></i> Mark all read
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <div class="notification-dropdown-list">
+                            {% if notifications and notifications|length > 0 %}
+                                {% for notification in notifications %}
+                                <div class="notification-dropdown-item {% if not notification.is_read %}unread{% endif %}" 
+                                     data-id="{{ notification.id }}">
+                                    <div class="item-header" onclick="toggleNotificationExpand('{{ notification.id }}', event)">
+                                        <div class="item-icon type-{{ notification.type or 'info' }}">
+                                            <i class="fas fa-{% if notification.type == 'success' %}check-circle{% elif notification.type == 'warning' %}exclamation-triangle{% elif notification.type == 'danger' %}times-circle{% else %}info-circle{% endif %}"></i>
+                                        </div>
+                                        <div class="item-content">
+                                            <div class="item-title">
+                                                {{ notification.title }}
+                                                <span class="expand-icon">
+                                                    <i class="fas fa-chevron-down"></i>
+                                                </span>
+                                            </div>
+                                            <div class="item-preview">{{ notification.message|truncate(60) }}</div>
+                                            <div class="item-time">
+                                                <i class="fas fa-clock"></i>
+                                                {{ notification.created_at }}
+                                            </div>
+                                        </div>
+                                        {% if not notification.is_read %}
+                                        <div class="unread-dot"></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="item-expanded">
+                                        <div class="expanded-message">
+                                            {{ notification.message }}
+                                        </div>
+                                        <div class="expanded-actions">
+                                            {% if notification.action_url %}
+                                            <a href="{{ notification.action_url }}" class="action-btn primary">
+                                                <i class="fas fa-arrow-right"></i> View Details
+                                            </a>
+                                            {% endif %}
+                                            <button class="action-btn secondary" onclick="markAsRead('{{ notification.id }}', event)">
+                                                <i class="fas fa-check"></i> Mark as Read
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="notification-dropdown-empty">
+                                    <i class="fas fa-bell-slash"></i>
+                                    <p>No notifications yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="notification-dropdown-footer">
+                            <a href="#" onclick="closeNotificationDropdown(); return false;">
+                                <i class="fas fa-chevron-right"></i> View all notifications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="greeting-widget">
                     <i class="fas fa-smile-wink"></i>
                     <span class="greeting-text">
@@ -159,12 +217,151 @@
     </div>
 </div>
 
-
-
 <!-- ============================================
 ALL JAVASCRIPT - Single location at the bottom
 ============================================ -->
 <script>
+    // ============================================
+    // NOTIFICATION FUNCTIONS
+    // ============================================
+    function toggleNotificationDropdown(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('open');
+            
+            // Close any expanded notifications when closing the dropdown
+            if (!dropdown.classList.contains('open')) {
+                document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
+                    item.classList.remove('expanded');
+                });
+            }
+        }
+    }
+
+    function closeNotificationDropdown() {
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) {
+            dropdown.classList.remove('open');
+            document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
+                item.classList.remove('expanded');
+            });
+        }
+    }
+
+    function toggleNotificationExpand(notificationId, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        var parent = event.currentTarget.closest('.notification-dropdown-item');
+        if (parent) {
+            // Close other expanded notifications
+            document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
+                if (item !== parent) {
+                    item.classList.remove('expanded');
+                }
+            });
+            
+            // Toggle this one
+            parent.classList.toggle('expanded');
+            
+            // If this was unread, mark it as read
+            if (parent.classList.contains('unread')) {
+                markAsRead(notificationId, event);
+            }
+        }
+    }
+
+    function markAsRead(notificationId, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        var parent = document.querySelector('.notification-dropdown-item[data-id="' + notificationId + '"]');
+        if (parent) {
+            var dot = parent.querySelector('.unread-dot');
+            if (dot) {
+                dot.remove();
+            }
+            parent.classList.remove('unread');
+        }
+        
+        // Update badge count
+        var badge = document.getElementById('notificationBadge');
+        if (badge) {
+            var current = parseInt(badge.textContent);
+            if (current > 0) {
+                badge.textContent = current - 1;
+                if (badge.textContent === '0') {
+                    badge.classList.add('zero');
+                }
+            }
+        }
+        
+        // Send request to mark as read
+        fetch('/member/notification/read/' + notificationId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).catch(error => console.error('Error marking notification as read:', error));
+    }
+
+    function markAllRead(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        var items = document.querySelectorAll('.notification-dropdown-item.unread');
+        items.forEach(function(item) {
+            var dot = item.querySelector('.unread-dot');
+            if (dot) {
+                dot.remove();
+            }
+            item.classList.remove('unread');
+        });
+        
+        var badge = document.getElementById('notificationBadge');
+        if (badge) {
+            badge.textContent = '0';
+            badge.classList.add('zero');
+        }
+        
+        // Send request to mark all as read
+        fetch('/member/notification/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).catch(error => console.error('Error marking all notifications as read:', error));
+    }
+
+    // Close notification dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        var wrapper = document.querySelector('.notification-bell-wrapper');
+        var dropdown = document.getElementById('notificationDropdown');
+        
+        if (wrapper && dropdown && !wrapper.contains(event.target)) {
+            dropdown.classList.remove('open');
+            document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
+                item.classList.remove('expanded');
+            });
+        }
+    });
+
+    // Close expanded notifications with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
+                item.classList.remove('expanded');
+            });
+        }
+    });
+
     // ============================================
     // NAVIGATE FUNCTION - For switching panels ONLY
     // ============================================
@@ -197,9 +394,6 @@ ALL JAVASCRIPT - Single location at the bottom
         if (targetPanel) {
             targetPanel.style.display = 'block';
             targetPanel.classList.add('active');
-            console.log('Showing panel:', page + '-panel');
-        } else {
-            console.log('Panel not found:', page + '-panel');
         }
         
         // Update page title for panels only
@@ -312,7 +506,6 @@ ALL JAVASCRIPT - Single location at the bottom
         // Handle URL hash for navigation
         var hash = window.location.hash.replace('#', '');
         if (hash && hash !== '') {
-            // For pages that have their own URL
             if (hash === 'apply-loan') {
                 window.location.href = "{{ url_for('member_apply_loan') }}";
             } else if (hash === 'repayments') {
@@ -320,7 +513,6 @@ ALL JAVASCRIPT - Single location at the bottom
             } else if (hash === 'guarantors') {
                 window.location.href = "{{ url_for('member_guarantors') }}";
             } else {
-                // Try to show panel
                 var panelExists = document.getElementById(hash + '-panel');
                 if (panelExists) {
                     navigateTo(hash);
@@ -357,15 +549,12 @@ ALL JAVASCRIPT - Single location at the bottom
             if (href && href !== '#' && currentPath.includes(href)) {
                 item.classList.add('active');
             }
-            // Check for dropdown items too
             if (href && currentPath === href) {
                 item.classList.add('active');
             }
         });
 
         console.log('Member Dashboard initialized.');
-        console.log('Available panels:', document.querySelectorAll('.content-panel').length);
-        console.log('Current path:', currentPath);
     });
 </script>
 

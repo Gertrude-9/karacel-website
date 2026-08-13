@@ -1,0 +1,83 @@
+{% extends "admin/reports/report-base.html" %}
+
+{% block title %}Member Report - Karacel SACCO{% endblock %}
+
+{% block report_title %}Member Report{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">👥</span>
+        <div class="number gold">{{ total_members }}</div>
+        <div class="label">Total Members</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">✅</span>
+        <div class="number green">{{ members|selectattr('status', 'equalto', 'active')|list|length }}</div>
+        <div class="label">Active Members</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💰</span>
+        <div class="number blue">{{ "{:,.0f}".format(members|sum(attribute='savings_balance')) }}</div>
+        <div class="label">Total Savings (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📊</span>
+        <div class="number purple">{{ members|selectattr('active_loans', '>', 0)|list|length }}</div>
+        <div class="label">Members with Loans</div>
+    </div>
+</div>
+
+<!-- Member Table -->
+<div class="section-title">
+    <i class="fas fa-users"></i> Member Details
+    <span class="count">({{ total_members }} members)</span>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th><i class="fas fa-id-card"></i> SACCO No.</th>
+                <th><i class="fas fa-user"></i> Full Name</th>
+                <th><i class="fas fa-phone"></i> Phone</th>
+                <th><i class="fas fa-envelope"></i> Email</th>
+                <th><i class="fas fa-coins"></i> Savings (UGX)</th>
+                <th><i class="fas fa-hand-holding-usd"></i> Active Loans</th>
+                <th><i class="fas fa-circle"></i> Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="mono">{{ member.sacco_number }}</td>
+                <td><strong>{{ member.full_name }}</strong></td>
+                <td>{{ member.phone or '-' }}</td>
+                <td>{{ member.email or '-' }}</td>
+                <td class="amount">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
+                <td class="text-center">{{ member.active_loans or 0 }}</td>
+                <td>
+                    <span class="badge {{ member.status|lower or 'active' }}">
+                        {{ (member.status|upper) if member.status else 'ACTIVE' }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="8" class="text-right">
+                    Total Members: <strong>{{ total_members }}</strong> &nbsp;|&nbsp;
+                    Active: <strong style="color:#4ade80;">{{ members|selectattr('status', 'equalto', 'active')|list|length }}</strong> &nbsp;|&nbsp;
+                    Inactive: <strong style="color:#ff6b6b;">{{ members|selectattr('status', 'equalto', 'inactive')|list|length }}</strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% endblock %}

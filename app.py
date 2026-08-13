@@ -84,10 +84,34 @@ def create_database():
             end_month INTEGER DEFAULT 12,
             last_payment_date TEXT,
             last_payment_amount REAL DEFAULT 0,
+            loan_start_date TEXT,
+            loan_end_date TEXT,
+            disbursement_date TEXT,
+            approved_by TEXT,
+            approved_by_role TEXT,
+            disbursed_by TEXT,
+            disbursed_by_role TEXT,
+            rejected_by TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
+
+    # ============================================================
+# CREATE NOTIFICATIONS TABLE
+# ============================================================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        notification_type TEXT DEFAULT 'general',
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+""")
 
     # Create loan guarantors table
     cursor.execute("""
@@ -350,8 +374,6 @@ def login():
 
             if user["role"] == "admin":
                 return redirect("/admin/dashboard")
-            elif user["role"] == "chairperson":
-                return redirect("/chairperson/dashboard")
             elif user["role"] == "treasurer":
                 return redirect("/treasurer/dashboard")
             elif user["role"] == "secretary":
@@ -461,7 +483,6 @@ def admin_dashboard():
         WHERE status = 'completed'
     """).fetchone()[0]
 
-    # Fixed: Added pending_guarantors count to loan_applications
     loan_applications = conn.execute("""
         SELECT 
             l.*, 
@@ -527,6 +548,40 @@ def admin_dashboard():
 
     today = datetime.now().strftime('%Y-%m-%d')
 
+    # ============================================================
+    # GET SETTINGS
+    # ============================================================
+    settings = {}
+    try:
+        conn.row_factory = sqlite3.Row
+        settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings_row:
+            settings = dict(settings_row)
+        else:
+            # Default settings if none exist
+            settings = {
+                'sacco_name': 'Karacel Association',
+                'registration_number': 'SACCO/REG/2024/001',
+                'savings_interest_rate': 6.5,
+                'loan_interest_rate': 12,
+                'penalty_rate': 5,
+                'max_loan_amount': '10,000,000',
+                'min_loan_amount': '10,000',
+                'max_tenure': 24
+            }
+    except Exception as e:
+        print(f"Error loading settings: {e}")
+        settings = {
+            'sacco_name': 'Karacel Association',
+            'registration_number': 'SACCO/REG/2024/001',
+            'savings_interest_rate': 6.5,
+            'loan_interest_rate': 12,
+            'penalty_rate': 5,
+            'max_loan_amount': '10,000,000',
+            'min_loan_amount': '10,000',
+            'max_tenure': 24
+        }
+
     conn.close()
 
     return render_template(
@@ -548,16 +603,41 @@ def admin_dashboard():
         recent_activities=recent_activities,
         staff_users=staff_users,
         staff_counts=staff_counts,
-        today=today
+        today=today,
+        now=datetime.now(),
+        settings=settings  # <-- ADDED THIS LINE
     )
 
+# ============================================================
+# CONTEXT PROCESSOR - Global template variables
+# ============================================================
+@app.context_processor
+def inject_globals():
+    """Inject common variables into all templates"""
+    from datetime import datetime
+    
+    completed_loans = 0
+    try:
+        if 'user_id' in session:
+            role = session.get('role', '')
+            if role in ['treasurer', 'admin', 'chairperson']:
+                db = get_db()
+                completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+                db.close()
+    except Exception as e:
+        print(f"Error getting completed_loans: {e}")
+    
+    return {
+        'now': datetime.now(),
+        'completed_loans': completed_loans
+    }
 
 # ============================================================
-# TREASURER DASHBOARD - COMPLETE RECTIFIED (FIXED)
+# TREASURER DASHBOARD
 # ============================================================
 @app.route("/treasurer/dashboard")
 def treasurer_dashboard():
-    if session.get("role") != "treasurer":
+    if session.get("role") not in ["treasurer", "secretary"]:
         flash('Access denied', 'danger')
         return redirect("/login")
     
@@ -698,10 +778,7 @@ def treasurer_dashboard():
             LIMIT 20
         """).fetchall()
         
-        # ============================================================
-        # ALL LOAN APPLICATIONS - WITH GUARANTORS (FIXED)
-        # ============================================================
-        # Get all loan applications
+        # ALL LOAN APPLICATIONS - WITH GUARANTORS
         loan_applications = conn.execute("""
             SELECT 
                 l.*,
@@ -721,10 +798,7 @@ def treasurer_dashboard():
         # Convert to dictionaries and add guarantors
         all_loan_applications = []
         for loan_row in loan_applications:
-            # Convert Row to dict
             loan = dict(loan_row)
-            
-            # Get guarantors for this loan
             guarantors = conn.execute("""
                 SELECT 
                     id,
@@ -737,23 +811,13 @@ def treasurer_dashboard():
                 WHERE loan_id = ? 
                 ORDER BY id
             """, (loan['id'],)).fetchall()
-            
-            # Convert guarantors to list of dicts
             loan['guarantors'] = [dict(g) for g in guarantors] if guarantors else []
-            
             all_loan_applications.append(loan)
         
-        # Debug print
         print("=" * 60)
         print("🔍 TREASURER DASHBOARD LOADED SUCCESSFULLY")
         print(f"📊 Total Members: {total_members}")
-        print(f"📊 Total Savings: {total_savings}")
         print(f"📊 Pending Loans: {pending_loans}")
-        print(f"📊 Approved Loans: {approved_loans_count}")
-        print(f"📊 Active Loans: {active_loans_count}")
-        print(f"📊 Completed Loans: {completed_loans_count}")
-        print(f"📊 Rejected Loans: {rejected_loans_count}")
-        print(f"📊 Total Loans with Guarantors: {sum(1 for loan in all_loan_applications if loan['guarantors'])}")
         print("=" * 60)
         
     except sqlite3.Error as e:
@@ -790,18 +854,17 @@ def treasurer_dashboard():
 
 
 # ============================================================
-# GET GUARANTOR DETAILS (FIXED)
+# TREASURER - GET GUARANTOR DETAILS
 # ============================================================
 @app.route("/treasurer/guarantor/details/<int:guarantor_id>")
 def get_guarantor_details(guarantor_id):
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     db = get_db()
     db.row_factory = sqlite3.Row
     
     try:
-        # Get guarantor info from loan_guarantors
         guarantor_info = db.execute("""
             SELECT 
                 id,
@@ -818,7 +881,6 @@ def get_guarantor_details(guarantor_id):
             db.close()
             return jsonify({'success': False, 'message': 'Guarantor not found'}), 404
         
-        # Try to find the actual member (user) by phone number
         user = db.execute("""
             SELECT 
                 id,
@@ -827,24 +889,15 @@ def get_guarantor_details(guarantor_id):
                 phone,
                 email,
                 savings_balance,
-                status,
-                registration_date,
-                gender,
-                dob,
-                address,
-                next_of_kin_name,
-                next_of_kin_phone,
-                relationship
+                status
             FROM users 
             WHERE phone = ? OR email = ?
             LIMIT 1
         """, (guarantor_info['phone'], guarantor_info['email'])).fetchone()
         
-        # If user found, convert to dict
         if user:
             guarantor_data = dict(user)
         else:
-            # Create guest guarantor object
             guarantor_data = {
                 'id': None,
                 'full_name': guarantor_info['guarantor_name'],
@@ -852,17 +905,9 @@ def get_guarantor_details(guarantor_id):
                 'phone': guarantor_info['phone'],
                 'email': guarantor_info['email'],
                 'savings_balance': 0,
-                'status': 'guest',
-                'registration_date': None,
-                'gender': None,
-                'dob': None,
-                'address': None,
-                'next_of_kin_name': None,
-                'next_of_kin_phone': None,
-                'relationship': guarantor_info['relationship']
+                'status': 'guest'
             }
         
-        # Get loans this guarantor has guaranteed
         guaranteed_loans = db.execute("""
             SELECT 
                 l.id,
@@ -896,12 +941,12 @@ def get_guarantor_details(guarantor_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ============================================
-# TREASURER - VIEW LOAN DETAILS - FIXED
-# ============================================
+# ============================================================
+# TREASURER - VIEW LOAN DETAILS
+# ============================================================
 @app.route("/treasurer/loan/view/<int:loan_id>")
 def treasurer_view_loan(loan_id):
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         flash('Access denied', 'danger')
         return redirect("/login")
     
@@ -947,159 +992,311 @@ def treasurer_view_loan(loan_id):
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard'))
 
+# ============================================================
+# TREASURER - APPROVE / REJECT LOAN
+# ============================================================
 
-# ============================================
-# TREASURER - APPROVE/REJECT LOAN (1-MONTH LOAN)
-# ============================================
-@app.route("/treasurer/loan/approve/<int:loan_id>", methods=["POST"])
+@app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
-    if session.get("role") not in ["treasurer", "admin"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
+
+    print(f"🔍 Loan action called for loan {loan_id}")
+
+    if "user_id" not in session:
+        return jsonify({
+            'success': False,
+            'message': 'Please login first'
+        }), 401
+
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        return jsonify({
+            'success': False,
+            'message': 'Access denied'
+        }), 403
+
+    data = request.get_json(silent=True)
+
     if not data:
-        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
-    
+        return jsonify({
+            'success': False,
+            'message': 'Invalid request'
+        }), 400
+
     action = data.get('action')
-    reason = data.get('reason', '')
-    
+    reason = (data.get('reason') or '').strip()
+
     if action not in ['approve', 'reject']:
-        return jsonify({'success': False, 'message': 'Invalid action'}), 400
-    
+        return jsonify({
+            'success': False,
+            'message': 'Invalid action'
+        }), 400
+
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
-        # Get loan with user details
+
+        # ====================================================
+        # GET LOAN + APPLICANT
+        # ====================================================
+
         loan = db.execute("""
-            SELECT l.*, u.savings_balance, u.email, u.phone, u.full_name, u.id as user_id
+            SELECT
+                l.*,
+                u.id AS applicant_id,
+                u.savings_balance,
+                u.full_name,
+                u.email,
+                u.phone
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.id = ?
         """, (loan_id,)).fetchone()
-        
+
         if not loan:
             db.close()
-            return jsonify({'success': False, 'message': 'Loan not found'}), 404
-        
+
+            return jsonify({
+                'success': False,
+                'message': 'Loan not found'
+            }), 404
+
+
+        # ====================================================
         # REJECT LOAN
+        # ====================================================
+
         if action == 'reject':
-            if not reason or not reason.strip():
+
+            if not reason:
                 db.close()
-                return jsonify({'success': False, 'message': 'Rejection reason is required'}), 400
-            
+
+                return jsonify({
+                    'success': False,
+                    'message': 'Rejection reason required'
+                }), 400
+
+
+            # -----------------------------------------------
+            # UPDATE LOAN
+            # -----------------------------------------------
+
             db.execute("""
-                UPDATE loans 
-                SET status = 'rejected', 
-                    rejected_date = ?,
-                    rejection_reason = ?
+                UPDATE loans
+                SET
+                    status = 'rejected',
+                    rejected_date = datetime('now'),
+                    rejection_reason = ?,
+                    rejected_by = ?
                 WHERE id = ?
-            """, (datetime.now().strftime('%Y-%m-%d'), reason.strip(), loan_id))
+            """, (
+                reason,
+                session.get('full_name', 'Treasurer'),
+                loan_id
+            ))
+
+
+            # -----------------------------------------------
+            # CREATE NOTIFICATION FOR APPLICANT
+            # -----------------------------------------------
+
+            db.execute("""
+                INSERT INTO notifications (
+                    user_id,
+                    title,
+                    message,
+                    notification_type,
+                    is_read,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, 0, datetime('now'))
+            """, (
+                loan['applicant_id'],
+                'Loan Application Rejected',
+                (
+                    f"Your loan application {loan['loan_number']} "
+                    f"has been rejected.\n\n"
+                    f"Reason: {reason}"
+                ),
+                'loan_rejection'
+            ))
+
+
+            # -----------------------------------------------
+            # SAVE CHANGES
+            # -----------------------------------------------
+
             db.commit()
             db.close()
-            
-            return jsonify({'success': True, 'message': '✅ Loan rejected successfully'})
-        
-        # APPROVE LOAN
-        if loan['status'] in ['approved', 'disbursed', 'active']:
-            db.close()
-            return jsonify({'success': False, 'message': f'Loan is already {loan["status"]}'}), 400
-        
-        if loan['status'] != 'pending':
-            db.close()
-            return jsonify({'success': False, 'message': f'Cannot approve a loan with status: {loan["status"]}'}), 400
-        
-        # Check if member has enough savings (at least 10% of loan amount)
-        required_savings = loan['amount'] * 0.1
-        if loan['savings_balance'] < required_savings:
-            db.close()
+
             return jsonify({
-                'success': False, 
-                'message': f'❌ Member needs at least 10% savings (UGX {required_savings:,.0f}). Current savings: UGX {loan["savings_balance"]:,.0f}'
+                'success': True,
+                'message': (
+                    'Loan rejected successfully. '
+                    'The applicant has been notified.'
+                )
+            })
+
+
+        # ====================================================
+        # APPROVE LOAN
+        # ====================================================
+
+        if loan['status'] != 'pending':
+
+            db.close()
+
+            return jsonify({
+                'success': False,
+                'message': f'Loan is {loan["status"]}, not pending'
             }), 400
-        
-        # ============================================
-        # 1-MONTH LOAN APPROVAL - SET START AND END DATES
-        # ============================================
-        from datetime import datetime, timedelta
-        
-        approval_date = datetime.now()
-        start_date = approval_date.strftime('%Y-%m-%d')
-        
-        # End date is exactly 30 days from approval date
-        # If approved on Aug 6, due date is Sep 5
-        end_date = approval_date + timedelta(days=30)
-        end_date_str = end_date.strftime('%Y-%m-%d')
-        
-        # Calculate current balance (total due including interest)
-        current_balance = loan['total_repayment'] or loan['amount']
-        
-        # Approve the loan with start and end dates
+
+
+        # -----------------------------------------------
+        # CHECK 10% SAVINGS
+        # -----------------------------------------------
+
+        required = float(loan['amount']) * 0.10
+        savings = float(loan['savings_balance'] or 0)
+
+        if savings < required:
+
+            db.close()
+
+            return jsonify({
+                'success': False,
+                'message': (
+                    f'Member needs 10% savings '
+                    f'(UGX {required:,.0f}). '
+                    f'Current: UGX {savings:,.0f}'
+                )
+            }), 400
+
+
+        # -----------------------------------------------
+        # APPROVAL DATES
+        # -----------------------------------------------
+
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        end_date = (
+            datetime.now() + timedelta(days=30)
+        ).strftime('%Y-%m-%d')
+
+
+        # -----------------------------------------------
+        # CURRENT BALANCE
+        # -----------------------------------------------
+
+        balance = (
+            loan['total_repayment']
+            if loan['total_repayment'] is not None
+            else loan['amount']
+        )
+
+
+        # -----------------------------------------------
+        # UPDATE LOAN
+        # -----------------------------------------------
+
         db.execute("""
-            UPDATE loans 
-            SET status = 'approved', 
+            UPDATE loans
+            SET
+                status = 'approved',
                 approved_date = ?,
                 loan_start_date = ?,
                 loan_end_date = ?,
-                due_date = ?,
                 current_balance = ?,
-                last_interest_date = ?,
-                next_interest_date = ?
+                approved_by = ?,
+                approved_by_role = 'treasurer'
             WHERE id = ?
         """, (
-            start_date,  # approved_date
-            start_date,  # loan_start_date (starts from approval date)
-            end_date_str,  # loan_end_date (30 days later)
-            end_date_str,  # due_date (same as end date)
-            current_balance,
-            start_date,  # last_interest_date
-            end_date_str,  # next_interest_date (due date)
+            today,
+            today,
+            end_date,
+            balance,
+            session.get('full_name', 'Treasurer'),
             loan_id
         ))
+
+
+        # -----------------------------------------------
+        # NOTIFY APPLICANT OF APPROVAL
+        # -----------------------------------------------
+
+        db.execute("""
+            INSERT INTO notifications (
+                user_id,
+                title,
+                message,
+                notification_type,
+                is_read,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, 0, datetime('now'))
+        """, (
+            loan['applicant_id'],
+            'Loan Application Approved',
+            (
+                f"Your loan application {loan['loan_number']} "
+                f"has been approved. "
+                f"Please wait for disbursement."
+            ),
+            'loan_approval'
+        ))
+
+
+        # -----------------------------------------------
+        # SAVE
+        # -----------------------------------------------
+
         db.commit()
         db.close()
-        
-        # Format dates for response
-        from datetime import datetime
-        start_formatted = datetime.strptime(start_date, '%Y-%m-%d').strftime('%d %B %Y')
-        end_formatted = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%d %B %Y')
-        
-        return jsonify({
-            'success': True, 
-            'message': f'✅ Loan approved successfully! Loan period: {start_formatted} to {end_formatted} (30 days)',
-            'loan_start_date': start_date,
-            'loan_end_date': end_date_str,
-            'due_date': end_date_str
-        })
-        
-    except sqlite3.Error as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
-    except Exception as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-# # ============================================
-# TREASURER - DISBURSE LOAN (1-MONTH LOAN)
-# ============================================
+        return jsonify({
+            'success': True,
+            'message': (
+                '✅ Loan approved! '
+                'Waiting for Chairman disbursement.'
+            )
+        })
+
+
+    # ====================================================
+    # ERROR HANDLING
+    # ====================================================
+
+    except Exception as e:
+
+        print(f"❌ Error processing loan action: {e}")
+
+        try:
+            db.rollback()
+            db.close()
+        except:
+            pass
+
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+# ============================================================
+# TREASURER - DISBURSE LOAN (CLEAN VERSION)
+# ============================================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
-    if session.get("role") not in ["treasurer", "admin"]:
+    print(f"💰 Disburse called for loan {loan_id}")
+    
+    if "user_id" not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+    
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     db = get_db()
     db.row_factory = sqlite3.Row
     
     try:
-        # Get loan with user details
-        loan = db.execute("""
-            SELECT l.*, u.full_name, u.savings_balance
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.id = ?
-        """, (loan_id,)).fetchone()
+        loan = db.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
         
         if not loan:
             db.close()
@@ -1107,25 +1304,12 @@ def treasurer_disburse_loan(loan_id):
         
         if loan['status'] != 'approved':
             db.close()
-            return jsonify({'success': False, 'message': f'Loan must be approved first. Current status: {loan["status"]}'}), 400
+            return jsonify({'success': False, 'message': f'Loan must be approved first. Status: {loan["status"]}'}), 400
         
-        # ============================================
-        # 1-MONTH LOAN DISBURSEMENT - SET START AND END DATES
-        # ============================================
-        from datetime import datetime, timedelta
+        today = datetime.now().strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        balance = loan['total_repayment'] or loan['amount']
         
-        disbursement_date = datetime.now()
-        start_date = disbursement_date.strftime('%Y-%m-%d')
-        
-        # End date is exactly 30 days from disbursement date
-        # If disbursed on Aug 6, due date is Sep 5
-        end_date = disbursement_date + timedelta(days=30)
-        end_date_str = end_date.strftime('%Y-%m-%d')
-        
-        # Calculate current balance (total due including interest)
-        current_balance = loan['total_repayment'] or loan['amount']
-        
-        # Disburse the loan with start and end dates
         db.execute("""
             UPDATE loans 
             SET status = 'disbursed',
@@ -1134,54 +1318,31 @@ def treasurer_disburse_loan(loan_id):
                 loan_end_date = ?,
                 due_date = ?,
                 current_balance = ?,
-                last_interest_date = ?,
-                next_interest_date = ?,
-                last_payment_date = NULL,
-                last_payment_amount = NULL
+                disbursed_by = ?,
+                disbursed_by_role = ?
             WHERE id = ?
-        """, (
-            start_date,          # disbursement_date
-            start_date,          # loan_start_date (starts from disbursement date)
-            end_date_str,        # loan_end_date (30 days later)
-            end_date_str,        # due_date (same as end date)
-            current_balance,     # current_balance (total due)
-            start_date,          # last_interest_date
-            end_date_str,        # next_interest_date (due date)
-            loan_id
-        ))
+        """, (today, today, end_date, end_date, balance, session.get('full_name', 'Treasurer'), session.get('role', 'treasurer'), loan_id))
+        
         db.commit()
         db.close()
         
-        # Format dates for response
-        from datetime import datetime
-        start_formatted = datetime.strptime(start_date, '%Y-%m-%d').strftime('%d %B %Y')
-        end_formatted = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%d %B %Y')
-        
         return jsonify({
             'success': True,
-            'message': f'💰 Loan disbursed successfully! Loan period: {start_formatted} to {end_formatted} (30 days)',
-            'loan_start_date': start_date,
-            'loan_end_date': end_date_str,
-            'due_date': end_date_str,
-            'current_balance': current_balance
+            'message': '💰 Loan disbursed successfully!'
         })
         
-    except sqlite3.Error as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
     except Exception as e:
         db.rollback()
         db.close()
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ============================================
-# TREASURER - RECORD PAYMENT - FIXED
-# ============================================
+# ============================================================
+# TREASURER - RECORD PAYMENT (FIXED & ENHANCED)
+# ============================================================
 @app.route("/treasurer/loan/pay", methods=['POST'])
 def treasurer_record_payment():
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     data = request.get_json()
@@ -1192,7 +1353,6 @@ def treasurer_record_payment():
     amount_str = data.get('amount', 0)
     payment_method = data.get('payment_method', 'cash')
     
-    # Handle amount - could be string or number
     try:
         if isinstance(amount_str, str):
             amount = float(amount_str.replace(',', ''))
@@ -1208,7 +1368,7 @@ def treasurer_record_payment():
     conn.row_factory = sqlite3.Row
     
     try:
-        # Get loan details with user info
+        # Get loan details with member info
         loan = conn.execute("""
             SELECT l.*, u.full_name, u.sacco_number, u.id as member_id
             FROM loans l
@@ -1220,7 +1380,7 @@ def treasurer_record_payment():
             conn.close()
             return jsonify({'success': False, 'message': 'Loan not found'}), 404
         
-        # Check if loan is active for payment
+        # Check if loan can accept payments
         if loan['status'] not in ['approved', 'disbursed', 'active']:
             conn.close()
             return jsonify({
@@ -1228,15 +1388,14 @@ def treasurer_record_payment():
                 'message': f'Cannot make payment on loan with status: {loan["status"]}'
             }), 400
         
-        # Check if loan is already completed
         if loan['status'] == 'completed':
             conn.close()
             return jsonify({'success': False, 'message': 'Loan is already fully paid'}), 400
         
-        # Get current balance
+        # Calculate current balance
         current_balance = float(loan['current_balance'] or loan['amount'] or 0)
         
-        # Check if payment exceeds balance
+        # Check if payment amount is valid
         if amount > current_balance:
             conn.close()
             return jsonify({
@@ -1244,85 +1403,89 @@ def treasurer_record_payment():
                 'message': f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})'
             }), 400
         
-        # Start transaction
+        # Begin transaction
         conn.execute("BEGIN TRANSACTION")
         
-        # Record payment
+        # Record the repayment
         conn.execute("""
             INSERT INTO repayments (
-                loan_id, 
-                user_id, 
-                amount, 
-                payment_date, 
-                payment_method,
-                status
+                loan_id, user_id, amount, payment_date, payment_method, status
             )
             VALUES (?, ?, ?, date('now'), ?, 'completed')
         """, (loan_id, loan['member_id'], amount, payment_method))
         
-        # Update current balance
+        # Calculate new balance
         new_balance = current_balance - amount
-        conn.execute("""
-            UPDATE loans 
-            SET current_balance = ?,
-                last_payment_date = date('now'),
-                last_payment_amount = ?
-            WHERE id = ?
-        """, (new_balance, amount, loan_id))
         
-        # If balance is 0 or less, mark as completed
-        if new_balance <= 0:
+        # ============================================================
+        # AUTO-COMPLETE: If balance is 50 UGX or less, mark as completed
+        # ============================================================
+        COMPLETION_THRESHOLD = 50
+        is_completed = new_balance <= COMPLETION_THRESHOLD
+        
+        if is_completed:
+            # Write off the remaining small balance and mark as completed
             conn.execute("""
                 UPDATE loans 
-                SET status = 'completed', 
-                    completed_date = date('now')
+                SET current_balance = 0,
+                    status = 'completed',
+                    completed_date = date('now'),
+                    last_payment_date = date('now'),
+                    last_payment_amount = ?
                 WHERE id = ?
-            """, (loan_id,))
+            """, (amount, loan_id))
             status = 'completed'
+            message = f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made. Remaining balance of UGX {new_balance:,.0f} has been written off.'
+            print(f"✅ Loan {loan_id} marked as COMPLETED. Balance: {new_balance} UGX (<= {COMPLETION_THRESHOLD} UGX threshold)")
         else:
-            status = 'active'
+            # Update balance only
             conn.execute("""
                 UPDATE loans 
-                SET status = 'active'
-                WHERE id = ? AND status = 'disbursed'
-            """, (loan_id,))
+                SET current_balance = ?,
+                    status = 'active',
+                    last_payment_date = date('now'),
+                    last_payment_amount = ?
+                WHERE id = ?
+            """, (new_balance, amount, loan_id))
+            status = 'active'
+            message = f'✅ Payment of UGX {amount:,.0f} recorded successfully! Remaining: UGX {new_balance:,.0f}'
+            print(f"💰 Payment recorded for loan {loan_id}. New balance: {new_balance} UGX")
         
         conn.commit()
         conn.close()
         
         return jsonify({
             'success': True, 
-            'message': f'✅ Payment of UGX {amount:,.0f} recorded successfully!',
+            'message': message,
             'new_balance': new_balance,
             'status': status,
-            'is_completed': new_balance <= 0
+            'is_completed': is_completed
         })
         
     except sqlite3.Error as e:
         conn.rollback()
         conn.close()
+        print(f"❌ Database Error in payment: {str(e)}")
         return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
     except Exception as e:
         conn.rollback()
         conn.close()
+        print(f"❌ Error in payment: {str(e)}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-
-# ============================================
-# TREASURER - ENTER REPAYMENT (1-Month Loan)
-# ============================================
+## ============================================================
+# TREASURER - ENTER REPAYMENT (FIXED)
+# ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         flash('Access denied. Only treasurer can enter repayments.', 'danger')
         return redirect("/login")
     
-    # If GET request, show the form
     if request.method == "GET":
         db = get_db()
         db.row_factory = sqlite3.Row
         
-        # Get active loans for the dropdown (1-month loans)
         active_loans = db.execute("""
             SELECT 
                 l.*,
@@ -1335,10 +1498,18 @@ def treasurer_enter_repayment():
             ORDER BY l.application_date DESC
         """).fetchall()
         
+        # Get completed loans count for sidebar badge
+        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+        
         db.close()
-        return render_template("treasurer/enter-repayment.html", active_loans=active_loans)
+        
+        return render_template(
+            "treasurer/enter-repayment.html", 
+            active_loans=active_loans,
+            completed_loans=completed_loans
+        )
     
-    # POST - Process the repayment
+    # POST - Process repayment
     db = get_db()
     db.row_factory = sqlite3.Row
     
@@ -1353,7 +1524,6 @@ def treasurer_enter_repayment():
             flash('Amount must be greater than 0', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Get loan details
         loan = db.execute("""
             SELECT 
                 l.*, 
@@ -1369,7 +1539,6 @@ def treasurer_enter_repayment():
             flash('Loan not found', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Check if loan is active
         if loan['status'] not in ['approved', 'disbursed', 'active']:
             flash(f'Cannot make payment on loan with status: {loan["status"]}', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
@@ -1378,26 +1547,20 @@ def treasurer_enter_repayment():
             flash('Loan is already fully paid', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Get current balance (total due including interest)
         current_balance = float(loan['current_balance'] if loan['current_balance'] is not None else loan['amount'] or 0)
         
-        # For 1-month loan, check if payment exceeds balance
         if amount > current_balance:
             flash(f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Calculate payment allocation
-        # For 1-month loan: Interest is already included in current_balance
-        # Payment goes to reduce the balance (interest first, then principal)
+        # Calculate interest and principal - FIXED: Use direct indexing instead of .get()
         interest_paid = 0
         principal_paid = 0
         
-        # Get original principal
-        original_balance = float(loan['original_balance'] or loan['amount'] or 0)
         total_interest = float(loan['interest_amount'] or 0)
-        
-        # Calculate how much interest is remaining
-        interest_remaining = total_interest - float(loan['interest_paid'] or 0)
+        # FIXED: Access interest_paid directly using index, not .get()
+        interest_paid_so_far = float(loan['interest_paid'] if loan['interest_paid'] is not None else 0)
+        interest_remaining = total_interest - interest_paid_so_far
         
         if amount >= interest_remaining:
             interest_paid = interest_remaining
@@ -1406,15 +1569,12 @@ def treasurer_enter_repayment():
             interest_paid = amount
             principal_paid = 0
         
-        # Calculate new balance
         new_balance = current_balance - amount
         if new_balance < 0:
             new_balance = 0
         
-        # Start transaction
         db.execute("BEGIN TRANSACTION")
         
-        # Insert repayment
         current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         db.execute("""
@@ -1437,14 +1597,19 @@ def treasurer_enter_repayment():
             new_balance
         ))
         
-        # Update loan
-        if new_balance <= 0:
-            # Loan fully paid
+        # ============================================================
+        # AUTO-COMPLETE: If balance is 50 UGX or less, mark as completed
+        # ============================================================
+        COMPLETION_THRESHOLD = 50
+        is_completed = new_balance <= COMPLETION_THRESHOLD
+        
+        if is_completed:
+            # Write off the remaining small balance and mark as completed
             db.execute("""
                 UPDATE loans 
                 SET current_balance = 0,
                     status = 'completed',
-                    completion_date = ?,
+                    completed_date = ?,
                     last_payment_date = ?,
                     last_payment_amount = ?,
                     interest_paid = COALESCE(interest_paid, 0) + ?,
@@ -1460,9 +1625,8 @@ def treasurer_enter_repayment():
             ))
             db.commit()
             db.close()
-            flash(f'✅ Loan fully repaid! UGX {amount:,.0f} paid. Status: COMPLETED', 'success')
+            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made. Remaining balance of UGX {new_balance:,.0f} has been written off.', 'success')
         else:
-            # Update balance only
             db.execute("""
                 UPDATE loans 
                 SET current_balance = ?,
@@ -1493,14 +1657,13 @@ def treasurer_enter_repayment():
         db.close()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_enter_repayment'))
-
-
-# ============================================
-# TREASURER - SAVINGS DEPOSIT
-# ============================================
+    
+# ============================================================
+# TREASURER - SAVINGS DEPOSIT (FIXED)
+# ============================================================
 @app.route("/treasurer/savings/deposit", methods=["GET", "POST"])
 def treasurer_savings_deposit():
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         flash('Access denied. Only treasurer can record deposits.', 'danger')
         return redirect("/login")
     
@@ -1534,19 +1697,33 @@ def treasurer_savings_deposit():
     
     db = get_db()
     members = db.execute("SELECT * FROM users WHERE LOWER(role) = 'member' AND status = 'active' ORDER BY full_name").fetchall()
+    
+    # Get completed loans count for sidebar badge
+    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+    
     db.close()
     
-    return render_template("treasurer/savings-deposit.html", members=members)
+    return render_template(
+        "treasurer/savings-deposit.html", 
+        members=members,
+        completed_loans=completed_loans
+    )
 
-
-# ============================================
-# TREASURER - MEMBER MANAGEMENT
-# ============================================
+# ============================================================
+# TREASURER - ADD MEMBER
+# ============================================================
 @app.route("/treasurer/members/add", methods=["GET", "POST"])
 def treasurer_add_members():
-    if session.get("role") not in ["treasurer", "admin"]:
-        flash('Access denied. Only Treasurer can register members.', 'danger')
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        flash('Access denied. Only Treasurer, Admin, or Secretary can register members.', 'danger')
         return redirect("/login")
+    
+    # ============================================================
+    # GET COMPLETED LOANS COUNT FOR SIDEBAR BADGE
+    # ============================================================
+    db = get_db()
+    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+    db.close()
     
     if request.method == "POST":
         full_name = request.form.get('full_name', '').strip()
@@ -1581,7 +1758,7 @@ def treasurer_add_members():
         if errors:
             for error in errors:
                 flash(error, 'danger')
-            return render_template("treasurer/add-member.html")
+            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
         
         db = get_db()
         
@@ -1589,20 +1766,20 @@ def treasurer_add_members():
         if existing:
             flash(f'SACCO number "{sacco_number}" already exists!', 'danger')
             db.close()
-            return render_template("treasurer/add-member.html")
+            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
         
         if email:
             existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
             if existing:
                 flash(f'Email "{email}" is already registered!', 'danger')
                 db.close()
-                return render_template("treasurer/add-member.html")
+                return render_template("treasurer/add-member.html", completed_loans=completed_loans)
         
         existing = db.execute("SELECT id FROM users WHERE phone = ?", (phone,)).fetchone()
         if existing:
             flash(f'Phone number "{phone}" is already registered!', 'danger')
             db.close()
-            return render_template("treasurer/add-member.html")
+            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
         
         try:
             cursor = db.cursor()
@@ -1650,14 +1827,14 @@ def treasurer_add_members():
             db.rollback()
             db.close()
             flash(f'Error registering member: {str(e)}', 'danger')
-            return render_template("treasurer/add-member.html")
+            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
     
-    return render_template("treasurer/add-member.html")
+    return render_template("treasurer/add-member.html", completed_loans=completed_loans)
 
 
-# ============================================
-# MEMBER DASHBOARD - RECTIFIED
-# ============================================
+# ============================================================
+# MEMBER DASHBOARD
+# ============================================================
 @app.route("/member/dashboard")
 def member_dashboard():
     if "user_id" not in session:
@@ -1666,67 +1843,94 @@ def member_dashboard():
     user_id = session["user_id"]
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
-        # Get member details
-        member = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        
+        member = db.execute(
+            "SELECT * FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
         if not member:
             db.close()
             flash("Member not found", "danger")
             return redirect(url_for("login"))
-        
-        # Get total savings
+
+        # ============================================================
+        # TOTAL SAVINGS
+        # ============================================================
+
         total_savings = db.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total 
-            FROM savings_deposits 
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM savings_deposits
             WHERE user_id = ?
         """, (user_id,)).fetchone()['total']
-        
-        # Get all loans with repayment calculations
+
+
+        # ============================================================
+        # LOANS
+        # ============================================================
+
         loans_data = db.execute("""
-            SELECT 
+            SELECT
                 l.*,
                 COALESCE((
-                    SELECT SUM(amount) 
-                    FROM repayments 
-                    WHERE loan_id = l.id AND status = 'completed'
+                    SELECT SUM(amount)
+                    FROM repayments
+                    WHERE loan_id = l.id
+                    AND status = 'completed'
                 ), 0) as total_paid
             FROM loans l
             WHERE l.user_id = ?
             ORDER BY l.application_date DESC
         """, (user_id,)).fetchall()
-        
-        # Convert to dictionaries and calculate loan balances
+
         loans = []
         active_loans_count = 0
         active_loans_balance = 0
         total_loans_taken = 0
-        
+
         for loan_row in loans_data:
-            # Convert Row to dict to allow item assignment
+
             loan = dict(loan_row)
-            
-            total_loans_taken += float(loan.get('amount', 0) or 0)
-            
-            # Calculate remaining balance
-            loan_total = float(loan.get('total_repayment') or loan.get('amount', 0) or 0)
-            total_paid = float(loan.get('total_paid', 0) or 0)
-            remaining_balance = max(0, loan_total - total_paid)
-            
-            # Add calculated field to dict
+
+            total_loans_taken += float(
+                loan.get('amount', 0) or 0
+            )
+
+            loan_total = float(
+                loan.get('total_repayment')
+                or loan.get('amount', 0)
+                or 0
+            )
+
+            total_paid = float(
+                loan.get('total_paid', 0) or 0
+            )
+
+            remaining_balance = max(
+                0,
+                loan_total - total_paid
+            )
+
             loan['remaining_balance'] = remaining_balance
-            
-            # Count active loans and their balances
-            if loan.get('status') in ['approved', 'disbursed', 'active']:
+
+            if loan.get('status') in [
+                'approved',
+                'disbursed',
+                'active'
+            ]:
                 active_loans_count += 1
                 active_loans_balance += remaining_balance
-            
+
             loans.append(loan)
-        
-        # Get savings deposits
+
+
+        # ============================================================
+        # SAVINGS DEPOSITS
+        # ============================================================
+
         savings_deposits = db.execute("""
-            SELECT 
+            SELECT
                 id,
                 amount,
                 deposit_date,
@@ -1734,14 +1938,18 @@ def member_dashboard():
                 receipt_number,
                 notes,
                 created_at
-            FROM savings_deposits 
-            WHERE user_id = ? 
+            FROM savings_deposits
+            WHERE user_id = ?
             ORDER BY deposit_date DESC
         """, (user_id,)).fetchall()
-        
-        # Get repayments
+
+
+        # ============================================================
+        # REPAYMENTS
+        # ============================================================
+
         repayments = db.execute("""
-            SELECT 
+            SELECT
                 r.id,
                 r.loan_id,
                 r.user_id,
@@ -1757,10 +1965,14 @@ def member_dashboard():
             WHERE l.user_id = ?
             ORDER BY r.payment_date DESC
         """, (user_id,)).fetchall()
-        
-        # Get guarantors
+
+
+        # ============================================================
+        # GUARANTORS
+        # ============================================================
+
         guarantors = db.execute("""
-            SELECT 
+            SELECT
                 lg.id,
                 lg.loan_id,
                 lg.guarantor_name,
@@ -1777,42 +1989,95 @@ def member_dashboard():
             WHERE l.user_id = ?
             ORDER BY lg.id DESC
         """, (user_id,)).fetchall()
-        
+
+
+        # ============================================================
+        # NOTIFICATIONS
+        # ============================================================
+
+        notifications = db.execute("""
+            SELECT
+                id,
+                user_id,
+                title,
+                message,
+                notification_type,
+                is_read,
+                created_at
+            FROM notifications
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, (user_id,)).fetchall()
+
+
+        # ============================================================
+        # UNREAD NOTIFICATIONS COUNT
+        # ============================================================
+
+        unread_notifications_count = db.execute("""
+            SELECT COUNT(*) AS count
+            FROM notifications
+            WHERE user_id = ?
+            AND is_read = 0
+        """, (user_id,)).fetchone()['count']
+
+
+        # ============================================================
+        # CLOSE DATABASE
+        # ============================================================
+
         db.close()
-        
-        print("=" * 60)
-        print("🔵 MEMBER DASHBOARD LOADED")
-        print(f"🟢 User: {member['full_name']}")
-        print(f"🟢 Total Savings: {total_savings}")
-        print(f"🟢 Active Loans: {active_loans_count}")
-        print(f"🟢 Active Loans Balance: {active_loans_balance}")
-        print(f"🟢 Total Loans Taken: {total_loans_taken}")
-        print("=" * 60)
+
+
+        # ============================================================
+        # MEMBER DASHBOARD
+        # ============================================================
 
         return render_template(
             "member/member-dashboard.html",
+
             member=member,
             user=member,
+
             total_savings=total_savings,
+
             active_loans_count=active_loans_count,
             active_loans_balance=active_loans_balance,
             total_loans_taken=total_loans_taken,
+
             savings_deposits=savings_deposits,
-            loans=loans,  # This is now a list of dictionaries
+
+            loans=loans,
+
             repayments=repayments,
-            guarantors=guarantors
+
+            guarantors=guarantors,
+
+            # NOTIFICATIONS
+            notifications=notifications,
+            unread_notifications_count=unread_notifications_count
         )
-    
+
+
     except Exception as e:
+
         import traceback
         traceback.print_exc()
-        db.close()
-        flash(f"Error loading dashboard: {str(e)}", "danger")
+
+        try:
+            db.close()
+        except:
+            pass
+
+        flash(
+            f"Error loading dashboard: {str(e)}",
+            "danger"
+        )
+
         return redirect(url_for("login"))
-    
-# ============================================
-# MEMBER LOAN APPLICATION (1-MONTH LOAN)
-# ============================================
+# ============================================================
+# MEMBER - APPLY LOAN
+# ============================================================
 @app.route("/member/apply-loan", methods=["GET", "POST"])
 def member_apply_loan():
     if "user_id" not in session:
@@ -1832,13 +2097,10 @@ def member_apply_loan():
         
         db.close()
         
-        # Get current date/time and calculate due date (30 days from now)
         from datetime import datetime, timedelta
         now = datetime.now()
         current_year = now.year
         current_date = now.strftime('%d %B %Y')
-        
-        # Calculate due date (30 days from today)
         due_date = now + timedelta(days=30)
         due_date_formatted = due_date.strftime('%d %B %Y')
         due_date_iso = due_date.strftime('%Y-%m-%d')
@@ -1895,43 +2157,57 @@ def member_apply_loan():
             flash('Loan amount must be between UGX 10,000 and UGX 10,000,000', 'danger')
             return redirect(url_for('member_apply_loan'))
         
-        # ============================================
-        # 1-MONTH LOAN CALCULATION
-        # ============================================
         from datetime import datetime, timedelta
-        import calendar
         
         application_date = datetime.now()
         
-        # Get monthly interest rate based on loan amount
-        # These are MONTHLY rates (5%, 3%, 2%, 1%)
         def get_loan_interest_rate(amount):
             if amount >= 10000 and amount <= 1999999:
-                return 5  # 5% monthly
+                return 5
             elif amount >= 2000000 and amount <= 4999999:
-                return 3  # 3% monthly
+                return 3
             elif amount >= 5000000 and amount <= 9999999:
-                return 2  # 2% monthly
+                return 2
             elif amount >= 10000000:
-                return 1  # 1% monthly
+                return 1
             return 0
         
         monthly_rate_percent = get_loan_interest_rate(loan_amount)
-        monthly_rate = monthly_rate_percent / 100  # e.g., 5% = 0.05
-        
-        # Calculate interest for 1 month
+        monthly_rate = monthly_rate_percent / 100
         interest_amount = loan_amount * monthly_rate
         total_repayment = loan_amount + interest_amount
-        
-        # Due date is exactly 1 month from application date
-        # If approved on Aug 5, due date is Sep 5
         due_date = application_date + timedelta(days=30)
         due_date_str = due_date.strftime('%Y-%m-%d')
-        
-        # Generate loan reference
         loan_ref = generate_loan_reference()
         
-        # Insert loan into database
+        total_savings = db.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total 
+            FROM savings_deposits 
+            WHERE user_id = ?
+        """, (user_id,)).fetchone()['total']
+        
+        savings_threshold = total_savings * 0.95
+        guarantors_required = loan_amount > savings_threshold
+        
+        if guarantors_required:
+            if not g1_name or not g1_phone:
+                if request.is_json:
+                    return jsonify({'success': False, 'message': 'Guarantor 1 details are required for this loan amount'}), 400
+                flash('Guarantor 1 details are required for this loan amount', 'danger')
+                return redirect(url_for('member_apply_loan'))
+            
+            if not g2_name or not g2_phone:
+                if request.is_json:
+                    return jsonify({'success': False, 'message': 'Guarantor 2 details are required for this loan amount'}), 400
+                flash('Guarantor 2 details are required for this loan amount', 'danger')
+                return redirect(url_for('member_apply_loan'))
+            
+            if g1_name.lower() == g2_name.lower() or g1_phone == g2_phone:
+                if request.is_json:
+                    return jsonify({'success': False, 'message': 'Guarantor 1 and Guarantor 2 must be different'}), 400
+                flash('Guarantor 1 and Guarantor 2 must be different', 'danger')
+                return redirect(url_for('member_apply_loan'))
+        
         cursor = db.cursor()
         cursor.execute("""
             INSERT INTO loans (
@@ -1948,44 +2224,33 @@ def member_apply_loan():
             loan_ref, 
             user_id, 
             loan_amount, 
-            monthly_rate_percent,  # Store as percentage (5, 3, 2, 1)
+            monthly_rate_percent,
             interest_amount,
             total_repayment, 
-            interest_amount,  # monthly_installment is interest for 1-month loan
-            1,  # tenure is 1 month
+            interest_amount,
+            1,
             purpose,
             repayment_plan, 
             'pending', 
             application_date.strftime('%Y-%m-%d'),
-            total_repayment,  # current_balance = total due
-            application_date.strftime('%Y-%m-%d'),  # last_interest_date
-            due_date_str,  # next_interest_date (due date)
+            total_repayment,
+            application_date.strftime('%Y-%m-%d'),
+            due_date_str,
             application_date.month, 
-            due_date.month,  # end_month is the month of due date
-            0,  # total_interest_accrued
-            0,  # principal_paid
-            0,  # interest_paid
-            0,  # months_paid
-            loan_amount,  # original_balance (principal only)
-            interest_amount,  # total_interest_calculated
-            due_date_str,  # due_date
-            application_date.strftime('%Y-%m-%d'),  # loan_start_date
-            due_date_str  # loan_end_date
+            due_date.month,
+            0,
+            0,
+            0,
+            0,
+            loan_amount,
+            interest_amount,
+            due_date_str,
+            application_date.strftime('%Y-%m-%d'),
+            due_date_str
         ))
         
         loan_id = cursor.lastrowid
         
-        # Check if guarantors are required
-        total_savings = db.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total 
-            FROM savings_deposits 
-            WHERE user_id = ?
-        """, (user_id,)).fetchone()['total']
-        
-        savings_threshold = total_savings * 0.95
-        guarantors_required = loan_amount > savings_threshold
-        
-        # Insert guarantors
         if guarantors_required:
             cursor.execute("""
                 INSERT INTO loan_guarantors (
@@ -2011,18 +2276,10 @@ def member_apply_loan():
                 ) VALUES (?, ?, ?, ?, ?, ?)
             """, (loan_id, 'No Guarantor Required', 'N/A', 'N/A', 'N/A', 'accepted'))
         
-        # Add to guarantor tracking
-        applicant = db.execute("SELECT full_name FROM users WHERE id = ?", (user_id,)).fetchone()
-        cursor.execute("""
-            INSERT INTO guarantor_tracking (
-                guarantor_id, loan_id, member_name, amount_guaranteed, outstanding_balance
-            ) VALUES (?, ?, ?, ?, ?)
-        """, (user_id, loan_id, applicant['full_name'], loan_amount, total_repayment))
-        
         db.commit()
         db.close()
         
-        success_message = 'Loan application submitted successfully!'
+        success_message = '✅ Loan application submitted successfully!'
         if guarantors_required:
             success_message += ' Guarantors will be contacted manually by the SACCO team.'
         else:
@@ -2052,12 +2309,17 @@ def member_apply_loan():
     except Exception as e:
         db.rollback()
         db.close()
+        import traceback
+        traceback.print_exc()
         if request.is_json:
             return jsonify({'success': False, 'message': str(e)}), 500
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('member_apply_loan'))
 
 
+# ============================================================
+# MEMBER - REPAYMENTS
+# ============================================================
 @app.route("/member/repayments")
 def member_repayments():
     if "user_id" not in session:
@@ -2116,6 +2378,9 @@ def member_repayments():
         return redirect(url_for('member_dashboard'))
 
 
+# ============================================================
+# MEMBER - SAVINGS
+# ============================================================
 @app.route("/member/savings")
 def member_savings():
     if "user_id" not in session:
@@ -2157,6 +2422,9 @@ def member_savings():
         return redirect(url_for('member_dashboard'))
 
 
+# ============================================================
+# MEMBER - GUARANTORS
+# ============================================================
 @app.route("/member/guarantors")
 def member_guarantors():
     if "user_id" not in session:
@@ -2167,7 +2435,6 @@ def member_guarantors():
     db.row_factory = sqlite3.Row
     
     try:
-        # Get all guarantors for the member's loans
         guarantors = db.execute("""
             SELECT 
                 lg.*,
@@ -2183,7 +2450,6 @@ def member_guarantors():
             ORDER BY l.application_date DESC, lg.id DESC
         """, (user_id,)).fetchall()
         
-        # Get all loans for the member (to display loan info)
         loans = db.execute("""
             SELECT 
                 id,
@@ -2205,18 +2471,10 @@ def member_guarantors():
         
         db.close()
         
-        # Debug output
-        print("=" * 60)
-        print("🔵 MEMBER GUARANTORS LOADED")
-        print(f"🟢 User ID: {user_id}")
-        print(f"🟢 Guarantors found: {len(guarantors)}")
-        print(f"🟢 Loans found: {len(loans)}")
-        print("=" * 60)
-        
         return render_template(
             "member/member-guarantors.html",
             guarantors=guarantors,
-            loans=loans  # <-- This was missing!
+            loans=loans
         )
         
     except Exception as e:
@@ -2227,9 +2485,9 @@ def member_guarantors():
         return redirect(url_for("member_dashboard"))
 
 
-# ============================================
+# ============================================================
 # OTHER DASHBOARDS
-# ============================================
+# ============================================================
 @app.route("/chairperson/dashboard")
 def chairperson_dashboard():
     if session.get("role") != "chairperson":
@@ -2277,9 +2535,101 @@ def guarantor_tracking():
     )
 
 
-# ============================================
-# ADMIN - VIEW LOAN DETAILS
-# ============================================
+# ============================================================
+# ADMIN - FINAL APPROVE/REJECT LOAN
+# ============================================================
+@app.route("/admin/loan/approve/<int:loan_id>", methods=["POST"])
+def admin_approve_loan(loan_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    data = request.get_json()
+    action = data.get('action')
+    reason = data.get('reason', '').strip()
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        loan = db.execute("""
+            SELECT l.*, u.full_name, u.email, u.phone, u.id as user_id
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.id = ?
+        """, (loan_id,)).fetchone()
+        
+        if not loan:
+            db.close()
+            return jsonify({'error': 'Loan not found'}), 404
+        
+        if loan['status'] != 'approved':
+            db.close()
+            return jsonify({'error': f'Loan must be approved first. Current status: {loan["status"]}'}), 400
+        
+        if action == 'reject':
+            if not reason:
+                db.close()
+                return jsonify({'error': 'Rejection reason is required'}), 400
+            
+            db.execute("""
+                UPDATE loans 
+                SET status = 'rejected', 
+                    rejected_date = datetime('now'),
+                    admin_rejection_reason = ?,
+                    rejection_reason = ?,
+                    rejected_by = ?
+                WHERE id = ?
+            """, (reason, reason, session.get('full_name', 'Admin'), loan_id))
+            db.commit()
+            db.close()
+            return jsonify({'success': True, 'message': 'Loan rejected successfully'})
+        
+        # Final Approve - Disburse the loan
+        today = datetime.now().strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        balance = loan['total_repayment'] or loan['amount']
+        
+        db.execute("""
+            UPDATE loans 
+            SET status = 'disbursed',
+                disbursement_date = ?,
+                loan_start_date = ?,
+                loan_end_date = ?,
+                due_date = ?,
+                current_balance = ?,
+                disbursed_by = ?,
+                disbursed_by_role = ?
+            WHERE id = ?
+        """, (today, today, end_date, end_date, balance, session.get('full_name', 'Admin'), session.get('role', 'admin'), loan_id))
+        
+        # Create notification for member
+        db.execute("""
+            INSERT INTO notifications (
+                user_id, title, message, notification_type, is_read, created_at
+            )
+            VALUES (?, ?, ?, ?, 0, datetime('now'))
+        """, (
+            loan['user_id'],
+            'Loan Disbursed',
+            f'Your loan {loan["loan_number"]} of UGX {loan["amount"]:,.0f} has been disbursed. Your repayment period starts today.',
+            'loan_disbursed'
+        ))
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({'success': True, 'message': '✅ Loan approved and disbursed successfully!'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        print(f"❌ Error in admin approve: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# ADMIN - VIEW LOAN DETAILS (Reuses Treasurer Template)
+# ============================================================
 @app.route("/admin/loan/view/<int:loan_id>")
 def admin_view_loan(loan_id):
     if session.get("role") not in ["admin", "chairperson"]:
@@ -2299,84 +2649,312 @@ def admin_view_loan(loan_id):
         
         if not loan:
             flash('Loan not found', 'danger')
+            db.close()
             return redirect(url_for('admin_dashboard'))
         
-        guarantors = db.execute("""
-            SELECT * FROM loan_guarantors WHERE loan_id = ?
-        """, (loan_id,)).fetchall()
-        
-        repayments = db.execute("""
-            SELECT * FROM repayments WHERE loan_id = ? ORDER BY payment_date DESC
-        """, (loan_id,)).fetchall()
-        
+        guarantors = db.execute("SELECT * FROM loan_guarantors WHERE loan_id = ?", (loan_id,)).fetchall()
+        repayments = db.execute("SELECT * FROM repayments WHERE loan_id = ? ORDER BY payment_date DESC", (loan_id,)).fetchall()
         total_paid = sum(r['amount'] for r in repayments) if repayments else 0
         
-    except Exception as e:
-        print(f"Database error: {e}")
-        flash(f'Database error: {str(e)}', 'danger')
-        return redirect(url_for('admin_dashboard'))
-    finally:
         db.close()
-    
-    return render_template(
-        "admin/admin-view-loan.html",
-        loan=loan,
-        guarantors=guarantors,
-        repayments=repayments,
-        total_paid=total_paid,
-        role='admin'
-    )
+        
+        return render_template(
+            "treasurer/treasurer-view-loan.html",
+            loan=loan,
+            guarantors=guarantors,
+            repayments=repayments,
+            total_paid=total_paid,
+            role='admin'
+        )
+        
+    except Exception as e:
+        db.close()
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
 
-
-# ============================================
-# ADMIN - FINAL LOAN APPROVAL
-# ============================================
-@app.route("/admin/loan/approve/<int:loan_id>", methods=["POST"])
-def admin_approve_loan(loan_id):
+# ============================================================
+# ADMIN - GENERATE REPORTS (FIXED)
+# ============================================================
+@app.route("/admin/reports/generate/<string:report_type>")
+def generate_report(report_type):
     if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'error': 'Access denied. Only Admin or Chairperson can approve loans.'}), 403
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        if report_type == 'members':
+            # Get all members with their details
+            members = db.execute("""
+                SELECT 
+                    id, full_name, sacco_number, phone, email,
+                    savings_balance, status, registration_date,
+                    next_of_kin_name, next_of_kin_phone, gender, dob, address
+                FROM users 
+                WHERE LOWER(role) = 'member'
+                ORDER BY full_name
+            """).fetchall()
+            
+            # Convert to dictionaries and add loan counts (FIXED)
+            members_list = []
+            for member in members:
+                # Convert sqlite3.Row to dictionary
+                member_dict = dict(member)
+                loan_count = db.execute("""
+                    SELECT COUNT(*) FROM loans WHERE user_id = ? AND status IN ('disbursed', 'active')
+                """, (member_dict['id'],)).fetchone()[0]
+                member_dict['active_loans'] = loan_count  # ✅ Now this works
+                members_list.append(member_dict)
+            
+            db.close()
+            return render_template(
+                "admin/reports/member-report.html",
+                members=members_list,  # Pass list of dictionaries
+                total_members=len(members_list),
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                report_title="Member Report",
+                now=datetime.now()
+            )
+            
+        elif report_type == 'financial':
+            # Financial summary data
+            total_members = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
+            total_savings = db.execute("SELECT COALESCE(SUM(savings_balance), 0) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
+            
+            # Loan statistics
+            total_loans = db.execute("SELECT COUNT(*) FROM loans").fetchone()[0]
+            pending_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
+            approved_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'approved'").fetchone()[0]
+            disbursed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'disbursed'").fetchone()[0]
+            completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+            rejected_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
+            
+            # Total loan amounts
+            total_loan_amount = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans").fetchone()[0]
+            total_disbursed = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status IN ('disbursed', 'active', 'completed')").fetchone()[0]
+            
+            # Repayments
+            total_repayments = db.execute("SELECT COALESCE(SUM(amount), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
+            
+            # Staff counts
+            staff_counts = {
+                'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
+                'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
+                'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
+                'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
+            }
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/financial-report.html",
+                total_members=total_members,
+                total_savings=total_savings,
+                total_loans=total_loans,
+                pending_loans=pending_loans,
+                approved_loans=approved_loans,
+                disbursed_loans=disbursed_loans,
+                completed_loans=completed_loans,
+                rejected_loans=rejected_loans,
+                total_loan_amount=total_loan_amount,
+                total_disbursed=total_disbursed,
+                total_repayments=total_repayments,
+                staff_counts=staff_counts,
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                report_title="Financial Summary Report",
+                now=datetime.now()
+            )
+            
+        elif report_type == 'loans':
+            # Get all loans with member details
+            loans = db.execute("""
+                SELECT 
+                    l.*,
+                    u.full_name,
+                    u.sacco_number,
+                    u.phone,
+                    u.email,
+                    COALESCE((
+                        SELECT COUNT(*) FROM repayments 
+                        WHERE loan_id = l.id AND status = 'completed'
+                    ), 0) as payment_count,
+                    COALESCE((
+                        SELECT SUM(amount) FROM repayments 
+                        WHERE loan_id = l.id AND status = 'completed'
+                    ), 0) as total_paid
+                FROM loans l
+                JOIN users u ON l.user_id = u.id
+                ORDER BY l.application_date DESC
+            """).fetchall()
+            
+            # Get loan statistics - convert to list of dicts if needed
+            loans_list = [dict(loan) for loan in loans]  # Convert to dictionaries
+            
+            total_loans = len(loans_list)
+            total_amount = sum(l['amount'] for l in loans_list) if loans_list else 0
+            total_balance = sum(l.get('current_balance', 0) or 0 for l in loans_list) if loans_list else 0
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/loan-report.html",
+                loans=loans_list,  # Pass list of dictionaries
+                total_loans=total_loans,
+                total_amount=total_amount,
+                total_balance=total_balance,
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                report_title="Loan Portfolio Report",
+                now=datetime.now()
+            )
+            
+        elif report_type == 'savings':
+            # Get all savings deposits with member details
+            savings = db.execute("""
+                SELECT 
+                    sd.*,
+                    u.full_name,
+                    u.sacco_number,
+                    u.phone,
+                    u.email
+                FROM savings_deposits sd
+                JOIN users u ON sd.user_id = u.id
+                ORDER BY sd.deposit_date DESC
+            """).fetchall()
+            
+            # Get member savings summaries
+            member_savings = db.execute("""
+                SELECT 
+                    u.id,
+                    u.full_name,
+                    u.sacco_number,
+                    u.savings_balance,
+                    COUNT(sd.id) as deposit_count,
+                    COALESCE(SUM(sd.amount), 0) as total_deposited
+                FROM users u
+                LEFT JOIN savings_deposits sd ON u.id = sd.user_id
+                WHERE LOWER(u.role) = 'member'
+                GROUP BY u.id
+                ORDER BY u.savings_balance DESC
+            """).fetchall()
+            
+            # Convert to dictionaries
+            savings_list = [dict(s) for s in savings]
+            member_savings_list = [dict(m) for m in member_savings]
+            
+            total_savings_amount = sum(m['savings_balance'] for m in member_savings_list) if member_savings_list else 0
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/savings-report.html",
+                savings=savings_list,  # Pass list of dictionaries
+                member_savings=member_savings_list,  # Pass list of dictionaries
+                total_savings=total_savings_amount,
+                total_deposits=len(savings_list),
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                report_title="Savings Report",
+                now=datetime.now()
+            )
+            
+        else:
+            flash('Invalid report type', 'danger')
+            return redirect(url_for('admin_dashboard'))
+            
+    except Exception as e:
+        db.close()
+        flash(f'Error generating report: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+# ============================================================
+# ADMIN - VIEW USER (JSON)
+# ============================================================
+@app.route("/admin/users/view/<int:user_id>")
+def admin_view_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        user = db.execute("""
+            SELECT id, full_name, email, phone, sacco_number, role, status
+            FROM users WHERE id = ?
+        """, (user_id,)).fetchone()
+        
+        if not user:
+            db.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        db.close()
+        return jsonify({'success': True, 'user': dict(user)})
+        
+    except Exception as e:
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ============================================================
+# ADMIN - UPDATE USER
+# ============================================================
+@app.route("/admin/users/update/<int:user_id>", methods=["POST"])
+def admin_update_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     data = request.get_json()
-    action = data.get('action')
-    reason = data.get('reason', '')
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
     
     db = get_db()
     
     try:
-        loan = db.execute("""
-            SELECT l.*, u.full_name as member_name, u.email, u.phone
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.id = ? AND l.status = 'approved'
-        """, (loan_id,)).fetchone()
-        
-        if not loan:
+        user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
             db.close()
-            return jsonify({'error': 'Loan not found or not in approved status'}), 404
+            return jsonify({'success': False, 'message': 'User not found'}), 404
         
-        if action == 'reject':
-            db.execute("""
-                UPDATE loans 
-                SET status = 'rejected', 
-                    rejected_date = ?,
-                    admin_rejection_reason = ?,
-                    rejection_reason = ?
-                WHERE id = ?
-            """, (datetime.now().strftime('%Y-%m-%d'), reason, reason, loan_id))
-            db.commit()
-            db.close()
-            return jsonify({'success': True, 'message': 'Loan rejected successfully'})
+        # Check if email is already used by another user
+        email = data.get('email', '').strip()
+        if email:
+            existing = db.execute("""
+                SELECT id FROM users WHERE email = ? AND id != ? AND email != ''
+            """, (email, user_id)).fetchone()
+            if existing:
+                db.close()
+                return jsonify({'success': False, 'message': 'Email already in use by another user'}), 400
         
-        # Final approval - disburse the loan
+        # Check if phone is already used by another user
+        phone = data.get('phone', '').strip()
+        if phone:
+            existing = db.execute("""
+                SELECT id FROM users WHERE phone = ? AND id != ? AND phone != ''
+            """, (phone, user_id)).fetchone()
+            if existing:
+                db.close()
+                return jsonify({'success': False, 'message': 'Phone number already in use by another user'}), 400
+        
         db.execute("""
-            UPDATE loans 
-            SET status = 'disbursed', disbursed_date = ?
+            UPDATE users 
+            SET full_name = ?,
+                email = ?,
+                phone = ?,
+                role = ?,
+                status = ?
             WHERE id = ?
-        """, (datetime.now().strftime('%Y-%m-%d'), loan_id))
+        """, (
+            data.get('full_name', '').strip(),
+            email,
+            phone,
+            data.get('role', 'member'),
+            data.get('status', 'active'),
+            user_id
+        ))
+        
         db.commit()
         db.close()
-        
-        return jsonify({'success': True, 'message': 'Loan disbursed successfully!'})
+        return jsonify({'success': True, 'message': 'User updated successfully'})
         
     except Exception as e:
         db.rollback()
@@ -2384,9 +2962,271 @@ def admin_approve_loan(loan_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ============================================
-# ADMIN - STAFF USER MANAGEMENT
-# ============================================
+# ============================================================
+# ADMIN - RESET PASSWORD
+# ============================================================
+@app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
+def admin_reset_password(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    import secrets
+    import string
+    
+    db = get_db()
+    
+    try:
+        user = db.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            db.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Generate a random password
+        alphabet = string.ascii_letters + string.digits
+        new_password = ''.join(secrets.choice(alphabet) for _ in range(10))
+        
+        db.execute("""
+            UPDATE users SET password = ? WHERE id = ?
+        """, (new_password, user_id))
+        
+        db.commit()
+        db.close()
+        return jsonify({
+            'success': True, 
+            'message': 'Password reset successfully',
+            'new_password': new_password
+        })
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# ADMIN - DELETE USER (FIXED - Accepts both DELETE and POST)
+# ============================================================
+@app.route("/admin/users/delete/<int:user_id>", methods=["DELETE", "POST"])
+def admin_delete_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        user = db.execute("SELECT id, full_name, role, sacco_number FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            db.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Prevent deleting the last admin
+        if user['role'] == 'admin':
+            admin_count = db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
+            if admin_count <= 1:
+                db.close()
+                return jsonify({'success': False, 'message': 'Cannot delete the last admin user'}), 400
+        
+        # Prevent deleting self
+        if user_id == session.get('user_id'):
+            db.close()
+            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
+        
+        # Check if user has active loans
+        if user['role'] == 'member':
+            active_loans = db.execute("""
+                SELECT COUNT(*) FROM loans 
+                WHERE user_id = ? AND status IN ('pending', 'approved', 'disbursed', 'active')
+            """, (user_id,)).fetchone()[0]
+            
+            if active_loans > 0:
+                db.close()
+                return jsonify({
+                    'success': False, 
+                    'message': f'Cannot delete member with {active_loans} active loan(s). Please resolve loans first.'
+                }), 400
+            
+            # Check if member has savings balance
+            savings = db.execute("SELECT savings_balance FROM users WHERE id = ?", (user_id,)).fetchone()
+            if savings and savings['savings_balance'] > 0:
+                db.close()
+                return jsonify({
+                    'success': False, 
+                    'message': f'Cannot delete member with savings balance of UGX {savings["savings_balance"]:,.0f}. Please withdraw savings first.'
+                }), 400
+        
+        # Delete related records first (foreign key constraints)
+        # Delete loan guarantors
+        db.execute("DELETE FROM loan_guarantors WHERE loan_id IN (SELECT id FROM loans WHERE user_id = ?)", (user_id,))
+        # Delete repayments
+        db.execute("DELETE FROM repayments WHERE user_id = ?", (user_id,))
+        # Delete loans
+        db.execute("DELETE FROM loans WHERE user_id = ?", (user_id,))
+        # Delete savings deposits
+        db.execute("DELETE FROM savings_deposits WHERE user_id = ?", (user_id,))
+        # Delete notifications
+        db.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
+        # Finally delete the user
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({'success': True, 'message': f'User "{user["full_name"]}" deleted successfully'})
+        
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        db.close()
+        return jsonify({'success': False, 'message': f'Database constraint error: {str(e)}'}), 400
+    except Exception as e:
+        db.rollback()
+        db.close()
+        print(f"Delete user error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ============================================================
+# ADMIN - GET SETTINGS
+# ============================================================
+@app.route("/admin/settings/get")
+def get_settings():
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        # Check if settings table exists, create if not
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sacco_name TEXT DEFAULT 'Karacel Association',
+                registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
+                savings_interest_rate REAL DEFAULT 6.5,
+                loan_interest_rate REAL DEFAULT 12,
+                penalty_rate REAL DEFAULT 5,
+                max_loan_amount TEXT DEFAULT '10000000',
+                min_loan_amount TEXT DEFAULT '10000',
+                max_tenure INTEGER DEFAULT 24,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.commit()
+        
+        # Get settings
+        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        
+        if not settings:
+            # Insert default settings
+            db.execute("""
+                INSERT INTO system_settings (
+                    sacco_name, registration_number, savings_interest_rate,
+                    loan_interest_rate, penalty_rate, max_loan_amount,
+                    min_loan_amount, max_tenure
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Karacel Association', 'SACCO/REG/2024/001', 6.5, 12, 5, '10000000', '10000', 24)
+            )
+            db.commit()
+            settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        
+        db.close()
+        return jsonify({'success': True, 'settings': dict(settings)})
+        
+    except Exception as e:
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# ADMIN - UPDATE SETTINGS
+# ============================================================
+@app.route("/admin/settings/update", methods=["POST"])
+def update_settings():
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
+    
+    db = get_db()
+    
+    try:
+        # Ensure settings table exists
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sacco_name TEXT DEFAULT 'Karacel Association',
+                registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
+                savings_interest_rate REAL DEFAULT 6.5,
+                loan_interest_rate REAL DEFAULT 12,
+                penalty_rate REAL DEFAULT 5,
+                max_loan_amount TEXT DEFAULT '10000000',
+                min_loan_amount TEXT DEFAULT '10000',
+                max_tenure INTEGER DEFAULT 24,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.commit()
+        
+        # Check if settings exist
+        settings = db.execute("SELECT id FROM system_settings LIMIT 1").fetchone()
+        
+        if settings:
+            db.execute("""
+                UPDATE system_settings SET
+                    sacco_name = ?,
+                    registration_number = ?,
+                    savings_interest_rate = ?,
+                    loan_interest_rate = ?,
+                    penalty_rate = ?,
+                    max_loan_amount = ?,
+                    min_loan_amount = ?,
+                    max_tenure = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                data.get('sacco_name', 'Karacel Association'),
+                data.get('registration_number', 'SACCO/REG/2024/001'),
+                data.get('savings_interest_rate', 6.5),
+                data.get('loan_interest_rate', 12),
+                data.get('penalty_rate', 5),
+                data.get('max_loan_amount', '10000000'),
+                data.get('min_loan_amount', '10000'),
+                data.get('max_tenure', 24),
+                settings['id']
+            ))
+        else:
+            db.execute("""
+                INSERT INTO system_settings (
+                    sacco_name, registration_number, savings_interest_rate,
+                    loan_interest_rate, penalty_rate, max_loan_amount,
+                    min_loan_amount, max_tenure
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                data.get('sacco_name', 'Karacel Association'),
+                data.get('registration_number', 'SACCO/REG/2024/001'),
+                data.get('savings_interest_rate', 6.5),
+                data.get('loan_interest_rate', 12),
+                data.get('penalty_rate', 5),
+                data.get('max_loan_amount', '10000000'),
+                data.get('min_loan_amount', '10000'),
+                data.get('max_tenure', 24)
+            ))
+        
+        db.commit()
+        db.close()
+        return jsonify({'success': True, 'message': 'Settings updated successfully'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# ADMIN - USER MANAGEMENT
+# ============================================================
 @app.route("/admin/users/register", methods=["GET", "POST"])
 def admin_register_user():
     if session.get("role") not in ["admin", "chairperson"]:
@@ -2477,72 +3317,9 @@ def admin_manage_users():
     )
 
 
-# ============================================
-# INTEREST ACCRUAL FUNCTION (Run Monthly)
-# ============================================
-def calculate_monthly_interest():
-    """Run this function monthly via cron job or scheduled task"""
-    db = get_db()
-    
-    current_date = datetime.now()
-    current_year = current_date.year
-    
-    # Get all active loans
-    active_loans = db.execute("""
-        SELECT * FROM loans 
-        WHERE status IN ('approved', 'disbursed', 'active')
-        AND status != 'completed'
-    """).fetchall()
-    
-    for loan in active_loans:
-        # Check if past December
-        end_date = datetime(current_year, 12, 31)
-        
-        if current_date > end_date:
-            # Mark as completed if past December
-            db.execute("""
-                UPDATE loans 
-                SET status = 'completed', completed_date = ?
-                WHERE id = ?
-            """, (current_date.strftime('%Y-%m-%d'), loan['id']))
-            continue
-        
-        current_balance = loan['current_balance'] or loan['total_repayment']
-        interest_rate = loan['interest_rate'] / 100
-        
-        # Calculate interest for one month
-        interest_amount = current_balance * interest_rate
-        new_balance = current_balance + interest_amount
-        
-        # Update loan balance
-        db.execute("""
-            UPDATE loans 
-            SET current_balance = ?,
-                interest_accrued = interest_accrued + ?,
-                months_overdue = months_overdue + 1,
-                last_interest_date = ?
-            WHERE id = ?
-        """, (new_balance, interest_amount, current_date.strftime('%Y-%m-%d'), loan['id']))
-        
-        # Update guarantor tracking
-        db.execute("""
-            UPDATE guarantor_tracking 
-            SET outstanding_balance = ?,
-                repayment_status = CASE 
-                    WHEN ? > ? THEN 'overdue'
-                    ELSE 'on_track'
-                END,
-                last_updated = ?
-            WHERE loan_id = ?
-        """, (new_balance, new_balance, loan['total_repayment'], current_date.strftime('%Y-%m-%d %H:%M:%S'), loan['id']))
-    
-    db.commit()
-    db.close()
-
-
-# ============================================
+# ============================================================
 # DEBUG ROUTE
-# ============================================
+# ============================================================
 @app.route("/debug/repayments/<int:user_id>")
 def debug_member_repayments(user_id):
     db = get_db()
@@ -2558,11 +3335,11 @@ def debug_member_repayments(user_id):
 
 
 # ============================================================
-# TREASURER - VIEW MEMBER (AJAX)
+# TREASURER - VIEW MEMBER DETAILS (HTML Page)
 # ============================================================
 @app.route("/treasurer/members/view/<int:member_id>")
 def treasurer_member_details(member_id):
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         flash('Access denied', 'danger')
         return redirect("/login")
     
@@ -2578,17 +3355,14 @@ def treasurer_member_details(member_id):
             flash('Member not found', 'danger')
             return redirect(url_for('treasurer_dashboard'))
         
-        # Get member's loans
         loans = db.execute("""
             SELECT * FROM loans WHERE user_id = ? ORDER BY application_date DESC
         """, (member_id,)).fetchall()
         
-        # Get member's deposits
         deposits = db.execute("""
             SELECT * FROM savings_deposits WHERE user_id = ? ORDER BY deposit_date DESC
         """, (member_id,)).fetchall()
         
-        # Get member's repayments
         repayments = db.execute("""
             SELECT r.*, l.loan_number 
             FROM repayments r
@@ -2597,6 +3371,8 @@ def treasurer_member_details(member_id):
             ORDER BY r.payment_date DESC
         """, (member_id,)).fetchall()
         
+        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+        
         db.close()
         
         return render_template(
@@ -2604,7 +3380,8 @@ def treasurer_member_details(member_id):
             member=member,
             loans=loans,
             deposits=deposits,
-            repayments=repayments
+            repayments=repayments,
+            completed_loans=completed_loans
         )
         
     except Exception as e:
@@ -2613,9 +3390,49 @@ def treasurer_member_details(member_id):
         return redirect(url_for('treasurer_dashboard'))
 
 
+# ============================================================
+# TREASURER - VIEW MEMBER (JSON for Edit Modal)
+# ============================================================
+@app.route("/treasurer/member/view/<int:member_id>")
+def treasurer_member_view_json(member_id):
+    """Return member data as JSON for AJAX calls"""
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        member = db.execute("""
+            SELECT id, full_name, sacco_number, phone, email, 
+                   gender, dob, address, savings_balance, status, 
+                   registration_date, next_of_kin_name, next_of_kin_phone, relationship
+            FROM users 
+            WHERE id = ? AND LOWER(role) = 'member'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            db.close()
+            return jsonify({'success': False, 'message': 'Member not found'}), 404
+        
+        db.close()
+        
+        return jsonify({
+            'success': True,
+            'member': dict(member)
+        })
+        
+    except Exception as e:
+        db.close()
+        print(f"❌ Error getting member: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ============================================================
+# TREASURER - UPDATE MEMBER
+# ============================================================
 @app.route("/treasurer/member/update/<int:member_id>", methods=["POST"])
 def treasurer_update_member(member_id):
-    if session.get("role") not in ["treasurer", "admin"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     data = request.get_json()
@@ -2625,7 +3442,6 @@ def treasurer_update_member(member_id):
     db = get_db()
     
     try:
-        # Check if member exists
         member = db.execute("""
             SELECT id, sacco_number FROM users WHERE id = ? AND LOWER(role) = 'member'
         """, (member_id,)).fetchone()
@@ -2634,7 +3450,6 @@ def treasurer_update_member(member_id):
             db.close()
             return jsonify({'success': False, 'message': 'Member not found'}), 404
         
-        # Check for duplicate phone number (excluding current member)
         phone = data.get('phone', '').strip()
         if phone:
             existing = db.execute("""
@@ -2644,7 +3459,6 @@ def treasurer_update_member(member_id):
                 db.close()
                 return jsonify({'success': False, 'message': 'Phone number already in use by another member'}), 400
         
-        # Check for duplicate email (excluding current member)
         email = data.get('email', '').strip()
         if email:
             existing = db.execute("""
@@ -2654,7 +3468,6 @@ def treasurer_update_member(member_id):
                 db.close()
                 return jsonify({'success': False, 'message': 'Email already in use by another member'}), 400
         
-        # Check for duplicate SACCO number (excluding current member)
         sacco_number = data.get('sacco_number', '').strip().upper()
         if sacco_number:
             existing = db.execute("""
@@ -2664,7 +3477,6 @@ def treasurer_update_member(member_id):
                 db.close()
                 return jsonify({'success': False, 'message': 'SACCO number already in use by another member'}), 400
         
-        # Update member
         db.execute("""
             UPDATE users 
             SET full_name = ?,
@@ -2711,7 +3523,6 @@ def treasurer_delete_member(member_id):
     db = get_db()
     
     try:
-        # Check if member exists
         member = db.execute("""
             SELECT id, full_name, savings_balance FROM users WHERE id = ? AND LOWER(role) = 'member'
         """, (member_id,)).fetchone()
@@ -2720,7 +3531,6 @@ def treasurer_delete_member(member_id):
             db.close()
             return jsonify({'success': False, 'message': 'Member not found'}), 404
         
-        # Check if member has active loans
         active_loans = db.execute("""
             SELECT COUNT(*) as count FROM loans 
             WHERE user_id = ? AND status IN ('pending', 'approved', 'disbursed', 'active')
@@ -2733,7 +3543,6 @@ def treasurer_delete_member(member_id):
                 'message': f'Cannot delete member with {active_loans} active loan(s). Please resolve loans first.'
             }), 400
         
-        # Check if member has savings balance
         if member['savings_balance'] > 0:
             db.close()
             return jsonify({
@@ -2741,7 +3550,6 @@ def treasurer_delete_member(member_id):
                 'message': f'Cannot delete member with savings balance of UGX {member["savings_balance"]:,.0f}. Please withdraw savings first.'
             }), 400
         
-        # Delete member
         db.execute("DELETE FROM users WHERE id = ?", (member_id,))
         db.commit()
         db.close()
@@ -2754,5 +3562,322 @@ def treasurer_delete_member(member_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+# ============================================================
+# MEMBER SEARCH FOR GUARANTORS
+# ============================================================
+@app.route("/member/search-members", methods=["GET"])
+def search_members():
+    if "user_id" not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+    
+    search_term = request.args.get('q', '').strip()
+    current_user_id = session["user_id"]
+    
+    if not search_term or len(search_term) < 2:
+        return jsonify({
+            'success': True,
+            'members': [],
+            'message': 'Please enter at least 2 characters'
+        })
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        search_pattern = f'%{search_term}%'
+        members = db.execute("""
+            SELECT 
+                id,
+                full_name,
+                sacco_number,
+                phone,
+                email,
+                savings_balance,
+                status
+            FROM users 
+            WHERE LOWER(role) = 'member' 
+            AND id != ?
+            AND status = 'active'
+            AND (
+                LOWER(full_name) LIKE LOWER(?) OR
+                sacco_number LIKE ? OR
+                phone LIKE ? OR
+                email LIKE ?
+            )
+            ORDER BY full_name ASC
+            LIMIT 20
+        """, (current_user_id, search_pattern, search_pattern, search_pattern, search_pattern)).fetchall()
+        
+        member_list = []
+        for member in members:
+            loan_count = db.execute("""
+                SELECT COUNT(*) as count 
+                FROM loans 
+                WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
+            """, (member['id'],)).fetchone()['count']
+            
+            member_list.append({
+                'id': member['id'],
+                'full_name': member['full_name'],
+                'sacco_number': member['sacco_number'],
+                'phone': member['phone'] or '',
+                'email': member['email'] or '',
+                'savings_balance': member['savings_balance'] or 0,
+                'active_loans': loan_count,
+                'status': member['status']
+            })
+        
+        db.close()
+        
+        return jsonify({
+            'success': True,
+            'members': member_list,
+            'count': len(member_list)
+        })
+        
+    except Exception as e:
+        db.close()
+        print(f"Error searching members: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# ============================================================
+# GET ALL MEMBERS
+# ============================================================
+@app.route("/member/get-members", methods=["GET"])
+def get_all_members():
+    if "user_id" not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+    
+    current_user_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        members = db.execute("""
+            SELECT 
+                id,
+                full_name,
+                sacco_number,
+                phone,
+                email,
+                savings_balance,
+                status
+            FROM users 
+            WHERE LOWER(role) = 'member' 
+            AND id != ?
+            AND status = 'active'
+            ORDER BY full_name ASC
+            LIMIT 50
+        """, (current_user_id,)).fetchall()
+        
+        member_list = []
+        for member in members:
+            member_list.append({
+                'id': member['id'],
+                'full_name': member['full_name'],
+                'sacco_number': member['sacco_number'],
+                'phone': member['phone'] or '',
+                'email': member['email'] or '',
+                'savings_balance': member['savings_balance'] or 0
+            })
+        
+        db.close()
+        
+        return jsonify({
+            'success': True,
+            'members': member_list,
+            'count': len(member_list)
+        })
+        
+    except Exception as e:
+        db.close()
+        print(f"Error getting members: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# GET MEMBER BY ID
+# ============================================================
+@app.route("/member/get-member/<int:member_id>", methods=["GET"])
+def get_member_by_id(member_id):
+    if "user_id" not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+    
+    current_user_id = session["user_id"]
+    
+    if member_id == current_user_id:
+        return jsonify({
+            'success': False,
+            'message': 'You cannot select yourself as a guarantor'
+        }), 400
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        member = db.execute("""
+            SELECT 
+                id,
+                full_name,
+                sacco_number,
+                phone,
+                email,
+                savings_balance,
+                status,
+                gender,
+                dob,
+                address,
+                registration_date
+            FROM users 
+            WHERE id = ? AND LOWER(role) = 'member' AND status = 'active'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            db.close()
+            return jsonify({
+                'success': False,
+                'message': 'Member not found or inactive'
+            }), 404
+        
+        loan_count = db.execute("""
+            SELECT COUNT(*) as count 
+            FROM loans 
+            WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
+        """, (member_id,)).fetchone()['count']
+        
+        db.close()
+        
+        return jsonify({
+            'success': True,
+            'member': {
+                'id': member['id'],
+                'full_name': member['full_name'],
+                'sacco_number': member['sacco_number'],
+                'phone': member['phone'] or '',
+                'email': member['email'] or '',
+                'savings_balance': member['savings_balance'] or 0,
+                'active_loans': loan_count,
+                'status': member['status'],
+                'gender': member['gender'],
+                'dob': member['dob'],
+                'address': member['address'],
+                'registration_date': member['registration_date']
+            }
+        })
+        
+    except Exception as e:
+        db.close()
+        print(f"Error getting member: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# ============================================================
+# CHECK IF MEMBER CAN BE GUARANTOR
+# ============================================================
+@app.route("/member/check-guarantor/<int:member_id>", methods=["GET"])
+def check_guarantor_eligibility(member_id):
+    if "user_id" not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        guarantee_count = db.execute("""
+            SELECT COUNT(*) as count 
+            FROM loan_guarantors 
+            WHERE phone IN (SELECT phone FROM users WHERE id = ?)
+            AND status IN ('active', 'accepted')
+        """, (member_id,)).fetchone()['count']
+        
+        db.close()
+        
+        is_eligible = guarantee_count < 2
+        
+        return jsonify({
+            'success': True,
+            'is_eligible': is_eligible,
+            'current_guarantees': guarantee_count,
+            'max_allowed': 2,
+            'message': f'This member is currently guaranteeing {guarantee_count} loan(s). Maximum allowed is 2.' if not is_eligible else 'This member is eligible to be a guarantor.'
+        })
+        
+    except Exception as e:
+        db.close()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# ============================================================
+# DEBUG - CHECK REGISTERED ROUTES
+# ============================================================
+print("=" * 60)
+print("🔍 ALL REGISTERED ROUTES:")
+for rule in app.url_map.iter_rules():
+    print(f"   {rule.rule}")
+print("=" * 60)
+
+# Check if approve route is registered
+routes = [str(rule.rule) for rule in app.url_map.iter_rules()]
+if '/treasurer/loan/approve/<int:loan_id>' in routes:
+    print("✅ APPROVE ROUTE IS REGISTERED!")
+else:
+    print("❌ LOAN ACTION ROUTE IS NOT REGISTERED!")
+
+if '/treasurer/loan/disburse/<int:loan_id>' in routes:
+    print("✅ DISBURSE ROUTE IS REGISTERED!")
+else:
+    print("❌ DISBURSE ROUTE IS NOT REGISTERED!")
+print("=" * 60)
+
+@app.route("/debug/completed-loans")
+def debug_completed_loans():
+    if session.get("role") != "treasurer":
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        # Check all loans with status 'completed'
+        completed = db.execute("""
+            SELECT id, loan_number, status, completed_date, current_balance 
+            FROM loans 
+            WHERE status = 'completed'
+        """).fetchall()
+        
+        # Check all loans (to see what statuses exist)
+        all_loans = db.execute("""
+            SELECT id, loan_number, status, current_balance 
+            FROM loans 
+            ORDER BY id DESC
+            LIMIT 20
+        """).fetchall()
+        
+        db.close()
+        
+        return jsonify({
+            'completed_count': len(completed),
+            'completed_loans': [dict(c) for c in completed],
+            'all_loans': [dict(l) for l in all_loans]
+        })
+        
+    except Exception as e:
+        db.close()
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# RUN THE APP
+# ============================================================
 if __name__ == "__main__":
     app.run(debug=True)

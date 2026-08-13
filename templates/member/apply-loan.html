@@ -211,116 +211,140 @@
                 </div>
             </div>
 
-            <!-- SECTION 5: Guarantor Information -->
-            <div class="form-section" id="guarantorSection">
-                <div class="section-title">
-                    <span class="section-number">5</span>
-                    <h3>Guarantor Information</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <!-- Guarantor Requirement Notice -->
-                <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
-                
-                <!-- Guarantor 1 -->
-                <div class="guarantor-block">
-                    <div class="guarantor-header">
-                        <span class="guarantor-number">Guarantor 1</span>
-                        <span class="guarantor-required" style="display: none;">Required *</span>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor1Name">Full Name <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <input type="text" id="guarantor1Name" name="guarantor1_name" class="guarantor-input" placeholder="Enter guarantor's full name">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="guarantor1Phone">Phone Number <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <input type="tel" id="guarantor1Phone" name="guarantor1_phone" class="guarantor-input" placeholder="e.g. 0772123456">
-                        </div>
-                        <div class="form-group">
-                            <label for="guarantor1Email">Email Address</label>
-                            <input type="email" id="guarantor1Email" name="guarantor1_email" class="guarantor-input" placeholder="guarantor@example.com">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
-                                <option value="">Select Relationship</option>
-                                <option value="family">Family Member</option>
-                                <option value="friend">Friend</option>
-                                <option value="colleague">Colleague</option>
-                                <option value="business_partner">Business Partner</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Divider between guarantors -->
-                <div class="guarantor-divider">
-                    <span>AND</span>
-                </div>
-
-                <!-- Guarantor 2 -->
-                <div class="guarantor-block">
-                    <div class="guarantor-header">
-                        <span class="guarantor-number">Guarantor 2</span>
-                        <span class="guarantor-required" style="display: none;">Required *</span>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor2Name">Full Name <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <input type="text" id="guarantor2Name" name="guarantor2_name" class="guarantor-input" placeholder="Enter guarantor's full name">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="guarantor2Phone">Phone Number <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <input type="tel" id="guarantor2Phone" name="guarantor2_phone" class="guarantor-input" placeholder="e.g. 0772123456">
-                        </div>
-                        <div class="form-group">
-                            <label for="guarantor2Email">Email Address</label>
-                            <input type="email" id="guarantor2Email" name="guarantor2_email" class="guarantor-input" placeholder="guarantor@example.com">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
-                                <option value="">Select Relationship</option>
-                                <option value="family">Family Member</option>
-                                <option value="friend">Friend</option>
-                                <option value="colleague">Colleague</option>
-                                <option value="business_partner">Business Partner</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Guarantor Terms -->
-                <div class="guarantor-terms">
-                    <i class="fas fa-shield-alt"></i>
-                    <div>
-                        <strong>Guarantor Agreement:</strong>
-                        By providing guarantor information, you confirm that:
-                        <ul>
-                            <li>Both guarantors are different individuals (cannot be the same person)</li>
-                            <li>Guarantors will be contacted manually by the SACCO team</li>
-                            <li>Guarantors are responsible for repayment if you default</li>
-                        </ul>
-                    </div>
+       <!-- SECTION 5: Guarantor Information -->
+<div class="form-section" id="guarantorSection">
+    <div class="section-title">
+        <span class="section-number">5</span>
+        <h3>Guarantor Information</h3>
+        <span class="section-divider"></span>
+    </div>
+    
+    <!-- Guarantor Requirement Notice -->
+    <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
+    
+    <!-- Guarantor 1 -->
+    <div class="guarantor-block">
+        <div class="guarantor-header">
+            <span class="guarantor-number">Guarantor 1</span>
+            <span class="guarantor-required" style="display: none;">Required *</span>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group full-width">
+                <label for="guarantor1Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
+                <div class="member-search-container">
+                    <input type="text" id="guarantor1Search" 
+                           placeholder="Type member name or SACCO number to search..."
+                           class="member-search-input"
+                           autocomplete="off">
+                    <div id="guarantor1Results" class="member-search-results"></div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Hidden fields to store selected member data -->
+        <input type="hidden" id="guarantor1Id" name="guarantor1_id">
+        <input type="hidden" id="guarantor1Name" name="guarantor1_name">
+        <input type="hidden" id="guarantor1Phone" name="guarantor1_phone">
+        <input type="hidden" id="guarantor1Email" name="guarantor1_email">
+        
+        <!-- Selected Member Display -->
+        <div id="guarantor1Selected" class="selected-member" style="display: none;">
+            <div class="selected-member-info">
+                <span class="selected-member-name" id="g1DisplayName"></span>
+                <span class="selected-member-details" id="g1DisplayDetails"></span>
+            </div>
+            <button type="button" class="remove-member-btn" onclick="clearGuarantor(1)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="form-row" style="margin-top: 12px;">
+            <div class="form-group full-width">
+                <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
+                    <option value="">Select Relationship</option>
+                    <option value="family">Family Member</option>
+                    <option value="friend">Friend</option>
+                    <option value="colleague">Colleague</option>
+                    <option value="business_partner">Business Partner</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Divider between guarantors -->
+    <div class="guarantor-divider">
+        <span>AND</span>
+    </div>
+
+    <!-- Guarantor 2 -->
+    <div class="guarantor-block">
+        <div class="guarantor-header">
+            <span class="guarantor-number">Guarantor 2</span>
+            <span class="guarantor-required" style="display: none;">Required *</span>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group full-width">
+                <label for="guarantor2Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
+                <div class="member-search-container">
+                    <input type="text" id="guarantor2Search" 
+                           placeholder="Type member name or SACCO number to search..."
+                           class="member-search-input"
+                           autocomplete="off">
+                    <div id="guarantor2Results" class="member-search-results"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden fields to store selected member data -->
+        <input type="hidden" id="guarantor2Id" name="guarantor2_id">
+        <input type="hidden" id="guarantor2Name" name="guarantor2_name">
+        <input type="hidden" id="guarantor2Phone" name="guarantor2_phone">
+        <input type="hidden" id="guarantor2Email" name="guarantor2_email">
+        
+        <!-- Selected Member Display -->
+        <div id="guarantor2Selected" class="selected-member" style="display: none;">
+            <div class="selected-member-info">
+                <span class="selected-member-name" id="g2DisplayName"></span>
+                <span class="selected-member-details" id="g2DisplayDetails"></span>
+            </div>
+            <button type="button" class="remove-member-btn" onclick="clearGuarantor(2)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="form-row" style="margin-top: 12px;">
+            <div class="form-group full-width">
+                <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
+                    <option value="">Select Relationship</option>
+                    <option value="family">Family Member</option>
+                    <option value="friend">Friend</option>
+                    <option value="colleague">Colleague</option>
+                    <option value="business_partner">Business Partner</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guarantor Terms -->
+    <div class="guarantor-terms">
+        <i class="fas fa-shield-alt"></i>
+        <div>
+            <strong>Guarantor Agreement:</strong>
+            By providing guarantor information, you confirm that:
+            <ul>
+                <li>Both guarantors are different individuals (cannot be the same person)</li>
+                <li>Guarantors will be contacted manually by the SACCO team</li>
+                <li>Guarantors are responsible for repayment if you default</li>
+            </ul>
+        </div>
+    </div>
+</div>
 
             <!-- SECTION 6: Declaration -->
             <div class="form-section">
@@ -432,654 +456,6 @@
     </div>
 </div>
 
-<style>
-/* ============================================
-   LOAN APPLICATION STYLES
-   ============================================ */
-
-.loan-application-wrapper {
-    max-width: 950px;
-    margin: 0 auto;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 40px;
-}
-
-/* Application Header */
-.application-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 24px;
-    border-bottom: 2px solid rgba(255,255,255,0.06);
-    margin-bottom: 32px;
-}
-
-.organization-name {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #f5c542;
-    letter-spacing: 0.5px;
-}
-
-.organization-tagline {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.3);
-    margin-top: 4px;
-}
-
-.form-reference {
-    text-align: right;
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.3);
-}
-
-.form-reference strong {
-    display: block;
-    color: #fff;
-    font-size: 0.9rem;
-    margin-top: 2px;
-}
-
-/* Form Sections */
-.form-section {
-    margin-bottom: 32px;
-    padding: 20px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-
-.form-section:last-of-type {
-    border-bottom: none;
-}
-
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.section-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: rgba(245,197,66,0.12);
-    color: #f5c542;
-    border-radius: 50%;
-    font-size: 0.8rem;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.section-title h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.9);
-    margin: 0;
-}
-
-.section-divider {
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.06);
-}
-
-/* Form Rows */
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 12px;
-}
-
-.form-row:last-child {
-    margin-bottom: 0;
-}
-
-.form-group.full-width {
-    grid-column: 1 / -1;
-}
-
-.form-group label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: rgba(255,255,255,0.5);
-    margin-bottom: 6px;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 8px;
-    color: #fff;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    font-family: inherit;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #f5c542;
-    background: rgba(255,255,255,0.06);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.form-group .disabled-input {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: rgba(255,255,255,0.02);
-}
-
-.required {
-    color: #ff6b6b;
-    margin-left: 2px;
-}
-
-.hint {
-    display: block;
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.25);
-    margin-top: 4px;
-}
-
-/* Summary Grid */
-.summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-}
-
-.summary-item {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 8px;
-    padding: 12px 16px;
-    text-align: center;
-}
-
-.summary-label {
-    display: block;
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 4px;
-}
-
-.summary-value {
-    display: block;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #4ade80;
-}
-
-/* Table Wrapper */
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.04);
-}
-
-.styled-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-
-.styled-table th {
-    background: rgba(255,255,255,0.03);
-    padding: 8px 12px;
-    text-align: left;
-    color: rgba(255,255,255,0.4);
-    font-weight: 500;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-
-.styled-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.02);
-    color: rgba(255,255,255,0.7);
-}
-
-.styled-table tr:hover td {
-    background: rgba(255,255,255,0.02);
-}
-
-/* Interest Reference */
-.interest-reference {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 8px;
-    padding: 16px;
-}
-
-.reference-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-
-.reference-table th {
-    text-align: left;
-    padding: 8px 12px;
-    color: rgba(255,255,255,0.3);
-    font-weight: 500;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-
-.reference-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    color: rgba(255,255,255,0.7);
-}
-
-.reference-table tr:last-child td {
-    border-bottom: none;
-}
-
-.rate-badge {
-    display: inline-block;
-    padding: 2px 12px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.8rem;
-}
-
-.rate-5 { background: rgba(245,197,66,0.15); color: #f5c542; }
-.rate-3 { background: rgba(0,224,255,0.15); color: #00e0ff; }
-.rate-2 { background: rgba(74,222,128,0.15); color: #4ade80; }
-.rate-1 { background: rgba(168,85,247,0.15); color: #a855f7; }
-
-.interest-note {
-    margin-top: 12px;
-    padding: 12px 16px;
-    background: rgba(0,224,255,0.04);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: rgba(255,255,255,0.4);
-}
-
-.interest-note i {
-    color: #00e0ff;
-    margin-right: 8px;
-}
-
-.interest-note ul {
-    margin: 8px 0 0 0;
-    padding-left: 20px;
-}
-
-.interest-note li {
-    margin-bottom: 4px;
-}
-
-/* Guarantor Section */
-.guarantor-notice {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    display: none;
-}
-
-.guarantor-notice.no-guarantor {
-    background: rgba(74,222,128,0.06);
-    border: 1px solid rgba(74,222,128,0.12);
-    color: #4ade80;
-    display: block;
-}
-
-.guarantor-notice.requires-guarantor {
-    background: rgba(245,197,66,0.06);
-    border: 1px solid rgba(245,197,66,0.12);
-    color: #f5c542;
-    display: block;
-}
-
-.guarantor-block {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 8px;
-    padding: 16px;
-}
-
-.guarantor-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-
-.guarantor-number {
-    font-weight: 600;
-    color: rgba(255,255,255,0.7);
-    font-size: 0.9rem;
-}
-
-.guarantor-required {
-    font-size: 0.75rem;
-    color: #ff6b6b;
-}
-
-.guarantor-divider {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin: 16px 0;
-    color: rgba(255,255,255,0.2);
-    font-size: 0.8rem;
-}
-
-.guarantor-divider::before,
-.guarantor-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.04);
-}
-
-.guarantor-terms {
-    display: flex;
-    gap: 12px;
-    padding: 12px 16px;
-    background: rgba(245,197,66,0.04);
-    border-radius: 8px;
-    margin-top: 12px;
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.5);
-}
-
-.guarantor-terms i {
-    color: #f5c542;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.guarantor-terms ul {
-    margin: 4px 0 0 0;
-    padding-left: 20px;
-}
-
-.guarantor-terms li {
-    margin-bottom: 2px;
-}
-
-/* Declaration */
-.declaration-container {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 8px;
-    padding: 16px;
-}
-
-.declaration-text {
-    font-size: 0.85rem;
-    color: rgba(255,255,255,0.6);
-    line-height: 1.6;
-}
-
-.declaration-text p {
-    margin: 0 0 8px 0;
-}
-
-.declaration-text ul {
-    margin: 4px 0 0 0;
-    padding-left: 20px;
-}
-
-.declaration-text li {
-    margin-bottom: 2px;
-}
-
-.declaration-check {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.declaration-check input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin-top: 2px;
-    accent-color: #f5c542;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.declaration-check label {
-    font-size: 0.85rem;
-    color: rgba(255,255,255,0.6);
-    cursor: pointer;
-}
-
-.declaration-check label a {
-    color: #f5c542;
-    text-decoration: none;
-}
-
-.declaration-check label a:hover {
-    text-decoration: underline;
-}
-
-/* Form Actions */
-.form-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 2px solid rgba(255,255,255,0.06);
-}
-
-.submit-btn {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 24px;
-    background: #f5c542;
-    color: #0a0a14;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(245,197,66,0.25);
-}
-
-.submit-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.reset-btn {
-    padding: 14px 24px;
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.5);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.reset-btn:hover {
-    background: rgba(255,255,255,0.08);
-    border-color: rgba(255,255,255,0.1);
-}
-
-/* Modals */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.7);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    backdrop-filter: blur(8px);
-}
-
-.modal-content {
-    background: #1a1a2e;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 40px;
-    max-width: 500px;
-    width: 90%;
-    text-align: center;
-    animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-    from {
-        transform: translateY(-30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.success-icon {
-    font-size: 3.5rem;
-    color: #4ade80;
-    margin-bottom: 12px;
-}
-
-.error-icon {
-    font-size: 3.5rem;
-    color: #ff6b6b;
-    margin-bottom: 12px;
-}
-
-.modal-content h2 {
-    margin: 0 0 8px 0;
-    color: #fff;
-}
-
-.modal-content p {
-    color: rgba(255,255,255,0.5);
-    margin: 0 0 16px 0;
-}
-
-.application-ref {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 8px;
-    padding: 12px;
-    margin: 12px 0;
-}
-
-.application-ref span {
-    display: block;
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.3);
-}
-
-.application-ref strong {
-    display: block;
-    font-size: 1.2rem;
-    color: #f5c542;
-    font-family: monospace;
-    margin-top: 2px;
-}
-
-.status-notice {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(245,197,66,0.06);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: rgba(255,255,255,0.5);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .loan-application-wrapper {
-        padding: 20px;
-    }
-    
-    .application-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-    
-    .form-reference {
-        text-align: left;
-        width: 100%;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .summary-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .reset-btn {
-        order: 2;
-    }
-}
-
-@media (max-width: 480px) {
-    .summary-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .modal-content {
-        padding: 24px;
-    }
-    
-    .section-title h3 {
-        font-size: 0.85rem;
-    }
-}
-</style>
-
 <script>
 // ============================================
 // LOAN APPLICATION JAVASCRIPT
@@ -1093,17 +469,254 @@ const savingsThreshold = memberSavings * 0.95;
 const dueDateFormatted = '{{ due_date_formatted }}';
 const dueDateISO = '{{ due_date_iso }}';
 
-// Update due date display in summary
+// ============================================
+// GUARANTOR SELECTION STATE
+// ============================================
+
+let selectedGuarantors = { 1: null, 2: null };
+let searchTimeout = { 1: null, 2: null };
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('displayDueDate').value = dueDateFormatted;
-    document.getElementById('displayDueDateSummary').textContent = dueDateFormatted;
+    // Update due date display
+    const displayDueDate = document.getElementById('displayDueDate');
+    const displayDueDateSummary = document.getElementById('displayDueDateSummary');
+    if (displayDueDate) displayDueDate.value = dueDateFormatted;
+    if (displayDueDateSummary) displayDueDateSummary.textContent = dueDateFormatted;
+    
+    // Initial guarantor check
+    checkGuarantorRequirement(0);
+    
+    // Setup search listeners
+    setupSearchListeners();
+    
+    console.log('✅ Loan Application Form initialized.');
+    console.log('📊 Member Savings:', memberSavings);
+    console.log('📊 95% of Savings:', savingsThreshold);
+    console.log('📅 Due Date (30 days from now):', dueDateFormatted);
 });
 
 // ============================================
-// GET INTEREST RATE (MONTHLY)
+// SEARCH GUARANTOR MEMBERS (SERVER-SIDE)
 // ============================================
+
+function searchGuarantorMembers(searchTerm, guarantorNumber) {
+    const resultsContainer = document.getElementById('guarantor' + guarantorNumber + 'Results');
+    if (!resultsContainer) return;
+    
+    // Clear previous timeout
+    if (searchTimeout[guarantorNumber]) {
+        clearTimeout(searchTimeout[guarantorNumber]);
+    }
+    
+    // If search term is empty or too short, hide results
+    if (!searchTerm || searchTerm.trim().length < 1) {
+        resultsContainer.classList.remove('show');
+        resultsContainer.innerHTML = '';
+        return;
+    }
+    
+    // Show loading
+    resultsContainer.innerHTML = `
+        <div style="padding: 12px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.85rem;">
+            <i class="fas fa-spinner fa-spin"></i> Searching...
+        </div>
+    `;
+    resultsContainer.classList.add('show');
+    
+    // Debounce search
+    searchTimeout[guarantorNumber] = setTimeout(() => {
+        const url = '/member/search-members?q=' + encodeURIComponent(searchTerm.trim());
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    resultsContainer.innerHTML = `
+                        <div style="padding: 12px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">
+                            <i class="fas fa-exclamation-circle"></i> ${data.message || 'Error searching'}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!data.members || data.members.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div style="padding: 12px; text-align: center; color: rgba(255,255,255,0.3); font-size: 0.85rem;">
+                            <i class="fas fa-search"></i> 
+                            No members found matching "<strong>${searchTerm}</strong>"
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Build results HTML
+                let html = '';
+                data.members.forEach(member => {
+                    html += `
+                        <div class="member-search-item" onclick="selectGuarantor(${guarantorNumber}, ${member.id}, '${member.full_name.replace(/'/g, "\\'")}', '${member.sacco_number}', '${member.phone || ''}', '${member.email || ''}')">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="member-name">${member.full_name}</span>
+                                <span class="badge-available" style="font-size: 0.65rem; padding: 2px 10px; background: rgba(74,222,128,0.12); color: #4ade80; border-radius: 12px;">Active</span>
+                            </div>
+                            <div class="member-details" style="margin-top: 4px; color: rgba(255,255,255,0.4); font-size: 0.75rem;">
+                                <span><i class="fas fa-id-card"></i> ${member.sacco_number}</span>
+                                <span style="margin-left: 12px;"><i class="fas fa-phone"></i> ${member.phone || 'No phone'}</span>
+                                <span style="margin-left: 12px;"><i class="fas fa-envelope"></i> ${member.email || 'No email'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                resultsContainer.innerHTML = html;
+                resultsContainer.classList.add('show');
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                resultsContainer.innerHTML = `
+                    <div style="padding: 12px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-circle"></i> Network error. Please try again.
+                    </div>
+                `;
+            });
+    }, 300); // 300ms debounce
+}
+
+// ============================================
+// SETUP SEARCH LISTENERS
+// ============================================
+
+function setupSearchListeners() {
+    // Guarantor 1 search
+    const search1 = document.getElementById('guarantor1Search');
+    if (search1) {
+        search1.addEventListener('input', function() {
+            searchGuarantorMembers(this.value, 1);
+        });
+        search1.addEventListener('blur', function() {
+            setTimeout(() => {
+                const results = document.getElementById('guarantor1Results');
+                if (results) results.classList.remove('show');
+            }, 300);
+        });
+        search1.addEventListener('focus', function() {
+            if (this.value.length >= 1) {
+                searchGuarantorMembers(this.value, 1);
+            }
+        });
+    }
+    
+    // Guarantor 2 search
+    const search2 = document.getElementById('guarantor2Search');
+    if (search2) {
+        search2.addEventListener('input', function() {
+            searchGuarantorMembers(this.value, 2);
+        });
+        search2.addEventListener('blur', function() {
+            setTimeout(() => {
+                const results = document.getElementById('guarantor2Results');
+                if (results) results.classList.remove('show');
+            }, 300);
+        });
+        search2.addEventListener('focus', function() {
+            if (this.value.length >= 1) {
+                searchGuarantorMembers(this.value, 2);
+            }
+        });
+    }
+}
+
+// ============================================
+// SELECT GUARANTOR
+// ============================================
+
+function selectGuarantor(number, id, name, saccoNumber, phone, email) {
+    // Check if this member is already selected as the other guarantor
+    const otherNumber = number === 1 ? 2 : 1;
+    if (selectedGuarantors[otherNumber] && selectedGuarantors[otherNumber].id === id) {
+        showError('This member is already selected as Guarantor ' + otherNumber + '. Please choose a different member.');
+        return;
+    }
+    
+    // Store selected member
+    selectedGuarantors[number] = { id, name, phone, email };
+    
+    // Update hidden fields
+    document.getElementById('guarantor' + number + 'Id').value = id;
+    document.getElementById('guarantor' + number + 'Name').value = name;
+    document.getElementById('guarantor' + number + 'Phone').value = phone || '';
+    document.getElementById('guarantor' + number + 'Email').value = email || '';
+    
+    // Hide search input, show selected member
+    const searchInput = document.getElementById('guarantor' + number + 'Search');
+    const resultsContainer = document.getElementById('guarantor' + number + 'Results');
+    const selectedDisplay = document.getElementById('guarantor' + number + 'Selected');
+    
+    if (searchInput) searchInput.style.display = 'none';
+    if (resultsContainer) {
+        resultsContainer.classList.remove('show');
+        resultsContainer.innerHTML = '';
+    }
+    
+    // Display selected member
+    const displayName = document.getElementById('g' + number + 'DisplayName');
+    const displayDetails = document.getElementById('g' + number + 'DisplayDetails');
+    
+    if (displayName) displayName.textContent = name;
+    if (displayDetails) {
+        displayDetails.innerHTML = `
+            <span><i class="fas fa-id-card"></i> ${saccoNumber}</span>
+            <span style="margin-left: 16px;"><i class="fas fa-phone"></i> ${phone || 'No phone'}</span>
+            <span style="margin-left: 16px;"><i class="fas fa-envelope"></i> ${email || 'No email'}</span>
+        `;
+    }
+    if (selectedDisplay) selectedDisplay.style.display = 'flex';
+    
+    // Enable relationship dropdown
+    const relationship = document.getElementById('guarantor' + number + 'Relationship');
+    if (relationship) relationship.disabled = false;
+}
+
+// ============================================
+// CLEAR GUARANTOR
+// ============================================
+
+function clearGuarantor(number) {
+    selectedGuarantors[number] = null;
+    
+    document.getElementById('guarantor' + number + 'Id').value = '';
+    document.getElementById('guarantor' + number + 'Name').value = '';
+    document.getElementById('guarantor' + number + 'Phone').value = '';
+    document.getElementById('guarantor' + number + 'Email').value = '';
+    
+    const searchInput = document.getElementById('guarantor' + number + 'Search');
+    const selectedDisplay = document.getElementById('guarantor' + number + 'Selected');
+    const resultsContainer = document.getElementById('guarantor' + number + 'Results');
+    const relationship = document.getElementById('guarantor' + number + 'Relationship');
+    
+    if (searchInput) {
+        searchInput.style.display = 'block';
+        searchInput.value = '';
+    }
+    if (selectedDisplay) selectedDisplay.style.display = 'none';
+    if (resultsContainer) {
+        resultsContainer.classList.remove('show');
+        resultsContainer.innerHTML = '';
+    }
+    if (relationship) {
+        relationship.disabled = true;
+        relationship.value = '';
+    }
+}
+
+// ============================================
+// LOAN CALCULATIONS
+// ============================================
+
 function getInterestRate(amount) {
-    // These are MONTHLY interest rates
     if (amount >= 10000 && amount <= 1999999) {
         return { rate: 5, tier: '5%' };
     } else if (amount >= 2000000 && amount <= 4999999) {
@@ -1116,16 +729,13 @@ function getInterestRate(amount) {
     return { rate: 0, tier: '0%' };
 }
 
-// ============================================
-// CALCULATE REPAYMENT (1-MONTH LOAN)
-// ============================================
 function calculateRepayment() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
     const summaryDiv = document.getElementById('repaymentSummary');
     
     if (amount >= 10000 && amount <= 10000000) {
         const interestInfo = getInterestRate(amount);
-        const monthlyRate = interestInfo.rate / 100; // e.g., 5% = 0.05
+        const monthlyRate = interestInfo.rate / 100;
         const interestAmount = amount * monthlyRate;
         const totalDue = amount + interestAmount;
         
@@ -1137,16 +747,15 @@ function calculateRepayment() {
         document.getElementById('displayTotal').textContent = 'UGX ' + Math.round(totalDue).toLocaleString();
         
         checkGuarantorRequirement(amount);
-    } else if (amount > 0) {
-        summaryDiv.style.display = 'none';
     } else {
         summaryDiv.style.display = 'none';
     }
 }
 
 // ============================================
-// CHECK GUARANTOR REQUIREMENT
+// GUARANTOR REQUIREMENT
 // ============================================
+
 function checkGuarantorRequirement(amount) {
     const guarantorNotice = document.getElementById('guarantorNotice');
     const requiredEls = document.querySelectorAll('.guarantor-required');
@@ -1154,26 +763,30 @@ function checkGuarantorRequirement(amount) {
     
     if (amount && amount > savingsThreshold) {
         // Guarantors required
-        guarantorNotice.className = 'guarantor-notice requires-guarantor';
-        guarantorNotice.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>Guarantors Required!</strong>
-            Your loan amount (UGX ${amount.toLocaleString()}) exceeds 95% of your savings (UGX ${savingsThreshold.toLocaleString()}).
-            You must provide 2 guarantors.
-        `;
-        guarantorNotice.style.display = 'block';
+        if (guarantorNotice) {
+            guarantorNotice.className = 'guarantor-notice requires-guarantor';
+            guarantorNotice.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Guarantors Required!</strong>
+                Your loan amount (UGX ${amount.toLocaleString()}) exceeds 95% of your savings (UGX ${savingsThreshold.toLocaleString()}).
+                You must provide 2 guarantors.
+            `;
+            guarantorNotice.style.display = 'block';
+        }
         
         requiredEls.forEach(el => el.style.display = 'inline');
         inputs.forEach(el => el.setAttribute('required', 'required'));
     } else {
         // No guarantors required
-        guarantorNotice.className = 'guarantor-notice no-guarantor';
-        guarantorNotice.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <strong>No Guarantors Required!</strong>
-            Your loan amount is within 95% of your savings.
-        `;
-        guarantorNotice.style.display = 'block';
+        if (guarantorNotice) {
+            guarantorNotice.className = 'guarantor-notice no-guarantor';
+            guarantorNotice.innerHTML = `
+                <i class="fas fa-check-circle"></i>
+                <strong>No Guarantors Required!</strong>
+                Your loan amount is within 95% of your savings.
+            `;
+            guarantorNotice.style.display = 'block';
+        }
         
         requiredEls.forEach(el => el.style.display = 'none');
         inputs.forEach(el => el.removeAttribute('required'));
@@ -1183,35 +796,39 @@ function checkGuarantorRequirement(amount) {
 // ============================================
 // VALIDATE GUARANTORS
 // ============================================
+
 function validateGuarantors() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
     
     if (amount <= savingsThreshold) {
-        return true;
+        return true; // No guarantors needed
     }
     
-    const g1Name = document.getElementById('guarantor1Name').value.trim();
-    const g1Phone = document.getElementById('guarantor1Phone').value.trim();
-    const g2Name = document.getElementById('guarantor2Name').value.trim();
-    const g2Phone = document.getElementById('guarantor2Phone').value.trim();
-    
-    if (!g1Name || !g1Phone) {
-        showError('Guarantor 1 details are required for this loan amount.');
+    if (!selectedGuarantors[1]) {
+        showError('Please select Guarantor 1.');
         return false;
     }
     
-    if (!g2Name || !g2Phone) {
-        showError('Guarantor 2 details are required for this loan amount.');
+    if (!selectedGuarantors[2]) {
+        showError('Please select Guarantor 2.');
         return false;
     }
     
-    if (g1Name === g2Name) {
-        showError('Guarantor 1 and Guarantor 2 cannot be the same person.');
+    if (selectedGuarantors[1].id === selectedGuarantors[2].id) {
+        showError('Guarantor 1 and Guarantor 2 cannot be the same member.');
         return false;
     }
     
-    if (g1Phone === g2Phone) {
-        showError('Guarantor 1 and Guarantor 2 cannot have the same phone number.');
+    const rel1 = document.getElementById('guarantor1Relationship').value;
+    const rel2 = document.getElementById('guarantor2Relationship').value;
+    
+    if (!rel1) {
+        showError('Please select a relationship for Guarantor 1.');
+        return false;
+    }
+    
+    if (!rel2) {
+        showError('Please select a relationship for Guarantor 2.');
         return false;
     }
     
@@ -1221,13 +838,12 @@ function validateGuarantors() {
 // ============================================
 // SUBMIT APPLICATION
 // ============================================
+
 function submitLoanApplication(event) {
     event.preventDefault();
     
-    const form = document.getElementById('loanApplicationForm');
     const loanAmount = parseFloat(document.getElementById('loanAmount').value);
     
-    // Validate amount
     if (loanAmount < 10000) {
         showError('Loan amount must be at least UGX 10,000.');
         return false;
@@ -1237,57 +853,53 @@ function submitLoanApplication(event) {
         return false;
     }
     
-    // Validate purpose
     const purpose = document.getElementById('loanPurpose').value.trim();
     if (!purpose) {
         showError('Please provide a purpose for the loan.');
         return false;
     }
     
-    // Validate guarantors
     if (!validateGuarantors()) {
         return false;
     }
     
-    // Validate terms
     if (!document.getElementById('termsCheck').checked) {
         showError('Please agree to the terms and conditions.');
         return false;
     }
     
-    // Calculate interest (1-month loan)
     const interestInfo = getInterestRate(loanAmount);
     const monthlyRate = interestInfo.rate / 100;
     const interestAmount = loanAmount * monthlyRate;
     const totalDue = loanAmount + interestAmount;
     
-    // Prepare data
     const formData = {
         loan_amount: loanAmount,
         purpose: purpose,
-        repayment_plan: 'monthly',  // 1-month loan
-        interest_rate: interestInfo.rate,  // MONTHLY rate
+        repayment_plan: 'monthly',
+        interest_rate: interestInfo.rate,
         total_interest: Math.round(interestAmount),
         total_repayment: Math.round(totalDue),
         monthly_interest: Math.round(interestAmount),
-        tenure: 1,  // 1 month
+        tenure: 1,
         due_date: dueDateISO
     };
     
-    // Include guarantors if required
     if (loanAmount > savingsThreshold) {
-        formData.guarantor1_name = document.getElementById('guarantor1Name').value.trim();
-        formData.guarantor1_phone = document.getElementById('guarantor1Phone').value.trim();
-        formData.guarantor1_email = document.getElementById('guarantor1Email').value.trim();
+        formData.guarantor1_id = selectedGuarantors[1].id;
+        formData.guarantor1_name = selectedGuarantors[1].name;
+        formData.guarantor1_phone = selectedGuarantors[1].phone;
+        formData.guarantor1_email = selectedGuarantors[1].email;
         formData.guarantor1_relationship = document.getElementById('guarantor1Relationship').value;
-        formData.guarantor2_name = document.getElementById('guarantor2Name').value.trim();
-        formData.guarantor2_phone = document.getElementById('guarantor2Phone').value.trim();
-        formData.guarantor2_email = document.getElementById('guarantor2Email').value.trim();
+        
+        formData.guarantor2_id = selectedGuarantors[2].id;
+        formData.guarantor2_name = selectedGuarantors[2].name;
+        formData.guarantor2_phone = selectedGuarantors[2].phone;
+        formData.guarantor2_email = selectedGuarantors[2].email;
         formData.guarantor2_relationship = document.getElementById('guarantor2Relationship').value;
     }
     
-    // Submit
-    const submitBtn = form.querySelector('.submit-btn');
+    const submitBtn = document.querySelector('.submit-btn');
     const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     submitBtn.disabled = true;
@@ -1341,6 +953,7 @@ function submitLoanApplication(event) {
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
+
 function showError(message) {
     document.getElementById('errorMessage').textContent = message;
     document.getElementById('errorModal').style.display = 'flex';
@@ -1360,6 +973,8 @@ function resetForm() {
         document.getElementById('loanApplicationForm').reset();
         document.getElementById('repaymentSummary').style.display = 'none';
         document.getElementById('guarantorNotice').style.display = 'none';
+        clearGuarantor(1);
+        clearGuarantor(2);
     }
 }
 
@@ -1367,19 +982,6 @@ function showTerms(event) {
     event.preventDefault();
     alert('Terms and Conditions:\n\n1. This is a 1-month (30-day) loan.\n2. Interest is calculated once: Principal × Monthly Rate.\n3. Total due = Principal + Interest.\n4. You can pay in multiple installments during the 30-day period.\n5. Full amount must be paid by the due date.\n6. Late payment may result in penalties and action against savings and guarantors.');
 }
-
-// ============================================
-// INITIALIZE
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial guarantor check
-    checkGuarantorRequirement(0);
-    
-    console.log('Loan Application Form initialized.');
-    console.log('Member Savings:', memberSavings);
-    console.log('95% of Savings:', savingsThreshold);
-    console.log('Due Date (30 days from now):', dueDateFormatted);
-});
 </script>
 
 {% endblock %}

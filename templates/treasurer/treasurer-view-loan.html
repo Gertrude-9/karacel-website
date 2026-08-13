@@ -405,12 +405,304 @@
     .badge.warning { background: rgba(245, 197, 66, 0.12); color: #f5c542; }
     .badge.info { background: rgba(0, 224, 255, 0.12); color: #00e0ff; }
     .badge.danger { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+
+    /* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+    padding: 20px;
+}
+
+.modal-content {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.02);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.guarantor-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245,197,66,0.08);
+    color: #f5c542;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(245,197,66,0.12);
+    width: fit-content;
+}
+
+.guarantor-tag:hover {
+    background: rgba(245,197,66,0.15);
+    border-color: rgba(245,197,66,0.25);
+    transform: scale(1.02);
+}
+
+.guarantor-tag i {
+    font-size: 0.6rem;
+}
 </style>
 
 <script>
     // ============================================================
     // TREASURER APPROVE LOAN
     // ============================================================
+
+    // ============================================================
+// VIEW GUARANTOR DETAILS - POPUP MODAL
+// ============================================================
+function viewGuarantorDetails(guarantorId) {
+    if (!guarantorId) {
+        alert('Error: Guarantor ID is missing.');
+        return;
+    }
+    
+    // Show loading modal
+    showGuarantorModal('Loading...', '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i><p style="margin-top:12px; color:rgba(255,255,255,0.5);">Loading guarantor details...</p></div>');
+    
+    fetch('/treasurer/guarantor/details/' + guarantorId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayGuarantorDetails(data.guarantor, data.guaranteed_loans);
+            } else {
+                showGuarantorModal('Error', '<div style="text-align:center; padding:20px; color:#ff6b6b;"><i class="fas fa-exclamation-circle" style="font-size:2rem;"></i><p style="margin-top:12px;">' + (data.message || 'Failed to load guarantor details') + '</p></div>');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showGuarantorModal('Error', '<div style="text-align:center; padding:20px; color:#ff6b6b;"><i class="fas fa-exclamation-circle" style="font-size:2rem;"></i><p style="margin-top:12px;">Network error. Please try again.</p></div>');
+        });
+}
+
+function showGuarantorModal(title, content) {
+    // Check if modal exists, if not create it
+    let modal = document.getElementById('guarantorModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'guarantorModal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(8px);
+            padding: 20px;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.cssText = `
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        `;
+        
+        modalContent.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <h3 id="guarantorModalTitle" style="margin:0; color:white; display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-user"></i> Guarantor Details
+                </h3>
+                <button onclick="closeGuarantorModal()" style="
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.06);
+                    color: rgba(255,255,255,0.4);
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 1.2rem;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+                   onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="guarantorModalBody">
+                ${content}
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+    } else {
+        document.getElementById('guarantorModalTitle').innerHTML = `<i class="fas fa-user"></i> ${title}`;
+        document.getElementById('guarantorModalBody').innerHTML = content;
+        modal.style.display = 'flex';
+    }
+}
+
+function closeGuarantorModal() {
+    const modal = document.getElementById('guarantorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function displayGuarantorDetails(guarantor, guaranteedLoans) {
+    const html = `
+        <!-- Guarantor Profile -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px; padding:16px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.04);">
+            <div style="grid-column: 1 / -1;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:48px; height:48px; border-radius:50%; background:rgba(245,197,66,0.12); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#f5c542;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:600; font-size:1.1rem; color:white;">${guarantor.full_name}</div>
+                        <div style="color:rgba(255,255,255,0.3); font-size:0.85rem;">
+                            ${guarantor.sacco_number || 'Guest Guarantor'}
+                            ${guarantor.status === 'guest' ? '<span style="margin-left:8px; font-size:0.7rem; background:rgba(255,255,255,0.04); padding:2px 10px; border-radius:12px; color:rgba(255,255,255,0.3);">Guest</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div style="color:rgba(255,255,255,0.3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Phone</div>
+                <div style="color:white; font-weight:500;">${guarantor.phone || 'N/A'}</div>
+            </div>
+            <div>
+                <div style="color:rgba(255,255,255,0.3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Email</div>
+                <div style="color:white; font-weight:500;">${guarantor.email || 'N/A'}</div>
+            </div>
+            <div>
+                <div style="color:rgba(255,255,255,0.3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Savings Balance</div>
+                <div style="color:#4ade80; font-weight:600;">UGX ${guarantor.savings_balance ? guarantor.savings_balance.toLocaleString() : '0'}</div>
+            </div>
+            <div>
+                <div style="color:rgba(255,255,255,0.3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Status</div>
+                <div>
+                    <span class="badge ${guarantor.status === 'active' ? 'success' : 'warning'}" style="
+                        display:inline-block;
+                        padding:3px 12px;
+                        border-radius:20px;
+                        font-size:0.75rem;
+                        font-weight:600;
+                        ${guarantor.status === 'active' ? 'background:rgba(74,222,128,0.12); color:#4ade80;' : 'background:rgba(245,197,66,0.12); color:#f5c542;'}
+                    ">
+                        ${guarantor.status || 'Unknown'}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guaranteed Loans -->
+        <div style="margin-top: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h4 style="margin:0; color:rgba(255,255,255,0.7); font-size:0.95rem;">
+                    <i class="fas fa-handshake"></i> Loans Guaranteed
+                </h4>
+                <span style="font-size:0.8rem; color:rgba(255,255,255,0.3);">${guaranteedLoans ? guaranteedLoans.length : 0} loans</span>
+            </div>
+            
+            ${guaranteedLoans && guaranteedLoans.length > 0 ? `
+                <div style="border:1px solid rgba(255,255,255,0.04); border-radius:8px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="background:rgba(255,255,255,0.02);">
+                                <th style="padding:10px 12px; text-align:left; color:rgba(255,255,255,0.3); font-weight:500; font-size:0.7rem; text-transform:uppercase;">Loan #</th>
+                                <th style="padding:10px 12px; text-align:left; color:rgba(255,255,255,0.3); font-weight:500; font-size:0.7rem; text-transform:uppercase;">Member</th>
+                                <th style="padding:10px 12px; text-align:left; color:rgba(255,255,255,0.3); font-weight:500; font-size:0.7rem; text-transform:uppercase;">Amount</th>
+                                <th style="padding:10px 12px; text-align:left; color:rgba(255,255,255,0.3); font-weight:500; font-size:0.7rem; text-transform:uppercase;">Balance</th>
+                                <th style="padding:10px 12px; text-align:left; color:rgba(255,255,255,0.3); font-weight:500; font-size:0.7rem; text-transform:uppercase;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${guaranteedLoans.map(loan => `
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.02);">
+                                    <td style="padding:10px 12px; color:#f5c542; font-family:monospace;">${loan.loan_number}</td>
+                                    <td style="padding:10px 12px; color:rgba(255,255,255,0.7);">${loan.member_name}</td>
+                                    <td style="padding:10px 12px; color:#4ade80;">UGX ${loan.amount.toLocaleString()}</td>
+                                    <td style="padding:10px 12px; color:#f5c542;">UGX ${(loan.current_balance || loan.amount).toLocaleString()}</td>
+                                    <td style="padding:10px 12px;">
+                                        <span class="badge ${loan.status === 'completed' ? 'success' : loan.status === 'disbursed' ? 'info' : 'warning'}" style="
+                                            display:inline-block;
+                                            padding:2px 10px;
+                                            border-radius:20px;
+                                            font-size:0.65rem;
+                                            font-weight:600;
+                                            ${loan.status === 'completed' ? 'background:rgba(74,222,128,0.12); color:#4ade80;' : 
+                                              loan.status === 'disbursed' || loan.status === 'active' ? 'background:rgba(0,224,255,0.12); color:#00e0ff;' : 
+                                              'background:rgba(245,197,66,0.12); color:#f5c542;'}
+                                        ">
+                                            ${loan.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div style="text-align:center; padding:20px; color:rgba(255,255,255,0.3); background:rgba(255,255,255,0.02); border-radius:8px; border:1px dashed rgba(255,255,255,0.04);">
+                    <i class="fas fa-handshake" style="font-size:1.5rem; display:block; margin-bottom:8px; opacity:0.3;"></i>
+                    This member is not currently guaranteeing any loans
+                </div>
+            `}
+        </div>
+    `;
+    
+    showGuarantorModal('Guarantor Details', html);
+}
     function approveLoan(loanId) {
         if (!loanId) {
             alert('Error: Loan ID is missing.');
@@ -423,7 +715,7 @@
                 btn.disabled = true;
             });
             
-            fetch('/treasurer/loan/approve/' + loanId, {
+            fetch('/treasurer/loan/action/' + loanId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'approve' })

@@ -2,120 +2,405 @@
 
 {% block title %}Treasurer | Member Details{% endblock %}
 
+{% block extra_styles %}
+<style>
+/* ============================================================
+   COMPACT MEMBER DETAILS STYLES
+   ============================================================ */
+
+/* Main container - reduce horizontal padding */
+.content-panel {
+    padding: 0 16px 16px !important;
+}
+
+.member-profile-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.profile-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(245, 197, 66, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #f5c542;
+    flex-shrink: 0;
+    border: 2px solid rgba(245, 197, 66, 0.12);
+}
+
+.profile-info h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.profile-info .sacco-id {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.65rem;
+    margin: 1px 0 0 0;
+}
+
+.profile-info .sacco-id i {
+    margin-right: 4px;
+}
+
+.profile-status {
+    margin-left: auto;
+}
+
+.status-badge-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.status-badge-large.active {
+    background: rgba(74, 222, 128, 0.1);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.12);
+}
+
+.status-badge-large.inactive {
+    background: rgba(245, 197, 66, 0.1);
+    color: #f5c542;
+    border: 1px solid rgba(245, 197, 66, 0.12);
+}
+
+.status-badge-large.suspended {
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.12);
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px 12px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.detail-item .label {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.detail-item .label i {
+    font-size: 0.5rem;
+}
+
+.detail-item .value {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-align: right;
+}
+
+.detail-item .value.success {
+    color: #4ade80;
+}
+
+/* Section Cards - Compact */
+.section-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.section-title i {
+    color: #f5c542;
+    font-size: 0.85rem;
+}
+
+.section-title .badge-count {
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+}
+
+.section-title .count-number {
+    margin-left: auto;
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1px 8px;
+    border-radius: 8px;
+}
+
+/* Compact Table */
+.styled-table th {
+    padding: 4px 8px;
+    font-size: 0.55rem;
+}
+
+.styled-table td {
+    padding: 4px 8px;
+    font-size: 0.65rem;
+}
+
+.styled-table .status-badge {
+    font-size: 0.5rem;
+    padding: 2px 6px;
+}
+
+/* Back Button */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.back-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.back-header .divider {
+    color: rgba(255, 255, 255, 0.1);
+    font-size: 0.6rem;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .content-panel {
+        padding: 0 10px 10px !important;
+    }
+    
+    .profile-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .profile-status {
+        margin-left: 0;
+    }
+    
+    .details-grid {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+    
+    .detail-item {
+        padding: 2px 0;
+    }
+    
+    .member-profile-card,
+    .section-card {
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .member-profile-card,
+    .section-card {
+        padding: 8px 10px;
+    }
+    
+    .profile-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+    
+    .profile-info h2 {
+        font-size: 0.85rem;
+    }
+    
+    .styled-table th,
+    .styled-table td {
+        padding: 3px 4px;
+        font-size: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
 <!-- App Bar -->
 <div class="app-bar">
     <div class="app-bar-left">
         <h2><i class="fas fa-user-circle"></i> Member Details</h2>
-        <span id="appBarSubtitle">View member information</span>
+        <span id="appBarSubtitle" style="font-size:0.65rem;">{{ member.full_name }} • {{ member.sacco_number }}</span>
     </div>
     <div class="app-bar-right">
         <div class="admin-profile">
             <i class="fas fa-user-circle"></i>
-            <span>{{ session.full_name }}</span>
+            <span style="font-size:0.75rem;">{{ session.full_name }}</span>
         </div>
     </div>
 </div>
 
 <!-- Back Button -->
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-    <a href="{{ url_for('treasurer_dashboard') }}#members-panel" style="
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: rgba(255,255,255,0.6);
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        padding: 8px 16px;
-        border-radius: 8px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
-    " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-       onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
+<div class="back-header">
+    <a href="{{ url_for('treasurer_dashboard') }}#members-panel" class="back-button">
+        <i class="fas fa-arrow-left" style="font-size:0.55rem;"></i> Back
     </a>
-    <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
+    <span class="divider">|</span>
+    <span style="color: rgba(255,255,255,0.15); font-size: 0.6rem;">
         <i class="fas fa-user-circle"></i> Member Details
     </span>
 </div>
 
 <!-- Member Profile -->
-<div class="action-card">
-    <div class="action-title">
-        <i class="fas fa-user-circle"></i> {{ member.full_name }}
-        <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-            SACCO #{{ member.sacco_number }}
-        </span>
+<div class="member-profile-card">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="profile-info">
+            <h2>{{ member.full_name }}</h2>
+            <p class="sacco-id">
+                <i class="fas fa-id-card"></i> {{ member.sacco_number }}
+            </p>
+        </div>
+        <div class="profile-status">
+            <span class="status-badge-large 
+                {% if member.status == 'active' %}active
+                {% elif member.status == 'suspended' %}suspended
+                {% else %}inactive{% endif %}">
+                <i class="fas fa-circle" style="font-size: 0.35rem;"></i>
+                {{ member.status|upper if member.status else 'ACTIVE' }}
+            </span>
+        </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
-        <div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Full Name</span>
-                <span style="color:white; font-weight:500;">{{ member.full_name }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">SACCO Number</span>
-                <span style="color:#f5c542; font-weight:500;">{{ member.sacco_number }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Phone</span>
-                <span style="color:white; font-weight:500;">{{ member.phone or 'Not provided' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Email</span>
-                <span style="color:white; font-weight:500;">{{ member.email or 'Not provided' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Gender</span>
-                <span style="color:white; font-weight:500;">{{ member.gender or 'Not specified' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Date of Birth</span>
-                <span style="color:white; font-weight:500;">{{ member.dob or 'Not provided' }}</span>
-            </div>
+    <div class="details-grid">
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-phone"></i> Phone</span>
+            <span class="value">{{ member.phone or '-' }}</span>
         </div>
-        <div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Address</span>
-                <span style="color:white; font-weight:500;">{{ member.address or 'Not provided' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Savings Balance</span>
-                <span style="color:#4ade80; font-weight:500;">UGX {{ "{:,.0f}".format(member.savings_balance or 0) }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Status</span>
-                <span>
-                    <span class="badge {% if member.status == 'active' %}success{% else %}warning{% endif %}">
-                        {{ member.status|upper if member.status else 'ACTIVE' }}
-                    </span>
-                </span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Registration Date</span>
-                <span style="color:white; font-weight:500;">{{ member.registration_date or 'Not available' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Next of Kin</span>
-                <span style="color:white; font-weight:500;">{{ member.next_of_kin_name or 'Not provided' }}</span>
-            </div>
-            <div class="detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="color:rgba(255,255,255,0.4);">Next of Kin Phone</span>
-                <span style="color:white; font-weight:500;">{{ member.next_of_kin_phone or 'Not provided' }}</span>
-            </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-envelope"></i> Email</span>
+            <span class="value">{{ member.email or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-venus-mars"></i> Gender</span>
+            <span class="value">{{ member.gender or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-calendar-alt"></i> DOB</span>
+            <span class="value">{{ member.dob or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-map-marker-alt"></i> Address</span>
+            <span class="value">{{ member.address or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-coins"></i> Savings</span>
+            <span class="value success">UGX {{ "{:,.0f}".format(member.savings_balance or 0) }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-calendar-check"></i> Registered</span>
+            <span class="value">{{ member.registration_date or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-users"></i> Next of Kin</span>
+            <span class="value">{{ member.next_of_kin_name or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-phone-alt"></i> Kin Phone</span>
+            <span class="value">{{ member.next_of_kin_phone or '-' }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="label"><i class="fas fa-handshake"></i> Relationship</span>
+            <span class="value">{{ member.relationship or '-' }}</span>
         </div>
     </div>
 </div>
 
 <!-- Member's Loans -->
-<div class="action-card" style="margin-top:16px;">
-    <div class="action-title">
-        <i class="fas fa-hand-holding-usd"></i> Member's Loans
-        <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-            Total: {{ loans|length }}
+<div class="section-card">
+    <div class="section-title">
+        <i class="fas fa-hand-holding-usd"></i>
+        Loans
+        <span class="badge-count">({{ loans|length }})</span>
+        <span class="count-number">
+            {% if loans %}
+                {% set active_count = loans|selectattr('status', 'in', ['disbursed', 'active'])|list|length %}
+                {% if active_count > 0 %}
+                    <i class="fas fa-circle" style="color: #4ade80; font-size: 0.35rem;"></i> {{ active_count }} active
+                {% endif %}
+            {% endif %}
         </span>
     </div>
     <div class="table-wrapper">
@@ -135,8 +420,8 @@
                     {% for loan in loans %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td style="color:#f5c542; font-family:monospace;">{{ loan.loan_number }}</td>
-                        <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                        <td style="color:#f5c542; font-family:monospace; font-weight:600; font-size:0.65rem;">{{ loan.loan_number }}</td>
+                        <td style="color:#4ade80; font-weight:500; font-size:0.7rem;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
                         <td>
                             {% if loan.status == 'pending' %}
                                 <span class="status-badge pending">Pending</span>
@@ -145,30 +430,30 @@
                             {% elif loan.status == 'disbursed' or loan.status == 'active' %}
                                 <span class="status-badge active">Active</span>
                             {% elif loan.status == 'completed' %}
-                                <span class="status-badge completed" style="background:rgba(74,222,128,0.15); color:#4ade80;">Completed</span>
+                                <span class="status-badge completed" style="background:rgba(74,222,128,0.1); color:#4ade80;">Completed</span>
                             {% elif loan.status == 'rejected' %}
                                 <span class="status-badge rejected">Rejected</span>
                             {% else %}
                                 <span class="status-badge secondary">{{ loan.status|title }}</span>
                             {% endif %}
                         </td>
-                        <td style="color:#f5c542;">
+                        <td style="color:#f5c542; font-weight:500; font-size:0.7rem;">
                             {% if loan.status in ['disbursed', 'active'] %}
                                 UGX {{ "{:,.0f}".format(loan.current_balance or loan.amount) }}
                             {% elif loan.status == 'completed' %}
-                                <span style="color:#4ade80;">UGX 0</span>
+                                <span style="color:#4ade80; font-size:0.6rem;"><i class="fas fa-check-circle"></i> Paid</span>
                             {% else %}
-                                -
+                                <span style="color:rgba(255,255,255,0.15);">—</span>
                             {% endif %}
                         </td>
-                        <td style="color:rgba(255,255,255,0.5); font-size:0.8rem;">{{ loan.application_date }}</td>
+                        <td style="color:rgba(255,255,255,0.25); font-size:0.6rem;">{{ loan.application_date }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="6" style="text-align:center; padding:30px; color:rgba(255,255,255,0.3);">
-                            <i class="fas fa-hand-holding-usd" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
-                            No loans found for this member
+                        <td colspan="6" style="text-align:center; padding:16px; color:rgba(255,255,255,0.2); font-size:0.7rem;">
+                            <i class="fas fa-hand-holding-usd" style="font-size:1.2rem; display:block; margin-bottom:4px; opacity:0.15;"></i>
+                            No loans found
                         </td>
                     </tr>
                 {% endif %}
@@ -178,11 +463,15 @@
 </div>
 
 <!-- Member's Deposits -->
-<div class="action-card" style="margin-top:16px;">
-    <div class="action-title">
-        <i class="fas fa-piggy-bank"></i> Member's Savings Deposits
-        <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-            Total: {{ deposits|length }}
+<div class="section-card">
+    <div class="section-title">
+        <i class="fas fa-piggy-bank"></i>
+        Deposits
+        <span class="badge-count">({{ deposits|length }})</span>
+        <span class="count-number">
+            {% if deposits %}
+                UGX {{ "{:,.0f}".format(deposits|sum(attribute='amount')) }}
+            {% endif %}
         </span>
     </div>
     <div class="table-wrapper">
@@ -201,23 +490,32 @@
                     {% for deposit in deposits %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(deposit.amount) }}</td>
-                        <td style="color:rgba(255,255,255,0.5);">{{ deposit.deposit_date }}</td>
-                        <td>{{ deposit.payment_method|capitalize }}</td>
+                        <td style="color:#4ade80; font-weight:500; font-size:0.7rem;">UGX {{ "{:,.0f}".format(deposit.amount) }}</td>
+                        <td style="color:rgba(255,255,255,0.35); font-size:0.65rem;">{{ deposit.deposit_date }}</td>
                         <td>
+                            <span class="badge 
+                                {% if deposit.payment_method == 'cash' %}success
+                                {% elif deposit.payment_method == 'bank_transfer' %}info
+                                {% elif deposit.payment_method == 'mobile_money' %}warning
+                                {% elif deposit.payment_method == 'cheque' %}danger
+                                {% else %}secondary{% endif %}" style="font-size:0.5rem; padding:1px 6px;">
+                                {{ deposit.payment_method|capitalize }}
+                            </span>
+                        </td>
+                        <td style="font-size:0.65rem;">
                             {% if deposit.receipt_number %}
-                                <span style="color:#f5c542; font-family:monospace; font-size:0.8rem;">{{ deposit.receipt_number }}</span>
+                                <span style="color:#f5c542; font-family:monospace;">{{ deposit.receipt_number }}</span>
                             {% else %}
-                                <span style="color:rgba(255,255,255,0.2);">—</span>
+                                <span style="color:rgba(255,255,255,0.15);">—</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="5" style="text-align:center; padding:30px; color:rgba(255,255,255,0.3);">
-                            <i class="fas fa-piggy-bank" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
-                            No deposits found for this member
+                        <td colspan="5" style="text-align:center; padding:16px; color:rgba(255,255,255,0.2); font-size:0.7rem;">
+                            <i class="fas fa-piggy-bank" style="font-size:1.2rem; display:block; margin-bottom:4px; opacity:0.15;"></i>
+                            No deposits found
                         </td>
                     </tr>
                 {% endif %}
@@ -227,11 +525,15 @@
 </div>
 
 <!-- Member's Repayments -->
-<div class="action-card" style="margin-top:16px;">
-    <div class="action-title">
-        <i class="fas fa-undo-alt"></i> Member's Repayments
-        <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-            Total: {{ repayments|length }}
+<div class="section-card">
+    <div class="section-title">
+        <i class="fas fa-undo-alt"></i>
+        Repayments
+        <span class="badge-count">({{ repayments|length }})</span>
+        <span class="count-number">
+            {% if repayments %}
+                UGX {{ "{:,.0f}".format(repayments|sum(attribute='amount')) }}
+            {% endif %}
         </span>
     </div>
     <div class="table-wrapper">
@@ -250,17 +552,26 @@
                     {% for repayment in repayments %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td style="color:#f5c542; font-family:monospace;">{{ repayment.loan_number }}</td>
-                        <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
-                        <td style="color:rgba(255,255,255,0.5);">{{ repayment.payment_date }}</td>
-                        <td>{{ repayment.payment_method|capitalize }}</td>
+                        <td style="color:#f5c542; font-family:monospace; font-weight:500; font-size:0.65rem;">{{ repayment.loan_number }}</td>
+                        <td style="color:#4ade80; font-weight:500; font-size:0.7rem;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
+                        <td style="color:rgba(255,255,255,0.35); font-size:0.65rem;">{{ repayment.payment_date }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if repayment.payment_method == 'cash' %}success
+                                {% elif repayment.payment_method == 'bank_transfer' %}info
+                                {% elif repayment.payment_method == 'mobile_money' %}warning
+                                {% elif repayment.payment_method == 'cheque' %}danger
+                                {% else %}secondary{% endif %}" style="font-size:0.5rem; padding:1px 6px;">
+                                {{ repayment.payment_method|capitalize }}
+                            </span>
+                        </td>
                     </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="5" style="text-align:center; padding:30px; color:rgba(255,255,255,0.3);">
-                            <i class="fas fa-undo-alt" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
-                            No repayments found for this member
+                        <td colspan="5" style="text-align:center; padding:16px; color:rgba(255,255,255,0.2); font-size:0.7rem;">
+                            <i class="fas fa-undo-alt" style="font-size:1.2rem; display:block; margin-bottom:4px; opacity:0.15;"></i>
+                            No repayments found
                         </td>
                     </tr>
                 {% endif %}
@@ -268,5 +579,21 @@
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        const newUrl = window.location.pathname + '#members-panel';
+        window.history.replaceState({}, document.title, newUrl);
+        setTimeout(function() {
+            if (typeof editMember === 'function') {
+                editMember(editId);
+            }
+        }, 500);
+    }
+});
+</script>
 
 {% endblock %}

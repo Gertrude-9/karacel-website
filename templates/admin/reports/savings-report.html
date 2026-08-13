@@ -1,0 +1,86 @@
+{% extends "admin/reports/report-base.html" %}
+
+{% block title %}Savings Report - Karacel SACCO{% endblock %}
+
+{% block report_title %}Savings Report{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">👥</span>
+        <div class="number gold">{{ member_savings|length }}</div>
+        <div class="label">Total Savers</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💰</span>
+        <div class="number green">UGX {{ "{:,.0f}".format(total_savings) }}</div>
+        <div class="label">Total Savings Balance</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📊</span>
+        <div class="number blue">{{ total_deposits }}</div>
+        <div class="label">Total Deposits</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🏆</span>
+        <div class="number purple">
+            {% if member_savings %}
+                {{ member_savings[0].full_name }}
+            {% else %}
+                N/A
+            {% endif %}
+        </div>
+        <div class="label">Top Saver</div>
+    </div>
+</div>
+
+<!-- Member Savings Summary -->
+<div class="section-title">
+    <i class="fas fa-piggy-bank"></i> Member Savings Summary
+    <span class="count">({{ member_savings|length }} savers)</span>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th><i class="fas fa-id-card"></i> SACCO No.</th>
+                <th><i class="fas fa-user"></i> Member Name</th>
+                <th class="text-right"><i class="fas fa-coins"></i> Balance (UGX)</th>
+                <th class="text-center"><i class="fas fa-list"></i> Deposits</th>
+                <th class="text-right"><i class="fas fa-money-bill-wave"></i> Total Deposited (UGX)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in member_savings %}
+            <tr {% if loop.index == 1 %}style="background: #fff8e1;"{% endif %}>
+                <td>
+                    {% if loop.index == 1 %}🥇
+                    {% elif loop.index == 2 %}🥈
+                    {% elif loop.index == 3 %}🥉
+                    {% else %}{{ loop.index }}{% endif %}
+                </td>
+                <td class="mono">{{ member.sacco_number }}</td>
+                <td><strong>{{ member.full_name }}</strong></td>
+                <td class="amount text-right">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
+                <td class="text-center">{{ member.deposit_count or 0 }}</td>
+                <td class="amount blue text-right">{{ "{:,.0f}".format(member.total_deposited or 0) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6" class="text-right">
+                    Total Savers: <strong>{{ member_savings|length }}</strong> &nbsp;|&nbsp;
+                    Total Savings: <strong style="color:#4ade80;">UGX {{ "{:,.0f}".format(total_savings) }}</strong> &nbsp;|&nbsp;
+                    Total Deposits: <strong style="color:#00e0ff;">{{ total_deposits }}</strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% endblock %}

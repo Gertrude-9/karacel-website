@@ -15,7 +15,7 @@
         <div class="app-bar-right">
             <div class="admin-profile">
                 <i class="fas fa-user-circle"></i>
-                <span>Administrator</span>
+                <span>{{ session.full_name }}</span>
             </div>
         </div>
     </div>
@@ -28,11 +28,15 @@
                 <h3>{{ total_members }}</h3>
                 <p>Total Members</p>
             </div>
-
             <div class="stat-box">
                 <i class="fas fa-piggy-bank"></i>
                 <h3>UGX {{ "{:,.0f}".format(total_savings) }}</h3>
                 <p>Total Savings</p>
+            </div>
+            <div class="stat-box" style="border-color: rgba(245,197,66,0.15); background: rgba(245,197,66,0.03);">
+                <i class="fas fa-file-invoice" style="color: #f5c542;"></i>
+                <h3 style="color: #f5c542;">{{ total_loans }}</h3>
+                <p style="color: rgba(245,197,66,0.5);">Total Loans</p>
             </div>
 
             <div class="stat-box">
@@ -40,12 +44,21 @@
                 <h3>{{ active_loans }}</h3>
                 <p>Active Loans</p>
             </div>
-
             <div class="stat-box">
                 <i class="fas fa-clock"></i>
                 <h3>{{ pending_loans }}</h3>
                 <p>Pending Loans</p>
-            </div> 
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-check-double"></i>
+                <h3>{{ completed_loans }}</h3>
+                <p>Completed Loans</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-times-circle"></i>
+                <h3>{{ rejected_loans }}</h3>
+                <p>Rejected Loans</p>
+            </div>
         </div>
       
         <div class="action-card">
@@ -55,6 +68,7 @@
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <a href="#" onclick="showPanel('members')" class="btn-primary"><i class="fas fa-users"></i> View Members</a>
                 <a href="#" onclick="showPanel('loan_applications')" class="btn-primary"><i class="fas fa-file-invoice"></i> Review Loans</a>
+                <a href="#" onclick="showPanel('users')" class="btn-primary"><i class="fas fa-users-cog"></i> Manage Staff</a>
                 <a href="#" onclick="showPanel('reports')" class="btn-primary"><i class="fas fa-chart-line"></i> Generate Report</a>
                 <a href="#" onclick="showPanel('settings')" class="btn-primary"><i class="fas fa-cog"></i> Settings</a>
             </div>
@@ -69,7 +83,7 @@
                 <table class="styled-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date & Time</th>
                             <th>Member</th>
                             <th>Activity</th>
                             <th>Amount</th>
@@ -79,23 +93,50 @@
                         {% if recent_activities %}
                             {% for activity in recent_activities %}
                             <tr>
-                                <td>{{ activity.created_at or activity.deposit_date }}</td>
-                                <td>{{ activity.full_name }}</td>
+                                <td>
+                                    <span style="font-size:0.7rem; color:rgba(255,255,255,0.4);">
+                                        {% if activity.created_at %}
+                                            {{ activity.created_at|replace(' ', '<br>')|safe }}
+                                        {% elif activity.deposit_date %}
+                                            {{ activity.deposit_date }}
+                                        {% elif activity.date %}
+                                            {{ activity.date }}
+                                        {% else %}
+                                            {{ activity.payment_date or 'N/A' }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span style="font-weight:500;">{{ activity.full_name }}</span>
+                                    <br>
+                                    <span style="font-size:0.6rem; color:rgba(255,255,255,0.2);">{{ activity.sacco_number or '' }}</span>
+                                </td>
                                 <td>
                                     {% if activity.type == 'deposit' %}
-                                        <span style="color: #4ade80;">Savings Deposit</span>
+                                        <span style="color: #4ade80; font-size:0.7rem;">
+                                            <i class="fas fa-piggy-bank"></i> Savings Deposit
+                                        </span>
                                     {% elif activity.type == 'repayment' %}
-                                        <span style="color: #00e0ff;">Loan Repayment</span>
+                                        <span style="color: #00e0ff; font-size:0.7rem;">
+                                            <i class="fas fa-hand-holding-usd"></i> Loan Repayment
+                                        </span>
+                                    {% elif activity.type == 'loan' %}
+                                        <span style="color: #f5c542; font-size:0.7rem;">
+                                            <i class="fas fa-file-invoice"></i> Loan Application
+                                        </span>
                                     {% else %}
-                                        {{ activity.type|title }}
+                                        <span style="font-size:0.7rem;">{{ activity.type|title }}</span>
                                     {% endif %}
                                 </td>
-                                <td style="color: #4ade80;">UGX {{ "{:,.0f}".format(activity.amount) }}</td>
+                                <td style="color: #4ade80; font-weight:600; font-size:0.85rem;">
+                                    UGX {{ "{:,.0f}".format(activity.amount) }}
+                                </td>
                             </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
                                 <td colspan="4" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                    <i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.15;"></i>
                                     No recent activities
                                 </td>
                             </tr>
@@ -118,8 +159,27 @@
                 </span>
             </div>
 
+            <!-- Members Filter -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
+                <div style="flex:1; min-width:200px;">
+                    <input type="text" id="searchMembersInput" placeholder="Search by name, SACCO #, phone..." 
+                           onkeyup="filterMembersTable()" 
+                           style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+                <div>
+                    <select id="filterMemberStatus" onchange="filterMembersTable()" 
+                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="table-wrapper">
-                <table class="styled-table">
+                <table class="styled-table" id="membersTable">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -135,28 +195,24 @@
                     <tbody>
                         {% if members %}
                             {% for member in members %}
-                            <tr>
+                            <tr data-status="{{ member.status }}" data-name="{{ member.full_name|lower }}" data-sacco="{{ member.sacco_number|lower }}" data-phone="{{ member.phone or '' }}">
                                 <td>{{ loop.index }}</td>
-                                <td style="color:#f5c542; font-family:monospace;">
-                                    {{ member['sacco_number'] }}
-                                </td>
-                                <td><strong>{{ member['full_name'] }}</strong></td>
-                                <td>{{ member['phone'] or '-' }}</td>
-                                <td style="color:#4ade80;">
-                                    {{ "{:,.0f}".format(member['savings_balance'] or 0) }}
-                                </td>
-                                <td>{{ member.active_loans or 0 }}</td>
+                                <td style="color:#f5c542; font-family:monospace;">{{ member.sacco_number }}</td>
+                                <td><strong>{{ member.full_name }}</strong></td>
+                                <td>{{ member.phone or '-' }}</td>
+                                <td style="color:#4ade80;">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
+                                <td>{{ member.active_loans_count or 0 }}</td>
                                 <td>
-                                    {% if member['status'] == 'active' %}
+                                    {% if member.status == 'active' %}
                                         <span class="badge success">Active</span>
-                                    {% elif member['status'] == 'pending' %}
+                                    {% elif member.status == 'pending' %}
                                         <span class="badge warning">Pending</span>
                                     {% else %}
-                                        <span class="badge danger">{{ member['status']|title }}</span>
+                                        <span class="badge danger">{{ member.status|title }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="action-btns">
-                                    <button class="view-btn" onclick="viewMember('{{ member['id'] }}')" title="View Details">
+                                    <button class="view-btn" onclick="viewMember('{{ member.id }}')" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </td>
@@ -174,478 +230,1032 @@
             </div>
         </div>
     </div>
-<!-- ========== LOAN APPLICATIONS PANEL ========== -->
-<div id="loan_applications-panel" class="content-panel">
-    <div class="admin-stats">
-        <div class="stat-box">
-            <i class="fas fa-clock"></i>
-            <h3>{{ pending_loans }}</h3>
-            <p>Pending (Treasurer Review)</p>
+
+    <!-- ========== LOAN APPLICATIONS PANEL ========== -->
+    <div id="loan_applications-panel" class="content-panel">
+        <div class="admin-stats">
+            <div class="stat-box">
+                <i class="fas fa-clock"></i>
+                <h3>{{ pending_loans }}</h3>
+                <p>Pending Review</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-check-circle"></i>
+                <h3>{{ approved_loans }}</h3>
+                <p>Awaiting Final Approval</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-hand-holding-usd"></i>
+                <h3>{{ disbursed_loans }}</h3>
+                <p>Disbursed</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-times-circle"></i>
+                <h3>{{ rejected_loans }}</h3>
+                <p>Rejected</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-check-double"></i>
+                <h3>{{ completed_loans }}</h3>
+                <p>Completed</p>
+            </div>
         </div>
-        <div class="stat-box">
-            <i class="fas fa-check-circle"></i>
-            <h3>{{ approved_loans }}</h3>
-            <p>Awaiting Final Approval</p>
-        </div>
-        <div class="stat-box">
-            <i class="fas fa-check-double"></i>
-            <h3>{{ disbursed_loans }}</h3>
-            <p>Disbursed</p>
-        </div>
-        <div class="stat-box">
-            <i class="fas fa-times-circle"></i>
-            <h3>{{ rejected_loans }}</h3>
-            <p>Rejected</p>
-        </div>
-    </div>
-    
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-clipboard-check"></i> Loan Applications (Final Approval)
-        </div>
-        <div class="table-wrapper">
-            <table class="styled-table" id="loanApprovalsTable">
-                <thead>
-                    <tr>
-                        <th>Loan #</th>
-                        <th>Member</th>
-                        <th>Amount</th>
-                        <th>Savings (UGX)</th>
-                        <th>Guarantors</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if loan_applications %}
-                        {% for loan in loan_applications %}
+        
+        <div class="action-card">
+            <div class="action-title">
+                <i class="fas fa-clipboard-check"></i> Loan Applications
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
+                    Awaiting Final Approval
+                </span>
+            </div>
+
+            <!-- Loan Applications Filter -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
+                <div style="flex:1; min-width:200px;">
+                    <input type="text" id="searchLoanInput" placeholder="Search by loan # or member..." 
+                           onkeyup="filterLoanApplications()" 
+                           style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+                <div>
+                    <select id="filterLoanStatus" onchange="filterLoanApplications()" 
+                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Awaiting Approval</option>
+                        <option value="disbursed">Disbursed</option>
+                        <option value="completed">Completed</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filterLoanAmount" onchange="filterLoanApplications()" 
+                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="all">All Amounts</option>
+                        <option value="0-1000000">Below 1M</option>
+                        <option value="1000000-5000000">1M - 5M</option>
+                        <option value="5000000-10000000">5M - 10M</option>
+                        <option value="10000000+">Above 10M</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="styled-table" id="loanApprovalsTable">
+                    <thead>
                         <tr>
-                            <td class="mono" style="color:#f5c542;">{{ loan.loan_number }}</td>
-                            <td><strong>{{ loan.full_name }}</strong></td>
-                            <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
-                            <td>{{ "{:,.0f}".format(loan.savings_balance or 0) }}</td>
-                            <td>
-                                {% if loan.total_guarantors == 0 %}
-                                    <span style="color: #4ade80; font-size: 0.85rem;">
-                                        <i class="fas fa-check-circle"></i> No Guarantors Required
-                                    </span>
-                                {% else %}
-                                    <span style="color: #4ade80;">{{ loan.accepted_guarantors }}</span>/
-                                    <span style="color: #f5c542;">{{ loan.total_guarantors }}</span>
-                                    {% if loan.pending_guarantors > 0 %}
-                                    <span style="color: #ff6b6b;">({{ loan.pending_guarantors }} pending)</span>
+                            <th>Loan #</th>
+                            <th>Member</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th style="width:60px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if loan_applications %}
+                            {% for loan in loan_applications %}
+                            <tr data-status="{{ loan.status }}" data-amount="{{ loan.amount }}" data-search="{{ loan.loan_number|lower }} {{ loan.full_name|lower }}">
+                                <td class="mono" style="color:#f5c542; font-weight:600;">{{ loan.loan_number }}</td>
+                                <td><strong>{{ loan.full_name }}</strong></td>
+                                <td style="color:#4ade80; font-weight:500;" data-amount="{{ loan.amount }}">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                                <td>
+                                    {% if loan.status == 'pending' %}
+                                        <span class="badge warning" style="font-size:0.6rem; padding:2px 10px;">Pending</span>
+                                    {% elif loan.status == 'approved' %}
+                                        <span class="badge info" style="font-size:0.6rem; padding:2px 10px;">Awaiting Approval</span>
+                                    {% elif loan.status == 'disbursed' %}
+                                        <span class="badge success" style="font-size:0.6rem; padding:2px 10px;">Disbursed</span>
+                                    {% elif loan.status == 'completed' %}
+                                        <span class="badge success" style="font-size:0.6rem; padding:2px 10px;">Completed</span>
+                                    {% elif loan.status == 'rejected' %}
+                                        <span class="badge danger" style="font-size:0.6rem; padding:2px 10px;">Rejected</span>
+                                    {% else %}
+                                        <span class="badge" style="font-size:0.6rem; padding:2px 10px;">{{ loan.status|title }}</span>
                                     {% endif %}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if loan.status == 'pending' %}
-                                    <span class="badge warning">Pending (Treasurer Review)</span>
-                                {% elif loan.status == 'approved' %}
-                                    <span class="badge info">Awaiting Final Approval</span>
-                                {% elif loan.status == 'disbursed' %}
-                                    <span class="badge success">Disbursed</span>
-                                {% elif loan.status == 'rejected' %}
-                                    <span class="badge danger">Rejected</span>
-                                {% endif %}
-                            </td>
-                            <td class="action-btns">
-                                <button class="view-btn" onclick="viewLoan('{{ loan.id }}')" title="View">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                
-                                <!-- Only show action buttons for 'approved' status (Awaiting Final Approval) -->
-                                {% if loan.status == 'approved' %}
-                                    <button class="edit-btn" onclick="adminApproveLoan('{{ loan.id }}')" title="Final Approve" style="color:#4ade80;">
-                                        <i class="fas fa-check-double"></i>
-                                    </button>
-                                    <button class="delete-btn" onclick="adminRejectLoan('{{ loan.id }}')" title="Reject" style="color:#ff6b6b;">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                {% elif loan.status == 'pending' %}
-                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
-                                        <i class="fas fa-clock"></i> Awaiting Treasurer
-                                    </span>
-                                {% elif loan.status == 'rejected' %}
-                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
-                                        <i class="fas fa-info-circle"></i> Rejected
-                                    </span>
-                                {% elif loan.status == 'disbursed' %}
-                                    <span style="color: rgba(255,255,255,0.2); font-size:0.75rem;">
-                                        <i class="fas fa-check"></i> Completed
-                                    </span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="7" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
-                                No loan applications found
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+                                </td>
+                                <td>
+                                    <div class="dropdown" style="position:relative; display:inline-block;">
+                                        <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" style="
+                                            background:rgba(255,255,255,0.03);
+                                            border:1px solid rgba(255,255,255,0.06);
+                                            border-radius:6px;
+                                            color:rgba(255,255,255,0.4);
+                                            padding:4px 10px;
+                                            cursor:pointer;
+                                            font-size:0.9rem;
+                                            transition:all 0.2s;
+                                            display:flex;
+                                            align-items:center;
+                                            gap:2px;
+                                        " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+                                           onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu" id="dropdown-{{ loan.id }}" style="
+                                            display:none;
+                                            position:absolute;
+                                            right:0;
+                                            top:100%;
+                                            margin-top:4px;
+                                            background:#1a1a2e;
+                                            border:1px solid rgba(255,255,255,0.06);
+                                            border-radius:8px;
+                                            padding:4px 0;
+                                            min-width:180px;
+                                            z-index:1000;
+                                            box-shadow:0 8px 32px rgba(0,0,0,0.4);
+                                        ">
+                                            <button onclick="viewLoan('{{ loan.id }}')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 16px; background:none; border:none; color:rgba(255,255,255,0.7); font-size:0.8rem; cursor:pointer; transition:all 0.2s; font-family:'Inter',sans-serif; border-bottom:1px solid rgba(255,255,255,0.04);" 
+                                                    onmouseover="this.style.background='rgba(0,224,255,0.05)'; this.style.color='#00e0ff'" 
+                                                    onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                                                <i class="fas fa-eye" style="color:#00e0ff; width:18px; text-align:center;"></i> View Details
+                                            </button>
+                                            
+                                            {% if loan.status == 'approved' %}
+                                            <button onclick="adminApproveLoan('{{ loan.id }}')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 16px; background:none; border:none; color:#4ade80; font-size:0.8rem; cursor:pointer; transition:all 0.2s; font-family:'Inter',sans-serif; border-bottom:1px solid rgba(255,255,255,0.04);" 
+                                                    onmouseover="this.style.background='rgba(74,222,128,0.05)'" 
+                                                    onmouseout="this.style.background='transparent'">
+                                                <i class="fas fa-check-double" style="width:18px; text-align:center;"></i> Approve & Disburse
+                                            </button>
+                                            <button onclick="adminRejectLoan('{{ loan.id }}')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 16px; background:none; border:none; color:#ff6b6b; font-size:0.8rem; cursor:pointer; transition:all 0.2s; font-family:'Inter',sans-serif;" 
+                                                    onmouseover="this.style.background='rgba(255,107,107,0.05)'" 
+                                                    onmouseout="this.style.background='transparent'">
+                                                <i class="fas fa-times" style="width:18px; text-align:center;"></i> Reject
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if loan.status == 'pending' %}
+                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 16px; color:rgba(255,255,255,0.25); font-size:0.75rem; border-bottom:1px solid rgba(255,255,255,0.04);">
+                                                <i class="fas fa-clock" style="width:18px; text-align:center;"></i> Awaiting Treasurer
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if loan.status == 'disbursed' or loan.status == 'active' %}
+                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 16px; color:#4ade80; font-size:0.75rem; border-bottom:1px solid rgba(255,255,255,0.04);">
+                                                <i class="fas fa-check-circle" style="width:18px; text-align:center;"></i> {{ loan.status|title }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if loan.status == 'completed' %}
+                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 16px; color:#4ade80; font-size:0.75rem; border-bottom:1px solid rgba(255,255,255,0.04);">
+                                                <i class="fas fa-check-double" style="width:18px; text-align:center;"></i> Completed ✓
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if loan.status == 'rejected' %}
+                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 16px; color:#ff6b6b; font-size:0.75rem; border-bottom:1px solid rgba(255,255,255,0.04);">
+                                                <i class="fas fa-times-circle" style="width:18px; text-align:center;"></i> Rejected
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <div style="display:flex; align-items:center; gap:8px; padding:6px 16px; color:rgba(255,255,255,0.15); font-size:0.6rem; border-top:1px solid rgba(255,255,255,0.03);">
+                                                <i class="fas fa-hashtag" style="width:18px; text-align:center;"></i> {{ loan.loan_number }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                                    <i class="fas fa-file-invoice" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.15;"></i>
+                                    No loan applications found
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 
     <!-- ========== REPORTS PANEL ========== -->
     <div id="reports-panel" class="content-panel">
         <div class="action-card">
             <div class="action-title">
                 <i class="fas fa-chart-bar"></i> Generate Reports
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
+                    Real-time data from the system
+                </span>
             </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
-                <button class="btn-primary" onclick="generateReport('members')" style="justify-content:center;">
-                    <i class="fas fa-users"></i> Member Report
-                </button>
-                <button class="btn-primary" onclick="generateReport('financial')" style="justify-content:center;">
-                    <i class="fas fa-coins"></i> Financial Summary
-                </button>
-                <button class="btn-primary" onclick="generateReport('loans')" style="justify-content:center;">
-                    <i class="fas fa-hand-holding-usd"></i> Loan Portfolio
-                </button>
-                <button class="btn-primary" onclick="generateReport('savings')" style="justify-content:center;">
-                    <i class="fas fa-piggy-bank"></i> Savings Report
-                </button>
+            
+            <!-- Report Stats Summary -->
+            <div class="admin-stats" style="margin-bottom:16px;">
+                <div class="stat-box">
+                    <i class="fas fa-users"></i>
+                    <h3>{{ total_members }}</h3>
+                    <p>Total Members</p>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-coins"></i>
+                    <h3>UGX {{ "{:,.0f}".format(total_savings) }}</h3>
+                    <p>Total Savings</p>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <h3>{{ active_loans }}</h3>
+                    <p>Active Loans</p>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-check-double"></i>
+                    <h3>{{ completed_loans }}</h3>
+                    <p>Completed Loans</p>
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px; margin-top:16px;">
+                <!-- Member Report -->
+                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
+                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
+                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
+                     onclick="generateReport('members')">
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(0,224,255,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#00e0ff;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Member Report</h4>
+                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">All member details</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                        <span><i class="fas fa-user"></i> {{ total_members }} members</span>
+                        <span><i class="fas fa-calendar-alt"></i> 
+                            {% if now is defined %}
+                                Updated: {{ now.strftime('%d %b %Y') }}
+                            {% else %}
+                                Updated: {{ today if today is defined else 'N/A' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Financial Summary -->
+                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
+                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
+                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
+                     onclick="generateReport('financial')">
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(74,222,128,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#4ade80;">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Financial Summary</h4>
+                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">Overall financial health</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                        <span><i class="fas fa-piggy-bank"></i> UGX {{ "{:,.0f}".format(total_savings) }}</span>
+                        <span><i class="fas fa-hand-holding-usd"></i> {{ active_loans + completed_loans }} loans</span>
+                    </div>
+                </div>
+
+                <!-- Loan Portfolio -->
+                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
+                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
+                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
+                     onclick="generateReport('loans')">
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(245,197,66,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#f5c542;">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Loan Portfolio</h4>
+                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">All loan data</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                        <span><i class="fas fa-clock"></i> {{ pending_loans }} pending</span>
+                        <span><i class="fas fa-check-circle"></i> {{ completed_loans }} completed</span>
+                    </div>
+                </div>
+
+                <!-- Savings Report -->
+                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
+                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
+                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
+                     onclick="generateReport('savings')">
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(255,107,107,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#ff6b6b;">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Savings Report</h4>
+                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">Member savings data</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                        <span><i class="fas fa-users"></i> {{ total_members }} savers</span>
+                        <span><i class="fas fa-coins"></i> UGX {{ "{:,.0f}".format(total_savings) }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Report Generation Status -->
+            <div style="margin-top:16px; padding:12px 16px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex; align-items:center; gap:12px; color:rgba(255,255,255,0.3); font-size:0.75rem;">
+                    <i class="fas fa-info-circle" style="color:#f5c542;"></i>
+                    <span>Click any report card to generate and download a detailed report in PDF format.</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ========== USERS PANEL ========== -->
-<div id="users-panel" class="content-panel">
-    <div class="action-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-            <div class="action-title" style="margin-bottom:0;">
-                <i class="fas fa-users-cog"></i> Staff Users
+    <div id="users-panel" class="content-panel">
+        <div class="action-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div class="action-title" style="margin-bottom:0;">
+                    <i class="fas fa-users-cog"></i> Staff Users
+                </div>
+                <a href="{{ url_for('admin_register_user') }}" class="btn-primary">
+                    <i class="fas fa-user-plus"></i> Register New User
+                </a>
             </div>
-            <a href="{{ url_for('admin_register_user') }}" class="btn-primary">
-                <i class="fas fa-user-plus"></i> Register New User
-            </a>
-        </div>
-        
-        <div class="table-wrapper">
-            <table class="styled-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>SACCO No.</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in staff_users %}
-                    <tr>
-                        <td>{{ loop.index }}</td>
-                        <td class="mono" style="color:#f5c542;">{{ user.sacco_number }}</td>
-                        <td><strong>{{ user.full_name }}</strong></td>
-                        <td style="color: rgba(255,255,255,0.6);">{{ user.email }}</td>
-                        <td>
-                            <span class="badge 
-                                {% if user.role == 'admin' %}danger
-                                {% elif user.role == 'chairperson' %}warning
-                                {% elif user.role == 'treasurer' %}success
-                                {% elif user.role == 'secretary' %}info
-                                {% elif user.role == 'publicity' %}primary
-                                {% endif %}">
-                                {{ user.role|title }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if user.status == 'active' %}
-                                <span class="badge success">Active</span>
-                            {% else %}
-                                <span class="badge danger">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td class="action-btns">
-                            <button class="view-btn" onclick="editUser('{{ user.id }}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="edit-btn" onclick="resetPassword('{{ user.id }}')" title="Reset Password" style="color:#f5c542;">
-                                <i class="fas fa-key"></i>
-                            </button>
-                            {% if user.id != session.user_id %}
-                            <button class="delete-btn" onclick="deleteUser('{{ user.id }}', '{{ user.full_name }}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+            <!-- Staff Users Filter -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
+                <div style="flex:1; min-width:200px;">
+                    <input type="text" id="searchUserInput" placeholder="Search by name, email, SACCO #..." 
+                           onkeyup="filterStaffUsers()" 
+                           style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+                <div>
+                    <select id="filterUserRole" onchange="filterStaffUsers()" 
+                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="chairperson">Chairperson</option>
+                        <option value="treasurer">Treasurer</option>
+                        <option value="secretary">Secretary</option>
+                        <option value="publicity">Publicity</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filterUserStatus" onchange="filterStaffUsers()" 
+                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="styled-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>SACCO No.</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in staff_users %}
+                        <tr data-role="{{ user.role }}" data-status="{{ user.status }}" data-search="{{ user.full_name|lower }} {{ user.email|lower }} {{ user.sacco_number|lower }}">
+                            <td>{{ loop.index }}</td>
+                            <td class="mono" style="color:#f5c542;">{{ user.sacco_number }}</td>
+                            <td><strong>{{ user.full_name }}</strong></td>
+                            <td style="color: rgba(255,255,255,0.6);">{{ user.email }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if user.role == 'admin' %}danger
+                                    {% elif user.role == 'chairperson' %}warning
+                                    {% elif user.role == 'treasurer' %}success
+                                    {% elif user.role == 'secretary' %}info
+                                    {% elif user.role == 'publicity' %}primary
+                                    {% endif %}">
+                                    {{ user.role|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if user.status == 'active' %}
+                                    <span class="badge success">Active</span>
+                                {% else %}
+                                    <span class="badge danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-btns">
+                                <button onclick="openEditUserModal('{{ user.id }}')" title="Edit User" style="background:rgba(0,224,255,0.08); color:#00e0ff; border:1px solid rgba(0,224,255,0.12); padding:5px 10px; border-radius:5px; cursor:pointer; transition:all 0.2s;">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="resetUserPassword('{{ user.id }}', '{{ user.full_name }}')" title="Reset Password" style="background:rgba(245,197,66,0.08); color:#f5c542; border:1px solid rgba(245,197,66,0.12); padding:5px 10px; border-radius:5px; cursor:pointer; transition:all 0.2s;">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                                {% if user.id != session.user_id %}
+                                <button onclick="deleteUser('{{ user.id }}', '{{ user.full_name }}')" title="Delete User" style="background:rgba(255,107,107,0.08); color:#ff6b6b; border:1px solid rgba(255,107,107,0.12); padding:5px 10px; border-radius:5px; cursor:pointer; transition:all 0.2s;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- ========== EDIT USER MODAL ========== -->
+    <div id="editUserModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div style="background: linear-gradient(145deg, #1e1e32, #151525); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 32px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; animation: modalSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 25px 80px rgba(0,0,0,0.6); position: relative;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f5c542, #4ade80, #00e0ff, #f5c542); background-size: 300% 100%; animation: gradientMove 4s ease-in-out infinite; border-radius: 20px 20px 0 0;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-top:8px;">
+                <h3 style="margin:0; color:#f5c542; font-size:1.2rem; display:flex; align-items:center; gap:12px;">
+                    <span style="width:40px; height:40px; border-radius:50%; background:rgba(245,197,66,0.1); display:flex; align-items:center; justify-content:center; border:1px solid rgba(245,197,66,0.15);">
+                        <i class="fas fa-user-edit" style="font-size:1rem;"></i>
+                    </span>
+                    Edit User
+                </h3>
+                <button onclick="closeEditUserModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:38px; height:38px; border-radius:50%; cursor:pointer; font-size:1.2rem; transition:all 0.3s ease; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='rgba(255,255,255,0.4)'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editUserForm" onsubmit="submitEditUser(event)">
+                <input type="hidden" id="editUserId" name="user_id">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">Full Name <span style="color:#ff6b6b;">*</span></label>
+                    <input type="text" id="editUserFullName" name="full_name" required class="form-control" placeholder="Enter full name" style="width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none;" onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">Email <span style="color:#ff6b6b;">*</span></label>
+                    <input type="email" id="editUserEmail" name="email" required class="form-control" placeholder="Enter email" style="width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none;" onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">Phone</label>
+                    <input type="tel" id="editUserPhone" name="phone" class="form-control" placeholder="Enter phone number" style="width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none;" onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">Role <span style="color:#ff6b6b;">*</span></label>
+                        <select id="editUserRole" name="role" required class="form-control" style="width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none; cursor:pointer;" onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                            <option value="admin">Admin</option>
+                            <option value="chairperson">Chairperson</option>
+                            <option value="treasurer">Treasurer</option>
+                            <option value="secretary">Secretary</option>
+                            <option value="publicity">Publicity</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">Status</label>
+                        <select id="editUserStatus" name="status" class="form-control" style="width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none; cursor:pointer;" onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top:24px; display:flex; gap:12px; justify-content:flex-end; padding-top:18px; border-top:1px solid rgba(255,255,255,0.04);">
+                    <button type="button" onclick="closeEditUserModal()" style="padding:10px 28px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; cursor:pointer; font-weight:500; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" id="editUserSubmitBtn" style="padding:10px 28px; background:linear-gradient(135deg, #f5c542, #eab308); color:#0a0a14; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(245,197,66,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(245,197,66,0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245,197,66,0.2)'">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== RESET PASSWORD MODAL ========== -->
+    <div id="resetPasswordModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div style="background: linear-gradient(145deg, #1e1e32, #151525); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 36px; max-width: 440px; width: 100%; text-align:center; animation: modalSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 25px 80px rgba(0,0,0,0.6); position: relative;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f5c542, #00e0ff, #f5c542); background-size: 200% 100%; animation: gradientMove 3s ease-in-out infinite; border-radius: 20px 20px 0 0;"></div>
+            <div style="width:72px; height:72px; border-radius:50%; background:rgba(245,197,66,0.1); border:2px solid rgba(245,197,66,0.15); display:flex; align-items:center; justify-content:center; margin: 8px auto 16px; font-size:2rem; color:#f5c542;">
+                <i class="fas fa-key"></i>
+            </div>
+            <h3 style="color:#fff; margin-bottom:8px; font-size:1.3rem; font-weight:700;">Reset Password</h3>
+            <p id="resetPasswordMessage" style="color:rgba(255,255,255,0.5); margin-bottom:16px; font-size:0.9rem; line-height:1.6;">Are you sure you want to reset the password for this user?</p>
+            <div style="margin-bottom:20px; padding:12px 16px; background:rgba(245,197,66,0.05); border-radius:10px; border-left:3px solid #f5c542;">
+                <p style="color:rgba(255,255,255,0.25); font-size:0.75rem; margin:0; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-info-circle" style="color:#f5c542;"></i>
+                    A new temporary password will be generated and displayed after confirmation.
+                </p>
+            </div>
+            <input type="hidden" id="resetUserId">
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button onclick="closeResetPasswordModal()" style="padding:10px 28px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; cursor:pointer; font-weight:500; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button onclick="confirmResetPassword()" style="padding:10px 28px; background:linear-gradient(135deg, #f5c542, #eab308); color:#0a0a14; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(245,197,66,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(245,197,66,0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245,197,66,0.2)'">
+                    <i class="fas fa-sync-alt"></i> Reset Password
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DELETE CONFIRMATION MODAL ========== -->
+    <div id="deleteUserModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div style="background: linear-gradient(145deg, #1e1e32, #151525); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 36px; max-width: 440px; width: 100%; text-align:center; animation: modalSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 25px 80px rgba(0,0,0,0.6); position: relative;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff6b6b, #ff4444, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease-in-out infinite; border-radius: 20px 20px 0 0;"></div>
+            <div style="width:72px; height:72px; border-radius:50%; background:rgba(255,107,107,0.1); border:2px solid rgba(255,107,107,0.15); display:flex; align-items:center; justify-content:center; margin: 8px auto 16px; font-size:2rem; color:#ff6b6b;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 style="color:#ff6b6b; margin-bottom:8px; font-size:1.3rem; font-weight:700;">Confirm Delete</h3>
+            <p id="deleteUserMessage" style="color:rgba(255,255,255,0.5); margin-bottom:20px; font-size:0.9rem; line-height:1.6;">Are you sure you want to delete this user?</p>
+            <div style="margin-bottom:20px; padding:12px 16px; background:rgba(255,107,107,0.05); border-radius:10px; border-left:3px solid #ff6b6b;">
+                <p style="color:rgba(255,255,255,0.25); font-size:0.75rem; margin:0; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-info-circle" style="color:#ff6b6b;"></i>
+                    This action cannot be undone. All data associated with this user will be permanently removed.
+                </p>
+            </div>
+            <input type="hidden" id="deleteUserId">
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button onclick="closeDeleteUserModal()" style="padding:10px 28px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; cursor:pointer; font-weight:500; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button onclick="confirmDeleteUser()" style="padding:10px 28px; background:linear-gradient(135deg, #ff6b6b, #ef4444); color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(255,107,107,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(255,107,107,0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255,107,107,0.2)'">
+                    <i class="fas fa-trash"></i> Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- ========== SETTINGS PANEL ========== -->
     <div id="settings-panel" class="content-panel">
         <div class="action-card">
             <div class="action-title">
                 <i class="fas fa-cog"></i> System Settings
+                <span style="margin-left: auto; font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400;">
+                    <span id="settingsStatus" style="color:#4ade80;">
+                        <i class="fas fa-check-circle"></i> All settings are up to date
+                    </span>
+                </span>
             </div>
-            <div style="display:grid; gap:20px; max-width:600px;">
-                <div class="form-group">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
-                        <i class="fas fa-building"></i> SACCO Name
-                    </label>
-                    <input type="text" value="Karacel Association" 
-                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
+            <form id="settingsForm" onsubmit="saveSettings(event)">
+                <div style="display:grid; gap:20px; max-width:700px;">
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px;">
+                        <h4 style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                            <i class="fas fa-building" style="color:#f5c542;"></i> SACCO Information
+                        </h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">SACCO Name</label>
+                                <input type="text" id="saccoName" value="{{ settings.sacco_name or 'Karacel Association' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Registration Number</label>
+                                <input type="text" id="registrationNumber" value="{{ settings.registration_number or 'SACCO/REG/2024/001' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px;">
+                        <h4 style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                            <i class="fas fa-percent" style="color:#f5c542;"></i> Interest Rates
+                        </h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Savings Interest Rate (%)</label>
+                                <input type="number" id="savingsRate" value="{{ settings.savings_interest_rate or '6.5' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#4ade80; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Loan Interest Rate (%)</label>
+                                <input type="number" id="loanRate" value="{{ settings.loan_interest_rate or '12' }}" step="0.5" min="0" max="30" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#f5c542; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Late Penalty Rate (%)</label>
+                                <input type="number" id="penaltyRate" value="{{ settings.penalty_rate or '5' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#ff6b6b; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px;">
+                        <h4 style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                            <i class="fas fa-hand-holding-usd" style="color:#f5c542;"></i> Loan Settings
+                        </h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Max Loan Amount (UGX)</label>
+                                <input type="text" id="maxLoanAmount" value="{{ settings.max_loan_amount or '10,000,000' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Min Loan Amount (UGX)</label>
+                                <input type="text" id="minLoanAmount" value="{{ settings.min_loan_amount or '10,000' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Max Tenure (Months)</label>
+                                <input type="number" id="maxTenure" value="{{ settings.max_tenure or '24' }}" min="1" max="60" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px;">
+                        <h4 style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                            <i class="fas fa-server" style="color:#f5c542;"></i> System Status
+                        </h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">System Version</label>
+                                <input type="text" value="v2.0.1" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px 14px; color:rgba(255,255,255,0.6); font-family:'Inter',sans-serif; font-size:0.85rem;" readonly>
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Database Status</label>
+                                <input type="text" value="✅ Connected" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px 14px; color:#4ade80; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600;" readonly>
+                            </div>
+                            <div>
+                                <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Last Backup</label>
+                                <input type="text" value="{{ now.strftime('%d %b %Y %H:%M') if now is defined else 'N/A' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px 14px; color:rgba(255,255,255,0.6); font-family:'Inter',sans-serif; font-size:0.85rem;" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:12px; justify-content:flex-end; padding-top:8px; border-top:1px solid rgba(255,255,255,0.04);">
+                        <button type="button" onclick="resetSettings()" style="padding:10px 24px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; font-weight:500; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                            <i class="fas fa-undo"></i> Reset to Default
+                        </button>
+                        <button type="submit" id="saveSettingsBtn" style="padding:10px 24px; background:#f5c542; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='#eab308'" onmouseout="this.style.background='#f5c542'">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                    <div id="settingsMessage" style="display:none; padding:12px 16px; border-radius:8px; margin-top:8px;"></div>
                 </div>
-
-                <div class="form-group">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
-                        <i class="fas fa-percent"></i> Savings Interest Rate (%)
-                    </label>
-                    <input type="number" value="6.5" step="0.5"
-                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
-                </div>
-
-                <div class="form-group">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
-                        <i class="fas fa-percent"></i> Loan Interest Rate (%)
-                    </label>
-                    <input type="number" value="12" step="0.5"
-                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
-                </div>
-
-                <div class="form-group">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
-                        <i class="fas fa-percent"></i> Late Penalty Rate (%)
-                    </label>
-                    <input type="number" value="5" step="0.5"
-                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
-                </div>
-
-                <div class="form-group">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:6px;">
-                        <i class="fas fa-clock"></i> Max Loan Tenure (Months)
-                    </label>
-                    <input type="number" value="24"
-                           style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:white; font-family:'Inter',sans-serif;" readonly>
-                </div>
-
-                <div style="color: rgba(255,255,255,0.3); font-size: 0.85rem; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid #f5c542;">
-                    <i class="fas fa-info-circle"></i> Settings are currently read-only. Contact the system administrator to make changes.
-                </div>
-            </div>
+            </form>
         </div>
     </div>
-    
 </main>
 
-<script>
-    // ============================================================
-    // PANEL NAVIGATION
-    // ============================================================
-    function showPanel(panelName) {
-        // Hide all panels
-        document.querySelectorAll(".content-panel").forEach(panel => {
-            panel.classList.remove("active");
-        });
+<style>
+.dropdown-menu {
+    animation: dropdownFade 0.2s ease;
+}
 
-        // Show selected panel
-        const selectedPanel = document.getElementById(panelName + "-panel");
-        if (selectedPanel) {
-            selectedPanel.classList.add("active");
-        }
-
-        // Update nav items
-        document.querySelectorAll(".admin-nav-item").forEach(link => {
-            link.classList.remove("active");
-        });
-
-        const selectedLink = document.querySelector(
-            `.admin-nav-item[href="#${panelName}"]`
-        );
-        if (selectedLink) {
-            selectedLink.classList.add("active");
-        }
-
-        // Update app bar title
-        const title = document.getElementById("appBarTitle");
-        const subtitle = document.getElementById("appBarSubtitle");
-        const titles = {
-            dashboard: { icon: 'fa-tachometer-alt', title: 'Dashboard', subtitle: 'Karacel SACCO Administration Panel' },
-            members: { icon: 'fa-users', title: 'Members', subtitle: 'View all SACCO member records' },
-            loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications', subtitle: 'Review and process loan requests' },
-            reports: { icon: 'fa-chart-bar', title: 'Reports', subtitle: 'Generate and download reports' },
-            settings: { icon: 'fa-cog', title: 'Settings', subtitle: 'System configuration and preferences' }
-        };
-
-        const info = titles[panelName];
-        if (info && title) {
-            title.innerHTML = `<i class="fas ${info.icon}"></i> ${info.title}`;
-        }
-        if (info && subtitle) {
-            subtitle.textContent = info.subtitle;
-        }
-
-        // Update URL hash
-        window.location.hash = panelName;
+@keyframes dropdownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-  
+.styled-table th {
+    padding: 8px 12px;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.3);
+}
 
+.styled-table td {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    vertical-align: middle;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.badge.warning {
+    background: rgba(245, 197, 66, 0.12);
+    color: #f5c542;
+    border: 1px solid rgba(245, 197, 66, 0.1);
+}
+
+.badge.info {
+    background: rgba(0, 224, 255, 0.12);
+    color: #00e0ff;
+    border: 1px solid rgba(0, 224, 255, 0.1);
+}
+
+.badge.success {
+    background: rgba(74, 222, 128, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.1);
+}
+
+.badge.danger {
+    background: rgba(255, 107, 107, 0.12);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.1);
+}
+
+.badge.primary {
+    background: rgba(0, 224, 255, 0.12);
+    color: #00e0ff;
+    border: 1px solid rgba(0, 224, 255, 0.1);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+</style>
+
+<script>
+// ============================================================
+// PANEL NAVIGATION
+// ============================================================
+function showPanel(panelName) {
+    document.querySelectorAll(".content-panel").forEach(panel => {
+        panel.classList.remove("active");
+    });
+    const selectedPanel = document.getElementById(panelName + "-panel");
+    if (selectedPanel) {
+        selectedPanel.classList.add("active");
+    }
+    document.querySelectorAll(".admin-nav-item").forEach(link => {
+        link.classList.remove("active");
+    });
+    const selectedLink = document.querySelector(`.admin-nav-item[data-panel="${panelName}"]`);
+    if (selectedLink) {
+        selectedLink.classList.add("active");
+    }
+    const title = document.getElementById("appBarTitle");
+    const subtitle = document.getElementById("appBarSubtitle");
+    const titles = {
+        dashboard: { icon: 'fa-tachometer-alt', title: 'Dashboard', subtitle: 'Karacel SACCO Administration Panel' },
+        members: { icon: 'fa-users', title: 'Members', subtitle: 'View all SACCO member records' },
+        loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications', subtitle: 'Review and process loan requests' },
+        users: { icon: 'fa-users-cog', title: 'Staff Users', subtitle: 'Manage staff users and permissions' },
+        reports: { icon: 'fa-chart-bar', title: 'Reports', subtitle: 'Generate and download reports' },
+        settings: { icon: 'fa-cog', title: 'Settings', subtitle: 'System configuration and preferences' }
+    };
+    const info = titles[panelName];
+    if (info && title) {
+        title.innerHTML = `<i class="fas ${info.icon}"></i> ${info.title}`;
+    }
+    if (info && subtitle) {
+        subtitle.textContent = info.subtitle;
+    }
+    window.location.hash = panelName;
+}
+
+// ============================================================
+// VIEW MEMBER
+// ============================================================
+function viewMember(memberId) {
+    if (!memberId) {
+        alert('Error: Member ID is missing.');
+        return;
+    }
+    window.location.href = '/treasurer/members/view/' + memberId;
+}
+
+// ============================================================
+// VIEW LOAN
+// ============================================================
 function viewLoan(loanId) {
     if (!loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
-    window.location.href = '/admin/loan/view/' + loanId;
+    const userRole = '{{ session.role }}';
+    if (userRole === 'admin' || userRole === 'chairperson') {
+        window.location.href = '/admin/loan/view/' + loanId;
+    } else if (userRole === 'treasurer') {
+        window.location.href = '/treasurer/loan/view/' + loanId;
+    } else {
+        alert('You do not have permission to view loan details.');
+    }
 }
 
-    // ============================================================
-    // VIEW MEMBER
-    // ============================================================
-    function viewMember(userId) {
-        if (!userId) {
-            alert('Error: Member ID is missing.');
-            return;
-        }
-        window.location.href = '/admin/members/view/' + userId;
-    }
-
-    // ============================================================
-    // VIEW LOAN
-    // ============================================================
-    function viewLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        window.location.href = '/admin/loans/view/' + loanId;
-    }
-
-    // ============================================================
-    // APPROVE LOAN
-    // ============================================================
-    function approveLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        if (confirm('✅ Approve this loan application?')) {
-            fetch('/admin/loans/approve/' + loanId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ Loan approved successfully!');
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            });
-        }
-    }
-
-    // ============================================================
-    // REJECT LOAN
-    // ============================================================
-    function rejectLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        if (confirm('❌ Reject this loan application?')) {
-            fetch('/admin/loans/reject/' + loanId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ Loan rejected successfully!');
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            });
-        }
-    }
-
-    // ============================================================
-    // GENERATE REPORT
-    // ============================================================
-    function generateReport(type) {
-        window.location.href = '/admin/reports/generate/' + type;
-    }
-
-    // ============================================================
-    // INITIALIZE
-    // ============================================================
-    document.addEventListener("DOMContentLoaded", function () {
-        // Check URL hash for panel
-        const hash = window.location.hash.replace("#", "");
-        if (hash && ['dashboard', 'members', 'loan_applications', 'reports', 'settings'].includes(hash)) {
-            showPanel(hash);
-        }
-
-        // Handle nav item clicks
-        document.querySelectorAll(".admin-nav-item").forEach(link => {
-            link.addEventListener("click", function (e) {
-                const href = this.getAttribute("href");
-                if (href && href.startsWith("#")) {
-                    e.preventDefault();
-                    const panelName = href.replace("#", "");
-                    showPanel(panelName);
-                }
-            });
-        });
+// ============================================================
+// FILTER FUNCTIONS
+// ============================================================
+function filterMembersTable() {
+    const searchInput = document.getElementById('searchMembersInput');
+    const statusFilter = document.getElementById('filterMemberStatus');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const status = statusFilter ? statusFilter.value : 'all';
+    const table = document.getElementById('membersTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const text = row.textContent.toLowerCase();
+        const rowStatus = row.getAttribute('data-status') || '';
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && status !== 'all' && rowStatus !== status) show = false;
+        row.style.display = show ? '' : 'none';
     });
+}
+
+function filterLoanApplications() {
+    const searchInput = document.getElementById('searchLoanInput');
+    const statusFilter = document.getElementById('filterLoanStatus');
+    const amountFilter = document.getElementById('filterLoanAmount');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const status = statusFilter ? statusFilter.value : 'all';
+    const amountRange = amountFilter ? amountFilter.value : 'all';
+    const table = document.getElementById('loanApprovalsTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const text = row.textContent.toLowerCase();
+        const rowStatus = row.getAttribute('data-status') || '';
+        const amount = parseFloat(row.getAttribute('data-amount')) || 0;
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && status !== 'all' && rowStatus !== status) show = false;
+        if (show && amountRange !== 'all') {
+            const parts = amountRange.split('-');
+            if (parts.length === 2) {
+                const min = parseFloat(parts[0]);
+                const max = parseFloat(parts[1]);
+                if (amount < min || amount > max) show = false;
+            } else if (amountRange === '10000000+') {
+                if (amount < 10000000) show = false;
+            }
+        }
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function filterStaffUsers() {
+    const searchInput = document.getElementById('searchUserInput');
+    const roleFilter = document.getElementById('filterUserRole');
+    const statusFilter = document.getElementById('filterUserStatus');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const role = roleFilter ? roleFilter.value : 'all';
+    const status = statusFilter ? statusFilter.value : 'all';
+    const table = document.getElementById('usersTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const text = row.textContent.toLowerCase();
+        const rowRole = row.getAttribute('data-role') || '';
+        const rowStatus = row.getAttribute('data-status') || '';
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && role !== 'all' && rowRole !== role) show = false;
+        if (show && status !== 'all' && rowStatus !== status) show = false;
+        row.style.display = show ? '' : 'none';
+    });
+}
 
 // ============================================================
-// ADMIN FINAL APPROVE LOAN
+// DROPDOWN TOGGLE
+// ============================================================
+function toggleDropdown(loanId) {
+    const dropdown = document.getElementById('dropdown-' + loanId);
+    if (!dropdown) return;
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu.id !== 'dropdown-' + loanId) {
+            menu.style.display = 'none';
+        }
+    });
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    }
+});
+
+// ============================================================
+// SETTINGS FUNCTIONS
+// ============================================================
+function loadSettings() {
+    fetch('/admin/settings/get')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const settings = data.settings;
+                document.getElementById('saccoName').value = settings.sacco_name || 'Karacel Association';
+                document.getElementById('registrationNumber').value = settings.registration_number || 'SACCO/REG/2024/001';
+                document.getElementById('savingsRate').value = settings.savings_interest_rate || 6.5;
+                document.getElementById('loanRate').value = settings.loan_interest_rate || 12;
+                document.getElementById('penaltyRate').value = settings.penalty_rate || 5;
+                document.getElementById('maxLoanAmount').value = settings.max_loan_amount || '10,000,000';
+                document.getElementById('minLoanAmount').value = settings.min_loan_amount || '10,000';
+                document.getElementById('maxTenure').value = settings.max_tenure || 24;
+            }
+        })
+        .catch(error => console.error('Error loading settings:', error));
+}
+
+function saveSettings(event) {
+    event.preventDefault();
+    const btn = document.getElementById('saveSettingsBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+    const data = {
+        sacco_name: document.getElementById('saccoName').value.trim(),
+        registration_number: document.getElementById('registrationNumber').value.trim(),
+        savings_interest_rate: parseFloat(document.getElementById('savingsRate').value) || 0,
+        loan_interest_rate: parseFloat(document.getElementById('loanRate').value) || 0,
+        penalty_rate: parseFloat(document.getElementById('penaltyRate').value) || 0,
+        max_loan_amount: document.getElementById('maxLoanAmount').value.replace(/,/g, ''),
+        min_loan_amount: document.getElementById('minLoanAmount').value.replace(/,/g, ''),
+        max_tenure: parseInt(document.getElementById('maxTenure').value) || 24
+    };
+    fetch('/admin/settings/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSettingsMessage('✅ Settings saved successfully!', 'success');
+            document.getElementById('settingsStatus').innerHTML = '<i class="fas fa-check-circle"></i> Settings updated successfully';
+            document.getElementById('settingsStatus').style.color = '#4ade80';
+        } else {
+            showSettingsMessage('❌ Error: ' + result.message, 'error');
+        }
+    })
+    .catch(error => {
+        showSettingsMessage('❌ Error: ' + error.message, 'error');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        setTimeout(() => {
+            const msg = document.getElementById('settingsMessage');
+            msg.style.display = 'none';
+        }, 5000);
+    });
+}
+
+function resetSettings() {
+    if (confirm('⚠️ Reset all settings to default values?')) {
+        document.getElementById('saccoName').value = 'Karacel Association';
+        document.getElementById('registrationNumber').value = 'SACCO/REG/2024/001';
+        document.getElementById('savingsRate').value = 6.5;
+        document.getElementById('loanRate').value = 12;
+        document.getElementById('penaltyRate').value = 5;
+        document.getElementById('maxLoanAmount').value = '10,000,000';
+        document.getElementById('minLoanAmount').value = '10,000';
+        document.getElementById('maxTenure').value = 24;
+        showSettingsMessage('🔄 Settings reset to default values. Click "Save Settings" to apply.', 'info');
+    }
+}
+
+function showSettingsMessage(message, type) {
+    const msgEl = document.getElementById('settingsMessage');
+    msgEl.style.display = 'block';
+    msgEl.textContent = message;
+    if (type === 'success') {
+        msgEl.style.background = 'rgba(74,222,128,0.1)';
+        msgEl.style.border = '1px solid rgba(74,222,128,0.2)';
+        msgEl.style.color = '#4ade80';
+    } else if (type === 'error') {
+        msgEl.style.background = 'rgba(255,107,107,0.1)';
+        msgEl.style.border = '1px solid rgba(255,107,107,0.2)';
+        msgEl.style.color = '#ff6b6b';
+    } else {
+        msgEl.style.background = 'rgba(0,224,255,0.1)';
+        msgEl.style.border = '1px solid rgba(0,224,255,0.2)';
+        msgEl.style.color = '#00e0ff';
+    }
+}
+
+// ============================================================
+// ADMIN LOAN FUNCTIONS
 // ============================================================
 function adminApproveLoan(loanId) {
     if (!loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
-    
-    if (confirm('✅ FINAL APPROVAL: This will approve the loan for disbursement.\n\nThe member and treasurer will be notified.')) {
-        // Show loading state
+    if (confirm('✅ FINAL APPROVAL: This will approve and disburse the loan.\n\nThe member and treasurer will be notified.')) {
         const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan(${loanId})"]`);
         btns.forEach(btn => {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
         });
-        
         fetch('/admin/loan/approve/' + loanId, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'approve' })
         })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server error. Please check the logs.');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 alert('✅ ' + data.message);
@@ -667,50 +1277,29 @@ function adminApproveLoan(loanId) {
     }
 }
 
-// ============================================================
-// ADMIN REJECT LOAN
-// ============================================================
 function adminRejectLoan(loanId) {
     if (!loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
-    
     const reason = prompt('❌ Please provide a reason for rejecting this loan application:');
-    
-    if (reason === null) {
-        return;
-    }
-    
+    if (reason === null) return;
     if (reason.trim() === '') {
         alert('❌ Please provide a reason for rejection.');
         return;
     }
-    
     if (confirm('❌ FINAL REJECT: This will permanently reject this loan application.\n\nReason: ' + reason)) {
         const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan(${loanId})"]`);
         btns.forEach(btn => {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
         });
-        
         fetch('/admin/loan/approve/' + loanId, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                action: 'reject',
-                reason: reason.trim()
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'reject', reason: reason.trim() })
         })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server error. Please check the logs.');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 alert('✅ ' + data.message);
@@ -733,9 +1322,306 @@ function adminRejectLoan(loanId) {
 }
 
 // ============================================================
-// VIEW LOAN (Admin)
+// GENERATE REPORT
 // ============================================================
+function generateReport(type) {
+    const cards = document.querySelectorAll('.report-card');
+    cards.forEach(card => {
+        card.style.opacity = '0.5';
+        card.style.cursor = 'wait';
+        card.style.pointerEvents = 'none';
+    });
+    window.open('/admin/reports/generate/' + type, '_blank');
+    setTimeout(() => {
+        cards.forEach(card => {
+            card.style.opacity = '1';
+            card.style.cursor = 'pointer';
+            card.style.pointerEvents = 'auto';
+        });
+    }, 3000);
+}
 
+// ============================================================
+// EDIT USER FUNCTIONS
+// ============================================================
+function openEditUserModal(userId) {
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
+    }
+    console.log('📝 Editing user:', userId);
+    const modal = document.getElementById('editUserModal');
+    if (!modal) {
+        alert('Error: Edit modal not found.');
+        return;
+    }
+    modal.style.display = 'flex';
+    document.getElementById('editUserId').value = userId;
+    const submitBtn = document.getElementById('editUserSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        submitBtn.disabled = true;
+    }
+    fetch('/admin/users/view/' + userId)
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                document.getElementById('editUserFullName').value = user.full_name || '';
+                document.getElementById('editUserEmail').value = user.email || '';
+                document.getElementById('editUserPhone').value = user.phone || '';
+                document.getElementById('editUserRole').value = user.role || '';
+                document.getElementById('editUserStatus').value = user.status || 'active';
+            } else {
+                alert('❌ Error: ' + (data.message || 'Could not load user data'));
+                closeEditUserModal();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error:', error);
+            alert('❌ Error loading user data: ' + error.message);
+            closeEditUserModal();
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                submitBtn.disabled = false;
+            }
+        });
+}
+
+function closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'none';
+    const form = document.getElementById('editUserForm');
+    if (form) form.reset();
+}
+
+function submitEditUser(event) {
+    event.preventDefault();
+    const form = document.getElementById('editUserForm');
+    const formData = new FormData(form);
+    const userId = document.getElementById('editUserId').value;
+    const fullName = formData.get('full_name').trim();
+    const email = formData.get('email').trim();
+    const phone = formData.get('phone').trim();
+    const role = formData.get('role');
+    const status = formData.get('status');
+    if (!fullName || !email) {
+        alert('Full name and email are required.');
+        return;
+    }
+    if (!isValidEmail(email)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
+    const submitBtn = document.getElementById('editUserSubmitBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    const data = { full_name: fullName, email: email, phone: phone || '', role: role, status: status };
+    fetch('/admin/users/update/' + userId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            closeEditUserModal();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (result.message || 'Could not update user'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+// ============================================================
+// RESET PASSWORD FUNCTIONS
+// ============================================================
+function resetUserPassword(userId, userName) {
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
+    }
+    document.getElementById('resetPasswordMessage').textContent = 
+        'Are you sure you want to reset the password for "' + userName + '"?';
+    document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetPasswordModal').style.display = 'flex';
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').style.display = 'none';
+    document.getElementById('resetUserId').value = '';
+}
+
+function confirmResetPassword() {
+    const userId = document.getElementById('resetUserId').value;
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
+    }
+    const btn = document.querySelector('#resetPasswordModal button:last-child');
+    if (!btn) return;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    btn.disabled = true;
+    fetch('/admin/users/reset-password/' + userId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ Password reset successfully!\n\nNew Password: ' + data.new_password + '\n\nPlease share this with the user.');
+            closeResetPasswordModal();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Could not reset password'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// ============================================================
+// DELETE USER FUNCTIONS
+// ============================================================
+function deleteUser(userId, userName) {
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
+    }
+    document.getElementById('deleteUserMessage').textContent = 
+        '⚠️ Are you sure you want to delete user "' + userName + '"? This action cannot be undone.';
+    document.getElementById('deleteUserId').value = userId;
+    document.getElementById('deleteUserModal').style.display = 'flex';
+}
+
+function closeDeleteUserModal() {
+    document.getElementById('deleteUserModal').style.display = 'none';
+    document.getElementById('deleteUserId').value = '';
+}
+
+function confirmDeleteUser() {
+    const userId = document.getElementById('deleteUserId').value;
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
+    }
+    if (!confirm('⚠️ Are you absolutely sure you want to permanently delete this user?\n\nThis action cannot be undone!')) {
+        return;
+    }
+    const btn = document.querySelector('#deleteUserModal button:last-child');
+    if (!btn) return;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    btn.disabled = true;
+    fetch('/admin/users/delete/' + userId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ _method: 'DELETE', user_id: userId })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            closeDeleteUserModal();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Could not delete user'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message + '\nPlease try again or contact support.');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+function isValidEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+// ============================================================
+// CLOSE MODALS ON ESCAPE AND OUTSIDE CLICK
+// ============================================================
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeEditUserModal();
+        closeResetPasswordModal();
+        closeDeleteUserModal();
+    }
+});
+
+document.addEventListener('click', function(event) {
+    const editModal = document.getElementById('editUserModal');
+    if (editModal && event.target === editModal) closeEditUserModal();
+    const resetModal = document.getElementById('resetPasswordModal');
+    if (resetModal && event.target === resetModal) closeResetPasswordModal();
+    const deleteModal = document.getElementById('deleteUserModal');
+    if (deleteModal && event.target === deleteModal) closeDeleteUserModal();
+});
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+document.addEventListener("DOMContentLoaded", function () {
+    const hash = window.location.hash.replace("#", "");
+    const validPanels = ['dashboard', 'members', 'loan_applications', 'users', 'reports', 'settings'];
+    if (hash && validPanels.includes(hash)) {
+        showPanel(hash);
+    }
+    document.querySelectorAll(".admin-nav-item").forEach(link => {
+        link.addEventListener("click", function (e) {
+            const panelName = this.getAttribute("data-panel");
+            if (panelName) {
+                e.preventDefault();
+                showPanel(panelName);
+            }
+        });
+    });
+    loadSettings();
+});
+
+console.log('✅ Admin Dashboard JavaScript loaded successfully');
 </script>
 
 {% endblock %}

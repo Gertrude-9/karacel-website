@@ -1,0 +1,128 @@
+{% extends "admin/reports/report-base.html" %}
+
+{% block title %}Financial Report - Karacel SACCO{% endblock %}
+
+{% block report_title %}Financial Summary Report{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">👥</span>
+        <div class="number gold">{{ total_members }}</div>
+        <div class="label">Total Members</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💰</span>
+        <div class="number green">UGX {{ "{:,.0f}".format(total_savings) }}</div>
+        <div class="label">Total Savings</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📊</span>
+        <div class="number blue">UGX {{ "{:,.0f}".format(total_loan_amount) }}</div>
+        <div class="label">Total Loan Portfolio</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💳</span>
+        <div class="number purple">UGX {{ "{:,.0f}".format(total_disbursed) }}</div>
+        <div class="label">Total Disbursed</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🔄</span>
+        <div class="number pink">UGX {{ "{:,.0f}".format(total_repayments) }}</div>
+        <div class="label">Total Repayments</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">✅</span>
+        <div class="number gold">{{ completed_loans }}</div>
+        <div class="label">Completed Loans</div>
+    </div>
+</div>
+
+<!-- Loan Status Breakdown -->
+<div class="section-title">
+    <i class="fas fa-chart-pie"></i> Loan Status Breakdown
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th><i class="fas fa-tag"></i> Status</th>
+                <th class="text-center"><i class="fas fa-hashtag"></i> Count</th>
+                <th class="text-right"><i class="fas fa-percent"></i> Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge pending">Pending</span></td>
+                <td class="text-center">{{ pending_loans }}</td>
+                <td class="text-right">{{ "%.1f"|format((pending_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+            </tr>
+            <tr>
+                <td><span class="badge approved">Approved</span></td>
+                <td class="text-center">{{ approved_loans }}</td>
+                <td class="text-right">{{ "%.1f"|format((approved_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+            </tr>
+            <tr>
+                <td><span class="badge disbursed">Disbursed</span></td>
+                <td class="text-center">{{ disbursed_loans }}</td>
+                <td class="text-right">{{ "%.1f"|format((disbursed_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+            </tr>
+            <tr>
+                <td><span class="badge completed">Completed</span></td>
+                <td class="text-center">{{ completed_loans }}</td>
+                <td class="text-right">{{ "%.1f"|format((completed_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+            </tr>
+            <tr>
+                <td><span class="badge rejected">Rejected</span></td>
+                <td class="text-center">{{ rejected_loans }}</td>
+                <td class="text-right">{{ "%.1f"|format((rejected_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td><strong>Total</strong></td>
+                <td class="text-center"><strong>{{ total_loans }}</strong></td>
+                <td class="text-right"><strong>100%</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<!-- Staff Summary -->
+<div class="section-title">
+    <i class="fas fa-users-cog"></i> Staff Summary
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th><i class="fas fa-user-tag"></i> Role</th>
+                <th class="text-center"><i class="fas fa-hashtag"></i> Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge active">Treasurer</span></td>
+                <td class="text-center">{{ staff_counts.treasurer }}</td>
+            </tr>
+            <tr>
+                <td><span class="badge info">Secretary</span></td>
+                <td class="text-center">{{ staff_counts.secretary }}</td>
+            </tr>
+            <tr>
+                <td><span class="badge warning">Publicity</span></td>
+                <td class="text-center">{{ staff_counts.publicity }}</td>
+            </tr>
+            <tr>
+                <td><span class="badge danger">Admin/Chairperson</span></td>
+                <td class="text-center">{{ staff_counts.admin }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

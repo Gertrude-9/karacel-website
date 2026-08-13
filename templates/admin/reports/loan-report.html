@@ -1,0 +1,78 @@
+{% extends "admin/reports/report-base.html" %}
+
+{% block title %}Loan Report - Karacel SACCO{% endblock %}
+
+{% block report_title %}Loan Portfolio Report{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">📊</span>
+        <div class="number gold">{{ total_loans }}</div>
+        <div class="label">Total Loans</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💰</span>
+        <div class="number green">UGX {{ "{:,.0f}".format(total_amount) }}</div>
+        <div class="label">Total Loan Amount</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💳</span>
+        <div class="number blue">UGX {{ "{:,.0f}".format(total_balance) }}</div>
+        <div class="label">Outstanding Balance</div>
+    </div>
+</div>
+
+<!-- Loan Table -->
+<div class="section-title">
+    <i class="fas fa-list"></i> All Loans
+    <span class="count">({{ total_loans }} loans)</span>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th><i class="fas fa-hashtag"></i> Loan #</th>
+                <th><i class="fas fa-user"></i> Member</th>
+                <th><i class="fas fa-id-card"></i> SACCO No.</th>
+                <th class="text-right"><i class="fas fa-coins"></i> Amount (UGX)</th>
+                <th><i class="fas fa-circle"></i> Status</th>
+                <th class="text-right"><i class="fas fa-balance-scale"></i> Balance (UGX)</th>
+                <th class="text-center"><i class="fas fa-money-bill-wave"></i> Payments</th>
+                <th><i class="fas fa-calendar-alt"></i> Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loan in loans %}
+            <tr>
+                <td class="mono">{{ loan.loan_number }}</td>
+                <td><strong>{{ loan.full_name }}</strong></td>
+                <td>{{ loan.sacco_number }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(loan.amount) }}</td>
+                <td>
+                    <span class="badge {{ loan.status|lower }}">
+                        {{ loan.status|upper }}
+                    </span>
+                </td>
+                <td class="amount gold text-right">{{ "{:,.0f}".format(loan.current_balance or 0) }}</td>
+                <td class="text-center">{{ loan.payment_count or 0 }}</td>
+                <td>{{ loan.application_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="8" class="text-right">
+                    Total Loans: <strong>{{ total_loans }}</strong> &nbsp;|&nbsp;
+                    Total Amount: <strong style="color:#4ade80;">UGX {{ "{:,.0f}".format(total_amount) }}</strong> &nbsp;|&nbsp;
+                    Total Balance: <strong style="color:#f5c542;">UGX {{ "{:,.0f}".format(total_balance) }}</strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% endblock %}

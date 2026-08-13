@@ -14,407 +14,8 @@
     <!-- CSS Files -->
     <link rel="stylesheet" href="{{ url_for('static', filename='treasurer.css') }}">
     
-    <style>
-        /* Additional styles for loan details */
-        .loan-detail-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin: 16px 0;
-        }
-        .loan-detail-item {
-            background: rgba(255,255,255,0.03);
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-        }
-        .loan-detail-item label {
-            display: block;
-            color: rgba(255,255,255,0.4);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        .loan-detail-item .value {
-            color: #fff;
-            font-size: 1rem;
-            font-weight: 500;
-        }
-        .loan-detail-item .value.highlight {
-            color: #f5c542;
-        }
-        .loan-detail-item .value.success {
-            color: #4ade80;
-        }
-        .loan-detail-item .value.danger {
-            color: #ff6b6b;
-        }
-        .loan-detail-item .value.info {
-            color: #00e0ff;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-badge.pending { background: #f5c542; color: #0a0a14; }
-        .status-badge.approved { background: #00e0ff; color: #0a0a14; }
-        .status-badge.disbursed { background: #4ade80; color: #0a0a14; }
-        .status-badge.active { background: #4ade80; color: #0a0a14; }
-        .status-badge.completed { background: #a855f7; color: #fff; }
-        .status-badge.rejected { background: #ff6b6b; color: #fff; }
-        .status-badge.paid { background: #a855f7; color: #fff; }
-        
-        .progress-container {
-            background: rgba(255,255,255,0.1);
-            border-radius: 20px;
-            height: 8px;
-            overflow: hidden;
-            margin: 8px 0;
-        }
-        .progress-bar {
-            height: 100%;
-            border-radius: 20px;
-            transition: width 0.5s ease;
-            background: linear-gradient(90deg, #4ade80, #00e0ff);
-        }
-        .progress-bar.completed {
-            background: linear-gradient(90deg, #a855f7, #4ade80);
-        }
-        .action-btns {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .action-btns button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .action-btns button:hover {
-            transform: scale(1.05);
-        }
-        .view-btn { background: rgba(255,255,255,0.1); color: #fff; }
-        .view-btn:hover { background: rgba(255,255,255,0.2); }
-        .approve-btn { background: #4ade80; color: #0a0a14; }
-        .approve-btn:hover { background: #22c55e; }
-        .reject-btn { background: #ff6b6b; color: #fff; }
-        .reject-btn:hover { background: #ef4444; }
-        .disburse-btn { background: #f5c542; color: #0a0a14; }
-        .disburse-btn:hover { background: #eab308; }
-        .pay-btn { background: #00e0ff; color: #0a0a14; }
-        .pay-btn:hover { background: #00b4d8; }
-        
-        .loan-tab-content {
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .tab-btn.active {
-            background: rgba(255,255,255,0.1) !important;
-            border: 1px solid #f5c542 !important;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        .badge.success { background: #4ade80; color: #0a0a14; }
-        .badge.warning { background: #f5c542; color: #0a0a14; }
-        .badge.info { background: #00e0ff; color: #0a0a14; }
-        .badge.danger { background: #ff6b6b; color: #fff; }
-        .badge.secondary { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
-        
-        .mono {
-            font-family: 'Courier New', monospace;
-            letter-spacing: 0.5px;
-        }
-        
-        .table-wrapper {
-            overflow-x: auto;
-            margin: 12px 0;
-        }
-        .styled-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .styled-table thead tr {
-            border-bottom: 2px solid rgba(255,255,255,0.06);
-        }
-        .styled-table th {
-            text-align: left;
-            padding: 12px 16px;
-            color: rgba(255,255,255,0.4);
-            font-weight: 600;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .styled-table td {
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            color: rgba(255,255,255,0.8);
-        }
-        .styled-table tbody tr:hover {
-            background: rgba(255,255,255,0.02);
-        }
-        .styled-table tfoot td {
-            border-top: 2px solid rgba(255,255,255,0.08);
-            padding: 12px 16px;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 8px;
-            color: white;
-            transition: all 0.2s;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: #f5c542;
-            background: rgba(255,255,255,0.08);
-        }
-        .form-control option {
-            background: #1a1a2e;
-            color: white;
-        }
-        
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: #f5c542;
-            color: #0a0a14;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(245, 197, 66, 0.3);
-        }
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.1);
-        }
-        
-        .app-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 24px;
-            background: rgba(255,255,255,0.02);
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            margin-bottom: 24px;
-        }
-        .app-bar-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .app-bar-left h2 {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        .app-bar-left h2 i {
-            color: #f5c542;
-        }
-        #appBarSubtitle {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.4);
-            font-weight: 400;
-        }
-        .app-bar-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .admin-profile {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            font-size: 0.85rem;
-        }
-        .admin-profile i {
-            font-size: 1.4rem;
-            color: #f5c542;
-        }
-        .hamburger {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.4rem;
-            cursor: pointer;
-            display: none;
-            padding: 4px;
-        }
-        
-        .content-panel {
-            display: none;
-            padding: 0 24px 24px;
-        }
-        .content-panel.active {
-            display: block;
-        }
-        
-        .admin-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        .stat-box {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 12px;
-            padding: 16px 20px;
-            transition: all 0.2s;
-        }
-        .stat-box:hover {
-            background: rgba(255,255,255,0.06);
-            transform: translateY(-2px);
-        }
-        .stat-box i {
-            font-size: 1.4rem;
-            color: #f5c542;
-            opacity: 0.6;
-            margin-bottom: 8px;
-        }
-        .stat-box h3 {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0;
-        }
-        .stat-box p {
-            font-size: 0.75rem;
-            color: rgba(255,255,255,0.4);
-            margin: 4px 0 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-        .action-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 16px;
-        }
-        .action-title i {
-            color: #f5c542;
-        }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.4);
-        }
-        
-        @media (max-width: 768px) {
-            .hamburger {
-                display: block;
-            }
-            .app-bar {
-                padding: 12px 16px;
-                flex-wrap: wrap;
-            }
-            .app-bar-left h2 {
-                font-size: 1rem;
-            }
-            #appBarSubtitle {
-                display: none;
-            }
-            .content-panel {
-                padding: 0 12px 12px;
-            }
-            .admin-stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-            .stat-box {
-                padding: 12px 14px;
-            }
-            .stat-box h3 {
-                font-size: 1rem;
-            }
-            .action-card {
-                padding: 14px;
-            }
-            .loan-detail-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        @media (max-width: 480px) {
-            .admin-stats {
-                grid-template-columns: 1fr;
-            }
-            .loan-detail-grid {
-                grid-template-columns: 1fr;
-            }
-            .action-btns {
-                flex-direction: column;
-            }
-            .action-btns button {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
+    <!-- Page-specific styles block -->
+    {% block extra_styles %}{% endblock %}
 </head>
 
 <body>
@@ -473,6 +74,17 @@
                 <i class="fas fa-history"></i>
                 <span>Deposits History</span>
             </a>
+            
+            <!-- Completed Loans -->
+            <a href="#" class="admin-nav-item" data-panel="completed" onclick="showPanel('completed')">
+                <i class="fas fa-check-circle"></i>
+                <span>Completed Loans</span>
+                {% if completed_loans > 0 %}
+                <span style="margin-left: auto; background: #4ade80; color: #0a0a14; padding: 0 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 700; min-width: 20px; text-align: center;">
+                    {{ completed_loans }}
+                </span>
+                {% endif %}
+            </a>
         </div>
 
         <div class="sidebar-footer">
@@ -494,6 +106,9 @@
 
 </div>
 
+<!-- ============================================
+JAVASCRIPT - Core Navigation Only
+============================================ -->
 <script>
     // ============================================================
     // TOGGLE SIDEBAR (Mobile)
@@ -512,12 +127,14 @@
         // Hide all panels
         document.querySelectorAll(".content-panel").forEach(panel => {
             panel.classList.remove("active");
+            panel.style.display = 'none';
         });
 
         // Show selected panel
         const selectedPanel = document.getElementById(panelName + "-panel");
         if (selectedPanel) {
             selectedPanel.classList.add("active");
+            selectedPanel.style.display = 'block';
         }
 
         // Update nav items
@@ -539,11 +156,37 @@
             'loan_applications': 'Loan Management',
             'repayments': 'Loan Repayments',
             'members': 'Member Management',
-            'deposits': 'Deposits History'
+            'deposits': 'Deposits History',
+            'completed': 'Completed Loans'
         };
+        
         const titleEl = document.getElementById('appBarTitle');
         if (titleEl && titles[panelName]) {
-            titleEl.innerHTML = `<i class="fas fa-${panelName === 'dashboard' ? 'tachometer-alt' : panelName === 'savings' ? 'piggy-bank' : panelName === 'loan_applications' ? 'file-invoice' : panelName === 'repayments' ? 'undo-alt' : panelName === 'members' ? 'users' : 'history'}"></i> ${titles[panelName]}`;
+            const iconMap = {
+                'dashboard': 'tachometer-alt',
+                'savings': 'piggy-bank',
+                'loan_applications': 'file-invoice',
+                'repayments': 'undo-alt',
+                'members': 'users',
+                'deposits': 'history',
+                'completed': 'check-circle'
+            };
+            titleEl.innerHTML = `<i class="fas fa-${iconMap[panelName] || 'circle'}"></i> ${titles[panelName]}`;
+        }
+
+        // Update app bar subtitle
+        const subtitleEl = document.getElementById('appBarSubtitle');
+        if (subtitleEl) {
+            const subtitles = {
+                'dashboard': 'Karacel SACCO Financial Management',
+                'savings': 'Record and manage member savings deposits',
+                'loan_applications': 'Review and manage loan applications',
+                'repayments': 'Record and manage loan repayments',
+                'members': 'Manage SACCO members',
+                'deposits': 'View all deposits history',
+                'completed': 'View all completed loans'
+            };
+            subtitleEl.textContent = subtitles[panelName] || 'Karacel SACCO Financial Management';
         }
 
         // Close sidebar on mobile
@@ -556,416 +199,12 @@
     }
 
     // ============================================================
-    // LOAN TAB SWITCHING
-    // ============================================================
-    function showLoanTab(tabName) {
-        // Hide all loan tab contents
-        document.querySelectorAll('.loan-tab-content').forEach(tab => {
-            tab.style.display = 'none';
-        });
-        
-        // Show the selected tab
-        const selectedTab = document.getElementById(tabName + '-tab');
-        if (selectedTab) {
-            selectedTab.style.display = 'block';
-        }
-        
-        // Update tab button styles
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.style.background = 'rgba(255,255,255,0.05)';
-            btn.style.border = '1px solid rgba(255,255,255,0.06)';
-        });
-        
-        // Highlight the active tab
-        const activeBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
-        if (activeBtn) {
-            activeBtn.classList.add('active');
-            activeBtn.style.background = 'rgba(255,255,255,0.1)';
-            activeBtn.style.border = '1px solid #f5c542';
-        }
-    }
-
-    // ============================================================
-    // VIEW LOAN DETAILS
-    // ============================================================
-    function viewLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        window.location.href = '/treasurer/loan/view/' + loanId;
-    }
-
-    // ============================================================
-    // VIEW MEMBER
-    // ============================================================
-    function viewMember(memberId) {
-        if (!memberId) {
-            alert('Error: Member ID is missing.');
-            return;
-        }
-        window.location.href = '/treasurer/members/view/' + memberId;
-    }
-
-    // ============================================================
-    // APPROVE LOAN
-    // ============================================================
-    function approveLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        if (confirm('✅ Approve this loan application?\n\nNote: Member must have at least 10% of loan amount in savings.')) {
-            const btns = document.querySelectorAll(`button[onclick*="approveLoan(${loanId})"]`);
-            btns.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                btn.disabled = true;
-            });
-            
-            fetch('/treasurer/loan/approve/' + loanId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: 'approve' })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            })
-            .finally(() => {
-                btns.forEach(btn => {
-                    btn.innerHTML = '<i class="fas fa-check"></i> Approve';
-                    btn.disabled = false;
-                });
-            });
-        }
-    }
-
-    // ============================================================
-    // REJECT LOAN
-    // ============================================================
-    function rejectLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        const reason = prompt('❌ Please provide a reason for rejecting this loan application:');
-        
-        if (reason === null) {
-            return;
-        }
-        
-        if (reason.trim() === '') {
-            alert('❌ Please provide a reason for rejection.');
-            return;
-        }
-        
-        if (confirm('❌ Reject this loan application?\n\nReason: ' + reason)) {
-            const btns = document.querySelectorAll(`button[onclick*="rejectLoan(${loanId})"]`);
-            btns.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                btn.disabled = true;
-            });
-            
-            fetch('/treasurer/loan/approve/' + loanId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    action: 'reject',
-                    reason: reason.trim()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            })
-            .finally(() => {
-                btns.forEach(btn => {
-                    btn.innerHTML = '<i class="fas fa-times"></i> Reject';
-                    btn.disabled = false;
-                });
-            });
-        }
-    }
-
-    // ============================================================
-    // DISBURSE LOAN
-    // ============================================================
-    function disburseLoan(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        if (confirm('💰 Disburse this loan to the member?\n\nThis will mark the loan as active.')) {
-            const btns = document.querySelectorAll(`button[onclick*="disburseLoan(${loanId})"]`);
-            btns.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                btn.disabled = true;
-            });
-            
-            fetch('/treasurer/loan/disburse/' + loanId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            })
-            .finally(() => {
-                btns.forEach(btn => {
-                    btn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> Disburse';
-                    btn.disabled = false;
-                });
-            });
-        }
-    }
-
-    // ============================================================
-    // RECORD PAYMENT
-    // ============================================================
-    function recordPayment(loanId) {
-        if (!loanId) {
-            alert('Error: Loan ID is missing.');
-            return;
-        }
-        
-        const amount = prompt('💰 Enter payment amount (UGX):\n\nEnter the amount to pay toward this loan.');
-        if (amount === null) return;
-        
-        const cleanAmount = parseFloat(amount.replace(/,/g, ''));
-        if (isNaN(cleanAmount) || cleanAmount <= 0) {
-            alert('❌ Please enter a valid amount greater than 0.');
-            return;
-        }
-        
-        if (confirm(`💳 Confirm payment of UGX ${cleanAmount.toLocaleString()} for loan #${loanId}?`)) {
-            const btn = document.querySelector(`button[onclick*="recordPayment(${loanId})"]`);
-            if (btn) {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                btn.disabled = true;
-            }
-            
-            fetch('/treasurer/loan/pay', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    loan_id: loanId, 
-                    amount: cleanAmount,
-                    payment_method: 'cash'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.status === 'completed' || data.is_completed) {
-                        alert('✅ LOAN FULLY PAID! Status updated to COMPLETED.');
-                    } else {
-                        const remaining = data.new_balance !== undefined ? data.new_balance : 'updated';
-                        alert(`✅ Payment recorded successfully!\nRemaining Balance: UGX ${typeof remaining === 'number' ? remaining.toLocaleString() : remaining}`);
-                    }
-                    location.reload();
-                } else {
-                    alert('❌ Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('❌ Network error: ' + error.message);
-            })
-            .finally(() => {
-                if (btn) {
-                    btn.innerHTML = '<i class="fas fa-money-bill-wave"></i> Pay';
-                    btn.disabled = false;
-                }
-            });
-        }
-    }
-
-    // ============================================================
-    // FILTER DEPOSITS
-    // ============================================================
-    function filterDeposits() {
-        const searchInput = document.getElementById('searchDeposits');
-        const methodFilter = document.getElementById('filterMethod');
-        const dateFilter = document.getElementById('filterDate');
-        
-        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-        const method = methodFilter ? methodFilter.value : 'all';
-        const dateRange = dateFilter ? dateFilter.value : 'all';
-        
-        const table = document.getElementById('depositsTable');
-        if (!table) return;
-        
-        const rows = table.querySelectorAll('tbody tr');
-        let visibleCount = 0;
-        const today = new Date();
-        
-        rows.forEach(row => {
-            if (row.querySelector('td[colspan]')) return;
-            
-            const text = row.textContent.toLowerCase();
-            const cells = row.querySelectorAll('td');
-            const methodCell = cells[5];
-            const dateCell = cells[1];
-            
-            let show = true;
-            
-            if (searchTerm && !text.includes(searchTerm)) {
-                show = false;
-            }
-            
-            if (show && method !== 'all' && methodCell) {
-                const cellMethod = methodCell.textContent.toLowerCase().trim();
-                if (!cellMethod.includes(method.replace('_', ' '))) {
-                    show = false;
-                }
-            }
-            
-            if (show && dateRange !== 'all' && dateCell) {
-                const dateStr = dateCell.textContent.trim();
-                const rowDate = new Date(dateStr);
-                
-                if (dateRange === 'today') {
-                    if (rowDate.toDateString() !== today.toDateString()) show = false;
-                } else if (dateRange === 'week') {
-                    const weekAgo = new Date(today);
-                    weekAgo.setDate(weekAgo.getDate() - 7);
-                    if (rowDate < weekAgo) show = false;
-                } else if (dateRange === 'month') {
-                    if (rowDate.getMonth() !== today.getMonth() || rowDate.getFullYear() !== today.getFullYear()) {
-                        show = false;
-                    }
-                } else if (dateRange === 'year') {
-                    if (rowDate.getFullYear() !== today.getFullYear()) show = false;
-                }
-            }
-            
-            row.style.display = show ? '' : 'none';
-            if (show) visibleCount++;
-        });
-        
-        const showingSpan = document.getElementById('showingCount');
-        if (showingSpan) showingSpan.textContent = visibleCount;
-    }
-
-    // ============================================================
-    // EXPORT DEPOSITS TO CSV
-    // ============================================================
-    function exportDepositsCSV() {
-        const table = document.getElementById('depositsTable');
-        if (!table) return;
-        
-        let csv = [];
-        const rows = table.querySelectorAll('tr');
-        
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td, th');
-            const rowData = [];
-            cells.forEach(cell => {
-                let text = cell.textContent.trim();
-                text = text.replace(/,/g, '');
-                rowData.push(text);
-            });
-            csv.push(rowData.join(','));
-        });
-        
-        const csvContent = csv.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `deposits_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-    }
-
-    // ============================================================
-    // PAGINATION
-    // ============================================================
-    let currentPage = 1;
-    const rowsPerPage = 20;
-
-    function paginateTable() {
-        const table = document.getElementById('depositsTable');
-        if (!table) return;
-        
-        const rows = table.querySelectorAll('tbody tr');
-        const totalRows = rows.length;
-        const totalPages = Math.ceil(totalRows / rowsPerPage);
-        
-        rows.forEach((row, index) => {
-            if (row.querySelector('td[colspan]')) {
-                row.style.display = 'none';
-                return;
-            }
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            row.style.display = (index >= start && index < end) ? '' : 'none';
-        });
-        
-        const pageEl = document.getElementById('currentPage');
-        if (pageEl) pageEl.textContent = currentPage;
-    }
-
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            paginateTable();
-        }
-    }
-
-    function nextPage() {
-        const table = document.getElementById('depositsTable');
-        if (!table) return;
-        const rows = table.querySelectorAll('tbody tr');
-        const totalPages = Math.ceil(rows.length / rowsPerPage);
-        if (currentPage < totalPages) {
-            currentPage++;
-            paginateTable();
-        }
-    }
-
-    // ============================================================
     // INITIALIZE
     // ============================================================
     document.addEventListener("DOMContentLoaded", function () {
         // Check URL hash for panel
         const hash = window.location.hash.replace("#", "");
-        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits'];
+        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits', 'completed'];
         if (hash && validPanels.includes(hash)) {
             showPanel(hash);
         }
@@ -983,8 +222,11 @@
             appBarLeft.prepend(hamburger);
         }
         
-        // Initialize pagination
-        paginateTable();
+        // Ensure completed panel is hidden by default if not active
+        const completedPanel = document.getElementById('completed-panel');
+        if (completedPanel && !completedPanel.classList.contains('active')) {
+            completedPanel.style.display = 'none';
+        }
     });
 
     // ============================================================
@@ -998,7 +240,12 @@
             overlay.classList.remove('active');
         }
     });
+
+    
 </script>
+
+<!-- Page-specific JavaScript block -->
+{% block extra_scripts %}{% endblock %}
 
 </body>
 </html>

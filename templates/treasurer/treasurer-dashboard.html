@@ -109,22 +109,8 @@
 
 <!-- ========== SAVINGS PANEL ========== -->
 <div id="savings-panel" class="content-panel">
-    <!-- Back Button -->
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-        " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-           onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
@@ -171,7 +157,6 @@
         </form>
     </div>
 
-    <!-- All Savings Deposits with Member Filter -->
     <div class="action-card" style="margin-top: 16px;">
         <div class="action-title">
             <i class="fas fa-list"></i> All Savings Deposits
@@ -180,7 +165,6 @@
             </span>
         </div>
         
-        <!-- Member Filter for Savings -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchSavingsMember" placeholder="Search by member name or SACCO number..." 
@@ -256,7 +240,6 @@
 
 <!-- ========== LOAN APPLICATIONS PANEL ========== -->
 <div id="loan_applications-panel" class="content-panel">
-    <!-- Stats -->
     <div class="admin-stats">
         <div class="stat-box">
             <i class="fas fa-clock"></i>
@@ -285,7 +268,6 @@
         </div>
     </div>
 
-    <!-- Single Loan Table with Filter -->
     <div class="action-card">
         <div class="action-title">
             <i class="fas fa-file-invoice"></i> Loan Applications
@@ -294,7 +276,6 @@
             </span>
         </div>
         
-        <!-- Search and Filter -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchLoans" placeholder="Search by member, loan number..." 
@@ -325,7 +306,7 @@
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Balance</th>
-                        <th>Guarantors</th>
+                        <th style="min-width:80px;">Guarantors</th>
                         <th>Date</th>
                         <th>Actions</th>
                     </tr>
@@ -334,9 +315,9 @@
                     {% for loan in all_loan_applications %}
                     <tr data-status="{{ loan.status }}">
                         <td>{{ loop.index }}</td>
-                        <td class="mono" style="color:#f5c542;">{{ loan.loan_number }}</td>
+                        <td class="mono" style="color:#f5c542; font-size:0.8rem;">{{ loan.loan_number }}</td>
                         <td><strong>{{ loan.full_name }}</strong></td>
-                        <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                        <td style="color:#4ade80; font-weight:500;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
                         <td>
                             {% if loan.status == 'pending' %}
                                 <span class="status-badge pending">Pending</span>
@@ -354,7 +335,7 @@
                                 <span class="status-badge secondary">{{ loan.status|title }}</span>
                             {% endif %}
                         </td>
-                        <td style="color:#f5c542;">
+                        <td style="color:#f5c542; font-size:0.85rem;">
                             {% if loan.status in ['disbursed', 'active', 'approved'] %}
                                 {% if loan.current_balance is not none and loan.current_balance > 0 %}
                                     UGX {{ "{:,.0f}".format(loan.current_balance) }}
@@ -363,51 +344,37 @@
                                 {% endif %}
                             {% elif loan.status == 'completed' %}
                                 <span style="color:#4ade80;">
-                                    <i class="fas fa-check-circle"></i> UGX 0
+                                    <i class="fas fa-check-circle" style="font-size:0.6rem;"></i> Paid
                                 </span>
                             {% else %}
-                                -
+                                <span style="color:rgba(255,255,255,0.2);">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if loan.guarantors %}
-                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                <div style="display:flex; flex-direction:column; gap:3px;">
                                     {% for guarantor in loan.guarantors[:2] %}
-                                        <span class="guarantor-tag" onclick="viewGuarantorDetails('{{ guarantor.id }}')" style="
-                                            display:inline-flex;
-                                            align-items:center;
-                                            gap:4px;
-                                            background:rgba(245,197,66,0.1);
-                                            color:#f5c542;
-                                            padding:2px 10px;
-                                            border-radius:12px;
-                                            font-size:0.7rem;
-                                            cursor:pointer;
-                                            transition:all 0.2s;
-                                            border:1px solid rgba(245,197,66,0.2);
-                                            width:fit-content;
-                                        " onmouseover="this.style.background='rgba(245,197,66,0.2)'" 
-                                           onmouseout="this.style.background='rgba(245,197,66,0.1)'">
-                                            <i class="fas fa-user"></i> {{ guarantor.guarantor_name }}
-                                            <span style="font-size:0.6rem; opacity:0.6;">
-                                                ({{ guarantor.status|upper }})
-                                            </span>
+                                        <span class="guarantor-tag" onclick="viewGuarantorDetails('{{ guarantor.id }}')" style="display:inline-flex; align-items:center; gap:4px; background:rgba(245,197,66,0.08); color:#f5c542; padding:2px 10px; border-radius:10px; font-size:0.65rem; cursor:pointer; transition:all 0.2s; border:1px solid rgba(245,197,66,0.1); width:fit-content;">
+                                            <i class="fas fa-user" style="font-size:0.5rem;"></i> 
+                                            {{ guarantor.guarantor_name }}
+                                            {% if guarantor.status|upper == 'PENDING' %}
+                                            <span style="font-size:0.5rem; color:#f5c542;">⏳</span>
+                                            {% elif guarantor.status|upper == 'ACTIVE' or guarantor.status|upper == 'ACCEPTED' %}
+                                            <span style="font-size:0.5rem; color:#4ade80;">✓</span>
+                                            {% endif %}
                                         </span>
                                     {% endfor %}
                                     {% if loan.guarantors|length > 2 %}
-                                        <span style="font-size:0.65rem; color:rgba(255,255,255,0.3);">
+                                        <span style="font-size:0.55rem; color:rgba(255,255,255,0.3); padding-left:4px;">
                                             +{{ loan.guarantors|length - 2 }} more
                                         </span>
                                     {% endif %}
-                                    {% if loan.guarantors|length == 0 %}
-                                        <span style="color:rgba(255,255,255,0.3); font-size:0.7rem;">No guarantors</span>
-                                    {% endif %}
                                 </div>
                             {% else %}
-                                <span style="color:rgba(255,255,255,0.3); font-size:0.7rem;">No guarantors</span>
+                                <span style="color:rgba(255,255,255,0.1); font-size:0.6rem;">—</span>
                             {% endif %}
                         </td>
-                        <td style="color:rgba(255,255,255,0.5); font-size:0.8rem;">
+                        <td style="color:rgba(255,255,255,0.4); font-size:0.75rem;">
                             {% if loan.status == 'pending' %}
                                 {{ loan.application_date }}
                             {% elif loan.status == 'approved' %}
@@ -420,10 +387,36 @@
                                 {{ loan.application_date }}
                             {% endif %}
                         </td>
-                        <td class="action-btns">
-                            <button class="view-btn" onclick="viewLoan('{{ loan.id }}')" title="View Details">
-                                <i class="fas fa-eye"></i> View
+                        <td class="action-btns" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                            <button class="view-btn" onclick="viewLoan('{{ loan.id }}')" title="View Details" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(0,224,255,0.08); color:#00e0ff; border:1px solid rgba(0,224,255,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
+                                <i class="fas fa-eye" style="font-size:0.6rem;"></i> View
                             </button>
+                            
+                            {% if loan.status == 'pending' %}
+                            <button class="approve-btn" onclick="openApproveModal('{{ loan.id }}')" title="Approve Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(74,222,128,0.08); color:#4ade80; border:1px solid rgba(74,222,128,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
+                                <i class="fas fa-check" style="font-size:0.6rem;"></i> Approve
+                            </button>
+                            <button class="reject-btn" onclick="openRejectModal('{{ loan.id }}')" title="Reject Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(255,107,107,0.08); color:#ff6b6b; border:1px solid rgba(255,107,107,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
+                                <i class="fas fa-times" style="font-size:0.6rem;"></i> Reject
+                            </button>
+                            {% endif %}
+                            
+                            {% if loan.status == 'approved' %}
+                            <button class="disburse-btn" onclick="disburseLoan('{{ loan.id }}')" title="Disburse Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(245,197,66,0.08); color:#f5c542; border:1px solid rgba(245,197,66,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
+                                <i class="fas fa-hand-holding-usd" style="font-size:0.6rem;"></i> Disburse
+                            </button>
+                            {% endif %}
+                            
+                            {% if loan.status == 'completed' %}
+                            <span style="font-size:0.6rem; color:#4ade80; background:rgba(74,222,128,0.06); padding:2px 8px; border-radius:4px;">
+                                <i class="fas fa-check-circle"></i> Done
+                            </span>
+                            {% endif %}
+                            {% if loan.status == 'rejected' %}
+                            <span style="font-size:0.6rem; color:#ff6b6b; background:rgba(255,107,107,0.06); padding:2px 8px; border-radius:4px;">
+                                <i class="fas fa-times-circle"></i> Rejected
+                            </span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
@@ -439,25 +432,374 @@
         </div>
     </div>
 </div>
+<!-- ========== MODALS ========== -->
+
+<!-- Rejection Reason Modal -->
+<div id="rejectModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#ff6b6b; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-exclamation-triangle"></i> Reject Loan
+            </h3>
+            <button onclick="closeRejectModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="margin-bottom:16px;">
+            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Please provide a reason for rejecting this loan application:</p>
+            <textarea id="rejectReason" rows="4" style="width:100%; padding:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; font-family:inherit; resize:vertical;" placeholder="Enter rejection reason..."></textarea>
+        </div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button onclick="closeRejectModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
+            <button onclick="confirmReject()" style="padding:10px 24px; background:#ff6b6b; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-times"></i> Reject
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div id="approveModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#4ade80; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-check-circle"></i> Approve Loan
+            </h3>
+            <button onclick="closeApproveModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="margin-bottom:16px;">
+            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Are you sure you want to approve this loan application?</p>
+            <p style="color:rgba(255,255,255,0.3); font-size:0.85rem; margin-top:8px;">
+                <i class="fas fa-info-circle"></i> 
+                <span id="approveLoanInfo">This will mark the loan as approved and it will be reviewed by the Chairman.</span>
+            </p>
+        </div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button onclick="closeApproveModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
+            <button onclick="confirmApprove()" style="padding:10px 24px; background:#4ade80; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-check"></i> Yes, Approve
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== COMPLETED LOANS PANEL ========== -->
+<div id="completed-panel" class="content-panel" style="display:none;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
+            <i class="fas fa-check-circle"></i> Completed Loans
+        </span>
+        <span style="margin-left: auto; color: #4ade80; font-size: 0.9rem; background: rgba(74,222,128,0.1); padding: 4px 16px; border-radius: 20px; border: 1px solid rgba(74,222,128,0.15);">
+            <i class="fas fa-check-circle"></i> Total: {{ completed_loans }}
+        </span>
+    </div>
+
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-check-circle" style="color: #4ade80;"></i> Completed Loans
+            <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
+                Loans that have been fully repaid
+            </span>
+            {% if completed_loans_list %}
+            <span style="margin-left: auto; font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.1); padding:2px 12px; border-radius:12px;">
+                {{ completed_loans_list|length }} records
+            </span>
+            {% endif %}
+        </div>
+        
+        <!-- Search and Filter for Completed Loans -->
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
+            <div style="flex:1; min-width:200px;">
+                <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..." 
+                       onkeyup="filterCompletedLoans()" 
+                       style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; placeholder-color: rgba(255,255,255,0.3);">
+            </div>
+            <div>
+                <select id="filterCompletedDate" onchange="filterCompletedLoans()" 
+                        style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="year">This Year</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="styled-table" id="completedLoansTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Loan #</th>
+                        <th>Member</th>
+                        <th>Amount</th>
+                        <th>Total Paid</th>
+                        <th>Payments</th>
+                        <th>Completed Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if completed_loans_list %}
+                        {% for loan in completed_loans_list %}
+                        <tr data-completed-date="{{ loan.completed_date }}">
+                            <td>{{ loop.index }}</td>
+                            <td style="color:#4ade80; font-family:monospace; font-weight:600;">{{ loan.loan_number }}</td>
+                            <td><strong>{{ loan.full_name }}</strong></td>
+                            <td style="color:#f5c542;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                            <td style="color:#4ade80; font-weight:600;">UGX {{ "{:,.0f}".format(loan.total_paid or loan.amount) }}</td>
+                            <td style="text-align:center;">
+                                <span style="background:rgba(255,255,255,0.05); padding:2px 10px; border-radius:10px; font-size:0.75rem;">
+                                    {{ loan.payment_count or 0 }}
+                                </span>
+                            </td>
+                            <td style="color:rgba(255,255,255,0.5);">
+                                {% if loan.completed_date %}
+                                    {{ loan.completed_date[:10] if loan.completed_date|length > 10 else loan.completed_date }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-badge completed" style="background:rgba(74,222,128,0.12); color:#4ade80; padding:4px 14px; border-radius:20px; font-size:0.7rem; font-weight:600; border:1px solid rgba(74,222,128,0.15);">
+                                    <i class="fas fa-check-circle"></i> COMPLETED
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);">
+                                <i class="fas fa-check-circle" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.15; color:#4ade80;"></i>
+                                <p style="font-size:1rem; color:rgba(255,255,255,0.2);">No completed loans yet</p>
+                                <p style="font-size:0.8rem; color:rgba(255,255,255,0.1);">Loans will appear here once they are fully repaid</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
+                        <td colspan="8" style="padding:12px 16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; color:rgba(255,255,255,0.3); font-size:0.8rem;">
+                                <span>
+                                    <i class="fas fa-check-circle" style="color:#4ade80;"></i> 
+                                    Total Completed: <strong style="color:#4ade80;">{{ completed_loans_list|length if completed_loans_list else 0 }}</strong>
+                                </span>
+                                <span>
+                                    Total Amount Repaid: <strong style="color:#f5c542;">UGX {{ "{:,.0f}".format(completed_loans_list|sum(attribute='amount') if completed_loans_list else 0) }}</strong>
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== EDIT MEMBER MODAL ========== -->
+<div id="editMemberModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-user-edit"></i> Edit Member
+            </h3>
+            <button onclick="closeEditModal()" style="
+                background:rgba(255,255,255,0.04);
+                border:1px solid rgba(255,255,255,0.06);
+                color:rgba(255,255,255,0.4);
+                width:36px;
+                height:36px;
+                border-radius:50%;
+                cursor:pointer;
+                font-size:1.2rem;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="editMemberForm" onsubmit="submitEditMember(event)">
+            <input type="hidden" id="editMemberId" name="member_id">
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Full Name <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name" 
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; transition:all 0.2s;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">SACCO Number <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001" 
+                       style="text-transform:uppercase; width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Phone <span style="color:#ff6b6b;">*</span></label>
+                    <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Email</label>
+                    <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Gender</label>
+                    <select id="editGender" name="gender" class="form-control" 
+                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Date of Birth</label>
+                    <input type="date" id="editDob" name="dob" class="form-control" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Address</label>
+                <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address" 
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Status</label>
+                <select id="editStatus" name="status" class="form-control" 
+                        style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                </select>
+            </div>
+            
+            <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
+                <button type="button" onclick="closeEditModal()" style="
+                    padding:10px 24px;
+                    background:rgba(255,255,255,0.05);
+                    color:rgba(255,255,255,0.7);
+                    border:1px solid rgba(255,255,255,0.1);
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:500;
+                    transition:all 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+                   onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    Cancel
+                </button>
+                <button type="submit" id="editMemberSubmitBtn" style="
+                    padding:10px 24px;
+                    background:#f5c542;
+                    color:#0a0a14;
+                    border:none;
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:600;
+                    transition:all 0.2s;
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                " onmouseover="this.style.background='#eab308'" 
+                   onmouseout="this.style.background='#f5c542'">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== DELETE CONFIRMATION MODAL ========== -->
+<div id="deleteConfirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:450px; width:100%; text-align:center; animation:modalSlideIn 0.3s ease;">
+        <div style="font-size:3rem; color:#ff6b6b; margin-bottom:12px;">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 style="color:#ff6b6b; margin-bottom:8px;">Confirm Delete</h3>
+        <p id="deleteMessage" style="color:rgba(255,255,255,0.6); margin-bottom:20px;">
+            Are you sure you want to delete this member?
+        </p>
+        <input type="hidden" id="deleteMemberId">
+        <div style="display:flex; gap:12px; justify-content:center;">
+            <button onclick="closeDeleteModal()" style="
+                padding:10px 24px;
+                background:rgba(255,255,255,0.05);
+                color:rgba(255,255,255,0.7);
+                border:1px solid rgba(255,255,255,0.1);
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:500;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                Cancel
+            </button>
+            <button class="btn-danger" onclick="confirmDeleteMember()" style="
+                padding:10px 24px;
+                background:#ff6b6b;
+                color:#fff;
+                border:none;
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:600;
+                transition:all 0.2s;
+                display:inline-flex;
+                align-items:center;
+                gap:8px;
+            " onmouseover="this.style.background='#ef4444'" 
+               onmouseout="this.style.background='#ff6b6b'">
+                <i class="fas fa-trash"></i> Delete Permanently
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== GUARANTOR DETAILS MODAL ========== -->
+<div id="guarantorDetailsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-user-shield"></i> Guarantor Details
+            </h3>
+            <button onclick="closeGuarantorModal()" style="
+                background:rgba(255,255,255,0.04);
+                border:1px solid rgba(255,255,255,0.06);
+                color:rgba(255,255,255,0.4);
+                width:36px;
+                height:36px;
+                border-radius:50%;
+                cursor:pointer;
+                font-size:1.2rem;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="guarantorDetailsContent">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+</div>
 
 <!-- ========== REPAYMENTS PANEL ========== -->
 <div id="repayments-panel" class="content-panel">
-    <!-- Back Button -->
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-        " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-           onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
@@ -470,7 +812,6 @@
             <i class="fas fa-undo-alt"></i> Enter Loan Repayment
         </div>
         
-        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -486,7 +827,6 @@
         {% endwith %}
         
         <form method="POST" action="{{ url_for('treasurer_enter_repayment') }}" style="max-width: 700px; padding: 20px;" id="repaymentForm">
-            <!-- Member Search Filter -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Search Member</label>
                 <div style="display: flex; gap: 10px;">
@@ -499,7 +839,6 @@
                 </div>
             </div>
             
-            <!-- Select Loan -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Select Loan *</label>
                 <select name="loan_id" id="loanSelect" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" onchange="updateLoanDetails()">
@@ -525,7 +864,6 @@
                 </div>
             </div>
             
-            <!-- Loan Details Card -->
             <div id="loanDetails" style="display: none; background:rgba(245,197,66,0.05); border:1px solid rgba(245,197,66,0.1); border-radius:8px; padding:16px; margin-bottom:16px;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     <div>
@@ -559,14 +897,12 @@
                 </div>
             </div>
             
-            <!-- Amount Paid -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Amount Paid (UGX) *</label>
                 <input type="number" step="0.01" name="amount" id="amountPaid" class="form-control" required placeholder="Enter amount" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" min="1" oninput="validateAmount()">
                 <div id="amountValidation" style="margin-top: 6px; font-size:0.85rem;"></div>
             </div>
             
-            <!-- Payment Allocation -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:16px;">
                 <div style="color:rgba(255,255,255,0.3); font-size:0.85rem; margin-bottom:8px;">Payment Allocation</div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
@@ -583,7 +919,6 @@
                 </div>
             </div>
             
-            <!-- Payment Method -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Payment Method</label>
                 <select name="payment_method" class="form-control" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
@@ -594,13 +929,11 @@
                 </select>
             </div>
             
-            <!-- Transaction Reference -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Transaction Reference</label>
                 <input type="text" name="transaction_ref" class="form-control" placeholder="Optional reference number" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
             
-            <!-- Notes -->
             <div class="form-group">
                 <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Notes</label>
                 <textarea name="notes" class="form-control" placeholder="Optional notes" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; min-height:60px;"></textarea>
@@ -617,7 +950,6 @@
         </form>
     </div>
 
-    <!-- All Repayments with Member Filter -->
     <div class="action-card" style="margin-top: 16px;">
         <div class="action-title">
             <i class="fas fa-list"></i> All Repayments
@@ -626,7 +958,6 @@
             </span>
         </div>
         
-        <!-- Member Filter for Repayments -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchRepaymentMember" placeholder="Search by member name or SACCO number..." 
@@ -698,112 +1029,10 @@
     </div>
 </div>
 
-<!-- ========== COMPLETED LOANS PANEL ========== -->
-<div id="completed-panel" class="content-panel" style="display:none;">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-        " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-           onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
-        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-check-circle"></i> Completed Loans
-        </span>
-        <span style="margin-left: auto; color: #4ade80; font-size: 0.9rem;">
-            Total: {{ completed_loans }}
-        </span>
-    </div>
-
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-check-circle" style="color: #4ade80;"></i> Completed Loans
-            <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-                Loans that have been fully repaid
-            </span>
-        </div>
-        <div class="table-wrapper">
-            <table class="styled-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Loan #</th>
-                        <th>Member</th>
-                        <th>Amount</th>
-                        <th>Total Paid</th>
-                        <th>Payments</th>
-                        <th>Completed Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if completed_loans_list %}
-                        {% for loan in completed_loans_list %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td style="color:#4ade80; font-family:monospace;">{{ loan.loan_number }}</td>
-                            <td><strong>{{ loan.full_name }}</strong></td>
-                            <td style="color:#f5c542;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
-                            <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(loan.total_paid or loan.amount) }}</td>
-                            <td>{{ loan.payment_count or 0 }}</td>
-                            <td style="color:rgba(255,255,255,0.5);">
-                                {% if loan.completed_date %}
-                                    {{ loan.completed_date[:10] if loan.completed_date|length > 10 else loan.completed_date }}
-                                {% elif loan.completion_date %}
-                                    {{ loan.completion_date[:10] if loan.completion_date|length > 10 else loan.completion_date }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="status-badge completed" style="background:rgba(74,222,128,0.15); color:#4ade80; padding:4px 12px; border-radius:20px; font-size:0.7rem; font-weight:600;">
-                                    <i class="fas fa-check-circle"></i> COMPLETED
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color:rgba(255,255,255,0.3);">
-                                <i class="fas fa-check-circle" style="font-size:3rem; display:block; margin-bottom:12px; opacity:0.2;"></i>
-                                No completed loans yet
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
 <!-- ========== MEMBERS PANEL ========== -->
 <div id="members-panel" class="content-panel">
-    <!-- Back Button -->
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-        " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-           onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
@@ -818,7 +1047,7 @@
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="text" id="searchMembers" placeholder="Search members..." 
-                       onkeyup="filterMembers()" 
+                       onkeyup="filterMembersTable()" 
                        style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; width:200px;">
                 <a href="{{ url_for('treasurer_add_members') }}" class="btn-primary">
                     <i class="fas fa-user-plus"></i> Register New Member
@@ -826,7 +1055,6 @@
             </div>
         </div>
 
-        <!-- Member Stats -->
         <div class="admin-stats">
             <div class="stat-box">
                 <i class="fas fa-users"></i>
@@ -845,7 +1073,6 @@
             </div>
         </div>
 
-        <!-- Members List -->
         <div class="table-wrapper" style="margin-top: 16px;">
             <table class="styled-table" id="membersTable">
                 <thead>
@@ -906,159 +1133,10 @@
     </div>
 </div>
 
-<!-- ========== VIEW MEMBER MODAL ========== -->
-<div id="viewMemberModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 600px; text-align: left;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0; color:#f5c542;">
-                <i class="fas fa-user-circle"></i> Member Details
-            </h2>
-            <button onclick="closeViewModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.5rem; cursor:pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div id="viewMemberContent">
-            <!-- Dynamically populated -->
-        </div>
-        <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
-            <button onclick="closeViewModal()" class="btn-secondary">Close</button>
-            <button onclick="editFromView()" class="btn-primary" id="editFromViewBtn">
-                <i class="fas fa-edit"></i> Edit Member
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ========== EDIT MEMBER MODAL ========== -->
-<div id="editMemberModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 600px; text-align: left;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0; color:#f5c542;">
-                <i class="fas fa-user-edit"></i> Edit Member
-            </h2>
-            <button onclick="closeEditModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.5rem; cursor:pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="editMemberForm" onsubmit="submitEditMember(event)">
-            <input type="hidden" id="editMemberId" name="member_id">
-            
-            <div class="form-group">
-                <label>Full Name <span class="required">*</span></label>
-                <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name">
-            </div>
-            
-            <div class="form-group">
-                <label>SACCO Number <span class="required">*</span></label>
-                <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001" style="text-transform:uppercase;">
-            </div>
-            
-            <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div class="form-group">
-                    <label>Phone <span class="required">*</span></label>
-                    <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number">
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address">
-                </div>
-            </div>
-            
-            <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div class="form-group">
-                    <label>Gender</label>
-                    <select id="editGender" name="gender" class="form-control">
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Date of Birth</label>
-                    <input type="date" id="editDob" name="dob" class="form-control">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>Address</label>
-                <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address">
-            </div>
-            
-            <div class="form-group">
-                <label>Status</label>
-                <select id="editStatus" name="status" class="form-control">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                </select>
-            </div>
-            
-            <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
-                <button type="button" onclick="closeEditModal()" class="btn-secondary">Cancel</button>
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- ========== DELETE CONFIRMATION MODAL ========== -->
-<div id="deleteConfirmModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 450px; text-align: center;">
-        <div class="error-icon" style="font-size:3rem; color:#ff6b6b; margin-bottom:12px;">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <h2 style="color: #ff6b6b;">Confirm Delete</h2>
-        <p id="deleteMessage" style="color: rgba(255,255,255,0.6); margin-bottom:20px;">
-            Are you sure you want to delete this member?
-        </p>
-        <input type="hidden" id="deleteMemberId">
-        <div style="display:flex; gap:12px; justify-content:center;">
-            <button onclick="closeDeleteModal()" class="btn-secondary">Cancel</button>
-            <button onclick="confirmDeleteMember()" class="btn-danger" style="background:#ff6b6b; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:600; cursor:pointer;">
-                <i class="fas fa-trash"></i> Delete Permanently
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ========== GUARANTOR DETAILS MODAL ========== -->
-<div id="guarantorDetailsModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 700px; text-align: left;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0; color:#f5c542;">
-                <i class="fas fa-user-shield"></i> Guarantor Details
-            </h2>
-            <button onclick="closeGuarantorModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.5rem; cursor:pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div id="guarantorDetailsContent">
-            <!-- Dynamically populated -->
-        </div>
-    </div>
-</div>
-
 <!-- ========== DEPOSITS PANEL ========== -->
 <div id="deposits-panel" class="content-panel">
-    <!-- Back Button -->
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-        " onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.1)'" 
-           onmouseout="this.style.color='rgba(255,255,255,0.6)'; this.style.background='rgba(255,255,255,0.05)'">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
@@ -1084,7 +1162,6 @@
             </div>
         </div>
 
-        <!-- Deposit Stats -->
         <div class="admin-stats">
             <div class="stat-box">
                 <i class="fas fa-coins"></i>
@@ -1108,7 +1185,6 @@
             </div>
         </div>
 
-        <!-- Search and Filter -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchDeposits" placeholder="Search by member or SACCO number..." 
@@ -1138,7 +1214,6 @@
             </div>
         </div>
 
-        <!-- Deposits Table -->
         <div class="table-wrapper">
             <table class="styled-table" id="depositsTable">
                 <thead>
@@ -1207,7 +1282,6 @@
             </table>
         </div>
 
-        <!-- Pagination -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:rgba(255,255,255,0.3); font-size:0.85rem;">
             <span>Showing <span id="showingCount">{{ all_deposits|length }}</span> deposits</span>
             <div style="display:flex; gap:8px;">
@@ -1223,197 +1297,326 @@
     </div>
 </div>
 
+<!-- ============================================================
+COMPLETE JAVASCRIPT - FIXED FOR FLASK ROUTES
+============================================================ -->
 <script>
 // ============================================================
-// PANEL NAVIGATION
+// LOAN APPROVAL & REJECTION FUNCTIONS
 // ============================================================
-// Store all loan options
-const loanSelect = document.getElementById('loanSelect');
-const memberSearch = document.getElementById('memberSearch');
-const noLoansMessage = document.getElementById('noLoansMessage');
-const loanDetails = document.getElementById('loanDetails');
-const amountInput = document.getElementById('amountPaid');
-const allOptions = Array.from(loanSelect.options);
 
-// Loan data storage
-let currentLoanData = {};
+let pendingLoanId = null;
+let pendingAction = null;
 
-// Filter members function
-function filterMembers() {
-    const searchTerm = memberSearch.value.toLowerCase().trim();
-    let hasVisibleOptions = false;
-    
-    allOptions.forEach(option => {
-        if (option.value === '') {
-            option.style.display = '';
-            return;
-        }
-        
-        const memberData = option.getAttribute('data-member') || '';
-        const searchableText = memberData + ' ' + option.textContent.toLowerCase();
-        
-        if (searchTerm === '' || searchableText.includes(searchTerm)) {
-            option.style.display = '';
-            hasVisibleOptions = true;
-        } else {
-            option.style.display = 'none';
-        }
-    });
-    
-    noLoansMessage.style.display = (searchTerm !== '' && !hasVisibleOptions) ? 'block' : 'none';
-    
-    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-    if (selectedOption && selectedOption.value !== '' && selectedOption.style.display === 'none') {
-        loanSelect.value = '';
-        loanDetails.style.display = 'none';
+// ============================================================
+// OPEN APPROVE MODAL
+// ============================================================
+function openApproveModal(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
     }
-    
-    if (loanSelect.value) {
-        updateLoanDetails();
-    }
+    pendingLoanId = loanId;
+    pendingAction = 'approve';
+    document.getElementById('approveModal').style.display = 'flex';
 }
 
+// ============================================================
+// CLOSE APPROVE MODAL
+// ============================================================
+function closeApproveModal() {
+    document.getElementById('approveModal').style.display = 'none';
+    pendingLoanId = null;
+    pendingAction = null;
+}
+
+// ============================================================
+// CONFIRM APPROVE
+// ============================================================
+function confirmApprove() {
+
+    if (!pendingLoanId) {
+        alert('Error: No loan selected.');
+        return;
+    }
+
+    const loanId = pendingLoanId;
+
+    const btns = document.querySelectorAll(
+        `button[onclick*="openApproveModal('${loanId}')"]`
+    );
+
+    btns.forEach(btn => {
+        btn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        btn.disabled = true;
+    });
+
+    closeApproveModal();
+
+    // ========================================================
+    // IMPORTANT - THIS IS THE CORRECT FLASK ROUTE
+    // ========================================================
+
+    const url = '/treasurer/loan/action/' + loanId;
+
+    console.log('====================================');
+    console.log('📤 APPROVING LOAN');
+    console.log('Loan ID:', loanId);
+    console.log('URL:', url);
+    console.log('Method: POST');
+    console.log('====================================');
+
+    fetch(url, {
+        method: 'POST',
+
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+
+        body: JSON.stringify({
+            action: 'approve'
+        })
+    })
+
+    .then(response => {
+
+        console.log('📡 HTTP STATUS:', response.status);
+
+        return response.text().then(text => {
+
+            console.log('📡 SERVER RESPONSE:', text);
+
+            let data;
+
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                data = {
+                    success: false,
+                    message: text || 'Invalid server response'
+                };
+            }
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                data: data
+            };
+        });
+    })
+
+    .then(result => {
+
+        console.log('📦 RESULT:', result);
+
+        if (result.ok && result.data.success) {
+
+            alert(
+                '✅ ' +
+                (result.data.message ||
+                 'Loan approved successfully.')
+            );
+
+            window.location.reload();
+
+        } else {
+
+            alert(
+                '❌ Error: ' +
+                (result.data.message ||
+                 'Unable to approve loan.')
+            );
+        }
+    })
+
+    .catch(error => {
+
+        console.error('❌ APPROVE ERROR:', error);
+
+        alert(
+            '❌ Error: ' +
+            error.message
+        );
+    })
+
+    .finally(() => {
+
+        btns.forEach(btn => {
+            btn.innerHTML =
+                '<i class="fas fa-check"></i> Approve';
+
+            btn.disabled = false;
+        });
+
+        pendingLoanId = null;
+        pendingAction = null;
+    });
+}
+
+// ============================================================
+// OPEN REJECT MODAL
+// ============================================================
+function openRejectModal(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    pendingLoanId = loanId;
+    pendingAction = 'reject';
+    document.getElementById('rejectModal').style.display = 'flex';
+    document.getElementById('rejectReason').value = '';
+    setTimeout(() => {
+        document.getElementById('rejectReason').focus();
+    }, 100);
+}
+
+// ============================================================
+// CLOSE REJECT MODAL
+// ============================================================
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    pendingLoanId = null;
+    pendingAction = null;
+    document.getElementById('rejectReason').value = '';
+}
+
+// ============================================================
+// CONFIRM REJECT
+// ============================================================
+function confirmReject() {
+    const reason = document.getElementById('rejectReason').value.trim();
+    if (!reason) {
+        alert('❌ Please provide a reason for rejecting this loan.');
+        document.getElementById('rejectReason').focus();
+        return;
+    }
+    if (!pendingLoanId) {
+        alert('Error: No loan selected.');
+        return;
+    }
+    
+    const btns = document.querySelectorAll(`button[onclick*="openRejectModal('${pendingLoanId}')"]`);
+    btns.forEach(btn => {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        btn.disabled = true;
+    });
+    
+    const loanId = pendingLoanId;
+    closeRejectModal();
+    
+    const url = '/treasurer/loan/action/' + loanId;
+    console.log('📤 Sending REJECT request to:', url);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ action: 'reject', reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-times"></i> Reject';
+            btn.disabled = false;
+        });
+        pendingLoanId = null;
+        pendingAction = null;
+    });
+}
+
+// ============================================================
+// DISBURSE LOAN
+// ============================================================
+function disburseLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    if (!confirm('💰 Disburse this loan to the member?')) {
+        return;
+    }
+    
+    const btns = document.querySelectorAll(`button[onclick*="disburseLoan(${loanId})"]`);
+    btns.forEach(btn => {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        btn.disabled = true;
+    });
+    
+    const url = '/treasurer/loan/disburse/' + loanId;
+    console.log('📤 Sending DISBURSE request to:', url);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> Disburse';
+            btn.disabled = false;
+        });
+    });
+}
+
+// ============================================================
+// VIEW LOAN
+// ============================================================
+function viewLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    window.location.href = '/treasurer/loan/view/' + loanId;
+}
+
+// ============================================================
+// VIEW MEMBER - FIXED WITH DEBUGGING
+// ============================================================
+// ============================================================
+// VIEW MEMBER - Navigate to member details page
+// ============================================================
 function viewMember(memberId) {
     if (!memberId) {
         alert('Error: Member ID is missing.');
         return;
     }
+    console.log('👤 Viewing member:', memberId);
     window.location.href = '/treasurer/members/view/' + memberId;
 }
-
-// Clear search function
-function clearSearch() {
-    memberSearch.value = '';
-    allOptions.forEach(option => {
-        option.style.display = '';
-    });
-    noLoansMessage.style.display = 'none';
-    filterMembers();
-}
-
-// Update loan details when selected
-function updateLoanDetails() {
-    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-    if (!selectedOption || !selectedOption.value) {
-        loanDetails.style.display = 'none';
-        return;
-    }
-    
-    // Get loan data from attributes
-    const balance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
-    const totalAmount = parseFloat(selectedOption.getAttribute('data-total')) || 0;
-    const interest = parseFloat(selectedOption.getAttribute('data-interest')) || 0;
-    const principalPaid = parseFloat(selectedOption.getAttribute('data-principal')) || 0;
-    
-    currentLoanData = {
-        balance: balance,
-        total: totalAmount,
-        interest: interest,
-        principalPaid: principalPaid
-    };
-    
-    // Extract member name
-    const text = selectedOption.textContent;
-    const parts = text.split(' - ');
-    let memberName = '';
-    if (parts.length > 1) {
-        memberName = parts[1].split(' (Balance:')[0].trim();
-    }
-    
-    // Extract loan number
-    const loanNumber = parts[0].trim();
-    
-    // Check overdue
-    const isOverdue = text.includes('days overdue');
-    const overdueMatch = text.match(/(\d+) days overdue/);
-    const daysOverdue = overdueMatch ? overdueMatch[1] : 0;
-    
-    // Update details card
-    document.getElementById('detailMember').textContent = memberName;
-    document.getElementById('detailLoanNumber').textContent = loanNumber;
-    document.getElementById('detailOriginal').textContent = 'UGX ' + totalAmount.toLocaleString();
-    document.getElementById('detailInterest').textContent = 'UGX ' + interest.toLocaleString();
-    document.getElementById('detailPrincipalPaid').textContent = 'UGX ' + principalPaid.toLocaleString();
-    document.getElementById('detailBalance').textContent = 'UGX ' + balance.toLocaleString();
-    
-    // Overdue status
-    const overdueEl = document.getElementById('detailOverdue');
-    if (daysOverdue > 0) {
-        overdueEl.innerHTML = '<span style="color:#ff6b6b;">🔴 ' + daysOverdue + ' days overdue - Interest accumulating daily</span>';
-    } else {
-        overdueEl.innerHTML = '<span style="color:#4ade80;">✅ On time</span>';
-    }
-    
-    loanDetails.style.display = 'block';
-    
-    // Reset amount and validate
-    amountInput.value = '';
-    document.getElementById('amountValidation').innerHTML = '';
-    updateAllocation(0);
-}
-
-// Validate amount and update allocation
-function validateAmount() {
-    const amount = parseFloat(amountInput.value) || 0;
-    updateAllocation(amount);
-}
-
-// Update payment allocation
-function updateAllocation(amount) {
-    const balance = currentLoanData.balance || 0;
-    const interest = currentLoanData.interest || 0;
-    
-    let interestPaid = 0;
-    let principalPaid = 0;
-    
-    // Payment allocation: Interest first, then principal
-    if (amount > 0) {
-        if (amount >= interest) {
-            interestPaid = interest;
-            principalPaid = amount - interest;
-            // Don't allow principal to exceed remaining balance
-            const remainingBalance = balance - amount;
-            if (principalPaid > balance) {
-                principalPaid = balance;
-            }
-        } else {
-            interestPaid = amount;
-            principalPaid = 0;
-        }
-    }
-    
-    const remainingBalance = balance - amount;
-    const finalRemaining = remainingBalance < 0 ? 0 : remainingBalance;
-    
-    document.getElementById('allocationInterest').textContent = 'UGX ' + interestPaid.toLocaleString();
-    document.getElementById('allocationPrincipal').textContent = 'UGX ' + principalPaid.toLocaleString();
-    document.getElementById('allocationRemaining').textContent = 'UGX ' + finalRemaining.toLocaleString();
-    
-    // Validation messages
-    const validationEl = document.getElementById('amountValidation');
-    if (amount > balance && balance > 0) {
-        validationEl.innerHTML = '<span style="color:#ff6b6b;">⚠️ Amount exceeds current balance. Overpayment of UGX ' + (amount - balance).toLocaleString() + ' will be recorded as credit.</span>';
-    } else if (amount === 0) {
-        validationEl.innerHTML = '';
-    } else {
-        validationEl.innerHTML = '<span style="color:#4ade80;">✅ Valid payment amount</span>';
-    }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if loan_id is in URL (from pay button)
-    const urlParams = new URLSearchParams(window.location.search);
-    const loanId = urlParams.get('loan_id');
-    if (loanId) {
-        loanSelect.value = loanId;
-        updateLoanDetails();
-    }
-    
-    // Add input event listener for amount
-    amountInput.addEventListener('input', validateAmount);
-});
-
+// ============================================================
+// PANEL NAVIGATION
+// ============================================================
 function showPanel(panelName) {
     document.querySelectorAll(".content-panel").forEach(panel => {
         panel.classList.remove("active");
@@ -1429,114 +1632,126 @@ function showPanel(panelName) {
     if (selectedLink) {
         selectedLink.classList.add("active");
     }
-}
-
-// ============================================================
-// LOAN FILTERING - Single Table
-// ============================================================
-let currentLoanFilter = 'all';
-
-function filterLoans(status) {
-    currentLoanFilter = status;
-    filterLoansTable();
     
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        btn.style.background = 'rgba(255,255,255,0.05)';
-        btn.style.border = '1px solid rgba(255,255,255,0.06)';
-    });
-    
-    const activeBtn = document.querySelector(`.tab-btn[onclick*="filterLoans('${status}')"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-        activeBtn.style.background = 'rgba(255,255,255,0.1)';
-        activeBtn.style.border = '1px solid #f5c542';
+    const titles = {
+        'dashboard': 'Treasurer Dashboard',
+        'savings': 'Record Savings Deposit',
+        'loan_applications': 'Loan Management',
+        'repayments': 'Loan Repayments',
+        'members': 'Member Management',
+        'deposits': 'Deposits History',
+        'completed': 'Completed Loans'
+    };
+    const titleEl = document.getElementById('appBarTitle');
+    if (titleEl && titles[panelName]) {
+        const iconMap = {
+            'dashboard': 'tachometer-alt',
+            'savings': 'piggy-bank',
+            'loan_applications': 'file-invoice',
+            'repayments': 'undo-alt',
+            'members': 'users',
+            'deposits': 'history',
+            'completed': 'check-circle'
+        };
+        titleEl.innerHTML = `<i class="fas fa-${iconMap[panelName] || 'circle'}"></i> ${titles[panelName]}`;
     }
 }
 
+// ============================================================
+// LOAN FILTERING
+// ============================================================
 function filterLoansTable() {
-    const searchInput = document.getElementById('searchLoans');
-    const statusFilter = document.getElementById('filterLoanStatus');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const status = statusFilter ? statusFilter.value : currentLoanFilter;
-    
-    const table = document.getElementById('loansTable');
-    if (!table) return;
-    
-    const rows = table.querySelectorAll('tbody tr');
+    const searchTerm = document.getElementById('searchLoans').value.toLowerCase().trim();
+    const statusFilter = document.getElementById('filterLoanStatus').value;
+    const rows = document.querySelectorAll('#loansTable tbody tr');
     let visibleCount = 0;
     
     rows.forEach(row => {
         if (row.querySelector('td[colspan]')) return;
-        
         const text = row.textContent.toLowerCase();
-        const rowStatus = row.getAttribute('data-status') || '';
+        const status = row.dataset.status || '';
+        const matchesSearch = !searchTerm || text.includes(searchTerm);
+        const matchesStatus = statusFilter === 'all' || status === statusFilter;
         
-        let show = true;
-        
-        if (searchTerm && !text.includes(searchTerm)) {
-            show = false;
+        if (matchesSearch && matchesStatus) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
         }
-        
-        if (show && status !== 'all') {
-            if (rowStatus !== status) {
-                show = false;
-            }
-        }
-        
-        row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
     });
-    
     const countEl = document.getElementById('loanCount');
     if (countEl) countEl.textContent = visibleCount;
 }
 
 // ============================================================
-// VIEW LOAN DETAILS
+// SAVINGS FILTER
 // ============================================================
-function viewLoan(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    window.location.href = '/treasurer/loan/view/' + loanId;
+function filterSavingsByMember() {
+    const searchInput = document.getElementById('searchSavingsMember');
+    const memberFilter = document.getElementById('filterSavingsMember');
+    const methodFilter = document.getElementById('filterSavingsMethod');
+    
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const memberId = memberFilter ? memberFilter.value : 'all';
+    const method = methodFilter ? methodFilter.value : 'all';
+    const table = document.getElementById('savingsTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const memberName = row.getAttribute('data-member-name') || '';
+        const sacco = row.getAttribute('data-sacco') || '';
+        const rowMemberId = row.getAttribute('data-member-id') || '';
+        const rowMethod = row.getAttribute('data-method') || '';
+        const text = (memberName + ' ' + sacco).toLowerCase();
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && memberId !== 'all' && rowMemberId !== memberId) show = false;
+        if (show && method !== 'all' && rowMethod !== method) show = false;
+        row.style.display = show ? '' : 'none';
+    });
 }
 
 // ============================================================
-// VIEW MEMBER
+// REPAYMENTS FILTER
 // ============================================================
-function viewMember(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    window.location.href = '/treasurer/members/view/' + memberId;
+function filterRepaymentsByMember() {
+    const searchInput = document.getElementById('searchRepaymentMember');
+    const memberFilter = document.getElementById('filterRepaymentMember');
+    const methodFilter = document.getElementById('filterRepaymentMethod');
+    
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const memberId = memberFilter ? memberFilter.value : 'all';
+    const method = methodFilter ? methodFilter.value : 'all';
+    const table = document.getElementById('repaymentsTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const memberName = row.getAttribute('data-member-name') || '';
+        const sacco = row.getAttribute('data-sacco') || '';
+        const rowMemberId = row.getAttribute('data-member-id') || '';
+        const rowMethod = row.getAttribute('data-method') || '';
+        const text = (memberName + ' ' + sacco).toLowerCase();
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && memberId !== 'all' && rowMemberId !== memberId) show = false;
+        if (show && method !== 'all' && rowMethod !== method) show = false;
+        row.style.display = show ? '' : 'none';
+    });
 }
 
 // ============================================================
-// ESCAPE HTML (Prevent XSS)
+// MEMBERS FILTER
 // ============================================================
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return String(unsafe)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// ============================================================
-// FILTER MEMBERS
-// ============================================================
-function filterMembers() {
+function filterMembersTable() {
     const searchInput = document.getElementById('searchMembers');
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     const table = document.getElementById('membersTable');
     if (!table) return;
-    
     const rows = table.querySelectorAll('tbody tr');
     rows.forEach(row => {
         if (row.querySelector('td[colspan]')) return;
@@ -1546,315 +1761,7 @@ function filterMembers() {
 }
 
 // ============================================================
-// VIEW MEMBER MODAL
-// ============================================================
-function viewMemberModal(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    
-    const content = document.getElementById('viewMemberContent');
-    if (!content) {
-        alert('Error: View modal not found.');
-        return;
-    }
-    
-    content.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading member details...</div>';
-    document.getElementById('viewMemberModal').style.display = 'flex';
-    
-    fetch('/treasurer/member/view/' + memberId)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                const member = data.member;
-                content.innerHTML = `
-                    <div class="detail-row">
-                        <span class="detail-label">Full Name</span>
-                        <span class="detail-value"><strong>${escapeHtml(member.full_name || 'N/A')}</strong></span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">SACCO Number</span>
-                        <span class="detail-value highlight">${escapeHtml(member.sacco_number || 'N/A')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Phone</span>
-                        <span class="detail-value">${escapeHtml(member.phone || 'Not provided')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Email</span>
-                        <span class="detail-value">${escapeHtml(member.email || 'Not provided')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Gender</span>
-                        <span class="detail-value">${escapeHtml(member.gender || 'Not specified')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Date of Birth</span>
-                        <span class="detail-value">${escapeHtml(member.dob || 'Not provided')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Address</span>
-                        <span class="detail-value">${escapeHtml(member.address || 'Not provided')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Savings Balance</span>
-                        <span class="detail-value success">UGX ${Number(member.savings_balance || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Status</span>
-                        <span class="detail-value">
-                            <span class="badge ${member.status === 'active' ? 'success' : 'warning'}">${(member.status || 'unknown').toUpperCase()}</span>
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Registration Date</span>
-                        <span class="detail-value">${escapeHtml(member.registration_date || 'Not available')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Next of Kin</span>
-                        <span class="detail-value">${escapeHtml(member.next_of_kin_name || 'Not provided')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Next of Kin Phone</span>
-                        <span class="detail-value">${escapeHtml(member.next_of_kin_phone || 'Not provided')}</span>
-                    </div>
-                `;
-                
-                document.getElementById('editFromViewBtn').setAttribute('data-member-id', memberId);
-            } else {
-                content.innerHTML = `<div style="text-align:center; padding:20px; color:#ff6b6b;">
-                    <i class="fas fa-exclamation-circle"></i> ${escapeHtml(data.message || 'Error loading member')}
-                </div>`;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            content.innerHTML = `<div style="text-align:center; padding:20px; color:#ff6b6b;">
-                <i class="fas fa-exclamation-circle"></i> Error loading member details. Please try again.
-            </div>`;
-        });
-}
-
-// ============================================================
-// CLOSE VIEW MODAL
-// ============================================================
-function closeViewModal() {
-    document.getElementById('viewMemberModal').style.display = 'none';
-}
-
-// ============================================================
-// EDIT FROM VIEW
-// ============================================================
-function editFromView() {
-    const btn = document.getElementById('editFromViewBtn');
-    const memberId = btn.getAttribute('data-member-id');
-    closeViewModal();
-    setTimeout(() => {
-        editMember(memberId);
-    }, 300);
-}
-
-// ============================================================
-// EDIT MEMBER
-// ============================================================
-// ============================================================
-// EDIT MEMBER
-// ============================================================
-function editMember(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    
-    document.getElementById('editMemberModal').style.display = 'flex';
-    document.getElementById('editMemberId').value = memberId;
-    
-    const submitBtn = document.querySelector('#editMemberForm button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        submitBtn.disabled = true;
-    }
-    
-    fetch('/treasurer/member/view/' + memberId)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Member data received:', data);
-            if (data.success) {
-                const member = data.member;
-                document.getElementById('editFullName').value = member.full_name || '';
-                document.getElementById('editSaccoNumber').value = member.sacco_number || '';
-                document.getElementById('editPhone').value = member.phone || '';
-                document.getElementById('editEmail').value = member.email || '';
-                document.getElementById('editGender').value = member.gender || '';
-                document.getElementById('editDob').value = member.dob || '';
-                document.getElementById('editAddress').value = member.address || '';
-                document.getElementById('editStatus').value = member.status || 'active';
-            } else {
-                alert('Error: ' + (data.message || 'Could not load member data'));
-                closeEditModal();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading member data. Please check console for details.');
-            closeEditModal();
-        })
-        .finally(() => {
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-                submitBtn.disabled = false;
-            }
-        });
-}
-
-// ============================================================
-// CLOSE EDIT MODAL
-// ============================================================
-function closeEditModal() {
-    document.getElementById('editMemberModal').style.display = 'none';
-    document.getElementById('editMemberForm').reset();
-}
-
-// ============================================================
-// SUBMIT EDIT MEMBER
-// ============================================================
-function submitEditMember(event) {
-    event.preventDefault();
-    
-    const form = document.getElementById('editMemberForm');
-    const formData = new FormData(form);
-    const memberId = document.getElementById('editMemberId').value;
-    
-    const fullName = formData.get('full_name').trim();
-    const phone = formData.get('phone').trim();
-    
-    if (!fullName) {
-        alert('Full name is required.');
-        return;
-    }
-    if (!phone) {
-        alert('Phone number is required.');
-        return;
-    }
-    
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    submitBtn.disabled = true;
-    
-    fetch('/treasurer/member/update/' + memberId, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            full_name: fullName,
-            phone: phone,
-            email: formData.get('email') || '',
-            gender: formData.get('gender') || '',
-            dob: formData.get('dob') || '',
-            address: formData.get('address') || '',
-            status: formData.get('status') || 'active'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ Member updated successfully!');
-            closeEditModal();
-            location.reload();
-        } else {
-            alert('❌ Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        alert('❌ Network error: ' + error.message);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// ============================================================
-// DELETE MEMBER
-// ============================================================
-function deleteMember(memberId, memberName) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    
-    document.getElementById('deleteMessage').textContent = 
-        `Are you sure you want to delete member "${memberName}"? This action cannot be undone.`;
-    document.getElementById('deleteMemberId').value = memberId;
-    document.getElementById('deleteConfirmModal').style.display = 'flex';
-}
-
-// ============================================================
-// CLOSE DELETE MODAL
-// ============================================================
-function closeDeleteModal() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
-    document.getElementById('deleteMemberId').value = '';
-}
-
-// ============================================================
-// CONFIRM DELETE MEMBER
-// ============================================================
-function confirmDeleteMember() {
-    const memberId = document.getElementById('deleteMemberId').value;
-    
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    
-    if (!confirm('⚠️ Are you absolutely sure you want to delete this member permanently?')) {
-        return;
-    }
-    
-    const btn = document.querySelector('#deleteConfirmModal .btn-danger');
-    if (!btn) return;
-    
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
-    btn.disabled = true;
-    
-    fetch('/treasurer/member/delete/' + memberId, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ ' + data.message);
-            closeDeleteModal();
-            location.reload();
-        } else {
-            alert('❌ Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        alert('❌ Network error: ' + error.message);
-    })
-    .finally(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    });
-}
-
-// ============================================================
-// DEPOSIT FUNCTIONS
+// DEPOSITS FILTER
 // ============================================================
 function filterDeposits() {
     const searchInput = document.getElementById('searchDeposits');
@@ -1864,35 +1771,27 @@ function filterDeposits() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     const method = methodFilter ? methodFilter.value : 'all';
     const dateRange = dateFilter ? dateFilter.value : 'all';
-    
     const table = document.getElementById('depositsTable');
     if (!table) return;
-    
     const rows = table.querySelectorAll('tbody tr');
     let visibleCount = 0;
     const today = new Date();
     
     rows.forEach(row => {
         if (row.querySelector('td[colspan]')) return;
-        
         const text = row.textContent.toLowerCase();
         const cells = row.querySelectorAll('td');
         const methodCell = cells[5];
         const dateCell = cells[1];
-        
         let show = true;
-        
         if (searchTerm && !text.includes(searchTerm)) show = false;
-        
         if (show && method !== 'all') {
             const cellMethod = methodCell ? methodCell.textContent.toLowerCase().trim() : '';
             if (!cellMethod.includes(method.replace('_', ' '))) show = false;
         }
-        
         if (show && dateRange !== 'all' && dateCell) {
             const dateStr = dateCell.textContent.trim();
             const rowDate = new Date(dateStr);
-            
             if (dateRange === 'today' && rowDate.toDateString() !== today.toDateString()) show = false;
             else if (dateRange === 'week') {
                 const weekAgo = new Date(today);
@@ -1906,22 +1805,21 @@ function filterDeposits() {
                 show = false;
             }
         }
-        
         row.style.display = show ? '' : 'none';
         if (show) visibleCount++;
     });
-    
     const showingSpan = document.getElementById('showingCount');
     if (showingSpan) showingSpan.textContent = visibleCount;
 }
 
+// ============================================================
+// EXPORT DEPOSITS TO CSV
+// ============================================================
 function exportDepositsCSV() {
     const table = document.getElementById('depositsTable');
     if (!table) return;
-    
     let csv = [];
     const rows = table.querySelectorAll('tr');
-    
     rows.forEach(row => {
         const cells = row.querySelectorAll('td, th');
         const rowData = [];
@@ -1931,7 +1829,6 @@ function exportDepositsCSV() {
         });
         csv.push(rowData.join(','));
     });
-    
     const csvContent = csv.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -1951,7 +1848,6 @@ const rowsPerPage = 20;
 function paginateTable() {
     const table = document.getElementById('depositsTable');
     if (!table) return;
-    
     const rows = table.querySelectorAll('tbody tr');
     const totalRows = rows.length;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -1965,7 +1861,6 @@ function paginateTable() {
         const end = start + rowsPerPage;
         row.style.display = (index >= start && index < end) ? '' : 'none';
     });
-    
     const pageEl = document.getElementById('currentPage');
     if (pageEl) pageEl.textContent = currentPage;
 }
@@ -1989,327 +1884,6 @@ function nextPage() {
 }
 
 // ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
-function formatCurrency(input) {
-    let value = input.value.replace(/,/g, '');
-    if (!isNaN(value) && value !== '') {
-        let num = parseFloat(value);
-        input.value = num.toLocaleString('en-US');
-    }
-}
-
-function printReport() {
-    window.print();
-}
-
-function exportToCSV(tableId, filename) {
-    const table = document.getElementById(tableId);
-    if (!table) return;
-    
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-    
-    for (let row of rows) {
-        const cells = row.querySelectorAll('td, th');
-        const rowData = [];
-        for (let cell of cells) {
-            let text = cell.textContent.trim().replace(/,/g, '');
-            rowData.push(text);
-        }
-        csv.push(rowData.join(','));
-    }
-    
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename + '.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-}
-
-function filterTable(inputId, tableId) {
-    const input = document.getElementById(inputId);
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById(tableId);
-    const rows = table.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
-    });
-}
-
-function confirmAction(message, callback) {
-    if (confirm(message)) {
-        if (callback) callback();
-    }
-}
-
-function showLoading(elementId) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        element.disabled = true;
-    }
-}
-
-function hideLoading(elementId, originalText) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.innerHTML = originalText;
-        element.disabled = false;
-    }
-}
-
-// ============================================================
-// TOAST NOTIFICATION
-// ============================================================
-function showToast(message, type = 'success') {
-    const colors = {
-        success: '#4ade80',
-        error: '#ff6b6b',
-        warning: '#f5c542',
-        info: '#00e0ff'
-    };
-    
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 16px 24px;
-        background: rgba(10, 10, 20, 0.95);
-        border-left: 4px solid ${colors[type] || colors.info};
-        border-radius: 10px;
-        color: white;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.9rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        z-index: 9999;
-        animation: slideIn 0.3s ease;
-        max-width: 400px;
-    `;
-    toast.innerHTML = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, 4000);
-}
-
-// ============================================================
-// ADD TOAST ANIMATIONS
-// ============================================================
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(styleSheet);
-
-// ============================================================
-// REFRESH STATS (AJAX)
-// ============================================================
-function refreshStats() {
-    fetch('/treasurer/stats')
-        .then(response => response.json())
-        .then(data => {
-            document.querySelectorAll('.stat-box').forEach(box => {
-                const label = box.querySelector('p')?.textContent?.toLowerCase();
-                if (label === 'total members' && data.total_members !== undefined) {
-                    box.querySelector('h3').textContent = data.total_members;
-                }
-                if (label === 'total savings' && data.total_savings !== undefined) {
-                    box.querySelector('h3').textContent = 'UGX ' + data.total_savings.toLocaleString();
-                }
-                if (label === 'active loans' && data.active_loans !== undefined) {
-                    box.querySelector('h3').textContent = data.active_loans;
-                }
-                if (label === 'pending loans' && data.pending_loans !== undefined) {
-                    box.querySelector('h3').textContent = data.pending_loans;
-                }
-            });
-        })
-        .catch(error => console.error('Error refreshing stats:', error));
-}
-
-// ============================================================
-// AUTO-REFRESH STATS (every 30 seconds)
-// ============================================================
-setInterval(refreshStats, 30000);
-
-// ============================================================
-// REAL-TIME GUARANTOR VALIDATION
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Set 'All' tab as active by default
-    const allTab = document.querySelector('.tab-btn[onclick*="filterLoans(\'all\')"]');
-    if (allTab) {
-        allTab.classList.add('active');
-        allTab.style.background = 'rgba(255,255,255,0.1)';
-        allTab.style.border = '1px solid #f5c542';
-    }
-    
-    // Initialize pagination
-    paginateTable();
-    
-    // Guarantor validation
-    const guarantorPhoneInputs = document.querySelectorAll('input[name*="guarantor"][name*="phone"]');
-    guarantorPhoneInputs.forEach(function(input) {
-        input.addEventListener('blur', function() {
-            const phone = this.value.trim();
-            if (phone.length >= 10) {
-                const emailInput = this.closest('.form-group').parentElement.querySelector('input[type="email"]');
-                const email = emailInput ? emailInput.value.trim() : '';
-                
-                checkGuarantorEligibility(phone, email, function(data) {
-                    const feedbackDiv = document.createElement('div');
-                    feedbackDiv.className = 'guarantor-feedback';
-                    feedbackDiv.style.cssText = 'margin-top: 4px; font-size: 0.8rem;';
-                    
-                    if (data.eligible) {
-                        feedbackDiv.style.color = '#4ade80';
-                        feedbackDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
-                    } else {
-                        feedbackDiv.style.color = '#ff6b6b';
-                        feedbackDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
-                    }
-                    
-                    const existing = this.parentElement.querySelector('.guarantor-feedback');
-                    if (existing) existing.remove();
-                    this.parentElement.appendChild(feedbackDiv);
-                });
-            }
-        });
-    });
-    
-    console.log('Treasurer Dashboard initialized successfully.');
-});
-
-// ============================================================
-// FILTER SAVINGS BY MEMBER
-// ============================================================
-function filterSavingsByMember() {
-    const searchInput = document.getElementById('searchSavingsMember');
-    const memberFilter = document.getElementById('filterSavingsMember');
-    const methodFilter = document.getElementById('filterSavingsMethod');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const memberId = memberFilter ? memberFilter.value : 'all';
-    const method = methodFilter ? methodFilter.value : 'all';
-    
-    const table = document.getElementById('savingsTable');
-    if (!table) return;
-    
-    const rows = table.querySelectorAll('tbody tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        if (row.querySelector('td[colspan]')) return;
-        
-        const memberName = row.getAttribute('data-member-name') || '';
-        const sacco = row.getAttribute('data-sacco') || '';
-        const rowMemberId = row.getAttribute('data-member-id') || '';
-        const rowMethod = row.getAttribute('data-method') || '';
-        const text = (memberName + ' ' + sacco).toLowerCase();
-        
-        let show = true;
-        
-        // Search filter
-        if (searchTerm && !text.includes(searchTerm)) {
-            show = false;
-        }
-        
-        // Member filter
-        if (show && memberId !== 'all' && rowMemberId !== memberId) {
-            show = false;
-        }
-        
-        // Method filter
-        if (show && method !== 'all' && rowMethod !== method) {
-            show = false;
-        }
-        
-        row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
-    });
-    
-    // Update showing count
-    const showingSpan = document.getElementById('savingsShowingCount');
-    if (showingSpan) showingSpan.textContent = visibleCount;
-}
-
-// ============================================================
-// FILTER REPAYMENTS BY MEMBER
-// ============================================================
-function filterRepaymentsByMember() {
-    const searchInput = document.getElementById('searchRepaymentMember');
-    const memberFilter = document.getElementById('filterRepaymentMember');
-    const methodFilter = document.getElementById('filterRepaymentMethod');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const memberId = memberFilter ? memberFilter.value : 'all';
-    const method = methodFilter ? methodFilter.value : 'all';
-    
-    const table = document.getElementById('repaymentsTable');
-    if (!table) return;
-    
-    const rows = table.querySelectorAll('tbody tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        if (row.querySelector('td[colspan]')) return;
-        
-        const memberName = row.getAttribute('data-member-name') || '';
-        const sacco = row.getAttribute('data-sacco') || '';
-        const rowMemberId = row.getAttribute('data-member-id') || '';
-        const rowMethod = row.getAttribute('data-method') || '';
-        const text = (memberName + ' ' + sacco).toLowerCase();
-        
-        let show = true;
-        
-        // Search filter
-        if (searchTerm && !text.includes(searchTerm)) {
-            show = false;
-        }
-        
-        // Member filter
-        if (show && memberId !== 'all' && rowMemberId !== memberId) {
-            show = false;
-        }
-        
-        // Method filter
-        if (show && method !== 'all' && rowMethod !== method) {
-            show = false;
-        }
-        
-        row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
-    });
-    
-    // Update showing count
-    const showingSpan = document.getElementById('repaymentsShowingCount');
-    if (showingSpan) showingSpan.textContent = visibleCount;
-}
-
-// Add showing count spans to the titles
-// Update the title sections in the HTML to include:
-// <span id="savingsShowingCount">{{ all_deposits|length }}</span>
-// <span id="repaymentsShowingCount">{{ recent_repayments|length }}</span>
-
-// ============================================================
 // VIEW GUARANTOR DETAILS
 // ============================================================
 function viewGuarantorDetails(guarantorId) {
@@ -2317,126 +1891,548 @@ function viewGuarantorDetails(guarantorId) {
         alert('Error: Guarantor ID is missing.');
         return;
     }
+    console.log('📤 Fetching guarantor details for ID:', guarantorId);
     
+    const modal = document.getElementById('guarantorDetailsModal');
     const content = document.getElementById('guarantorDetailsContent');
-    if (!content) {
-        alert('Error: Modal content not found.');
+    if (!modal || !content) {
+        alert('Error: Modal not found.');
         return;
     }
-    
-    content.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading guarantor details...</div>';
-    document.getElementById('guarantorDetailsModal').style.display = 'flex';
+    modal.style.display = 'flex';
+    content.innerHTML = `
+        <div style="text-align:center; padding:40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i>
+            <p style="color:rgba(255,255,255,0.5); margin-top:12px;">Loading guarantor details...</p>
+        </div>
+    `;
     
     fetch('/treasurer/guarantor/details/' + guarantorId)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const guarantor = data.guarantor;
-                const guaranteedLoans = data.guaranteed_loans || [];
-                
-                let html = `
-                    <div style="margin-bottom:20px;">
-                        <h3 style="color:#fff; margin-bottom:12px;">
-                            <i class="fas fa-user-circle"></i> Personal Information
-                        </h3>
-                        <div class="guarantor-detail-row">
-                            <span class="label">Full Name</span>
-                            <span class="value highlight">${escapeHtml(guarantor.full_name || 'N/A')}</span>
-                        </div>
-                        <div class="guarantor-detail-row">
-                            <span class="label">SACCO Number</span>
-                            <span class="value">${escapeHtml(guarantor.sacco_number || 'N/A')}</span>
-                        </div>
-                        <div class="guarantor-detail-row">
-                            <span class="label">Phone</span>
-                            <span class="value">${escapeHtml(guarantor.phone || 'Not provided')}</span>
-                        </div>
-                        <div class="guarantor-detail-row">
-                            <span class="label">Email</span>
-                            <span class="value">${escapeHtml(guarantor.email || 'Not provided')}</span>
-                        </div>
-                        <div class="guarantor-detail-row">
-                            <span class="label">Savings Balance</span>
-                            <span class="value success">UGX ${Number(guarantor.savings_balance || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="guarantor-detail-row">
-                            <span class="label">Status</span>
-                            <span class="value">
-                                <span class="badge ${guarantor.status === 'active' ? 'success' : 'warning'}">${(guarantor.status || 'unknown').toUpperCase()}</span>
-                            </span>
-                        </div>
+                renderGuarantorDetails(data);
+            } else {
+                content.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:#ff6b6b;">
+                        <i class="fas fa-exclamation-circle" style="font-size:2rem; display:block; margin-bottom:12px;"></i>
+                        <p>${data.message || 'Error loading guarantor details'}</p>
                     </div>
                 `;
-                
-                // Guaranteed Loans Section
-                html += `
-                    <div style="margin-top:20px;">
-                        <h3 style="color:#fff; margin-bottom:12px;">
-                            <i class="fas fa-hand-holding-usd"></i> Loans Guaranteed (${guaranteedLoans.length})
-                        </h3>
-                `;
-                
-                if (guaranteedLoans.length > 0) {
-                    html += `<div style="max-height:300px; overflow-y:auto;">`;
-                    for (const loan of guaranteedLoans) {
-                        const statusClass = loan.status === 'active' || loan.status === 'disbursed' ? 'active' : 
-                                           loan.status === 'completed' ? 'completed' :
-                                           loan.status === 'pending' ? 'pending' : 'rejected';
-                        html += `
-                            <div class="guaranteed-loan-item">
-                                <div class="loan-info">
-                                    <span class="loan-number">${escapeHtml(loan.loan_number)}</span>
-                                    <span class="member-name">
-                                        <i class="fas fa-user"></i> ${escapeHtml(loan.member_name)}
-                                    </span>
-                                    <span style="font-size:0.7rem; color:rgba(255,255,255,0.3);">
-                                        <i class="fas fa-calendar-alt"></i> ${escapeHtml(loan.application_date)}
-                                    </span>
-                                </div>
-                                <div style="text-align:right;">
-                                    <div class="loan-amount">UGX ${Number(loan.amount || 0).toLocaleString()}</div>
-                                    <span class="loan-status ${statusClass}">${(loan.status || 'unknown').toUpperCase()}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                } else {
-                    html += `
-                        <div style="text-align:center; padding:20px; color:rgba(255,255,255,0.3);">
-                            <i class="fas fa-handshake" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
-                            This guarantor has not guaranteed any loans yet.
-                        </div>
-                    `;
-                }
-                
-                html += `</div>`;
-                
-                content.innerHTML = html;
-            } else {
-                content.innerHTML = `<div style="text-align:center; padding:20px; color:#ff6b6b;">
-                    <i class="fas fa-exclamation-circle"></i> ${escapeHtml(data.message || 'Error loading guarantor details')}
-                </div>`;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            content.innerHTML = `<div style="text-align:center; padding:20px; color:#ff6b6b;">
-                <i class="fas fa-exclamation-circle"></i> Error loading guarantor details. Please try again.
-            </div>`;
+            content.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#ff6b6b;">
+                    <i class="fas fa-exclamation-circle" style="font-size:2rem; display:block; margin-bottom:12px;"></i>
+                    <p>Error loading guarantor details. Please try again.</p>
+                </div>
+            `;
         });
+}
+
+// ============================================================
+// RENDER GUARANTOR DETAILS
+// ============================================================
+function renderGuarantorDetails(data) {
+    const content = document.getElementById('guarantorDetailsContent');
+    const guarantor = data.guarantor;
+    const guaranteedLoans = data.guaranteed_loans || [];
+    
+    let html = `
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="width:56px; height:56px; border-radius:50%; background:rgba(245,197,66,0.1); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#f5c542; flex-shrink:0;">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; color:#fff; font-size:1.1rem;">${escapeHtml(guarantor.full_name || 'N/A')}</h3>
+                <p style="margin:4px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.8rem;">
+                    <i class="fas fa-id-card"></i> ${escapeHtml(guarantor.sacco_number || 'N/A')}
+                </p>
+            </div>
+            <div style="margin-left:auto;">
+                <span style="display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.7rem; font-weight:600; 
+                    ${guarantor.status === 'active' ? 'background:rgba(74,222,128,0.12); color:#4ade80;' : 'background:rgba(255,107,107,0.12); color:#ff6b6b;'}">
+                    ${(guarantor.status || 'unknown').toUpperCase()}
+                </span>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px;">
+                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Phone</div>
+                <div style="color:#fff; font-size:0.9rem; margin-top:2px;">
+                    <i class="fas fa-phone" style="color:rgba(255,255,255,0.2); width:16px;"></i>
+                    ${escapeHtml(guarantor.phone || 'Not provided')}
+                </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px;">
+                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Email</div>
+                <div style="color:#fff; font-size:0.9rem; margin-top:2px;">
+                    <i class="fas fa-envelope" style="color:rgba(255,255,255,0.2); width:16px;"></i>
+                    ${escapeHtml(guarantor.email || 'Not provided')}
+                </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px; grid-column: span 2;">
+                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Savings Balance</div>
+                <div style="color:#4ade80; font-size:1.1rem; font-weight:600; margin-top:2px;">
+                    <i class="fas fa-coins" style="color:rgba(255,255,255,0.2); width:16px;"></i>
+                    UGX ${Number(guarantor.savings_balance || 0).toLocaleString()}
+                </div>
+            </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.04); padding-top:16px; margin-top:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h4 style="margin:0; color:rgba(255,255,255,0.7); font-size:0.9rem;">
+                    <i class="fas fa-hand-holding-usd" style="color:#f5c542;"></i>
+                    Loans Guaranteed (${guaranteedLoans.length})
+                </h4>
+            </div>
+    `;
+    
+    if (guaranteedLoans.length > 0) {
+        html += `<div style="max-height:300px; overflow-y:auto; padding-right:4px;">`;
+        for (const loan of guaranteedLoans) {
+            html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.02); border-radius:8px; margin-bottom:6px; border-left:3px solid ${loan.status === 'active' ? '#4ade80' : '#f5c542'};">
+                    <div>
+                        <div style="color:#f5c542; font-family:monospace; font-size:0.8rem; font-weight:600;">${escapeHtml(loan.loan_number)}</div>
+                        <div style="font-size:0.7rem; color:rgba(255,255,255,0.4);">${escapeHtml(loan.member_name)}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:#4ade80; font-weight:600; font-size:0.85rem;">UGX ${Number(loan.amount || 0).toLocaleString()}</div>
+                        <span style="font-size:0.6rem; color:${loan.status === 'active' ? '#4ade80' : '#f5c542'}; font-weight:600; text-transform:uppercase;">${(loan.status || 'unknown').toUpperCase()}</span>
+                    </div>
+                </div>
+            `;
+        }
+        html += `</div>`;
+    } else {
+        html += `
+            <div style="text-align:center; padding:30px 20px; color:rgba(255,255,255,0.2);">
+                <i class="fas fa-handshake" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
+                <p style="margin:0;">This guarantor has not guaranteed any loans yet.</p>
+            </div>
+        `;
+    }
+    
+    html += `
+        </div>
+        <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04); display:flex; gap:12px; justify-content:flex-end;">
+            <button onclick="closeGuarantorModal()" style="padding:10px 24px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; font-weight:500;">
+                <i class="fas fa-times"></i> Close
+            </button>
+            <button onclick="closeGuarantorModal()" style="padding:10px 24px; background:#f5c542; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-check"></i> Done
+            </button>
+        </div>
+    `;
+    content.innerHTML = html;
+}
+
+// ============================================================
+// ESCAPE HTML (Prevent XSS)
+// ============================================================
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // ============================================================
 // CLOSE GUARANTOR MODAL
 // ============================================================
 function closeGuarantorModal() {
-    document.getElementById('guarantorDetailsModal').style.display = 'none';
+    const modal = document.getElementById('guarantorDetailsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
+// CLOSE MODALS ON ESCAPE
+// ============================================================
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeApproveModal();
+        closeRejectModal();
+        closeGuarantorModal();
+    }
+});
+
+// ============================================================
+// CLOSE MODALS ON OUTSIDE CLICK
+// ============================================================
+document.addEventListener('click', function(event) {
+    const approveModal = document.getElementById('approveModal');
+    if (approveModal && event.target === approveModal) closeApproveModal();
+    const rejectModal = document.getElementById('rejectModal');
+    if (rejectModal && event.target === rejectModal) closeRejectModal();
+    const guarantorModal = document.getElementById('guarantorDetailsModal');
+    if (guarantorModal && event.target === guarantorModal) closeGuarantorModal();
+});
+
+// ============================================================
+// REPAYMENT FORM FUNCTIONS
+// ============================================================
+const loanSelect = document.getElementById('loanSelect');
+const memberSearch = document.getElementById('memberSearch');
+const noLoansMessage = document.getElementById('noLoansMessage');
+const loanDetails = document.getElementById('loanDetails');
+const amountInput = document.getElementById('amountPaid');
+const allOptions = Array.from(loanSelect ? loanSelect.options : []);
+let currentLoanData = {};
+
+function filterMembers() {
+    if (!memberSearch) return;
+    const searchTerm = memberSearch.value.toLowerCase().trim();
+    let hasVisibleOptions = false;
+    allOptions.forEach(option => {
+        if (option.value === '') {
+            option.style.display = '';
+            return;
+        }
+        const memberData = option.getAttribute('data-member') || '';
+        const searchableText = memberData + ' ' + option.textContent.toLowerCase();
+        if (searchTerm === '' || searchableText.includes(searchTerm)) {
+            option.style.display = '';
+            hasVisibleOptions = true;
+        } else {
+            option.style.display = 'none';
+        }
+    });
+    if (noLoansMessage) {
+        noLoansMessage.style.display = (searchTerm !== '' && !hasVisibleOptions) ? 'block' : 'none';
+    }
+    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
+    if (selectedOption && selectedOption.value !== '' && selectedOption.style.display === 'none') {
+        loanSelect.value = '';
+        if (loanDetails) loanDetails.style.display = 'none';
+    }
+    if (loanSelect.value) {
+        updateLoanDetails();
+    }
+}
+
+function clearSearch() {
+    if (!memberSearch) return;
+    memberSearch.value = '';
+    allOptions.forEach(option => {
+        option.style.display = '';
+    });
+    if (noLoansMessage) noLoansMessage.style.display = 'none';
+    filterMembers();
+}
+
+function updateLoanDetails() {
+    if (!loanDetails) return;
+    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        loanDetails.style.display = 'none';
+        return;
+    }
+    const balance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
+    const totalAmount = parseFloat(selectedOption.getAttribute('data-total')) || 0;
+    const interest = parseFloat(selectedOption.getAttribute('data-interest')) || 0;
+    const principalPaid = parseFloat(selectedOption.getAttribute('data-principal')) || 0;
+    currentLoanData = {
+        balance: balance,
+        total: totalAmount,
+        interest: interest,
+        principalPaid: principalPaid
+    };
+    const text = selectedOption.textContent;
+    const parts = text.split(' - ');
+    let memberName = '';
+    if (parts.length > 1) {
+        memberName = parts[1].split(' (Balance:')[0].trim();
+    }
+    const loanNumber = parts[0].trim();
+    const overdueMatch = text.match(/(\d+) days overdue/);
+    const daysOverdue = overdueMatch ? overdueMatch[1] : 0;
+    
+    const detailMember = document.getElementById('detailMember');
+    const detailLoanNumber = document.getElementById('detailLoanNumber');
+    const detailOriginal = document.getElementById('detailOriginal');
+    const detailInterest = document.getElementById('detailInterest');
+    const detailPrincipalPaid = document.getElementById('detailPrincipalPaid');
+    const detailBalance = document.getElementById('detailBalance');
+    const detailOverdue = document.getElementById('detailOverdue');
+    
+    if (detailMember) detailMember.textContent = memberName;
+    if (detailLoanNumber) detailLoanNumber.textContent = loanNumber;
+    if (detailOriginal) detailOriginal.textContent = 'UGX ' + totalAmount.toLocaleString();
+    if (detailInterest) detailInterest.textContent = 'UGX ' + interest.toLocaleString();
+    if (detailPrincipalPaid) detailPrincipalPaid.textContent = 'UGX ' + principalPaid.toLocaleString();
+    if (detailBalance) detailBalance.textContent = 'UGX ' + balance.toLocaleString();
+    if (detailOverdue) {
+        if (daysOverdue > 0) {
+            detailOverdue.innerHTML = '<span style="color:#ff6b6b;">🔴 ' + daysOverdue + ' days overdue</span>';
+        } else {
+            detailOverdue.innerHTML = '<span style="color:#4ade80;">✅ On time</span>';
+        }
+    }
+    loanDetails.style.display = 'block';
+    if (amountInput) {
+        amountInput.value = '';
+        document.getElementById('amountValidation').innerHTML = '';
+        updateAllocation(0);
+    }
+}
+
+function validateAmount() {
+    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+    updateAllocation(amount);
+}
+
+function updateAllocation(amount) {
+    const balance = currentLoanData.balance || 0;
+    const interest = currentLoanData.interest || 0;
+    let interestPaid = 0;
+    let principalPaid = 0;
+    if (amount > 0) {
+        if (amount >= interest) {
+            interestPaid = interest;
+            principalPaid = amount - interest;
+            const remainingBalance = balance - amount;
+            if (principalPaid > balance) {
+                principalPaid = balance;
+            }
+        } else {
+            interestPaid = amount;
+            principalPaid = 0;
+        }
+    }
+    const remainingBalance = balance - amount;
+    const finalRemaining = remainingBalance < 0 ? 0 : remainingBalance;
+    
+    const allocationInterest = document.getElementById('allocationInterest');
+    const allocationPrincipal = document.getElementById('allocationPrincipal');
+    const allocationRemaining = document.getElementById('allocationRemaining');
+    if (allocationInterest) allocationInterest.textContent = 'UGX ' + interestPaid.toLocaleString();
+    if (allocationPrincipal) allocationPrincipal.textContent = 'UGX ' + principalPaid.toLocaleString();
+    if (allocationRemaining) allocationRemaining.textContent = 'UGX ' + finalRemaining.toLocaleString();
+    
+    const validationEl = document.getElementById('amountValidation');
+    if (validationEl) {
+        if (amount > balance && balance > 0) {
+            validationEl.innerHTML = '<span style="color:#ff6b6b;">⚠️ Amount exceeds current balance.</span>';
+        } else if (amount === 0) {
+            validationEl.innerHTML = '';
+        } else {
+            validationEl.innerHTML = '<span style="color:#4ade80;">✅ Valid payment amount</span>';
+        }
+    }
+}
+
+// ============================================================
+// EDIT MEMBER FUNCTIONS
+// ============================================================
+function editMember(memberId) {
+    if (!memberId) {
+        alert('Error: Member ID is missing.');
+        return;
+    }
+    console.log('📝 Editing member:', memberId);
+    
+    const modal = document.getElementById('editMemberModal');
+    if (!modal) {
+        alert('Error: Edit modal not found.');
+        return;
+    }
+    modal.style.display = 'flex';
+    document.getElementById('editMemberId').value = memberId;
+    
+    const submitBtn = document.getElementById('editMemberSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        submitBtn.disabled = true;
+    }
+    
+    fetch('/treasurer/member/view/' + memberId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const member = data.member;
+                document.getElementById('editFullName').value = member.full_name || '';
+                document.getElementById('editSaccoNumber').value = member.sacco_number || '';
+                document.getElementById('editPhone').value = member.phone || '';
+                document.getElementById('editEmail').value = member.email || '';
+                document.getElementById('editGender').value = member.gender || '';
+                document.getElementById('editDob').value = member.dob || '';
+                document.getElementById('editAddress').value = member.address || '';
+                document.getElementById('editStatus').value = member.status || 'active';
+            } else {
+                alert('❌ Error: ' + (data.message || 'Could not load member data'));
+                closeEditModal();
+            }
+        })
+        .catch(error => {
+            alert('❌ Error loading member data: ' + error.message);
+            closeEditModal();
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                submitBtn.disabled = false;
+            }
+        });
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editMemberModal');
+    if (modal) modal.style.display = 'none';
+    const form = document.getElementById('editMemberForm');
+    if (form) form.reset();
+}
+
+function submitEditMember(event) {
+    event.preventDefault();
+    const form = document.getElementById('editMemberForm');
+    const formData = new FormData(form);
+    const memberId = document.getElementById('editMemberId').value;
+    
+    const fullName = formData.get('full_name').trim();
+    const saccoNumber = formData.get('sacco_number').trim().toUpperCase();
+    const phone = formData.get('phone').trim();
+    const email = formData.get('email').trim();
+    
+    if (!fullName || !saccoNumber || !phone) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    const submitBtn = document.getElementById('editMemberSubmitBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    const data = {
+        full_name: fullName,
+        sacco_number: saccoNumber,
+        phone: phone,
+        email: email,
+        gender: formData.get('gender') || '',
+        dob: formData.get('dob') || '',
+        address: formData.get('address') || '',
+        status: formData.get('status') || 'active'
+    };
+    
+    fetch('/treasurer/member/update/' + memberId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ Member updated successfully!');
+            closeEditModal();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (result.message || 'Could not update member'));
+        }
+    })
+    .catch(error => {
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function deleteMember(memberId, memberName) {
+    if (!memberId) {
+        alert('Error: Member ID is missing.');
+        return;
+    }
+    document.getElementById('deleteMessage').textContent = 
+        `Are you sure you want to delete member "${memberName}"? This action cannot be undone.`;
+    document.getElementById('deleteMemberId').value = memberId;
+    document.getElementById('deleteConfirmModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').style.display = 'none';
+    document.getElementById('deleteMemberId').value = '';
+}
+
+function confirmDeleteMember() {
+    const memberId = document.getElementById('deleteMemberId').value;
+    if (!memberId) {
+        alert('Error: Member ID is missing.');
+        return;
+    }
+    if (!confirm('⚠️ Are you absolutely sure you want to delete this member permanently?')) {
+        return;
+    }
+    
+    const btn = document.querySelector('#deleteConfirmModal .btn-danger');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    btn.disabled = true;
+    
+    fetch('/treasurer/member/delete/' + memberId, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            closeDeleteModal();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Could not delete member'));
+        }
+    })
+    .catch(error => {
+        alert('❌ Error: ' + error.message);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// ============================================================
+// VALIDATE EMAIL
+// ============================================================
+function isValidEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+// ============================================================
+// INITIALIZE ON PAGE LOAD
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Treasurer Dashboard initialized');
+    console.log('✅ viewMember function is available');
+    console.log('🔗 View Member URL pattern: /treasurer/members/view/[id]');
+    
+    paginateTable();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const loanId = urlParams.get('loan_id');
+    if (loanId && loanSelect) {
+        loanSelect.value = loanId;
+        updateLoanDetails();
+    }
+    if (amountInput) {
+        amountInput.addEventListener('input', validateAmount);
+    }
+});
+
+// Debug - test viewMember on page load
+console.log('🔍 Testing viewMember function...');
+console.log('typeof viewMember:', typeof viewMember);
+if (typeof viewMember === 'function') {
+    console.log('✅ viewMember function is loaded correctly!');
+} else {
+    console.log('❌ viewMember function is NOT loaded!');
 }
 </script>
 {% endblock %}
