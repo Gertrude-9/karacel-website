@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Publicity Dashboard{% endblock %} | Karacel SACCO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a14;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .publicity-sidebar {
+            width: 250px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #0f0f1f, #0a0a14);
+            border-right: 1px solid rgba(255,255,255,0.04);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-brand {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-brand h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f5c542;
+        }
+
+        .sidebar-brand h2 i {
+            color: #00e0ff;
+            margin-right: 8px;
+        }
+
+        .sidebar-brand span {
+            display: block;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.25);
+            margin-top: 2px;
+        }
+
+        .publicity-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.4);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            font-size: 0.85rem;
+        }
+
+        .publicity-nav-item:hover {
+            color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .publicity-nav-item.active {
+            color: #f5c542;
+            background: rgba(245,197,66,0.05);
+            border-left-color: #f5c542;
+        }
+
+        .publicity-nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .sidebar-footer .publicity-nav-item {
+            color: #ff6b6b;
+        }
+
+        .publicity-main-content {
+            flex: 1;
+            padding: 20px 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .publicity-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 20px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(2px);
+        }
+
+        .publicity-card h3 {
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: #f5c542;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .publicity-card h3 i {
+            color: #00e0ff;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+        }
+
+        .stat-card h3 {
+            color: #fff;
+            margin: 8px 0 4px;
+            font-size: 1.5rem;
+        }
+
+        .stat-card p {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.8rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #eaeef2;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #00e0ff;
+        }
+
+        .input-group input::placeholder,
+        .input-group textarea::placeholder {
+            color: rgba(255,255,255,0.2);
+        }
+
+        .btn-primary {
+            background: #00e0ff;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            color: #0a0a14;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #66ecff;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #4ade80;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            color: #0a0a14;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-success:hover {
+            background: #6ee7a0;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #f5c542;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            color: #0a0a14;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-warning:hover {
+            background: #ffd966;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(255,107,107,0.08);
+            border: 1px solid rgba(255,107,107,0.1);
+            color: #ff6b6b;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(255,107,107,0.15);
+        }
+
+        .notification-item {
+            background: rgba(255,255,255,0.02);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border-left: 3px solid #00e0ff;
+        }
+
+        .notification-item.unread {
+            border-left-color: #f5c542;
+            background: rgba(245,197,66,0.03);
+        }
+
+        .notification-item .title {
+            color: #f5c542;
+            font-weight: 500;
+        }
+
+        .notification-item .message {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .notification-item .meta {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.2);
+            margin-top: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .publicity-sidebar {
+                width: 200px;
+            }
+            .publicity-main-content {
+                padding: 15px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            .input-group {
+                flex-direction: column;
+            }
+            .input-group input,
+            .input-group textarea,
+            .input-group select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="publicity-sidebar">
+        <div class="sidebar-brand">
+            <h2><i class="fas fa-bullhorn"></i> Karacel</h2>
+            <span>Publicity Portal</span>
+        </div>
+
+        <a class="publicity-nav-item {% if request.path == '/publicity/dashboard' %}active{% endif %}" href="/publicity/dashboard">
+            <i class="fas fa-chart-pie"></i> Dashboard
+        </a>
+        <a class="publicity-nav-item {% if request.path == '/publicity/announcements' %}active{% endif %}" href="/publicity/announcements">
+            <i class="fas fa-bullhorn"></i> Announcements
+        </a>
+        <a class="publicity-nav-item {% if request.path == '/publicity/events' %}active{% endif %}" href="/publicity/events">
+            <i class="fas fa-calendar-alt"></i> Events
+        </a>
+        <a class="publicity-nav-item {% if request.path == '/publicity/newsletters' %}active{% endif %}" href="/publicity/newsletters">
+            <i class="fas fa-newspaper"></i> Newsletters
+        </a>
+        <a class="publicity-nav-item {% if request.path == '/publicity/social' %}active{% endif %}" href="/publicity/social">
+            <i class="fas fa-share-alt"></i> Social Media
+        </a>
+        <a class="publicity-nav-item {% if request.path == '/publicity/notifications' %}active{% endif %}" href="/publicity/notifications">
+            <i class="fas fa-bell"></i> Notifications
+        </a>
+
+        <div class="sidebar-footer">
+            <a href="/logout" class="publicity-nav-item" style="color: #ff6b6b;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="publicity-main-content">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-bottom: 20px;">
+                    {% for category, message in messages %}
+                        <div style="background:{% if category == 'success' %}rgba(74,222,128,0.1){% elif category == 'danger' %}rgba(255,107,107,0.1){% else %}rgba(245,197,66,0.1){% endif %}; border:1px solid {% if category == 'success' %}rgba(74,222,128,0.2){% elif category == 'danger' %}rgba(255,107,107,0.2){% else %}rgba(245,197,66,0.2){% endif %}; border-radius:12px; padding:14px 18px; margin-bottom:10px; color:{% if category == 'success' %}#4ade80{% elif category == 'danger' %}#ff6b6b{% else %}#f5c542{% endif %};">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

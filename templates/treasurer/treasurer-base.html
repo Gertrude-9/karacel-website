@@ -85,6 +85,13 @@
                 </span>
                 {% endif %}
             </a>
+           <!-- Savings Reports -->
+            <!-- In sidebar -->
+            <a href="{{ url_for('treasurer_savings_reports') }}" class="admin-nav-item">
+                <i class="fas fa-chart-pie"></i>
+                <span>Savings Reports</span>
+            </a>
+           
         </div>
 
         <div class="sidebar-footer">
@@ -204,7 +211,7 @@ JAVASCRIPT - Core Navigation Only
     document.addEventListener("DOMContentLoaded", function () {
         // Check URL hash for panel
         const hash = window.location.hash.replace("#", "");
-        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits', 'completed'];
+        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits', 'completed', 'savings_reports'];
         if (hash && validPanels.includes(hash)) {
             showPanel(hash);
         }

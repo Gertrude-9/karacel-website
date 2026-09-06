@@ -1,0 +1,110 @@
+{% extends "publicity/publicity-base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="publicity-notifications">
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:30px; background:linear-gradient(135deg, rgba(245,197,66,0.05), rgba(0,224,255,0.02)); border-radius:16px; padding:20px 28px; border:1px solid rgba(255,255,255,0.04);">
+        <div>
+            <h1 style="font-size:1.6rem; font-weight:600; margin:0; display:flex; align-items:center; gap:12px;">
+                <i class="fas fa-bell" style="color:#f5c542;"></i> 
+                Member Notifications
+            </h1>
+            <p style="color:rgba(255,255,255,0.3); margin:4px 0 0; font-size:0.85rem;">
+                <i class="fas fa-info-circle"></i> View all notifications sent to members.
+            </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; background:rgba(255,107,107,0.06); padding:6px 16px; border-radius:30px; border:1px solid rgba(255,107,107,0.06);">
+            <i class="fas fa-bell" style="color:#f5c542; font-size:0.9rem;"></i>
+            <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">{{ notifications|length }} total</span>
+            {% set unread_count = notifications|selectattr('is_read', 'equalto', 0)|list|length %}
+            {% if unread_count > 0 %}
+                <span style="background:#ff6b6b; color:#fff; padding:1px 10px; border-radius:20px; font-size:0.65rem; font-weight:600;">{{ unread_count }} unread</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Notifications -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="color:#f5c542; font-size:1.15rem; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-list" style="color:#00e0ff;"></i> 
+                All Notifications
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.2); font-weight:400; margin-left:4px;">
+                    ({{ notifications|length }} total)
+                </span>
+            </h3>
+            {% if notifications %}
+                <form method="POST" action="/publicity/notifications/clear">
+                    <button type="submit" onclick="return confirm('Clear all notifications? This cannot be undone.')" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.08); color:#ff6b6b; padding:6px 16px; border-radius:8px; cursor:pointer; font-size:0.7rem; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+        
+        {% if notifications %}
+            {% for notification in notifications %}
+            <div style="background:rgba(255,255,255,0.02); border-radius:10px; padding:16px 18px; margin-bottom:12px; border-left:3px solid {% if notification.type == 'announcement' %}#f5c542{% elif notification.type == 'event' %}#00e0ff{% elif notification.type == 'newsletter' %}#4ade80{% else %}#ff6b6b{% endif %}; {% if not notification.is_read %}background:rgba(245,197,66,0.04); border-left-color:#f5c542;{% endif %} transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='rgba(255,255,255,0.02){% if not notification.is_read %};background:rgba(245,197,66,0.04){% endif %}'">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                        <div style="flex:1; min-width:150px;">
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    {% if notification.type == 'announcement' %}
+                                        <i class="fas fa-bullhorn" style="color:#f5c542; font-size:0.9rem;"></i>
+                                        <span style="color:#f5c542; font-weight:600; font-size:0.9rem;">Announcement</span>
+                                    {% elif notification.type == 'event' %}
+                                        <i class="fas fa-calendar-alt" style="color:#00e0ff; font-size:0.9rem;"></i>
+                                        <span style="color:#00e0ff; font-weight:600; font-size:0.9rem;">Event</span>
+                                    {% elif notification.type == 'newsletter' %}
+                                        <i class="fas fa-newspaper" style="color:#4ade80; font-size:0.9rem;"></i>
+                                        <span style="color:#4ade80; font-weight:600; font-size:0.9rem;">Newsletter</span>
+                                    {% else %}
+                                        <i class="fas fa-info-circle" style="color:#ff6b6b; font-size:0.9rem;"></i>
+                                        <span style="color:#ff6b6b; font-weight:600; font-size:0.9rem;">General</span>
+                                    {% endif %}
+                                </div>
+                                {% if not notification.is_read %}
+                                    <span style="background:#f5c542; color:#0a0a14; padding:1px 10px; border-radius:12px; font-size:0.6rem; font-weight:600;">
+                                        <i class="fas fa-circle" style="font-size:0.4rem;"></i> Unread
+                                    </span>
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.15); font-size:0.6rem;">
+                                        <i class="fas fa-check-circle" style="color:#4ade80;"></i> Read
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div style="color:#fff; font-size:0.95rem; font-weight:500; margin-top:4px;">{{ notification.title }}</div>
+                            <div style="color:rgba(255,255,255,0.6); font-size:0.85rem; margin-top:4px; line-height:1.5;">{{ notification.message }}</div>
+                            <div style="font-size:0.65rem; color:rgba(255,255,255,0.2); margin-top:8px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                                <span><i class="far fa-calendar-alt"></i> {{ notification.created_at[:16] }}</span>
+                                {% if notification.link %}
+                                    <a href="{{ notification.link }}" style="color:#00e0ff; text-decoration:none; font-size:0.7rem; transition:all 0.3s;" onmouseover="this.style.color='#66ecff'" onmouseout="this.style.color='#00e0ff'">
+                                        <i class="fas fa-arrow-right"></i> View Details
+                                    </a>
+                                {% endif %}
+                                <span style="display:flex; align-items:center; gap:4px;">
+                                    <i class="fas fa-user" style="font-size:0.5rem;"></i>
+                                    <span>{{ notification.member_name|default('Member') }}</span>
+                                </span>
+                            </div>
+                        </div>
+                        <form method="POST" action="/publicity/notification/delete/{{ notification.id }}" style="margin-left:10px;">
+                            <button type="submit" onclick="return confirm('Delete this notification?')" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.08); color:#ff6b6b; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.7rem; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.08);">
+                <i class="fas fa-bell" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <h3 style="color:rgba(255,255,255,0.15); margin:0 0 6px 0; font-weight:400;">No notifications sent yet</h3>
+                <p style="margin:0; font-size:0.85rem;">Notifications will appear here when you send announcements, events, or newsletters.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

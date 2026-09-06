@@ -1,0 +1,114 @@
+{% extends "publicity/publicity-base.html" %}
+
+{% block title %}Social Media{% endblock %}
+
+{% block content %}
+<div class="publicity-social">
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:30px; background:linear-gradient(135deg, rgba(255,107,107,0.05), rgba(0,224,255,0.02)); border-radius:16px; padding:20px 28px; border:1px solid rgba(255,255,255,0.04);">
+        <div>
+            <h1 style="font-size:1.6rem; font-weight:600; margin:0; display:flex; align-items:center; gap:12px;">
+                <i class="fas fa-share-alt" style="color:#ff6b6b;"></i> 
+                Social Media
+            </h1>
+            <p style="color:rgba(255,255,255,0.3); margin:4px 0 0; font-size:0.85rem;">
+                <i class="fas fa-info-circle"></i> Share updates on social media platforms.
+            </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; background:rgba(255,107,107,0.08); padding:6px 16px; border-radius:30px; border:1px solid rgba(255,107,107,0.08);">
+            <i class="fas fa-share" style="color:#ff6b6b; font-size:0.9rem;"></i>
+            <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">{{ social_posts|length }} posts</span>
+        </div>
+    </div>
+
+    <!-- Create Social Post -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px; margin-bottom:24px;">
+        <h3 style="color:#f5c542; font-size:1.15rem; font-weight:600; margin:0 0 18px 0; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-plus-circle" style="color:#00e0ff;"></i> 
+            Share on Social Media
+            <span style="font-size:0.65rem; color:rgba(255,255,255,0.15); font-weight:400; margin-left:auto;">
+                <i class="fas fa-info-circle"></i> Post to your social channels
+            </span>
+        </h3>
+        
+        <form method="POST" action="/publicity/social/create">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                <select name="platform" style="flex:1; min-width:150px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; font-size:0.95rem; transition:border 0.3s; cursor:pointer;" onfocus="this.style.borderColor='#ff6b6b'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'" required>
+                    <option value="facebook">📘 Facebook</option>
+                    <option value="twitter">🐦 Twitter/X</option>
+                    <option value="instagram">📸 Instagram</option>
+                    <option value="linkedin">💼 LinkedIn</option>
+                    <option value="whatsapp">💬 WhatsApp</option>
+                </select>
+                <textarea name="post" placeholder="What do you want to share?" style="flex:3; min-width:200px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; min-height:80px; resize:vertical; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#ff6b6b'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'" required></textarea>
+            </div>
+            <button type="submit" style="background:#ff6b6b; border:none; padding:12px 30px; border-radius:30px; color:#0a0a14; font-weight:600; cursor:pointer; transition:all 0.3s;" onmouseover="this.style.background='#ff8787'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#ff6b6b'; this.style.transform='translateY(0)'">
+                <i class="fas fa-share"></i> Share Now
+            </button>
+        </form>
+    </div>
+
+    <!-- All Social Posts -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="color:#f5c542; font-size:1.15rem; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-list" style="color:#ff6b6b;"></i> 
+                All Social Posts
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.2); font-weight:400; margin-left:4px;">
+                    ({{ social_posts|length }} total)
+                </span>
+            </h3>
+        </div>
+        
+        {% if social_posts %}
+            {% for post in social_posts %}
+            <div style="background:rgba(255,255,255,0.02); border-left:3px solid #ff6b6b; border-radius:8px; padding:16px 18px; margin-bottom:12px; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                    <div style="flex:1; min-width:150px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                            <div style="width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; 
+                                {% if post.platform == 'facebook' %}background:rgba(24,119,242,0.15); color:#1877F2;
+                                {% elif post.platform == 'twitter' %}background:rgba(0,0,0,0.15); color:#000;
+                                {% elif post.platform == 'instagram' %}background:rgba(225,48,108,0.15); color:#E1306C;
+                                {% elif post.platform == 'linkedin' %}background:rgba(0,119,181,0.15); color:#0077B5;
+                                {% else %}background:rgba(37,211,102,0.15); color:#25D366;{% endif %}">
+                                <i class="fab fa-{% if post.platform == 'facebook' %}facebook{% elif post.platform == 'twitter' %}twitter{% elif post.platform == 'instagram' %}instagram{% elif post.platform == 'linkedin' %}linkedin{% else %}whatsapp{% endif %}" style="font-size:0.9rem;"></i>
+                            </div>
+                            <span style="font-weight:600; font-size:0.9rem; 
+                                {% if post.platform == 'facebook' %}color:#1877F2;
+                                {% elif post.platform == 'twitter' %}color:#000;
+                                {% elif post.platform == 'instagram' %}color:#E1306C;
+                                {% elif post.platform == 'linkedin' %}color:#0077B5;
+                                {% else %}color:#25D366;{% endif %}">
+                                {{ post.platform|capitalize }}
+                            </span>
+                            <span style="font-size:0.6rem; color:rgba(255,255,255,0.15); background:rgba(255,255,255,0.03); padding:1px 8px; border-radius:10px;">
+                                <i class="fas fa-check-circle" style="color:#4ade80;"></i> Posted
+                            </span>
+                        </div>
+                        <div style="color:rgba(255,255,255,0.65); font-size:0.9rem; margin-top:4px; line-height:1.6; white-space:pre-wrap;">{{ post.content }}</div>
+                        <div style="font-size:0.65rem; color:rgba(255,255,255,0.2); margin-top:8px; display:flex; align-items:center; gap:12px;">
+                            <span><i class="far fa-calendar-alt"></i> {{ post.created_at[:16] }}</span>
+                            <span style="background:rgba(74,222,128,0.08); color:#4ade80; padding:1px 8px; border-radius:10px; font-size:0.55rem;">
+                                <i class="fas fa-check-circle"></i> Published
+                            </span>
+                        </div>
+                    </div>
+                    <form method="POST" action="/publicity/social/delete/{{ post.id }}" style="margin-left:10px;">
+                        <button type="submit" onclick="return confirm('Delete this post?')" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.08); color:#ff6b6b; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.7rem; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.08);">
+                <i class="fas fa-share-alt" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <h3 style="color:rgba(255,255,255,0.15); margin:0 0 6px 0; font-weight:400;">No social media posts yet</h3>
+                <p style="margin:0; font-size:0.85rem;">Share your first post above to connect with members.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

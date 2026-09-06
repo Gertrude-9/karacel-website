@@ -83,10 +83,101 @@
                         <label for="loanAmount">Loan Amount (UGX) <span class="required">*</span></label>
                         <div class="input-with-hint">
                             <input type="number" id="loanAmount" name="loan_amount" 
-                                   placeholder="Enter amount between 10,000 and 10,000,000" 
+                                   placeholder="Enter amount between 10,000 and 100,000,000" 
                                    min="10000" max="10000000"
                                    oninput="calculateRepayment()" required>
-                            <span class="hint">Min: UGX 10,000 | Max: UGX 10,000,000</span>
+                            <span class="hint">Min: UGX 10,000 | Max: UGX 100,000,000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOAN DURATION -->
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="loanDuration">Loan Duration <span class="required">*</span></label>
+                        <select id="loanDuration" name="loan_duration" onchange="calculateRepayment()" required>
+                            <option value="1">1 Month (30 days) - Interest Applied</option>
+                            <option value="2">2 Months (60 days) - Interest Applied</option>
+                            <option value="3">3 Months (90 days) - Interest Applied</option>
+                            <option value="4">4 Months (120 days) - NO Interest</option>
+                            <option value="5">5 Months (150 days) - NO Interest</option>
+                            <option value="6">6 Months (180 days) - NO Interest</option>
+                        </select>
+                        <span class="hint" style="color: #f5c542;">
+                            <i class="fas fa-info-circle"></i> 
+                            <span id="interestNote">Interest compounds monthly for the first 3 months. No interest beyond 3 months.</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- NEW: SEND MONEY TO FIELD - PHONE NUMBER OR ACCOUNT NUMBER -->
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="sendToDetails">Send Money To <span class="required">*</span></label>
+                        <div style="
+                            background: rgba(255,255,255,0.03);
+                            border: 1px solid rgba(255,255,255,0.08);
+                            border-radius: 10px;
+                            padding: 16px;
+                            margin-top: 4px;
+                        ">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+                                <div>
+                                    <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">Select Method</label>
+                                    <select id="sendToType" name="send_to_type" onchange="toggleSendToFields()" style="
+                                        width: 100%;
+                                        padding: 10px 12px;
+                                        background: rgba(255,255,255,0.05);
+                                        border: 1px solid rgba(255,255,255,0.08);
+                                        border-radius: 8px;
+                                        color: #fff;
+                                        font-size: 0.9rem;
+                                    ">
+                                        <option value="phone">Phone Number</option>
+                                        <option value="account">Account Number</option>
+                                        <option value="both">Both (Phone & Account)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">
+                                        Enter <span id="sendToLabel">Phone Number</span> <span class="required">*</span>
+                                    </label>
+                                    <input type="text" id="sendToValue" name="send_to_value" 
+                                           placeholder="e.g. 0772 123 456" 
+                                           style="
+                                               width: 100%;
+                                               padding: 10px 12px;
+                                               background: rgba(255,255,255,0.05);
+                                               border: 1px solid rgba(255,255,255,0.08);
+                                               border-radius: 8px;
+                                               color: #fff;
+                                               font-size: 0.9rem;
+                                           " required>
+                                    <div id="sendToHint" style="font-size: 0.65rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
+                                        <i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Secondary field for "both" option -->
+                            <div id="sendToSecondaryContainer" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">
+                                    Account Number <span class="required">*</span>
+                                </label>
+                                <input type="text" id="sendToSecondaryValue" name="send_to_secondary_value" 
+                                       placeholder="e.g. 1234567890" 
+                                       style="
+                                           width: 100%;
+                                           padding: 10px 12px;
+                                           background: rgba(255,255,255,0.05);
+                                           border: 1px solid rgba(255,255,255,0.08);
+                                           border-radius: 8px;
+                                           color: #fff;
+                                           font-size: 0.9rem;
+                                       ">
+                                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
+                                    <i class="fas fa-info-circle"></i> Enter the account number (e.g., Mobile Money account, Bank account)
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -102,7 +193,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Loan Term</label>
-                        <input type="text" value="1 Month (30 Days)" disabled class="disabled-input" style="color: #f5c542;">
+                        <input type="text" id="displayTerm" value="1 Month (30 Days)" disabled class="disabled-input" style="color: #f5c542;">
                     </div>
                     <div class="form-group">
                         <label>Due Date</label>
@@ -130,16 +221,28 @@
                         <span class="summary-value" id="displayRate">0%</span>
                     </div>
                     <div class="summary-item">
-                        <span class="summary-label">Interest Amount</span>
+                        <span class="summary-label">Total Interest</span>
                         <span class="summary-value" id="displayInterest">UGX 0</span>
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Total Due</span>
                         <span class="summary-value" id="displayTotal">UGX 0</span>
                     </div>
-                    <div class="summary-item" style="grid-column: span 2;">
-                        <span class="summary-label">Due Date (30 Days from Application)</span>
+                    <div class="summary-item" style="grid-column: span 1;">
+                        <span class="summary-label">Duration</span>
+                        <span class="summary-value" id="displaySummaryDuration" style="color: #f5c542;">1 Month</span>
+                    </div>
+                    <div class="summary-item" style="grid-column: span 1;">
+                        <span class="summary-label">Due Date</span>
                         <span class="summary-value" style="color: #ff6b6b;" id="displayDueDateSummary">{{ due_date_formatted }}</span>
+                    </div>
+                    <div class="summary-item" style="grid-column: span 2; background: rgba(0,224,255,0.04); border-radius: 8px; border: 1px solid rgba(0,224,255,0.08); padding: 10px 14px;">
+                        <span class="summary-label">Disbursement Method</span>
+                        <span class="summary-value" id="displayDisbursement" style="color: #4ade80; font-size: 0.9rem;">Not selected</span>
+                    </div>
+                    <div class="summary-item" style="grid-column: span 2; background: rgba(74,222,128,0.04); border-radius: 8px; border: 1px solid rgba(74,222,128,0.08); padding: 10px 14px;">
+                        <span class="summary-label">Send Money To</span>
+                        <span class="summary-value" id="displaySendTo" style="color: #fbbf24; font-size: 0.9rem;">Not specified</span>
                     </div>
                 </div>
 
@@ -149,8 +252,11 @@
                         <i class="fas fa-info-circle" style="color: #00e0ff;"></i>
                         <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
                             <strong style="color: #f5c542;">Flexible Installments:</strong> 
-                            You can pay in multiple installments during the month. 
+                            You can pay in multiple installments during the loan period. 
                             <span style="color: #4ade80;">Full amount must be cleared by the due date.</span>
+                            <span id="interestInfoText" style="display: block; margin-top: 4px; color: #f5c542; font-size: 0.8rem;">
+                                <i class="fas fa-calculator"></i> Interest compounds monthly for the first 3 months.
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -170,29 +276,39 @@
                             <tr>
                                 <th>Loan Amount (UGX)</th>
                                 <th>Monthly Interest Rate</th>
-                                <th>Example (on 500,000)</th>
+                                <th>1 Month</th>
+                                <th>2 Months (Compound)</th>
+                                <th>3 Months (Compound)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td>10,000 - 1,999,999</td>
                                 <td><span class="rate-badge rate-5">5%</span></td>
-                                <td style="font-size:0.75rem; color:rgba(255,255,255,0.3);">25,000 interest</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">25,000</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">51,250</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">78,813</td>
                             </tr>
                             <tr>
                                 <td>2,000,000 - 4,999,999</td>
                                 <td><span class="rate-badge rate-3">3%</span></td>
-                                <td style="font-size:0.75rem; color:rgba(255,255,255,0.3);">15,000 interest</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">15,000</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">30,450</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">46,364</td>
                             </tr>
                             <tr>
                                 <td>5,000,000 - 9,999,999</td>
                                 <td><span class="rate-badge rate-2">2%</span></td>
-                                <td style="font-size:0.75rem; color:rgba(255,255,255,0.3);">10,000 interest</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">10,000</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">20,200</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">30,608</td>
                             </tr>
                             <tr>
                                 <td>10,000,000 and above</td>
                                 <td><span class="rate-badge rate-1">1%</span></td>
-                                <td style="font-size:0.75rem; color:rgba(255,255,255,0.3);">5,000 interest</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">5,000</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">10,050</td>
+                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">15,151</td>
                             </tr>
                         </tbody>
                     </table>
@@ -200,151 +316,152 @@
                         <i class="fas fa-info-circle"></i>
                         <strong>How It Works:</strong>
                         <ul style="margin: 8px 0 0 0; padding-left: 20px; color: rgba(255,255,255,0.4);">
-                            <li>Loan is for <strong>1 month (30 days)</strong></li>
-                            <li>Interest is calculated once: <strong>Principal × Monthly Rate</strong></li>
-                            <li>Total due = <strong>Principal + Interest</strong></li>
-                            <li>You can pay in <strong>multiple installments</strong> during the 30-day period</li>
-                            <li>Full amount <strong>must be paid by the due date</strong> (30 days from approval)</li>
+                            <li>Loan is for <strong>1 to 6 months</strong> (30 to 180 days)</li>
+                            <li>Interest <strong>compounds monthly</strong> for the first 3 months</li>
+                            <li><strong>No interest</strong> charged for months 4, 5, and 6</li>
+                            <li>Total due = <strong>Principal + Total Compound Interest</strong></li>
+                            <li>You can pay in <strong>multiple installments</strong> during the loan period</li>
+                            <li>Full amount <strong>must be paid by the due date</strong></li>
                             <li>Late payment may incur additional penalties</li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-       <!-- SECTION 5: Guarantor Information -->
-<div class="form-section" id="guarantorSection">
-    <div class="section-title">
-        <span class="section-number">5</span>
-        <h3>Guarantor Information</h3>
-        <span class="section-divider"></span>
-    </div>
-    
-    <!-- Guarantor Requirement Notice -->
-    <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
-    
-    <!-- Guarantor 1 -->
-    <div class="guarantor-block">
-        <div class="guarantor-header">
-            <span class="guarantor-number">Guarantor 1</span>
-            <span class="guarantor-required" style="display: none;">Required *</span>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group full-width">
-                <label for="guarantor1Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
-                <div class="member-search-container">
-                    <input type="text" id="guarantor1Search" 
-                           placeholder="Type member name or SACCO number to search..."
-                           class="member-search-input"
-                           autocomplete="off">
-                    <div id="guarantor1Results" class="member-search-results"></div>
+            <!-- SECTION 5: Guarantor Information -->
+            <div class="form-section" id="guarantorSection">
+                <div class="section-title">
+                    <span class="section-number">5</span>
+                    <h3>Guarantor Information</h3>
+                    <span class="section-divider"></span>
+                </div>
+                
+                <!-- Guarantor Requirement Notice -->
+                <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
+                
+                <!-- Guarantor 1 -->
+                <div class="guarantor-block">
+                    <div class="guarantor-header">
+                        <span class="guarantor-number">Guarantor 1</span>
+                        <span class="guarantor-required" style="display: none;">Required *</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor1Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <div class="member-search-container">
+                                <input type="text" id="guarantor1Search" 
+                                       placeholder="Type member name or SACCO number to search..."
+                                       class="member-search-input"
+                                       autocomplete="off">
+                                <div id="guarantor1Results" class="member-search-results"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields to store selected member data -->
+                    <input type="hidden" id="guarantor1Id" name="guarantor1_id">
+                    <input type="hidden" id="guarantor1Name" name="guarantor1_name">
+                    <input type="hidden" id="guarantor1Phone" name="guarantor1_phone">
+                    <input type="hidden" id="guarantor1Email" name="guarantor1_email">
+                    
+                    <!-- Selected Member Display -->
+                    <div id="guarantor1Selected" class="selected-member" style="display: none;">
+                        <div class="selected-member-info">
+                            <span class="selected-member-name" id="g1DisplayName"></span>
+                            <span class="selected-member-details" id="g1DisplayDetails"></span>
+                        </div>
+                        <button type="button" class="remove-member-btn" onclick="clearGuarantor(1)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="form-row" style="margin-top: 12px;">
+                        <div class="form-group full-width">
+                            <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
+                                <option value="">Select Relationship</option>
+                                <option value="family">Family Member</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="business_partner">Business Partner</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider between guarantors -->
+                <div class="guarantor-divider">
+                    <span>AND</span>
+                </div>
+
+                <!-- Guarantor 2 -->
+                <div class="guarantor-block">
+                    <div class="guarantor-header">
+                        <span class="guarantor-number">Guarantor 2</span>
+                        <span class="guarantor-required" style="display: none;">Required *</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="guarantor2Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <div class="member-search-container">
+                                <input type="text" id="guarantor2Search" 
+                                       placeholder="Type member name or SACCO number to search..."
+                                       class="member-search-input"
+                                       autocomplete="off">
+                                <div id="guarantor2Results" class="member-search-results"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields to store selected member data -->
+                    <input type="hidden" id="guarantor2Id" name="guarantor2_id">
+                    <input type="hidden" id="guarantor2Name" name="guarantor2_name">
+                    <input type="hidden" id="guarantor2Phone" name="guarantor2_phone">
+                    <input type="hidden" id="guarantor2Email" name="guarantor2_email">
+                    
+                    <!-- Selected Member Display -->
+                    <div id="guarantor2Selected" class="selected-member" style="display: none;">
+                        <div class="selected-member-info">
+                            <span class="selected-member-name" id="g2DisplayName"></span>
+                            <span class="selected-member-details" id="g2DisplayDetails"></span>
+                        </div>
+                        <button type="button" class="remove-member-btn" onclick="clearGuarantor(2)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="form-row" style="margin-top: 12px;">
+                        <div class="form-group full-width">
+                            <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
+                            <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
+                                <option value="">Select Relationship</option>
+                                <option value="family">Family Member</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="business_partner">Business Partner</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guarantor Terms -->
+                <div class="guarantor-terms">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <strong>Guarantor Agreement:</strong>
+                        By providing guarantor information, you confirm that:
+                        <ul>
+                            <li>Both guarantors are different individuals (cannot be the same person)</li>
+                            <li>Guarantors will be contacted manually by the SACCO team</li>
+                            <li>Guarantors are responsible for repayment if you default</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Hidden fields to store selected member data -->
-        <input type="hidden" id="guarantor1Id" name="guarantor1_id">
-        <input type="hidden" id="guarantor1Name" name="guarantor1_name">
-        <input type="hidden" id="guarantor1Phone" name="guarantor1_phone">
-        <input type="hidden" id="guarantor1Email" name="guarantor1_email">
-        
-        <!-- Selected Member Display -->
-        <div id="guarantor1Selected" class="selected-member" style="display: none;">
-            <div class="selected-member-info">
-                <span class="selected-member-name" id="g1DisplayName"></span>
-                <span class="selected-member-details" id="g1DisplayDetails"></span>
-            </div>
-            <button type="button" class="remove-member-btn" onclick="clearGuarantor(1)">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="form-row" style="margin-top: 12px;">
-            <div class="form-group full-width">
-                <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
-                    <option value="">Select Relationship</option>
-                    <option value="family">Family Member</option>
-                    <option value="friend">Friend</option>
-                    <option value="colleague">Colleague</option>
-                    <option value="business_partner">Business Partner</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <!-- Divider between guarantors -->
-    <div class="guarantor-divider">
-        <span>AND</span>
-    </div>
-
-    <!-- Guarantor 2 -->
-    <div class="guarantor-block">
-        <div class="guarantor-header">
-            <span class="guarantor-number">Guarantor 2</span>
-            <span class="guarantor-required" style="display: none;">Required *</span>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group full-width">
-                <label for="guarantor2Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
-                <div class="member-search-container">
-                    <input type="text" id="guarantor2Search" 
-                           placeholder="Type member name or SACCO number to search..."
-                           class="member-search-input"
-                           autocomplete="off">
-                    <div id="guarantor2Results" class="member-search-results"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Hidden fields to store selected member data -->
-        <input type="hidden" id="guarantor2Id" name="guarantor2_id">
-        <input type="hidden" id="guarantor2Name" name="guarantor2_name">
-        <input type="hidden" id="guarantor2Phone" name="guarantor2_phone">
-        <input type="hidden" id="guarantor2Email" name="guarantor2_email">
-        
-        <!-- Selected Member Display -->
-        <div id="guarantor2Selected" class="selected-member" style="display: none;">
-            <div class="selected-member-info">
-                <span class="selected-member-name" id="g2DisplayName"></span>
-                <span class="selected-member-details" id="g2DisplayDetails"></span>
-            </div>
-            <button type="button" class="remove-member-btn" onclick="clearGuarantor(2)">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="form-row" style="margin-top: 12px;">
-            <div class="form-group full-width">
-                <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
-                    <option value="">Select Relationship</option>
-                    <option value="family">Family Member</option>
-                    <option value="friend">Friend</option>
-                    <option value="colleague">Colleague</option>
-                    <option value="business_partner">Business Partner</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <!-- Guarantor Terms -->
-    <div class="guarantor-terms">
-        <i class="fas fa-shield-alt"></i>
-        <div>
-            <strong>Guarantor Agreement:</strong>
-            By providing guarantor information, you confirm that:
-            <ul>
-                <li>Both guarantors are different individuals (cannot be the same person)</li>
-                <li>Guarantors will be contacted manually by the SACCO team</li>
-                <li>Guarantors are responsible for repayment if you default</li>
-            </ul>
-        </div>
-    </div>
-</div>
 
             <!-- SECTION 6: Declaration -->
             <div class="form-section">
@@ -364,11 +481,12 @@
                             I understand that:
                         </p>
                         <ul>
-                            <li>This is a <strong>1-month (30-day) loan</strong></li>
-                            <li>Interest is calculated once: <strong>Principal × Monthly Rate</strong></li>
-                            <li>Total due = <strong>Principal + Interest</strong></li>
-                            <li>I can pay in <strong>multiple installments</strong> during the 30-day period</li>
-                            <li>Full amount <strong>must be paid by the due date</strong> (30 days from approval/disbursement)</li>
+                            <li>This is a <strong>1 to 6 month</strong> loan (30 to 180 days)</li>
+                            <li>Interest <strong>compounds monthly</strong> for the first 3 months</li>
+                            <li><strong>No interest</strong> is charged beyond 3 months</li>
+                            <li>Total due = <strong>Principal + Total Compound Interest</strong></li>
+                            <li>I can pay in <strong>multiple installments</strong> during the loan period</li>
+                            <li>Full amount <strong>must be paid by the due date</strong></li>
                             <li>Late payment may result in penalties and action against my savings and guarantors</li>
                         </ul>
                     </div>
@@ -421,7 +539,7 @@
                 <span id="summaryPrincipal" style="color:#4ade80; font-weight:600;"></span>
             </div>
             <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Interest:</span>
+                <span>Total Interest:</span>
                 <span id="summaryInterest" style="color:#f5c542; font-weight:600;"></span>
             </div>
             <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
@@ -429,8 +547,20 @@
                 <span id="summaryTotal" style="color:#ff6b6b; font-weight:600;"></span>
             </div>
             <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Due Date (30 days):</span>
+                <span>Duration:</span>
+                <span id="summaryDuration" style="color:#f5c542; font-weight:600;"></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
+                <span>Due Date:</span>
                 <span id="summaryDueDate" style="color:#f5c542; font-weight:600;"></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
+                <span>Disbursement:</span>
+                <span id="summaryDisbursement" style="color:#4ade80; font-weight:600;"></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
+                <span>Send Money To:</span>
+                <span id="summarySendTo" style="color:#fbbf24; font-weight:600;"></span>
             </div>
         </div>
         <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 8px;" id="successDetails">
@@ -477,27 +607,199 @@ let selectedGuarantors = { 1: null, 2: null };
 let searchTimeout = { 1: null, 2: null };
 
 // ============================================
-// INITIALIZATION
+// SEND TO FIELD FUNCTIONS
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Update due date display
-    const displayDueDate = document.getElementById('displayDueDate');
-    const displayDueDateSummary = document.getElementById('displayDueDateSummary');
-    if (displayDueDate) displayDueDate.value = dueDateFormatted;
-    if (displayDueDateSummary) displayDueDateSummary.textContent = dueDateFormatted;
+function toggleSendToFields() {
+    const sendToType = document.getElementById('sendToType').value;
+    const label = document.getElementById('sendToLabel');
+    const hint = document.getElementById('sendToHint');
+    const secondaryContainer = document.getElementById('sendToSecondaryContainer');
+    const secondaryInput = document.getElementById('sendToSecondaryValue');
+    const mainInput = document.getElementById('sendToValue');
     
-    // Initial guarantor check
-    checkGuarantorRequirement(0);
+    if (sendToType === 'phone') {
+        label.textContent = 'Phone Number';
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent (e.g., 0772 123 456)';
+        secondaryContainer.style.display = 'none';
+        secondaryInput.removeAttribute('required');
+        mainInput.placeholder = 'e.g. 0772 123 456';
+        mainInput.setAttribute('required', 'required');
+    } else if (sendToType === 'account') {
+        label.textContent = 'Account Number';
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the account number where the money should be sent (e.g., 1234567890)';
+        secondaryContainer.style.display = 'none';
+        secondaryInput.removeAttribute('required');
+        mainInput.placeholder = 'e.g. 1234567890';
+        mainInput.setAttribute('required', 'required');
+    } else if (sendToType === 'both') {
+        label.textContent = 'Phone Number';
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter your phone number';
+        secondaryContainer.style.display = 'block';
+        secondaryInput.setAttribute('required', 'required');
+        mainInput.placeholder = 'e.g. 0772 123 456';
+        mainInput.setAttribute('required', 'required');
+    }
     
-    // Setup search listeners
-    setupSearchListeners();
+    // Update summary
+    updateSendToSummary();
+}
+
+function updateSendToSummary() {
+    const sendToType = document.getElementById('sendToType').value;
+    const mainValue = document.getElementById('sendToValue').value;
+    const secondaryValue = document.getElementById('sendToSecondaryValue').value;
+    const display = document.getElementById('displaySendTo');
     
-    console.log('✅ Loan Application Form initialized.');
-    console.log('📊 Member Savings:', memberSavings);
-    console.log('📊 95% of Savings:', savingsThreshold);
-    console.log('📅 Due Date (30 days from now):', dueDateFormatted);
-});
+    const typeLabels = {
+        'phone': '📱 Phone',
+        'account': '🏦 Account',
+        'both': '📱 + 🏦'
+    };
+    
+    if (sendToType === 'both') {
+        display.textContent = typeLabels[sendToType] + ': ' + mainValue + ' | ' + secondaryValue;
+    } else if (mainValue) {
+        display.textContent = typeLabels[sendToType] + ': ' + mainValue;
+    } else {
+        display.textContent = 'Not specified';
+    }
+}
+
+// ============================================
+// DISBURSEMENT SELECTION
+// ============================================
+
+function selectDisbursement(method, element) {
+    // Remove selection from all
+    document.querySelectorAll('#disbursementMobileMoney, #disbursementBank, #disbursementCash, #disbursementOther').forEach(el => {
+        el.style.borderColor = 'rgba(255,255,255,0.08)';
+        el.style.background = 'rgba(255,255,255,0.03)';
+    });
+    
+    // Highlight selected
+    element.style.borderColor = '#00e0ff';
+    element.style.background = 'rgba(0,224,255,0.06)';
+    
+    // Set hidden value
+    document.getElementById('disbursementMethod').value = method;
+    
+    // Show/hide other input
+    if (method === 'other') {
+        document.getElementById('otherDisbursementContainer').style.display = 'block';
+        document.getElementById('otherDisbursementText').setAttribute('required', 'required');
+    } else {
+        document.getElementById('otherDisbursementContainer').style.display = 'none';
+        document.getElementById('otherDisbursementText').removeAttribute('required');
+    }
+    
+    // Update summary
+    const display = document.getElementById('displayDisbursement');
+    if (display) {
+        const labels = {
+            'mobile_money': '📱 Mobile Money',
+            'bank': '🏦 Bank Account',
+            'cash': '💵 Cash Pickup',
+            'other': '📝 Other'
+        };
+        display.textContent = labels[method] || 'Not selected';
+    }
+}
+
+// ============================================
+// LOAN CALCULATIONS WITH COMPOUND INTEREST
+// ============================================
+
+function getInterestRate(amount) {
+    if (amount >= 10000 && amount <= 1999999) {
+        return { rate: 5, tier: '5%' };
+    } else if (amount >= 2000000 && amount <= 4999999) {
+        return { rate: 3, tier: '3%' };
+    } else if (amount >= 5000000 && amount <= 9999999) {
+        return { rate: 2, tier: '2%' };
+    } else if (amount >= 10000000) {
+        return { rate: 1, tier: '1%' };
+    }
+    return { rate: 0, tier: '0%' };
+}
+
+function calculateCompoundInterest(principal, monthlyRate, months) {
+    const rate = monthlyRate / 100;
+    let amount = principal;
+    for (let i = 0; i < months; i++) {
+        amount = amount * (1 + rate);
+    }
+    const totalInterest = amount - principal;
+    return { totalAmount: amount, totalInterest: totalInterest };
+}
+
+function calculateRepayment() {
+    const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+    const durationMonths = parseInt(document.getElementById('loanDuration').value) || 1;
+    const summaryDiv = document.getElementById('repaymentSummary');
+    
+    if (amount >= 10000 && amount <= 10000000) {
+        const interestInfo = getInterestRate(amount);
+        const monthlyRate = interestInfo.rate;
+        const interestMonths = Math.min(durationMonths, 3);
+        
+        let totalInterest = 0;
+        let totalDue = 0;
+        
+        if (interestMonths > 0 && monthlyRate > 0) {
+            const result = calculateCompoundInterest(amount, monthlyRate, interestMonths);
+            totalInterest = result.totalInterest;
+            totalDue = result.totalAmount;
+        } else {
+            totalDue = amount;
+            totalInterest = 0;
+        }
+        
+        summaryDiv.style.display = 'block';
+        
+        const formatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0 });
+        
+        document.getElementById('displayAmount').textContent = 'UGX ' + formatter.format(amount);
+        document.getElementById('displayRate').textContent = monthlyRate > 0 ? monthlyRate + '% (monthly)' : '0%';
+        document.getElementById('displayInterest').textContent = 'UGX ' + formatter.format(Math.round(totalInterest));
+        document.getElementById('displayTotal').textContent = 'UGX ' + formatter.format(Math.round(totalDue));
+        
+        const durationLabels = ['', '1 Month (30 days)', '2 Months (60 days)', '3 Months (90 days)', '4 Months (120 days)', '5 Months (150 days)', '6 Months (180 days)'];
+        document.getElementById('displayTerm').value = durationLabels[durationMonths] || durationMonths + ' Months';
+        document.getElementById('displaySummaryDuration').textContent = durationLabels[durationMonths] || durationMonths + ' Months';
+        
+        const interestNote = document.getElementById('interestNote');
+        if (durationMonths <= 3) {
+            interestNote.innerHTML = `<i class="fas fa-calculator"></i> Interest compounds monthly for ${durationMonths} month${durationMonths > 1 ? 's' : ''}. Total: ${monthlyRate}% per month = ${Math.round(totalInterest).toLocaleString()} UGX interest.`;
+        } else {
+            interestNote.innerHTML = `<i class="fas fa-check-circle" style="color: #4ade80;"></i> Interest applies for first 3 months only (${durationMonths - 3} month${durationMonths - 3 > 1 ? 's' : ''} interest-free). Total: ${Math.round(totalInterest).toLocaleString()} UGX interest.`;
+        }
+        
+        const interestInfoText = document.getElementById('interestInfoText');
+        if (interestInfoText) {
+            if (durationMonths <= 3) {
+                interestInfoText.innerHTML = `<i class="fas fa-calculator"></i> Interest compounds monthly for ${durationMonths} month${durationMonths > 1 ? 's' : ''}. Total interest: UGX ${Math.round(totalInterest).toLocaleString()}`;
+            } else {
+                interestInfoText.innerHTML = `<i class="fas fa-check-circle" style="color: #4ade80;"></i> Interest on first 3 months only. ${durationMonths - 3} month${durationMonths - 3 > 1 ? 's' : ''} interest-free! Total interest: UGX ${Math.round(totalInterest).toLocaleString()}`;
+            }
+        }
+        
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + (durationMonths * 30));
+        const dueDateStr = dueDate.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        document.getElementById('displayDueDate').value = dueDateStr;
+        document.getElementById('displayDueDateSummary').textContent = dueDateStr;
+        
+        checkGuarantorRequirement(amount);
+    } else {
+        summaryDiv.style.display = 'none';
+    }
+}
 
 // ============================================
 // SEARCH GUARANTOR MEMBERS (SERVER-SIDE)
@@ -507,19 +809,16 @@ function searchGuarantorMembers(searchTerm, guarantorNumber) {
     const resultsContainer = document.getElementById('guarantor' + guarantorNumber + 'Results');
     if (!resultsContainer) return;
     
-    // Clear previous timeout
     if (searchTimeout[guarantorNumber]) {
         clearTimeout(searchTimeout[guarantorNumber]);
     }
     
-    // If search term is empty or too short, hide results
     if (!searchTerm || searchTerm.trim().length < 1) {
         resultsContainer.classList.remove('show');
         resultsContainer.innerHTML = '';
         return;
     }
     
-    // Show loading
     resultsContainer.innerHTML = `
         <div style="padding: 12px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.85rem;">
             <i class="fas fa-spinner fa-spin"></i> Searching...
@@ -527,7 +826,6 @@ function searchGuarantorMembers(searchTerm, guarantorNumber) {
     `;
     resultsContainer.classList.add('show');
     
-    // Debounce search
     searchTimeout[guarantorNumber] = setTimeout(() => {
         const url = '/member/search-members?q=' + encodeURIComponent(searchTerm.trim());
         
@@ -553,7 +851,6 @@ function searchGuarantorMembers(searchTerm, guarantorNumber) {
                     return;
                 }
                 
-                // Build results HTML
                 let html = '';
                 data.members.forEach(member => {
                     html += `
@@ -582,7 +879,7 @@ function searchGuarantorMembers(searchTerm, guarantorNumber) {
                     </div>
                 `;
             });
-    }, 300); // 300ms debounce
+    }, 300);
 }
 
 // ============================================
@@ -590,43 +887,25 @@ function searchGuarantorMembers(searchTerm, guarantorNumber) {
 // ============================================
 
 function setupSearchListeners() {
-    // Guarantor 1 search
-    const search1 = document.getElementById('guarantor1Search');
-    if (search1) {
-        search1.addEventListener('input', function() {
-            searchGuarantorMembers(this.value, 1);
-        });
-        search1.addEventListener('blur', function() {
-            setTimeout(() => {
-                const results = document.getElementById('guarantor1Results');
-                if (results) results.classList.remove('show');
-            }, 300);
-        });
-        search1.addEventListener('focus', function() {
-            if (this.value.length >= 1) {
-                searchGuarantorMembers(this.value, 1);
-            }
-        });
-    }
-    
-    // Guarantor 2 search
-    const search2 = document.getElementById('guarantor2Search');
-    if (search2) {
-        search2.addEventListener('input', function() {
-            searchGuarantorMembers(this.value, 2);
-        });
-        search2.addEventListener('blur', function() {
-            setTimeout(() => {
-                const results = document.getElementById('guarantor2Results');
-                if (results) results.classList.remove('show');
-            }, 300);
-        });
-        search2.addEventListener('focus', function() {
-            if (this.value.length >= 1) {
-                searchGuarantorMembers(this.value, 2);
-            }
-        });
-    }
+    [1, 2].forEach(num => {
+        const search = document.getElementById('guarantor' + num + 'Search');
+        if (search) {
+            search.addEventListener('input', function() {
+                searchGuarantorMembers(this.value, num);
+            });
+            search.addEventListener('blur', function() {
+                setTimeout(() => {
+                    const results = document.getElementById('guarantor' + num + 'Results');
+                    if (results) results.classList.remove('show');
+                }, 300);
+            });
+            search.addEventListener('focus', function() {
+                if (this.value.length >= 1) {
+                    searchGuarantorMembers(this.value, num);
+                }
+            });
+        }
+    });
 }
 
 // ============================================
@@ -634,23 +913,19 @@ function setupSearchListeners() {
 // ============================================
 
 function selectGuarantor(number, id, name, saccoNumber, phone, email) {
-    // Check if this member is already selected as the other guarantor
     const otherNumber = number === 1 ? 2 : 1;
     if (selectedGuarantors[otherNumber] && selectedGuarantors[otherNumber].id === id) {
         showError('This member is already selected as Guarantor ' + otherNumber + '. Please choose a different member.');
         return;
     }
     
-    // Store selected member
     selectedGuarantors[number] = { id, name, phone, email };
     
-    // Update hidden fields
     document.getElementById('guarantor' + number + 'Id').value = id;
     document.getElementById('guarantor' + number + 'Name').value = name;
     document.getElementById('guarantor' + number + 'Phone').value = phone || '';
     document.getElementById('guarantor' + number + 'Email').value = email || '';
     
-    // Hide search input, show selected member
     const searchInput = document.getElementById('guarantor' + number + 'Search');
     const resultsContainer = document.getElementById('guarantor' + number + 'Results');
     const selectedDisplay = document.getElementById('guarantor' + number + 'Selected');
@@ -661,7 +936,6 @@ function selectGuarantor(number, id, name, saccoNumber, phone, email) {
         resultsContainer.innerHTML = '';
     }
     
-    // Display selected member
     const displayName = document.getElementById('g' + number + 'DisplayName');
     const displayDetails = document.getElementById('g' + number + 'DisplayDetails');
     
@@ -675,7 +949,6 @@ function selectGuarantor(number, id, name, saccoNumber, phone, email) {
     }
     if (selectedDisplay) selectedDisplay.style.display = 'flex';
     
-    // Enable relationship dropdown
     const relationship = document.getElementById('guarantor' + number + 'Relationship');
     if (relationship) relationship.disabled = false;
 }
@@ -713,46 +986,6 @@ function clearGuarantor(number) {
 }
 
 // ============================================
-// LOAN CALCULATIONS
-// ============================================
-
-function getInterestRate(amount) {
-    if (amount >= 10000 && amount <= 1999999) {
-        return { rate: 5, tier: '5%' };
-    } else if (amount >= 2000000 && amount <= 4999999) {
-        return { rate: 3, tier: '3%' };
-    } else if (amount >= 5000000 && amount <= 9999999) {
-        return { rate: 2, tier: '2%' };
-    } else if (amount >= 10000000) {
-        return { rate: 1, tier: '1%' };
-    }
-    return { rate: 0, tier: '0%' };
-}
-
-function calculateRepayment() {
-    const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    const summaryDiv = document.getElementById('repaymentSummary');
-    
-    if (amount >= 10000 && amount <= 10000000) {
-        const interestInfo = getInterestRate(amount);
-        const monthlyRate = interestInfo.rate / 100;
-        const interestAmount = amount * monthlyRate;
-        const totalDue = amount + interestAmount;
-        
-        summaryDiv.style.display = 'block';
-        
-        document.getElementById('displayAmount').textContent = 'UGX ' + amount.toLocaleString();
-        document.getElementById('displayRate').textContent = interestInfo.tier + ' (monthly)';
-        document.getElementById('displayInterest').textContent = 'UGX ' + Math.round(interestAmount).toLocaleString();
-        document.getElementById('displayTotal').textContent = 'UGX ' + Math.round(totalDue).toLocaleString();
-        
-        checkGuarantorRequirement(amount);
-    } else {
-        summaryDiv.style.display = 'none';
-    }
-}
-
-// ============================================
 // GUARANTOR REQUIREMENT
 // ============================================
 
@@ -762,7 +995,6 @@ function checkGuarantorRequirement(amount) {
     const inputs = document.querySelectorAll('.guarantor-input');
     
     if (amount && amount > savingsThreshold) {
-        // Guarantors required
         if (guarantorNotice) {
             guarantorNotice.className = 'guarantor-notice requires-guarantor';
             guarantorNotice.innerHTML = `
@@ -777,7 +1009,6 @@ function checkGuarantorRequirement(amount) {
         requiredEls.forEach(el => el.style.display = 'inline');
         inputs.forEach(el => el.setAttribute('required', 'required'));
     } else {
-        // No guarantors required
         if (guarantorNotice) {
             guarantorNotice.className = 'guarantor-notice no-guarantor';
             guarantorNotice.innerHTML = `
@@ -801,7 +1032,7 @@ function validateGuarantors() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
     
     if (amount <= savingsThreshold) {
-        return true; // No guarantors needed
+        return true;
     }
     
     if (!selectedGuarantors[1]) {
@@ -843,6 +1074,14 @@ function submitLoanApplication(event) {
     event.preventDefault();
     
     const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+    const durationMonths = parseInt(document.getElementById('loanDuration').value) || 1;
+    const disbursementMethod = document.getElementById('disbursementMethod').value;
+    const otherDisbursement = document.getElementById('otherDisbursementText')?.value || '';
+    
+    // Get send-to details
+    const sendToType = document.getElementById('sendToType').value;
+    const sendToValue = document.getElementById('sendToValue').value.trim();
+    const sendToSecondaryValue = document.getElementById('sendToSecondaryValue').value.trim();
     
     if (loanAmount < 10000) {
         showError('Loan amount must be at least UGX 10,000.');
@@ -850,6 +1089,30 @@ function submitLoanApplication(event) {
     }
     if (loanAmount > 10000000) {
         showError('Loan amount cannot exceed UGX 10,000,000.');
+        return false;
+    }
+    
+    if (!disbursementMethod) {
+        showError('Please select a preferred disbursement method.');
+        return false;
+    }
+    
+    if (disbursementMethod === 'other' && !otherDisbursement.trim()) {
+        showError('Please specify your preferred disbursement method.');
+        return false;
+    }
+    
+    // Validate send-to field
+    if (!sendToValue) {
+        showError('Please enter where the money should be sent (' + 
+            (sendToType === 'phone' ? 'phone number' : 
+             sendToType === 'account' ? 'account number' : 
+             'phone number') + ').');
+        return false;
+    }
+    
+    if (sendToType === 'both' && !sendToSecondaryValue) {
+        showError('Please enter the account number for the second option.');
         return false;
     }
     
@@ -868,21 +1131,53 @@ function submitLoanApplication(event) {
         return false;
     }
     
+    // Calculate interest
     const interestInfo = getInterestRate(loanAmount);
-    const monthlyRate = interestInfo.rate / 100;
-    const interestAmount = loanAmount * monthlyRate;
-    const totalDue = loanAmount + interestAmount;
+    const monthlyRate = interestInfo.rate;
+    const interestMonths = Math.min(durationMonths, 3);
+    
+    let totalInterest = 0;
+    let totalDue = 0;
+    
+    if (interestMonths > 0 && monthlyRate > 0) {
+        const result = calculateCompoundInterest(loanAmount, monthlyRate, interestMonths);
+        totalInterest = result.totalInterest;
+        totalDue = result.totalAmount;
+    } else {
+        totalDue = loanAmount;
+        totalInterest = 0;
+    }
+    
+    // Calculate due date
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (durationMonths * 30));
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+    
+    // Build send-to details string
+    let sendToDisplay = '';
+    if (sendToType === 'phone') {
+        sendToDisplay = 'Phone: ' + sendToValue;
+    } else if (sendToType === 'account') {
+        sendToDisplay = 'Account: ' + sendToValue;
+    } else if (sendToType === 'both') {
+        sendToDisplay = 'Phone: ' + sendToValue + ' | Account: ' + sendToSecondaryValue;
+    }
     
     const formData = {
         loan_amount: loanAmount,
         purpose: purpose,
-        repayment_plan: 'monthly',
-        interest_rate: interestInfo.rate,
-        total_interest: Math.round(interestAmount),
+        loan_duration: durationMonths,
+        disbursement_method: disbursementMethod === 'other' ? 'other: ' + otherDisbursement : disbursementMethod,
+        send_to_type: sendToType,
+        send_to_value: sendToValue,
+        send_to_secondary: sendToSecondaryValue || '',
+        send_to_display: sendToDisplay,
+        interest_rate: monthlyRate,
+        total_interest: Math.round(totalInterest),
         total_repayment: Math.round(totalDue),
-        monthly_interest: Math.round(interestAmount),
-        tenure: 1,
-        due_date: dueDateISO
+        monthly_interest: Math.round(monthlyRate > 0 ? (loanAmount * monthlyRate / 100) : 0),
+        tenure: durationMonths,
+        due_date: dueDateStr
     };
     
     if (loanAmount > savingsThreshold) {
@@ -917,9 +1212,29 @@ function submitLoanApplication(event) {
         if (data.success) {
             document.getElementById('applicationRef').textContent = data.loan_number || 'LN-2026-XXXX';
             document.getElementById('summaryPrincipal').textContent = 'UGX ' + loanAmount.toLocaleString();
-            document.getElementById('summaryInterest').textContent = 'UGX ' + Math.round(interestAmount).toLocaleString();
+            document.getElementById('summaryInterest').textContent = 'UGX ' + Math.round(totalInterest).toLocaleString();
             document.getElementById('summaryTotal').textContent = 'UGX ' + Math.round(totalDue).toLocaleString();
-            document.getElementById('summaryDueDate').textContent = dueDateFormatted;
+            
+            const durationLabels = ['', '1 Month', '2 Months', '3 Months', '4 Months', '5 Months', '6 Months'];
+            document.getElementById('summaryDuration').textContent = durationLabels[durationMonths] || durationMonths + ' Months';
+            
+            const dueDisplay = new Date(dueDate).toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            document.getElementById('summaryDueDate').textContent = dueDisplay;
+            
+            const dispLabels = {
+                'mobile_money': '📱 Mobile Money',
+                'bank': '🏦 Bank Account',
+                'cash': '💵 Cash Pickup'
+            };
+            document.getElementById('summaryDisbursement').textContent = 
+                dispLabels[disbursementMethod] || '📝 ' + otherDisbursement;
+            
+            document.getElementById('summarySendTo').textContent = sendToDisplay;
             
             if (loanAmount <= savingsThreshold) {
                 document.getElementById('statusNotice').innerHTML = `
@@ -927,14 +1242,14 @@ function submitLoanApplication(event) {
                     <span>Status: <strong style="color:#4ade80;">No Guarantors Required</strong></span>
                 `;
                 document.getElementById('successDetails').textContent = 
-                    '1-month (30-day) loan. Total due: UGX ' + Math.round(totalDue).toLocaleString() + ' by ' + dueDateFormatted + '. You can pay in installments.';
+                    durationMonths + '-month loan. Total due: UGX ' + Math.round(totalDue).toLocaleString() + ' by ' + dueDisplay + '. Money will be sent to: ' + sendToDisplay;
             } else {
                 document.getElementById('statusNotice').innerHTML = `
                     <i class="fas fa-clock"></i>
                     <span>Status: <strong style="color:#f5c542;">PENDING - Awaiting Review</strong></span>
                 `;
                 document.getElementById('successDetails').textContent = 
-                    'The Treasurer will review your application and contact your guarantors manually.';
+                    'The Treasurer will review your application and contact your guarantors manually. Money will be sent to: ' + sendToDisplay;
             }
             
             document.getElementById('successModal').style.display = 'flex';
@@ -975,13 +1290,52 @@ function resetForm() {
         document.getElementById('guarantorNotice').style.display = 'none';
         clearGuarantor(1);
         clearGuarantor(2);
+        
+        // Reset disbursement selection
+        document.querySelectorAll('#disbursementMobileMoney, #disbursementBank, #disbursementCash, #disbursementOther').forEach(el => {
+            el.style.borderColor = 'rgba(255,255,255,0.08)';
+            el.style.background = 'rgba(255,255,255,0.03)';
+        });
+        document.getElementById('disbursementMethod').value = '';
+        document.getElementById('otherDisbursementContainer').style.display = 'none';
+        document.getElementById('displayDisbursement').textContent = 'Not selected';
+        
+        // Reset send-to fields
+        document.getElementById('sendToValue').value = '';
+        document.getElementById('sendToSecondaryValue').value = '';
+        document.getElementById('sendToType').value = 'phone';
+        document.getElementById('sendToSecondaryContainer').style.display = 'none';
+        document.getElementById('displaySendTo').textContent = 'Not specified';
+        document.getElementById('sendToLabel').textContent = 'Phone Number';
+        document.getElementById('sendToHint').innerHTML = '<i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent';
+        
+        document.getElementById('displayTerm').value = '1 Month (30 Days)';
+        document.getElementById('displayDueDate').value = dueDateFormatted;
+        document.getElementById('displayDueDateSummary').textContent = dueDateFormatted;
+        
+        calculateRepayment();
     }
 }
 
 function showTerms(event) {
     event.preventDefault();
-    alert('Terms and Conditions:\n\n1. This is a 1-month (30-day) loan.\n2. Interest is calculated once: Principal × Monthly Rate.\n3. Total due = Principal + Interest.\n4. You can pay in multiple installments during the 30-day period.\n5. Full amount must be paid by the due date.\n6. Late payment may result in penalties and action against savings and guarantors.');
+    alert('Terms and Conditions:\n\n1. This is a 1 to 6 month loan (30 to 180 days).\n2. Interest compounds monthly for the first 3 months.\n3. No interest is charged beyond 3 months.\n4. Total due = Principal + Total Compound Interest.\n5. You can pay in multiple installments during the loan period.\n6. Full amount must be paid by the due date.\n7. Late payment may result in penalties and action against savings and guarantors.');
 }
+
+// ============================================
+// EVENT LISTENERS FOR SEND-TO FIELDS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Send-to field listeners
+    document.getElementById('sendToValue').addEventListener('input', updateSendToSummary);
+    document.getElementById('sendToSecondaryValue').addEventListener('input', updateSendToSummary);
+    
+    // Initial setup
+    toggleSendToFields();
+    setupSearchListeners();
+    calculateRepayment();
+});
 </script>
 
 {% endblock %}

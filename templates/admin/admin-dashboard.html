@@ -291,9 +291,9 @@
                     <select id="filterLoanAmount" onchange="filterLoanApplications()" 
                             style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                         <option value="all">All Amounts</option>
-                        <option value="0-1000000">Below 1M</option>
-                        <option value="1000000-5000000">1M - 5M</option>
-                        <option value="5000000-10000000">5M - 10M</option>
+                        <option value="0-999999">Below 1M</option>
+                        <option value="1000000-4999999">Below 5M</option>
+                        <option value="5000000-99999999">Below10M</option>
                         <option value="10000000+">Above 10M</option>
                     </select>
                 </div>
@@ -1110,17 +1110,104 @@ function filterStaffUsers() {
 // ============================================================
 // DROPDOWN TOGGLE
 // ============================================================
+// ============================================================
+// TOGGLE DROPDOWN - Horizontal Layout
+// ============================================================
 function toggleDropdown(loanId) {
     const dropdown = document.getElementById('dropdown-' + loanId);
     if (!dropdown) return;
+    
+    // Close all other dropdowns
     document.querySelectorAll('.dropdown-menu').forEach(menu => {
         if (menu.id !== 'dropdown-' + loanId) {
             menu.style.display = 'none';
         }
     });
-    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    
+    // Toggle this dropdown
+    if (dropdown.style.display === 'flex') {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    // Get the button position
+    const btn = document.querySelector(`[onclick*="toggleDropdown('${loanId}')"]`);
+    if (!btn) {
+        dropdown.style.display = 'flex';
+        return;
+    }
+    
+    const rect = btn.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate menu dimensions
+    const menuWidth = dropdown.scrollWidth || 350;
+    const menuHeight = 50;
+    
+    // Position: Below the button, centered
+    let left = rect.left + (rect.width / 2) - (menuWidth / 2);
+    let top = rect.bottom + 8;
+    
+    // If menu would go off right edge, align to right
+    if (left + menuWidth > viewportWidth - 10) {
+        left = viewportWidth - menuWidth - 10;
+    }
+    
+    // If menu would go off left edge, align to left
+    if (left < 10) {
+        left = 10;
+    }
+    
+    // If menu would go off bottom, position above
+    if (top + menuHeight > viewportHeight - 10) {
+        top = rect.top - menuHeight - 8;
+    }
+    
+    // Apply position
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = top + 'px';
+    dropdown.style.display = 'flex';
+    dropdown.style.flexDirection = 'row';
+    dropdown.style.alignItems = 'center';
+    dropdown.style.gap = '6px';
+    
+    // Add animation
+    dropdown.style.animation = 'menuSlideDown 0.2s ease';
 }
 
+// ============================================================
+// CLOSE ALL DROPDOWNS
+// ============================================================
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+}
+
+// ============================================================
+// CLOSE DROPDOWNS ON OUTSIDE CLICK
+// ============================================================
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-btn') && !event.target.closest('.dropdown-menu')) {
+        closeAllDropdowns();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAllDropdowns();
+    }
+});
+
+window.addEventListener('scroll', function() {
+    closeAllDropdowns();
+});
+
+window.addEventListener('resize', function() {
+    closeAllDropdowns();
+});
 document.addEventListener('click', function(event) {
     if (!event.target.closest('.dropdown')) {
         document.querySelectorAll('.dropdown-menu').forEach(menu => {

@@ -8,6 +8,7 @@
 <div class="app-bar">
     <div class="app-bar-left">
         <h2><i class="fas fa-user-plus"></i> Register Staff User</h2>
+        <span>Create a new staff account</span>
     </div>
     <div class="app-bar-right">
         <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary">
@@ -16,35 +17,46 @@
     </div>
 </div>
 
-<!-- Main Content - Always visible -->
-<div style="padding: 24px 32px 40px;">
-    <div class="action-card" style="max-width: 700px; margin: 0 auto;">
-        <div class="action-title">
-            <i class="fas fa-user-shield"></i> New User Registration
-        </div>
+<!-- Main Content -->
+<div style="padding: 24px 32px 40px; max-width: 700px; margin: 0 auto;">
+
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 32px;">
         
         <form method="POST" action="{{ url_for('admin_register_user') }}">
-            <div class="form-group">
-                <label>Full Name <span style="color: #ff6b6b;">*</span></label>
+            
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Full Name <span style="color: #ff6b6b;">*</span>
+                </label>
                 <input type="text" name="full_name" class="form-control" required 
-                       placeholder="Enter full name">
+                       placeholder="Enter full name"
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
             </div>
             
-            <div class="form-group">
-                <label>Email Address <span style="color: #ff6b6b;">*</span></label>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Email Address <span style="color: #ff6b6b;">*</span>
+                </label>
                 <input type="email" name="email" class="form-control" required 
-                       placeholder="Enter email address">
+                       placeholder="Enter email address"
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
             </div>
             
-            <div class="form-group">
-                <label>Phone Number <span style="color: #ff6b6b;">*</span></label>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Phone Number <span style="color: #ff6b6b;">*</span>
+                </label>
                 <input type="tel" name="phone" class="form-control" required 
-                       placeholder="Enter phone number">
+                       placeholder="Enter phone number"
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
             </div>
             
-            <div class="form-group">
-                <label>Role <span style="color: #ff6b6b;">*</span></label>
-                <select name="role" class="form-control" required>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Role <span style="color: #ff6b6b;">*</span>
+                </label>
+                <select name="role" class="form-control" required 
+                        style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
                     <option value="">-- Select Role --</option>
                     <option value="treasurer">Treasurer</option>
                     <option value="secretary">Secretary</option>
@@ -58,23 +70,29 @@
                 </small>
             </div>
             
-            <div class="form-group">
-                <label>Password <span style="color: #ff6b6b;">*</span></label>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Password <span style="color: #ff6b6b;">*</span>
+                </label>
                 <input type="password" name="password" class="form-control" required 
-                       placeholder="Enter password (min 6 characters)" minlength="6">
+                       placeholder="Enter password (min 6 characters)" minlength="6"
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
             </div>
             
-            <div class="form-group">
-                <label>Confirm Password <span style="color: #ff6b6b;">*</span></label>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
+                    Confirm Password <span style="color: #ff6b6b;">*</span>
+                </label>
                 <input type="password" name="confirm_password" class="form-control" required 
-                       placeholder="Confirm password">
+                       placeholder="Confirm password"
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
             </div>
             
-            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-                <button type="submit" class="btn-primary">
+            <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                <button type="submit" class="btn-primary" style="flex:1; padding:12px; font-size: 1rem; justify-content:center;">
                     <i class="fas fa-save"></i> Register User
                 </button>
-                <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary">
+                <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary" style="flex:1; padding:12px; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:10px; font-weight:600;">
                     <i class="fas fa-times"></i> Cancel
                 </a>
             </div>

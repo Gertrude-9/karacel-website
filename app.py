@@ -9,6 +9,13 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import re
 import os
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from io import BytesIO
+from flask import send_file
 
 app = Flask(__name__)
 app.secret_key = "karacel_secret_key"
@@ -31,8 +38,147 @@ def get_db():
 def create_database():
     conn = get_db()
     cursor = conn.cursor()
-
-    # Create users table
+    
+    # ============================================================
+    # FIRST: CHECK AND ADD MISSING COLUMNS TO EXISTING TABLES
+    # ============================================================
+    # Check users table
+    cursor.execute("PRAGMA table_info(users)")
+    existing_columns = [col[1] for col in cursor.fetchall()]
+    
+    columns_to_add = {
+        'kai_shares': 'INTEGER DEFAULT 0',
+        'ks_shares': 'INTEGER DEFAULT 0',
+        'kac_paid': 'INTEGER DEFAULT 0',
+        'kac_paid_date': 'TEXT',
+        'registration_fee_paid': 'INTEGER DEFAULT 0',
+        'registration_fee_paid_date': 'TEXT'
+    }
+    
+    for col_name, col_type in columns_to_add.items():
+        if col_name not in existing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to users: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # Check system_settings table
+    cursor.execute("PRAGMA table_info(system_settings)")
+    existing_settings_columns = [col[1] for col in cursor.fetchall()]
+    
+    settings_columns_to_add = {
+        'kai_share_price': 'INTEGER DEFAULT 100000',
+        'ks_share_price': 'INTEGER DEFAULT 10000',
+        'kac_annual_fee': 'INTEGER DEFAULT 100000',
+        'registration_fee': 'INTEGER DEFAULT 20000'
+    }
+    
+    for col_name, col_type in settings_columns_to_add.items():
+        if col_name not in existing_settings_columns:
+            try:
+                cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to system_settings: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # Check savings_deposits table
+    cursor.execute("PRAGMA table_info(savings_deposits)")
+    existing_deposits_columns = [col[1] for col in cursor.fetchall()]
+    
+    deposits_columns_to_add = {
+        'savings_type': 'TEXT DEFAULT "KAI"',
+        'shares': 'INTEGER DEFAULT 0'
+    }
+    
+    for col_name, col_type in deposits_columns_to_add.items():
+        if col_name not in existing_deposits_columns:
+            try:
+                cursor.execute(f"ALTER TABLE savings_deposits ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to savings_deposits: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # Check repayments table
+    cursor.execute("PRAGMA table_info(repayments)")
+    existing_repayments_columns = [col[1] for col in cursor.fetchall()]
+    
+    repayments_columns_to_add = {
+        'interest_paid': 'REAL DEFAULT 0',
+        'principal_paid': 'REAL DEFAULT 0',
+        'balance_after': 'REAL DEFAULT 0',
+        'notes': 'TEXT'
+    }
+    
+    for col_name, col_type in repayments_columns_to_add.items():
+        if col_name not in existing_repayments_columns:
+            try:
+                cursor.execute(f"ALTER TABLE repayments ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to repayments: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # Check loans table
+    cursor.execute("PRAGMA table_info(loans)")
+    existing_loans_columns = [col[1] for col in cursor.fetchall()]
+    
+    loans_columns_to_add = {
+        'total_interest_accrued': 'REAL DEFAULT 0',
+        'principal_paid': 'REAL DEFAULT 0',
+        'interest_paid': 'REAL DEFAULT 0',
+        'months_paid': 'INTEGER DEFAULT 0',
+        'original_balance': 'REAL DEFAULT 0',
+        'total_interest_calculated': 'REAL DEFAULT 0',
+        'due_date': 'TEXT',
+        'application_fee': 'REAL DEFAULT 1000',
+        'application_fee_paid': 'INTEGER DEFAULT 0',
+        'net_loan_amount': 'REAL DEFAULT 0',
+        'loan_type': 'TEXT DEFAULT "standard"',
+        'disbursed_amount': 'REAL DEFAULT 0',
+        'total_fees_paid': 'REAL DEFAULT 0',
+        'total_penalties': 'REAL DEFAULT 0'
+    }
+    
+    for col_name, col_type in loans_columns_to_add.items():
+        if col_name not in existing_loans_columns:
+            try:
+                cursor.execute(f"ALTER TABLE loans ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to loans: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # ============================================================
+    # CHECK NOTIFICATIONS TABLE FOR MISSING COLUMNS
+    # ============================================================
+    cursor.execute("PRAGMA table_info(notifications)")
+    existing_notifications_columns = [col[1] for col in cursor.fetchall()]
+    
+    # Add missing columns to notifications if they don't exist
+    notifications_columns_to_add = {
+        'link': 'TEXT',
+        'is_read': 'INTEGER DEFAULT 0'
+    }
+    
+    # Check if 'type' column exists, if not add it
+    if 'type' not in existing_notifications_columns:
+        try:
+            cursor.execute("ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'")
+            print("✅ Added column to notifications: type")
+        except Exception as e:
+            print(f"⚠️ Could not add column type: {e}")
+    
+    for col_name, col_type in notifications_columns_to_add.items():
+        if col_name not in existing_notifications_columns:
+            try:
+                cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to notifications: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add column {col_name}: {e}")
+    
+    # ============================================================
+    # NOW CREATE TABLES IF THEY DON'T EXIST (with all columns)
+    # ============================================================
+    # Create users table with ALL savings type columns
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,131 +196,257 @@ def create_database():
         next_of_kin_name TEXT,
         relationship TEXT,
         next_of_kin_phone TEXT,
-        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        kai_shares INTEGER DEFAULT 0,
+        ks_shares INTEGER DEFAULT 0,
+        kac_paid INTEGER DEFAULT 0,
+        kac_paid_date TEXT,
+        registration_fee_paid INTEGER DEFAULT 0,
+        registration_fee_paid_date TEXT
     )
     """)
-
-    # Create loans table with all required columns
+    
+    # Create loans table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS loans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            loan_number TEXT UNIQUE NOT NULL,
-            user_id INTEGER NOT NULL,
-            amount REAL NOT NULL,
-            interest_rate REAL NOT NULL,
-            interest_amount REAL NOT NULL,
-            total_repayment REAL NOT NULL,
-            monthly_installment REAL NOT NULL,
-            tenure INTEGER DEFAULT 3,
-            purpose TEXT,
-            repayment_plan TEXT,
-            status TEXT DEFAULT 'pending',
-            application_date TEXT NOT NULL,
-            approved_date TEXT,
-            disbursed_date TEXT,
-            completed_date TEXT,
-            rejected_date TEXT,
-            rejection_reason TEXT,
-            admin_rejection_reason TEXT,
-            current_balance REAL DEFAULT 0,
-            interest_accrued REAL DEFAULT 0,
-            last_interest_date TEXT,
-            months_overdue INTEGER DEFAULT 0,
-            start_month INTEGER DEFAULT 0,
-            end_month INTEGER DEFAULT 12,
-            last_payment_date TEXT,
-            last_payment_amount REAL DEFAULT 0,
-            loan_start_date TEXT,
-            loan_end_date TEXT,
-            disbursement_date TEXT,
-            approved_by TEXT,
-            approved_by_role TEXT,
-            disbursed_by TEXT,
-            disbursed_by_role TEXT,
-            rejected_by TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-
-    # ============================================================
-# CREATE NOTIFICATIONS TABLE
-# ============================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notifications (
+    CREATE TABLE IF NOT EXISTS loans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_number TEXT UNIQUE NOT NULL,
         user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        notification_type TEXT DEFAULT 'general',
-        is_read INTEGER DEFAULT 0,
+        amount REAL NOT NULL,
+        interest_rate REAL NOT NULL,
+        interest_amount REAL NOT NULL,
+        total_repayment REAL NOT NULL,
+        monthly_installment REAL NOT NULL,
+        tenure INTEGER DEFAULT 3,
+        purpose TEXT,
+        repayment_plan TEXT,
+        status TEXT DEFAULT 'pending',
+        application_date TEXT NOT NULL,
+        approved_date TEXT,
+        disbursed_date TEXT,
+        completed_date TEXT,
+        rejected_date TEXT,
+        rejection_reason TEXT,
+        admin_rejection_reason TEXT,
+        current_balance REAL DEFAULT 0,
+        interest_accrued REAL DEFAULT 0,
+        last_interest_date TEXT,
+        months_overdue INTEGER DEFAULT 0,
+        start_month INTEGER DEFAULT 0,
+        end_month INTEGER DEFAULT 12,
+        last_payment_date TEXT,
+        last_payment_amount REAL DEFAULT 0,
+        loan_start_date TEXT,
+        loan_end_date TEXT,
+        disbursement_date TEXT,
+        approved_by TEXT,
+        approved_by_role TEXT,
+        disbursed_by TEXT,
+        disbursed_by_role TEXT,
+        rejected_by TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        total_interest_accrued REAL DEFAULT 0,
+        principal_paid REAL DEFAULT 0,
+        interest_paid REAL DEFAULT 0,
+        months_paid INTEGER DEFAULT 0,
+        original_balance REAL DEFAULT 0,
+        total_interest_calculated REAL DEFAULT 0,
+        due_date TEXT,
+        application_fee REAL DEFAULT 1000,
+        application_fee_paid INTEGER DEFAULT 0,
+        net_loan_amount REAL DEFAULT 0,
+        loan_type TEXT DEFAULT 'standard',
+        disbursed_amount REAL DEFAULT 0,
+        total_fees_paid REAL DEFAULT 0,
+        total_penalties REAL DEFAULT 0,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
-""")
+    """)
+
+    # Create notifications table with type column (not notification_type)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT DEFAULT 'general',
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        link TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_read INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
 
     # Create loan guarantors table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS loan_guarantors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            loan_id INTEGER NOT NULL,
-            guarantor_name TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            email TEXT,
-            relationship TEXT,
-            status TEXT DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (loan_id) REFERENCES loans(id)
-        )
+    CREATE TABLE IF NOT EXISTS loan_guarantors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_id INTEGER NOT NULL,
+        guarantor_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT,
+        relationship TEXT,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (loan_id) REFERENCES loans(id)
+    )
     """)
 
-    # Create repayments table
+    # Create repayments table with interest tracking
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS repayments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            loan_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            amount REAL NOT NULL,
-            payment_date TEXT NOT NULL,
-            payment_method TEXT,
-            transaction_ref TEXT,
-            status TEXT DEFAULT 'completed',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (loan_id) REFERENCES loans(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
+    CREATE TABLE IF NOT EXISTS repayments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        interest_paid REAL DEFAULT 0,
+        principal_paid REAL DEFAULT 0,
+        balance_after REAL DEFAULT 0,
+        payment_date TEXT NOT NULL,
+        payment_method TEXT,
+        transaction_ref TEXT,
+        notes TEXT,
+        status TEXT DEFAULT 'completed',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (loan_id) REFERENCES loans(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
     """)
 
-    # Create savings deposits table
+    # Create savings deposits table with savings type
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS savings_deposits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            amount REAL NOT NULL,
-            deposit_date TEXT NOT NULL,
-            payment_method TEXT,
-            receipt_number TEXT,
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
+    CREATE TABLE IF NOT EXISTS savings_deposits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        savings_type TEXT DEFAULT 'KAI',
+        shares INTEGER DEFAULT 0,
+        deposit_date TEXT NOT NULL,
+        payment_method TEXT,
+        receipt_number TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
     """)
 
     # Create guarantor tracking table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS guarantor_tracking (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guarantor_id INTEGER NOT NULL,
-            loan_id INTEGER NOT NULL,
-            member_name TEXT NOT NULL,
-            amount_guaranteed REAL NOT NULL,
-            outstanding_balance REAL DEFAULT 0,
-            repayment_status TEXT DEFAULT 'on_track',
-            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (guarantor_id) REFERENCES users(id),
-            FOREIGN KEY (loan_id) REFERENCES loans(id)
-        )
+    CREATE TABLE IF NOT EXISTS guarantor_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guarantor_id INTEGER NOT NULL,
+        loan_id INTEGER NOT NULL,
+        member_name TEXT NOT NULL,
+        amount_guaranteed REAL NOT NULL,
+        outstanding_balance REAL DEFAULT 0,
+        repayment_status TEXT DEFAULT 'on_track',
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (guarantor_id) REFERENCES users(id),
+        FOREIGN KEY (loan_id) REFERENCES loans(id)
+    )
     """)
+
+    # ============================================================
+    # PUBLICITY TABLES
+    # ============================================================
+    
+    # Create announcements table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+    """)
+
+    # Create events table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        event_date DATE NOT NULL,
+        event_time TIME,
+        location TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+    """)
+
+    # Create newsletters table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS newsletters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        sent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        recipients INTEGER DEFAULT 0,
+        created_by INTEGER,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+    """)
+
+    # Create social posts table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS social_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+    """)
+
+    # Create system settings table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS system_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sacco_name TEXT DEFAULT 'Karacel Association',
+        registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
+        savings_interest_rate REAL DEFAULT 6.5,
+        loan_interest_rate REAL DEFAULT 12,
+        penalty_rate REAL DEFAULT 5,
+        max_loan_amount TEXT DEFAULT '10000000',
+        min_loan_amount TEXT DEFAULT '10000',
+        max_tenure INTEGER DEFAULT 24,
+        kai_share_price INTEGER DEFAULT 100000,
+        ks_share_price INTEGER DEFAULT 10000,
+        kac_annual_fee INTEGER DEFAULT 100000,
+        registration_fee INTEGER DEFAULT 20000,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # Insert default settings if none exist
+    settings_exists = cursor.execute("SELECT COUNT(*) FROM system_settings").fetchone()[0]
+    if settings_exists == 0:
+        cursor.execute("""
+            INSERT INTO system_settings (
+                sacco_name, registration_number, savings_interest_rate,
+                loan_interest_rate, penalty_rate, max_loan_amount,
+                min_loan_amount, max_tenure, kai_share_price,
+                ks_share_price, kac_annual_fee, registration_fee
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            'Karacel Association',
+            'SACCO/REG/2024/001',
+            6.5,
+            12,
+            5,
+            '10000000',
+            '10000',
+            24,
+            100000,
+            10000,
+            100000,
+            20000
+        ))
 
     # Create admin user only if no users exist
     admin_exists = cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
@@ -205,9 +477,45 @@ def create_database():
             None
         ))
 
+    # ============================================================
+    # CREATE INDEXES FOR BETTER PERFORMANCE
+    # ============================================================
+    
+    # Notifications indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)")
+    
+    # Announcements indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at)")
+    
+    # Events indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date)")
+    
+    # Newsletters indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_newsletters_sent_date ON newsletters(sent_date)")
+    
+    # Social posts indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_social_posts_created_at ON social_posts(created_at)")
+    
+    # Loans indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_application_date ON loans(application_date)")
+    
+    # Repayments indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_payment_date ON repayments(payment_date)")
+    
+    # Savings deposits indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_savings_deposits_deposit_date ON savings_deposits(deposit_date)")
+
     conn.commit()
     conn.close()
-
+    print("✅ Database created/updated successfully with all tables!")
+    print("📊 Tables created: users, loans, notifications, loan_guarantors, repayments, savings_deposits, guarantor_tracking, announcements, events, newsletters, social_posts, system_settings")
 
 create_database()
 
@@ -548,9 +856,7 @@ def admin_dashboard():
 
     today = datetime.now().strftime('%Y-%m-%d')
 
-    # ============================================================
-    # GET SETTINGS
-    # ============================================================
+    # Get settings
     settings = {}
     try:
         conn.row_factory = sqlite3.Row
@@ -558,7 +864,6 @@ def admin_dashboard():
         if settings_row:
             settings = dict(settings_row)
         else:
-            # Default settings if none exist
             settings = {
                 'sacco_name': 'Karacel Association',
                 'registration_number': 'SACCO/REG/2024/001',
@@ -567,7 +872,11 @@ def admin_dashboard():
                 'penalty_rate': 5,
                 'max_loan_amount': '10,000,000',
                 'min_loan_amount': '10,000',
-                'max_tenure': 24
+                'max_tenure': 24,
+                'kai_share_price': 100000,
+                'ks_share_price': 10000,
+                'kac_annual_fee': 100000,
+                'registration_fee': 20000
             }
     except Exception as e:
         print(f"Error loading settings: {e}")
@@ -579,7 +888,11 @@ def admin_dashboard():
             'penalty_rate': 5,
             'max_loan_amount': '10,000,000',
             'min_loan_amount': '10,000',
-            'max_tenure': 24
+            'max_tenure': 24,
+            'kai_share_price': 100000,
+            'ks_share_price': 10000,
+            'kac_annual_fee': 100000,
+            'registration_fee': 20000
         }
 
     conn.close()
@@ -605,8 +918,9 @@ def admin_dashboard():
         staff_counts=staff_counts,
         today=today,
         now=datetime.now(),
-        settings=settings  # <-- ADDED THIS LINE
+        settings=settings
     )
+
 
 # ============================================================
 # CONTEXT PROCESSOR - Global template variables
@@ -631,6 +945,7 @@ def inject_globals():
         'now': datetime.now(),
         'completed_loans': completed_loans
     }
+
 
 # ============================================================
 # TREASURER DASHBOARD
@@ -659,7 +974,180 @@ def treasurer_dashboard():
         rejected_loans_count = conn.execute("SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
         total_repayments = conn.execute("SELECT COALESCE(SUM(amount), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
         
-        # All members
+        # ============================================================
+        # SAVINGS BY TYPE - CALCULATIONS
+        # ============================================================
+        kai_total = 0
+        ks_total = 0
+        kac_total = 0
+        registration_fees_total = 0
+        kai_members = 0
+        ks_members = 0
+        kac_members = 0
+        registration_fees_count = 0
+        kai_shares = 0
+        ks_shares = 0
+        
+        # ============================================================
+        # FIX: Get settings safely with column detection
+        # ============================================================
+        # First, check if system_settings table exists and has the columns
+        try:
+            settings = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+            
+            # Default values
+            kai_share_price = 100000
+            ks_share_price = 10000
+            kac_annual_fee = 100000
+            registration_fee = 20000
+            
+            if settings:
+                # Convert Row to dict for safe access
+                settings_dict = dict(settings)
+                
+                # Safely get values with defaults
+                kai_share_price = settings_dict.get('kai_share_price', 100000) or 100000
+                ks_share_price = settings_dict.get('ks_share_price', 10000) or 10000
+                kac_annual_fee = settings_dict.get('kac_annual_fee', 100000) or 100000
+                registration_fee = settings_dict.get('registration_fee', 20000) or 20000
+                
+        except Exception as e:
+            print(f"⚠️ Error loading settings: {e}")
+            print("📌 Using default values")
+            # Use defaults if settings table doesn't exist or has missing columns
+            kai_share_price = 100000
+            ks_share_price = 10000
+            kac_annual_fee = 100000
+            registration_fee = 20000
+        
+        # Get all members for savings type calculations
+        all_members = conn.execute("SELECT * FROM users WHERE LOWER(role) = 'member'").fetchall()
+        
+        for member in all_members:
+            member_dict = dict(member)
+            
+            # KAI - Karacel Investment (100,000 per share)
+            if 'kai_shares' in member_dict and member_dict['kai_shares']:
+                shares = member_dict['kai_shares']
+                kai_shares += shares
+                kai_total += shares * kai_share_price
+                kai_members += 1
+            
+            # KS - Karacel Savings (10,000 per share)
+            if 'ks_shares' in member_dict and member_dict['ks_shares']:
+                shares = member_dict['ks_shares']
+                ks_shares += shares
+                ks_total += shares * ks_share_price
+                ks_members += 1
+            
+            # KAC - Karacel Condolence (100,000 per year)
+            if 'kac_paid' in member_dict and member_dict['kac_paid']:
+                kac_total += kac_annual_fee
+                kac_members += 1
+            
+            # Registration Fee (20,000 one-time)
+            if 'registration_fee_paid' in member_dict and member_dict['registration_fee_paid']:
+                registration_fees_total += registration_fee
+                registration_fees_count += 1
+        
+        # ============================================================
+        # INTEREST STATISTICS
+        # ============================================================
+        total_interest_accrued = 0
+        total_interest_paid = 0
+        
+        # Get all loans for interest calculations
+        all_loans_for_interest = conn.execute("SELECT * FROM loans").fetchall()
+        for loan in all_loans_for_interest:
+            loan_dict = dict(loan)
+            total_interest_accrued += loan_dict.get('total_interest_accrued', 0) or 0
+            total_interest_paid += loan_dict.get('interest_paid', 0) or 0
+        
+        total_interest_outstanding = total_interest_accrued - total_interest_paid
+        
+        # Borrowers this year
+        borrowers_this_year = conn.execute("""
+            SELECT COUNT(DISTINCT user_id) 
+            FROM loans 
+            WHERE status IN ('disbursed', 'active', 'completed') 
+            AND application_date >= date('now', 'start of year')
+        """).fetchone()[0] or 0
+        
+        # ============================================================
+        # HIGHEST BORROWER & INTEREST RETURN (NEW)
+        # ============================================================
+        highest_borrower = {'name': 'N/A', 'total': 0}
+        highest_interest_borrower = {'name': 'N/A', 'interest': 0}
+        total_loan_fees = 0
+        
+        # Get all loans for the current year
+        current_year = datetime.now().year
+        year_start = f"{current_year}-01-01"
+        year_end = f"{current_year}-12-31"
+        
+        try:
+            # Get loans this year grouped by user
+            loans_this_year = conn.execute("""
+                SELECT 
+                    l.user_id,
+                    u.full_name,
+                    COUNT(l.id) as loan_count,
+                    SUM(l.amount) as total_borrowed,
+                    COALESCE(SUM(l.interest_paid), 0) as total_interest_paid,
+                    COALESCE(SUM(l.total_interest_accrued), 0) as total_interest_accrued
+                FROM loans l
+                JOIN users u ON l.user_id = u.id
+                WHERE l.application_date >= ? AND l.application_date <= ?
+                AND l.status IN ('disbursed', 'active', 'completed')
+                GROUP BY l.user_id
+                ORDER BY total_borrowed DESC
+            """, (year_start, year_end)).fetchall()
+            
+            # Calculate total loan application fees (UGX 1,000 per loan)
+            total_loan_fees = conn.execute("""
+                SELECT COUNT(*) * 1000 as total_fees
+                FROM loans
+                WHERE application_date >= ? AND application_date <= ?
+                AND status IN ('disbursed', 'active', 'completed', 'approved')
+            """, (year_start, year_end)).fetchone()[0] or 0
+            
+            # Highest borrower (by total amount)
+            if loans_this_year and len(loans_this_year) > 0:
+                top_borrower = loans_this_year[0]
+                highest_borrower = {
+                    'name': top_borrower['full_name'],
+                    'total': top_borrower['total_borrowed'] or 0,
+                    'count': top_borrower['loan_count'] or 0
+                }
+                
+                # Highest interest return (by interest paid)
+                # Convert to list and sort by interest paid
+                loans_list = []
+                for loan in loans_this_year:
+                    loans_list.append({
+                        'full_name': loan['full_name'],
+                        'total_interest_paid': loan['total_interest_paid'] or 0,
+                        'total_interest_accrued': loan['total_interest_accrued'] or 0
+                    })
+                
+                if loans_list:
+                    sorted_by_interest = sorted(loans_list, key=lambda x: x['total_interest_paid'], reverse=True)
+                    if sorted_by_interest and sorted_by_interest[0]['total_interest_paid'] > 0:
+                        top_interest = sorted_by_interest[0]
+                        highest_interest_borrower = {
+                            'name': top_interest['full_name'],
+                            'interest': top_interest['total_interest_paid'],
+                            'accrued': top_interest['total_interest_accrued']
+                        }
+        except Exception as e:
+            print(f"⚠️ Error calculating highest borrower: {e}")
+            highest_borrower = {'name': 'N/A', 'total': 0}
+            highest_interest_borrower = {'name': 'N/A', 'interest': 0}
+            total_loan_fees = 0
+        
+        # ============================================================
+        # All members (for dropdowns)
+        # ============================================================
         members = conn.execute("SELECT * FROM users WHERE LOWER(role) = 'member' AND status = 'active' ORDER BY full_name").fetchall()
         
         # All deposits
@@ -689,7 +1177,7 @@ def treasurer_dashboard():
                 l.*,
                 u.full_name,
                 u.sacco_number,
-                COALESCE((
+                COALESCE(((
                     SELECT SUM(amount) 
                     FROM repayments 
                     WHERE loan_id = l.id AND status = 'completed'
@@ -707,7 +1195,8 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
-                COALESCE((
+                u.email,
+                COALESCE(((
                     SELECT SUM(amount) 
                     FROM repayments 
                     WHERE loan_id = l.id AND status = 'completed'
@@ -724,12 +1213,12 @@ def treasurer_dashboard():
                 l.*,
                 u.full_name,
                 u.sacco_number,
-                COALESCE((
+                COALESCE(((
                     SELECT SUM(amount) 
                     FROM repayments 
                     WHERE loan_id = l.id AND status = 'completed'
                 ), 0) as total_paid,
-                COALESCE((
+                COALESCE(((
                     SELECT COUNT(*) 
                     FROM repayments 
                     WHERE loan_id = l.id AND status = 'completed'
@@ -784,7 +1273,7 @@ def treasurer_dashboard():
                 l.*,
                 u.full_name,
                 u.sacco_number,
-                COALESCE((
+                COALESCE(((
                     SELECT SUM(amount) 
                     FROM repayments 
                     WHERE loan_id = l.id AND status = 'completed'
@@ -818,6 +1307,13 @@ def treasurer_dashboard():
         print("🔍 TREASURER DASHBOARD LOADED SUCCESSFULLY")
         print(f"📊 Total Members: {total_members}")
         print(f"📊 Pending Loans: {pending_loans}")
+        print(f"📊 KAI Total: UGX {kai_total:,.0f}")
+        print(f"📊 KS Total: UGX {ks_total:,.0f}")
+        print(f"📊 KAC Total: UGX {kac_total:,.0f}")
+        print(f"📊 Registration Fees: UGX {registration_fees_total:,.0f}")
+        print(f"🏆 Highest Borrower: {highest_borrower['name']} - UGX {highest_borrower['total']:,.0f}")
+        print(f"💰 Highest Interest Return: {highest_interest_borrower['name']} - UGX {highest_interest_borrower['interest']:,.0f}")
+        print(f"📄 Total Loan Fees: UGX {total_loan_fees:,.0f}")
         print("=" * 60)
         
     except sqlite3.Error as e:
@@ -829,6 +1325,7 @@ def treasurer_dashboard():
     
     return render_template(
         "treasurer/treasurer-dashboard.html",
+        # Basic stats
         total_members=total_members,
         total_savings=total_savings,
         total_deposits=total_deposits,
@@ -840,16 +1337,160 @@ def treasurer_dashboard():
         rejected_loans=rejected_loans_count,
         active_loans_list=active_loans_list,
         total_repayments=total_repayments,
+        
+        # Members and deposits
         members=members,
         all_deposits=all_deposits,
+        
+        # Loan lists
         pending_loan_applications=pending_loan_applications,
         approved_loans_list=approved_loans_list,
         completed_loans_list=completed_loans_list,
         rejected_loans_list=rejected_loans_list,
         all_loan_applications=all_loan_applications,
+        
+        # Recent activity
         recent_deposits=recent_deposits,
         recent_repayments=recent_repayments,
+        
+        # ============================================================
+        # SAVINGS BY TYPE - NEW VARIABLES
+        # ============================================================
+        kai_total=kai_total,
+        ks_total=ks_total,
+        kac_total=kac_total,
+        registration_fees_total=registration_fees_total,
+        kai_members=kai_members,
+        ks_members=ks_members,
+        kac_members=kac_members,
+        registration_fees_count=registration_fees_count,
+        kai_shares=kai_shares,
+        ks_shares=ks_shares,
+        
+        # ============================================================
+        # INTEREST STATISTICS - NEW VARIABLES
+        # ============================================================
+        total_interest_accrued=total_interest_accrued,
+        total_interest_paid=total_interest_paid,
+        total_interest_outstanding=total_interest_outstanding,
+        borrowers_this_year=borrowers_this_year,
+        
+        # ============================================================
+        # HIGHEST BORROWER & INTEREST RETURN (NEW)
+        # ============================================================
+        highest_borrower=highest_borrower,
+        highest_interest_borrower=highest_interest_borrower,
+        total_loan_fees=total_loan_fees,
+        
+        # Misc
         now=datetime.now()
+    )
+
+# ============================================================
+# TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES)
+# ============================================================
+@app.route("/treasurer/savings/deposit", methods=["GET", "POST"])
+def treasurer_savings_deposit():
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        flash('Access denied. Only treasurer can record deposits.', 'danger')
+        return redirect("/login")
+    
+    if request.method == "POST":
+        user_id = request.form.get('user_id')
+        amount = float(request.form.get('amount', 0))
+        savings_type = request.form.get('savings_type', 'KAI')
+        deposit_date = request.form.get('deposit_date', datetime.now().strftime('%Y-%m-%d'))
+        payment_method = request.form.get('payment_method', 'cash')
+        receipt_number = request.form.get('receipt_number', '')
+        notes = request.form.get('notes', '')
+        
+        if amount <= 0:
+            flash('Amount must be greater than 0', 'danger')
+            return redirect(url_for('treasurer_savings_deposit'))
+        
+        # Get settings for share prices
+        db = get_db()
+        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings:
+            kai_share_price = settings['kai_share_price'] or 100000
+            ks_share_price = settings['ks_share_price'] or 10000
+            kac_annual_fee = settings['kac_annual_fee'] or 100000
+            registration_fee = settings['registration_fee'] or 20000
+        else:
+            kai_share_price = 100000
+            ks_share_price = 10000
+            kac_annual_fee = 100000
+            registration_fee = 20000
+        
+        # Calculate shares based on savings type
+        shares = 0
+        if savings_type == 'KAI':
+            shares = int(amount / kai_share_price) if kai_share_price > 0 else 0
+        elif savings_type == 'KS':
+            shares = int(amount / ks_share_price) if ks_share_price > 0 else 0
+        elif savings_type == 'KAC':
+            shares = 1  # KAC is annual, 1 per year
+        elif savings_type == 'REGISTRATION':
+            shares = 1  # Registration is one-time
+        
+        cursor = db.cursor()
+        
+        # Insert savings deposit with type
+        cursor.execute("""
+            INSERT INTO savings_deposits (
+                user_id, amount, savings_type, shares, deposit_date, 
+                payment_method, receipt_number, notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, amount, savings_type, shares, deposit_date, payment_method, receipt_number, notes))
+        
+        # Update user's savings balance based on type
+        if savings_type == 'KAI':
+            cursor.execute("""
+                UPDATE users 
+                SET savings_balance = savings_balance + ?,
+                    kai_shares = COALESCE(kai_shares, 0) + ?
+                WHERE id = ?
+            """, (amount, shares, user_id))
+        elif savings_type == 'KS':
+            cursor.execute("""
+                UPDATE users 
+                SET savings_balance = savings_balance + ?,
+                    ks_shares = COALESCE(ks_shares, 0) + ?
+                WHERE id = ?
+            """, (amount, shares, user_id))
+        elif savings_type == 'KAC':
+            cursor.execute("""
+                UPDATE users 
+                SET savings_balance = savings_balance + ?,
+                    kac_paid = 1,
+                    kac_paid_date = ?
+                WHERE id = ?
+            """, (amount, deposit_date, user_id))
+        elif savings_type == 'REGISTRATION':
+            cursor.execute("""
+                UPDATE users 
+                SET registration_fee_paid = 1,
+                    registration_fee_paid_date = ?
+                WHERE id = ?
+            """, (deposit_date, user_id))
+        
+        db.commit()
+        db.close()
+        
+        flash(f'✅ {savings_type} deposit of UGX {amount:,.0f} recorded successfully!', 'success')
+        return redirect(url_for('treasurer_dashboard'))
+    
+    # GET request - show form
+    db = get_db()
+    members = db.execute("SELECT * FROM users WHERE LOWER(role) = 'member' AND status = 'active' ORDER BY full_name").fetchall()
+    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+    db.close()
+    
+    return render_template(
+        "treasurer/savings-deposit.html", 
+        members=members,
+        completed_loans=completed_loans
     )
 
 
@@ -940,13 +1581,12 @@ def get_guarantor_details(guarantor_id):
         db.close()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 # ============================================================
-# TREASURER - VIEW LOAN DETAILS
+# ADMIN - VIEW LOAN DETAILS
 # ============================================================
-@app.route("/treasurer/loan/view/<int:loan_id>")
-def treasurer_view_loan(loan_id):
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+@app.route("/admin/loan/view/<int:loan_id>")
+def admin_view_loan(loan_id):
+    if session.get("role") not in ["admin", "chairperson"]:
         flash('Access denied', 'danger')
         return redirect("/login")
     
@@ -964,7 +1604,7 @@ def treasurer_view_loan(loan_id):
         if not loan:
             flash('Loan not found', 'danger')
             db.close()
-            return redirect(url_for('treasurer_dashboard'))
+            return redirect(url_for('admin_dashboard'))
         
         guarantors = db.execute("""
             SELECT * FROM loan_guarantors WHERE loan_id = ?
@@ -984,61 +1624,105 @@ def treasurer_view_loan(loan_id):
             guarantors=guarantors,
             repayments=repayments,
             total_paid=total_paid,
-            role='treasurer'
+            role='admin'
         )
         
     except Exception as e:
         db.close()
         flash(f'Error: {str(e)}', 'danger')
-        return redirect(url_for('treasurer_dashboard'))
+        return redirect(url_for('admin_dashboard'))
+
+
+# ============================================================
+# TREASURER - VIEW LOAN DETAILS
+# ============================================================
+@app.route("/treasurer/loan/view/<int:loan_id>")
+def treasurer_view_loan(loan_id):
+    if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        loan = db.execute("""
+            SELECT l.*, u.full_name, u.sacco_number, u.email, u.phone, u.savings_balance
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.id = ?
+        """, (loan_id,)).fetchone()
+        
+        if not loan:
+            flash('Loan not found', 'danger')
+            db.close()
+            # Redirect based on role
+            role = session.get('role')
+            if role == 'admin' or role == 'chairperson':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('treasurer_dashboard'))
+        
+        guarantors = db.execute("""
+            SELECT * FROM loan_guarantors WHERE loan_id = ?
+        """, (loan_id,)).fetchall()
+        
+        repayments = db.execute("""
+            SELECT * FROM repayments WHERE loan_id = ? ORDER BY payment_date DESC
+        """, (loan_id,)).fetchall()
+        
+        total_paid = sum(r['amount'] for r in repayments) if repayments else 0
+        
+        db.close()
+        
+        return render_template(
+            "treasurer/treasurer-view-loan.html",
+            loan=loan,
+            guarantors=guarantors,
+            repayments=repayments,
+            total_paid=total_paid,
+            role=session.get('role', 'treasurer')
+        )
+        
+    except Exception as e:
+        db.close()
+        flash(f'Error: {str(e)}', 'danger')
+        # Redirect based on role
+        role = session.get('role')
+        if role == 'admin' or role == 'chairperson':
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('treasurer_dashboard'))
+
 
 # ============================================================
 # TREASURER - APPROVE / REJECT LOAN
 # ============================================================
-
 @app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
-
     print(f"🔍 Loan action called for loan {loan_id}")
 
     if "user_id" not in session:
-        return jsonify({
-            'success': False,
-            'message': 'Please login first'
-        }), 401
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
 
     if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        return jsonify({
-            'success': False,
-            'message': 'Access denied'
-        }), 403
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
 
     data = request.get_json(silent=True)
 
     if not data:
-        return jsonify({
-            'success': False,
-            'message': 'Invalid request'
-        }), 400
+        return jsonify({'success': False, 'message': 'Invalid request'}), 400
 
     action = data.get('action')
     reason = (data.get('reason') or '').strip()
 
     if action not in ['approve', 'reject']:
-        return jsonify({
-            'success': False,
-            'message': 'Invalid action'
-        }), 400
+        return jsonify({'success': False, 'message': 'Invalid action'}), 400
 
     db = get_db()
     db.row_factory = sqlite3.Row
 
     try:
-
-        # ====================================================
-        # GET LOAN + APPLICANT
-        # ====================================================
-
         loan = db.execute("""
             SELECT
                 l.*,
@@ -1054,31 +1738,13 @@ def treasurer_approve_loan(loan_id):
 
         if not loan:
             db.close()
+            return jsonify({'success': False, 'message': 'Loan not found'}), 404
 
-            return jsonify({
-                'success': False,
-                'message': 'Loan not found'
-            }), 404
-
-
-        # ====================================================
         # REJECT LOAN
-        # ====================================================
-
         if action == 'reject':
-
             if not reason:
                 db.close()
-
-                return jsonify({
-                    'success': False,
-                    'message': 'Rejection reason required'
-                }), 400
-
-
-            # -----------------------------------------------
-            # UPDATE LOAN
-            # -----------------------------------------------
+                return jsonify({'success': False, 'message': 'Rejection reason required'}), 400
 
             db.execute("""
                 UPDATE loans
@@ -1088,16 +1754,7 @@ def treasurer_approve_loan(loan_id):
                     rejection_reason = ?,
                     rejected_by = ?
                 WHERE id = ?
-            """, (
-                reason,
-                session.get('full_name', 'Treasurer'),
-                loan_id
-            ))
-
-
-            # -----------------------------------------------
-            # CREATE NOTIFICATION FOR APPLICANT
-            # -----------------------------------------------
+            """, (reason, session.get('full_name', 'Treasurer'), loan_id))
 
             db.execute("""
                 INSERT INTO notifications (
@@ -1112,91 +1769,39 @@ def treasurer_approve_loan(loan_id):
             """, (
                 loan['applicant_id'],
                 'Loan Application Rejected',
-                (
-                    f"Your loan application {loan['loan_number']} "
-                    f"has been rejected.\n\n"
-                    f"Reason: {reason}"
-                ),
+                f"Your loan application {loan['loan_number']} has been rejected.\n\nReason: {reason}",
                 'loan_rejection'
             ))
-
-
-            # -----------------------------------------------
-            # SAVE CHANGES
-            # -----------------------------------------------
 
             db.commit()
             db.close()
 
             return jsonify({
                 'success': True,
-                'message': (
-                    'Loan rejected successfully. '
-                    'The applicant has been notified.'
-                )
+                'message': 'Loan rejected successfully. The applicant has been notified.'
             })
 
-
-        # ====================================================
         # APPROVE LOAN
-        # ====================================================
-
         if loan['status'] != 'pending':
-
             db.close()
-
             return jsonify({
                 'success': False,
                 'message': f'Loan is {loan["status"]}, not pending'
             }), 400
 
-
-        # -----------------------------------------------
-        # CHECK 10% SAVINGS
-        # -----------------------------------------------
-
         required = float(loan['amount']) * 0.10
         savings = float(loan['savings_balance'] or 0)
 
         if savings < required:
-
             db.close()
-
             return jsonify({
                 'success': False,
-                'message': (
-                    f'Member needs 10% savings '
-                    f'(UGX {required:,.0f}). '
-                    f'Current: UGX {savings:,.0f}'
-                )
+                'message': f'Member needs 10% savings (UGX {required:,.0f}). Current: UGX {savings:,.0f}'
             }), 400
 
-
-        # -----------------------------------------------
-        # APPROVAL DATES
-        # -----------------------------------------------
-
         today = datetime.now().strftime('%Y-%m-%d')
-
-        end_date = (
-            datetime.now() + timedelta(days=30)
-        ).strftime('%Y-%m-%d')
-
-
-        # -----------------------------------------------
-        # CURRENT BALANCE
-        # -----------------------------------------------
-
-        balance = (
-            loan['total_repayment']
-            if loan['total_repayment'] is not None
-            else loan['amount']
-        )
-
-
-        # -----------------------------------------------
-        # UPDATE LOAN
-        # -----------------------------------------------
+        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        balance = loan['total_repayment'] if loan['total_repayment'] is not None else loan['amount']
 
         db.execute("""
             UPDATE loans
@@ -1209,19 +1814,7 @@ def treasurer_approve_loan(loan_id):
                 approved_by = ?,
                 approved_by_role = 'treasurer'
             WHERE id = ?
-        """, (
-            today,
-            today,
-            end_date,
-            balance,
-            session.get('full_name', 'Treasurer'),
-            loan_id
-        ))
-
-
-        # -----------------------------------------------
-        # NOTIFY APPLICANT OF APPROVAL
-        # -----------------------------------------------
+        """, (today, today, end_date, balance, session.get('full_name', 'Treasurer'), loan_id))
 
         db.execute("""
             INSERT INTO notifications (
@@ -1236,51 +1829,30 @@ def treasurer_approve_loan(loan_id):
         """, (
             loan['applicant_id'],
             'Loan Application Approved',
-            (
-                f"Your loan application {loan['loan_number']} "
-                f"has been approved. "
-                f"Please wait for disbursement."
-            ),
+            f"Your loan application {loan['loan_number']} has been approved. Please wait for disbursement.",
             'loan_approval'
         ))
-
-
-        # -----------------------------------------------
-        # SAVE
-        # -----------------------------------------------
 
         db.commit()
         db.close()
 
         return jsonify({
             'success': True,
-            'message': (
-                '✅ Loan approved! '
-                'Waiting for Chairman disbursement.'
-            )
+            'message': '✅ Loan approved! Waiting for Chairman disbursement.'
         })
 
-
-    # ====================================================
-    # ERROR HANDLING
-    # ====================================================
-
     except Exception as e:
-
         print(f"❌ Error processing loan action: {e}")
-
         try:
             db.rollback()
             db.close()
         except:
             pass
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+
 # ============================================================
-# TREASURER - DISBURSE LOAN (CLEAN VERSION)
+# TREASURER - DISBURSE LOAN
 # ============================================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
@@ -1368,7 +1940,6 @@ def treasurer_record_payment():
     conn.row_factory = sqlite3.Row
     
     try:
-        # Get loan details with member info
         loan = conn.execute("""
             SELECT l.*, u.full_name, u.sacco_number, u.id as member_id
             FROM loans l
@@ -1380,7 +1951,6 @@ def treasurer_record_payment():
             conn.close()
             return jsonify({'success': False, 'message': 'Loan not found'}), 404
         
-        # Check if loan can accept payments
         if loan['status'] not in ['approved', 'disbursed', 'active']:
             conn.close()
             return jsonify({
@@ -1392,10 +1962,8 @@ def treasurer_record_payment():
             conn.close()
             return jsonify({'success': False, 'message': 'Loan is already fully paid'}), 400
         
-        # Calculate current balance
         current_balance = float(loan['current_balance'] or loan['amount'] or 0)
         
-        # Check if payment amount is valid
         if amount > current_balance:
             conn.close()
             return jsonify({
@@ -1403,53 +1971,60 @@ def treasurer_record_payment():
                 'message': f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})'
             }), 400
         
-        # Begin transaction
         conn.execute("BEGIN TRANSACTION")
+        
+        # Calculate interest and principal
+        total_interest = float(loan['total_interest_accrued'] or 0)
+        interest_paid_so_far = float(loan['interest_paid'] or 0)
+        interest_remaining = max(0, total_interest - interest_paid_so_far)
+        
+        if amount >= interest_remaining:
+            interest_paid = interest_remaining
+            principal_paid = amount - interest_remaining
+        else:
+            interest_paid = amount
+            principal_paid = 0
         
         # Record the repayment
         conn.execute("""
             INSERT INTO repayments (
-                loan_id, user_id, amount, payment_date, payment_method, status
+                loan_id, user_id, amount, interest_paid, principal_paid,
+                balance_after, payment_date, payment_method, status
             )
-            VALUES (?, ?, ?, date('now'), ?, 'completed')
-        """, (loan_id, loan['member_id'], amount, payment_method))
+            VALUES (?, ?, ?, ?, ?, ?, date('now'), ?, 'completed')
+        """, (loan_id, loan['member_id'], amount, interest_paid, principal_paid, current_balance - amount, payment_method))
         
-        # Calculate new balance
         new_balance = current_balance - amount
-        
-        # ============================================================
-        # AUTO-COMPLETE: If balance is 50 UGX or less, mark as completed
-        # ============================================================
         COMPLETION_THRESHOLD = 50
         is_completed = new_balance <= COMPLETION_THRESHOLD
         
         if is_completed:
-            # Write off the remaining small balance and mark as completed
             conn.execute("""
                 UPDATE loans 
                 SET current_balance = 0,
                     status = 'completed',
                     completed_date = date('now'),
                     last_payment_date = date('now'),
-                    last_payment_amount = ?
+                    last_payment_amount = ?,
+                    interest_paid = COALESCE(interest_paid, 0) + ?,
+                    principal_paid = COALESCE(principal_paid, 0) + ?
                 WHERE id = ?
-            """, (amount, loan_id))
+            """, (amount, interest_paid, principal_paid, loan_id))
             status = 'completed'
-            message = f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made. Remaining balance of UGX {new_balance:,.0f} has been written off.'
-            print(f"✅ Loan {loan_id} marked as COMPLETED. Balance: {new_balance} UGX (<= {COMPLETION_THRESHOLD} UGX threshold)")
+            message = f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.'
         else:
-            # Update balance only
             conn.execute("""
                 UPDATE loans 
                 SET current_balance = ?,
                     status = 'active',
                     last_payment_date = date('now'),
-                    last_payment_amount = ?
+                    last_payment_amount = ?,
+                    interest_paid = COALESCE(interest_paid, 0) + ?,
+                    principal_paid = COALESCE(principal_paid, 0) + ?
                 WHERE id = ?
-            """, (new_balance, amount, loan_id))
+            """, (new_balance, amount, interest_paid, principal_paid, loan_id))
             status = 'active'
             message = f'✅ Payment of UGX {amount:,.0f} recorded successfully! Remaining: UGX {new_balance:,.0f}'
-            print(f"💰 Payment recorded for loan {loan_id}. New balance: {new_balance} UGX")
         
         conn.commit()
         conn.close()
@@ -1459,7 +2034,9 @@ def treasurer_record_payment():
             'message': message,
             'new_balance': new_balance,
             'status': status,
-            'is_completed': is_completed
+            'is_completed': is_completed,
+            'interest_paid': interest_paid,
+            'principal_paid': principal_paid
         })
         
     except sqlite3.Error as e:
@@ -1473,8 +2050,9 @@ def treasurer_record_payment():
         print(f"❌ Error in payment: {str(e)}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-## ============================================================
-# TREASURER - ENTER REPAYMENT (FIXED)
+
+# ============================================================
+# TREASURER - ENTER REPAYMENT
 # ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
@@ -1498,7 +2076,6 @@ def treasurer_enter_repayment():
             ORDER BY l.application_date DESC
         """).fetchall()
         
-        # Get completed loans count for sidebar badge
         completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
         
         db.close()
@@ -1553,14 +2130,13 @@ def treasurer_enter_repayment():
             flash(f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})', 'danger')
             return redirect(url_for('treasurer_enter_repayment'))
         
-        # Calculate interest and principal - FIXED: Use direct indexing instead of .get()
+        # Calculate interest and principal
         interest_paid = 0
         principal_paid = 0
         
-        total_interest = float(loan['interest_amount'] or 0)
-        # FIXED: Access interest_paid directly using index, not .get()
+        total_interest = float(loan['total_interest_accrued'] or 0)
         interest_paid_so_far = float(loan['interest_paid'] if loan['interest_paid'] is not None else 0)
-        interest_remaining = total_interest - interest_paid_so_far
+        interest_remaining = max(0, total_interest - interest_paid_so_far)
         
         if amount >= interest_remaining:
             interest_paid = interest_remaining
@@ -1580,8 +2156,8 @@ def treasurer_enter_repayment():
         db.execute("""
             INSERT INTO repayments (
                 loan_id, user_id, amount, interest_paid, principal_paid,
-                payment_date, payment_method, transaction_ref, notes,
-                balance_after, status
+                balance_after, payment_date, payment_method, transaction_ref, notes,
+                status
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed')
         """, (
@@ -1590,21 +2166,17 @@ def treasurer_enter_repayment():
             amount, 
             interest_paid, 
             principal_paid,
+            new_balance,
             current_datetime, 
             payment_method, 
             transaction_ref,
-            notes,
-            new_balance
+            notes
         ))
         
-        # ============================================================
-        # AUTO-COMPLETE: If balance is 50 UGX or less, mark as completed
-        # ============================================================
         COMPLETION_THRESHOLD = 50
         is_completed = new_balance <= COMPLETION_THRESHOLD
         
         if is_completed:
-            # Write off the remaining small balance and mark as completed
             db.execute("""
                 UPDATE loans 
                 SET current_balance = 0,
@@ -1625,7 +2197,7 @@ def treasurer_enter_repayment():
             ))
             db.commit()
             db.close()
-            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made. Remaining balance of UGX {new_balance:,.0f} has been written off.', 'success')
+            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
         else:
             db.execute("""
                 UPDATE loans 
@@ -1657,60 +2229,10 @@ def treasurer_enter_repayment():
         db.close()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_enter_repayment'))
-    
-# ============================================================
-# TREASURER - SAVINGS DEPOSIT (FIXED)
-# ============================================================
-@app.route("/treasurer/savings/deposit", methods=["GET", "POST"])
-def treasurer_savings_deposit():
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        flash('Access denied. Only treasurer can record deposits.', 'danger')
-        return redirect("/login")
-    
-    if request.method == "POST":
-        user_id = request.form.get('user_id')
-        amount = float(request.form.get('amount', 0))
-        deposit_date = request.form.get('deposit_date', datetime.now().strftime('%Y-%m-%d'))
-        payment_method = request.form.get('payment_method', 'cash')
-        receipt_number = request.form.get('receipt_number', '')
-        notes = request.form.get('notes', '')
-        
-        if amount <= 0:
-            flash('Amount must be greater than 0', 'danger')
-            return redirect(url_for('treasurer_savings_deposit'))
-        
-        db = get_db()
-        cursor = db.cursor()
-        
-        cursor.execute("""
-            INSERT INTO savings_deposits (user_id, amount, deposit_date, payment_method, receipt_number, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, amount, deposit_date, payment_method, receipt_number, notes))
-        
-        cursor.execute("UPDATE users SET savings_balance = savings_balance + ? WHERE id = ?", (amount, user_id))
-        
-        db.commit()
-        db.close()
-        
-        flash(f'Savings deposit of UGX {amount:,.0f} recorded successfully!', 'success')
-        return redirect(url_for('treasurer_dashboard'))
-    
-    db = get_db()
-    members = db.execute("SELECT * FROM users WHERE LOWER(role) = 'member' AND status = 'active' ORDER BY full_name").fetchall()
-    
-    # Get completed loans count for sidebar badge
-    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-    
-    db.close()
-    
-    return render_template(
-        "treasurer/savings-deposit.html", 
-        members=members,
-        completed_loans=completed_loans
-    )
+
 
 # ============================================================
-# TREASURER - ADD MEMBER
+# TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT)
 # ============================================================
 @app.route("/treasurer/members/add", methods=["GET", "POST"])
 def treasurer_add_members():
@@ -1718,12 +2240,8 @@ def treasurer_add_members():
         flash('Access denied. Only Treasurer, Admin, or Secretary can register members.', 'danger')
         return redirect("/login")
     
-    # ============================================================
-    # GET COMPLETED LOANS COUNT FOR SIDEBAR BADGE
-    # ============================================================
     db = get_db()
     completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-    db.close()
     
     if request.method == "POST":
         full_name = request.form.get('full_name', '').strip()
@@ -1740,6 +2258,12 @@ def treasurer_add_members():
         next_of_kin_name = request.form.get('next_of_kin_name', '').strip()
         relationship = request.form.get('relationship', '')
         next_of_kin_phone = request.form.get('next_of_kin_phone', '').strip()
+        
+        # Savings type specific fields
+        kai_shares = int(request.form.get('kai_shares', 0) or 0)
+        ks_shares = int(request.form.get('ks_shares', 0) or 0)
+        kac_paid = 1 if request.form.get('kac_paid') == 'on' else 0
+        registration_fee_paid = 1 if request.form.get('registration_fee_paid') == 'on' else 0
         
         errors = []
         if not full_name:
@@ -1758,9 +2282,8 @@ def treasurer_add_members():
         if errors:
             for error in errors:
                 flash(error, 'danger')
+            db.close()
             return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-        
-        db = get_db()
         
         existing = db.execute("SELECT id FROM users WHERE sacco_number = ?", (sacco_number,)).fetchone()
         if existing:
@@ -1783,44 +2306,92 @@ def treasurer_add_members():
         
         try:
             cursor = db.cursor()
+            
+            # Get settings for share prices
+            settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+            if settings:
+                kai_share_price = settings['kai_share_price'] or 100000
+                ks_share_price = settings['ks_share_price'] or 10000
+                kac_annual_fee = settings['kac_annual_fee'] or 100000
+                registration_fee = settings['registration_fee'] or 20000
+            else:
+                kai_share_price = 100000
+                ks_share_price = 10000
+                kac_annual_fee = 100000
+                registration_fee = 20000
+            
+            # Calculate total savings from shares
+            total_savings_from_shares = (kai_shares * kai_share_price) + (ks_shares * ks_share_price)
+            if kac_paid:
+                total_savings_from_shares += kac_annual_fee
+            if registration_fee_paid:
+                total_savings_from_shares += registration_fee
+            
+            # Use the provided savings_balance or calculate from shares
+            final_savings_balance = savings_balance if savings_balance > 0 else total_savings_from_shares
+            
             cursor.execute("""
                 INSERT INTO users (
                     full_name, gender, dob, sacco_number,
                     email, phone, address,
                     password, role, status,
                     savings_balance,
-                    next_of_kin_name, relationship, next_of_kin_phone
+                    next_of_kin_name, relationship, next_of_kin_phone,
+                    kai_shares, ks_shares, kac_paid, registration_fee_paid
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 full_name, gender, dob, sacco_number,
                 email, phone, address,
                 password, role, status,
-                savings_balance,
-                next_of_kin_name, relationship, next_of_kin_phone
+                final_savings_balance,
+                next_of_kin_name, relationship, next_of_kin_phone,
+                kai_shares, ks_shares, kac_paid, registration_fee_paid
             ))
             
             user_id = cursor.lastrowid
             
-            if savings_balance > 0:
+            # Record savings deposits for each type
+            if kai_shares > 0:
                 cursor.execute("""
                     INSERT INTO savings_deposits (
-                        user_id, amount, deposit_date, payment_method, receipt_number, notes
+                        user_id, amount, savings_type, shares, deposit_date, 
+                        payment_method, receipt_number, notes
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    user_id,
-                    savings_balance,
-                    datetime.now().strftime('%Y-%m-%d'),
-                    'registration',
-                    f'REG-{sacco_number}',
-                    f'Initial registration savings for {full_name}'
-                ))
+                    VALUES (?, ?, 'KAI', ?, date('now'), 'registration', ?, ?)
+                """, (user_id, kai_shares * kai_share_price, kai_shares, f'REG-KAI-{sacco_number}', f'Initial KAI shares for {full_name}'))
+            
+            if ks_shares > 0:
+                cursor.execute("""
+                    INSERT INTO savings_deposits (
+                        user_id, amount, savings_type, shares, deposit_date, 
+                        payment_method, receipt_number, notes
+                    )
+                    VALUES (?, ?, 'KS', ?, date('now'), 'registration', ?, ?)
+                """, (user_id, ks_shares * ks_share_price, ks_shares, f'REG-KS-{sacco_number}', f'Initial KS shares for {full_name}'))
+            
+            if kac_paid:
+                cursor.execute("""
+                    INSERT INTO savings_deposits (
+                        user_id, amount, savings_type, shares, deposit_date, 
+                        payment_method, receipt_number, notes
+                    )
+                    VALUES (?, ?, 'KAC', 1, date('now'), 'registration', ?, ?)
+                """, (user_id, kac_annual_fee, f'REG-KAC-{sacco_number}', f'KAC payment for {full_name}'))
+            
+            if registration_fee_paid:
+                cursor.execute("""
+                    INSERT INTO savings_deposits (
+                        user_id, amount, savings_type, shares, deposit_date, 
+                        payment_method, receipt_number, notes
+                    )
+                    VALUES (?, ?, 'REGISTRATION', 1, date('now'), 'registration', ?, ?)
+                """, (user_id, registration_fee, f'REG-REG-{sacco_number}', f'Registration fee for {full_name}'))
             
             db.commit()
             db.close()
             
-            flash(f'Member "{full_name}" registered successfully!', 'success')
+            flash(f'✅ Member "{full_name}" registered successfully with all savings types!', 'success')
             return redirect(url_for('treasurer_dashboard'))
             
         except Exception as e:
@@ -1829,7 +2400,279 @@ def treasurer_add_members():
             flash(f'Error registering member: {str(e)}', 'danger')
             return render_template("treasurer/add-member.html", completed_loans=completed_loans)
     
+    db.close()
     return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+
+
+# ============================================================
+# TREASURER - VIEW MEMBER DETAILS (HTML Page)
+# ============================================================
+@app.route("/treasurer/members/view/<int:member_id>")
+def treasurer_member_details(member_id):
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        member = db.execute("""
+            SELECT * FROM users WHERE id = ? AND LOWER(role) = 'member'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            flash('Member not found', 'danger')
+            return redirect(url_for('treasurer_dashboard'))
+        
+        loans = db.execute("""
+            SELECT * FROM loans WHERE user_id = ? ORDER BY application_date DESC
+        """, (member_id,)).fetchall()
+        
+        deposits = db.execute("""
+            SELECT * FROM savings_deposits WHERE user_id = ? ORDER BY deposit_date DESC
+        """, (member_id,)).fetchall()
+        
+        repayments = db.execute("""
+            SELECT r.*, l.loan_number 
+            FROM repayments r
+            JOIN loans l ON r.loan_id = l.id
+            WHERE r.user_id = ?
+            ORDER BY r.payment_date DESC
+        """, (member_id,)).fetchall()
+        
+        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+        
+        db.close()
+        
+        return render_template(
+            "treasurer/member-details.html",
+            member=member,
+            loans=loans,
+            deposits=deposits,
+            repayments=repayments,
+            completed_loans=completed_loans
+        )
+        
+    except Exception as e:
+        db.close()
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('treasurer_dashboard'))
+
+
+# ============================================================
+# TREASURER - VIEW MEMBER (JSON for Edit Modal)
+# ============================================================
+@app.route("/treasurer/member/view/<int:member_id>")
+def treasurer_member_view_json(member_id):
+    """Return member data as JSON for AJAX calls"""
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        member = db.execute("""
+            SELECT id, full_name, sacco_number, phone, email, 
+                   gender, dob, address, savings_balance, status, 
+                   registration_date, next_of_kin_name, next_of_kin_phone, relationship,
+                   kai_shares, ks_shares, kac_paid, registration_fee_paid
+            FROM users 
+            WHERE id = ? AND LOWER(role) = 'member'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            db.close()
+            return jsonify({'success': False, 'message': 'Member not found'}), 404
+        
+        db.close()
+        
+        return jsonify({
+            'success': True,
+            'member': dict(member)
+        })
+        
+    except Exception as e:
+        db.close()
+        print(f"❌ Error getting member: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# TREASURER - UPDATE MEMBER (WITH SAVINGS TYPES)
+# ============================================================
+@app.route("/treasurer/member/update/<int:member_id>", methods=["POST"])
+def treasurer_update_member(member_id):
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
+    
+    db = get_db()
+    
+    try:
+        member = db.execute("""
+            SELECT id, sacco_number FROM users WHERE id = ? AND LOWER(role) = 'member'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            db.close()
+            return jsonify({'success': False, 'message': 'Member not found'}), 404
+        
+        phone = data.get('phone', '').strip()
+        if phone:
+            existing = db.execute("""
+                SELECT id FROM users WHERE phone = ? AND id != ?
+            """, (phone, member_id)).fetchone()
+            if existing:
+                db.close()
+                return jsonify({'success': False, 'message': 'Phone number already in use by another member'}), 400
+        
+        email = data.get('email', '').strip()
+        if email:
+            existing = db.execute("""
+                SELECT id FROM users WHERE email = ? AND id != ? AND email != ''
+            """, (email, member_id)).fetchone()
+            if existing:
+                db.close()
+                return jsonify({'success': False, 'message': 'Email already in use by another member'}), 400
+        
+        sacco_number = data.get('sacco_number', '').strip().upper()
+        if sacco_number:
+            existing = db.execute("""
+                SELECT id FROM users WHERE sacco_number = ? AND id != ?
+            """, (sacco_number, member_id)).fetchone()
+            if existing:
+                db.close()
+                return jsonify({'success': False, 'message': 'SACCO number already in use by another member'}), 400
+        
+        # Get settings for share prices
+        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings:
+            kai_share_price = settings['kai_share_price'] or 100000
+            ks_share_price = settings['ks_share_price'] or 10000
+            kac_annual_fee = settings['kac_annual_fee'] or 100000
+            registration_fee = settings['registration_fee'] or 20000
+        else:
+            kai_share_price = 100000
+            ks_share_price = 10000
+            kac_annual_fee = 100000
+            registration_fee = 20000
+        
+        # Get existing shares
+        existing_member = db.execute("""
+            SELECT kai_shares, ks_shares, kac_paid, registration_fee_paid 
+            FROM users WHERE id = ?
+        """, (member_id,)).fetchone()
+        
+        # Update savings balance based on shares
+        kai_shares = int(data.get('kai_shares', existing_member['kai_shares'] or 0))
+        ks_shares = int(data.get('ks_shares', existing_member['ks_shares'] or 0))
+        kac_paid = data.get('kac_paid', existing_member['kac_paid'] or 0)
+        registration_fee_paid = data.get('registration_fee_paid', existing_member['registration_fee_paid'] or 0)
+        
+        total_savings = (kai_shares * kai_share_price) + (ks_shares * ks_share_price)
+        if kac_paid:
+            total_savings += kac_annual_fee
+        if registration_fee_paid:
+            total_savings += registration_fee
+        
+        db.execute("""
+            UPDATE users 
+            SET full_name = ?,
+                sacco_number = ?,
+                phone = ?,
+                email = ?,
+                gender = ?,
+                dob = ?,
+                address = ?,
+                status = ?,
+                savings_balance = ?,
+                kai_shares = ?,
+                ks_shares = ?,
+                kac_paid = ?,
+                registration_fee_paid = ?
+            WHERE id = ?
+        """, (
+            data.get('full_name', '').strip(),
+            sacco_number,
+            phone,
+            email,
+            data.get('gender', ''),
+            data.get('dob', ''),
+            data.get('address', ''),
+            data.get('status', 'active'),
+            total_savings,
+            kai_shares,
+            ks_shares,
+            kac_paid,
+            registration_fee_paid,
+            member_id
+        ))
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({'success': True, 'message': 'Member updated successfully'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        print(f"Error updating member: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# TREASURER - DELETE MEMBER
+# ============================================================
+@app.route("/treasurer/member/delete/<int:member_id>", methods=["DELETE"])
+def treasurer_delete_member(member_id):
+    if session.get("role") not in ["treasurer", "admin"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    
+    try:
+        member = db.execute("""
+            SELECT id, full_name, savings_balance FROM users WHERE id = ? AND LOWER(role) = 'member'
+        """, (member_id,)).fetchone()
+        
+        if not member:
+            db.close()
+            return jsonify({'success': False, 'message': 'Member not found'}), 404
+        
+        active_loans = db.execute("""
+            SELECT COUNT(*) as count FROM loans 
+            WHERE user_id = ? AND status IN ('pending', 'approved', 'disbursed', 'active')
+        """, (member_id,)).fetchone()[0]
+        
+        if active_loans > 0:
+            db.close()
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete member with {active_loans} active loan(s). Please resolve loans first.'
+            }), 400
+        
+        if member['savings_balance'] > 0:
+            db.close()
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete member with savings balance of UGX {member["savings_balance"]:,.0f}. Please withdraw savings first.'
+            }), 400
+        
+        db.execute("DELETE FROM users WHERE id = ?", (member_id,))
+        db.commit()
+        db.close()
+        
+        return jsonify({'success': True, 'message': f'Member "{member["full_name"]}" deleted successfully'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # ============================================================
@@ -1855,20 +2698,11 @@ def member_dashboard():
             flash("Member not found", "danger")
             return redirect(url_for("login"))
 
-        # ============================================================
-        # TOTAL SAVINGS
-        # ============================================================
-
         total_savings = db.execute("""
             SELECT COALESCE(SUM(amount), 0) as total
             FROM savings_deposits
             WHERE user_id = ?
         """, (user_id,)).fetchone()['total']
-
-
-        # ============================================================
-        # LOANS
-        # ============================================================
 
         loans_data = db.execute("""
             SELECT
@@ -1890,49 +2724,25 @@ def member_dashboard():
         total_loans_taken = 0
 
         for loan_row in loans_data:
-
             loan = dict(loan_row)
-
-            total_loans_taken += float(
-                loan.get('amount', 0) or 0
-            )
-
-            loan_total = float(
-                loan.get('total_repayment')
-                or loan.get('amount', 0)
-                or 0
-            )
-
-            total_paid = float(
-                loan.get('total_paid', 0) or 0
-            )
-
-            remaining_balance = max(
-                0,
-                loan_total - total_paid
-            )
-
+            total_loans_taken += float(loan.get('amount', 0) or 0)
+            loan_total = float(loan.get('total_repayment') or loan.get('amount', 0) or 0)
+            total_paid = float(loan.get('total_paid', 0) or 0)
+            remaining_balance = max(0, loan_total - total_paid)
             loan['remaining_balance'] = remaining_balance
 
-            if loan.get('status') in [
-                'approved',
-                'disbursed',
-                'active'
-            ]:
+            if loan.get('status') in ['approved', 'disbursed', 'active']:
                 active_loans_count += 1
                 active_loans_balance += remaining_balance
 
             loans.append(loan)
 
-
-        # ============================================================
-        # SAVINGS DEPOSITS
-        # ============================================================
-
         savings_deposits = db.execute("""
             SELECT
                 id,
                 amount,
+                savings_type,
+                shares,
                 deposit_date,
                 payment_method,
                 receipt_number,
@@ -1943,17 +2753,15 @@ def member_dashboard():
             ORDER BY deposit_date DESC
         """, (user_id,)).fetchall()
 
-
-        # ============================================================
-        # REPAYMENTS
-        # ============================================================
-
         repayments = db.execute("""
             SELECT
                 r.id,
                 r.loan_id,
                 r.user_id,
                 r.amount,
+                r.interest_paid,
+                r.principal_paid,
+                r.balance_after,
                 r.payment_date,
                 r.payment_method,
                 r.transaction_ref,
@@ -1965,11 +2773,6 @@ def member_dashboard():
             WHERE l.user_id = ?
             ORDER BY r.payment_date DESC
         """, (user_id,)).fetchall()
-
-
-        # ============================================================
-        # GUARANTORS
-        # ============================================================
 
         guarantors = db.execute("""
             SELECT
@@ -1990,11 +2793,6 @@ def member_dashboard():
             ORDER BY lg.id DESC
         """, (user_id,)).fetchall()
 
-
-        # ============================================================
-        # NOTIFICATIONS
-        # ============================================================
-
         notifications = db.execute("""
             SELECT
                 id,
@@ -2009,11 +2807,6 @@ def member_dashboard():
             ORDER BY created_at DESC
         """, (user_id,)).fetchall()
 
-
-        # ============================================================
-        # UNREAD NOTIFICATIONS COUNT
-        # ============================================================
-
         unread_notifications_count = db.execute("""
             SELECT COUNT(*) AS count
             FROM notifications
@@ -2021,60 +2814,35 @@ def member_dashboard():
             AND is_read = 0
         """, (user_id,)).fetchone()['count']
 
-
-        # ============================================================
-        # CLOSE DATABASE
-        # ============================================================
-
         db.close()
-
-
-        # ============================================================
-        # MEMBER DASHBOARD
-        # ============================================================
 
         return render_template(
             "member/member-dashboard.html",
-
             member=member,
             user=member,
-
             total_savings=total_savings,
-
             active_loans_count=active_loans_count,
             active_loans_balance=active_loans_balance,
             total_loans_taken=total_loans_taken,
-
             savings_deposits=savings_deposits,
-
             loans=loans,
-
             repayments=repayments,
-
             guarantors=guarantors,
-
-            # NOTIFICATIONS
             notifications=notifications,
             unread_notifications_count=unread_notifications_count
         )
 
-
     except Exception as e:
-
         import traceback
         traceback.print_exc()
-
         try:
             db.close()
         except:
             pass
-
-        flash(
-            f"Error loading dashboard: {str(e)}",
-            "danger"
-        )
-
+        flash(f"Error loading dashboard: {str(e)}", "danger")
         return redirect(url_for("login"))
+
+
 # ============================================================
 # MEMBER - APPLY LOAN
 # ============================================================
@@ -2161,18 +2929,7 @@ def member_apply_loan():
         
         application_date = datetime.now()
         
-        def get_loan_interest_rate(amount):
-            if amount >= 10000 and amount <= 1999999:
-                return 5
-            elif amount >= 2000000 and amount <= 4999999:
-                return 3
-            elif amount >= 5000000 and amount <= 9999999:
-                return 2
-            elif amount >= 10000000:
-                return 1
-            return 0
-        
-        monthly_rate_percent = get_loan_interest_rate(loan_amount)
+        monthly_rate_percent = get_interest_rate(loan_amount)
         monthly_rate = monthly_rate_percent / 100
         interest_amount = loan_amount * monthly_rate
         total_repayment = loan_amount + interest_amount
@@ -2238,7 +2995,7 @@ def member_apply_loan():
             due_date_str,
             application_date.month, 
             due_date.month,
-            0,
+            interest_amount,
             0,
             0,
             0,
@@ -2336,6 +3093,9 @@ def member_repayments():
                 r.loan_id,
                 r.user_id,
                 r.amount,
+                r.interest_paid,
+                r.principal_paid,
+                r.balance_after,
                 r.payment_date,
                 r.payment_method,
                 r.transaction_ref,
@@ -2486,1083 +3246,6 @@ def member_guarantors():
 
 
 # ============================================================
-# OTHER DASHBOARDS
-# ============================================================
-@app.route("/chairperson/dashboard")
-def chairperson_dashboard():
-    if session.get("role") != "chairperson":
-        return redirect("/login")
-    return render_template("chairperson/chairperson-dashboard.html")
-
-
-@app.route("/secretary/dashboard")
-def secretary_dashboard():
-    if session.get("role") != "secretary":
-        return redirect("/login")
-    return render_template("secretary/secretary-dashboard.html")
-
-
-@app.route("/publicity/dashboard")
-def publicity_dashboard():
-    if session.get("role") != "publicity":
-        return redirect("/login")
-    return render_template("publicity/publicity-dashboard.html")
-
-
-@app.route("/guarantor/tracking")
-def guarantor_tracking():
-    if "user_id" not in session:
-        return redirect("/login")
-    
-    user_id = session["user_id"]
-    db = get_db()
-    
-    guarantor_loans = db.execute("""
-        SELECT gt.*, l.loan_number, l.status, l.application_date,
-               u.full_name as member_name
-        FROM guarantor_tracking gt
-        JOIN loans l ON gt.loan_id = l.id
-        JOIN users u ON l.user_id = u.id
-        WHERE gt.guarantor_id = ?
-        ORDER BY gt.last_updated DESC
-    """, (user_id,)).fetchall()
-    
-    db.close()
-    
-    return render_template(
-        "guarantor/tracking.html",
-        guarantor_loans=guarantor_loans
-    )
-
-
-# ============================================================
-# ADMIN - FINAL APPROVE/REJECT LOAN
-# ============================================================
-@app.route("/admin/loan/approve/<int:loan_id>", methods=["POST"])
-def admin_approve_loan(loan_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    action = data.get('action')
-    reason = data.get('reason', '').strip()
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        loan = db.execute("""
-            SELECT l.*, u.full_name, u.email, u.phone, u.id as user_id
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.id = ?
-        """, (loan_id,)).fetchone()
-        
-        if not loan:
-            db.close()
-            return jsonify({'error': 'Loan not found'}), 404
-        
-        if loan['status'] != 'approved':
-            db.close()
-            return jsonify({'error': f'Loan must be approved first. Current status: {loan["status"]}'}), 400
-        
-        if action == 'reject':
-            if not reason:
-                db.close()
-                return jsonify({'error': 'Rejection reason is required'}), 400
-            
-            db.execute("""
-                UPDATE loans 
-                SET status = 'rejected', 
-                    rejected_date = datetime('now'),
-                    admin_rejection_reason = ?,
-                    rejection_reason = ?,
-                    rejected_by = ?
-                WHERE id = ?
-            """, (reason, reason, session.get('full_name', 'Admin'), loan_id))
-            db.commit()
-            db.close()
-            return jsonify({'success': True, 'message': 'Loan rejected successfully'})
-        
-        # Final Approve - Disburse the loan
-        today = datetime.now().strftime('%Y-%m-%d')
-        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        balance = loan['total_repayment'] or loan['amount']
-        
-        db.execute("""
-            UPDATE loans 
-            SET status = 'disbursed',
-                disbursement_date = ?,
-                loan_start_date = ?,
-                loan_end_date = ?,
-                due_date = ?,
-                current_balance = ?,
-                disbursed_by = ?,
-                disbursed_by_role = ?
-            WHERE id = ?
-        """, (today, today, end_date, end_date, balance, session.get('full_name', 'Admin'), session.get('role', 'admin'), loan_id))
-        
-        # Create notification for member
-        db.execute("""
-            INSERT INTO notifications (
-                user_id, title, message, notification_type, is_read, created_at
-            )
-            VALUES (?, ?, ?, ?, 0, datetime('now'))
-        """, (
-            loan['user_id'],
-            'Loan Disbursed',
-            f'Your loan {loan["loan_number"]} of UGX {loan["amount"]:,.0f} has been disbursed. Your repayment period starts today.',
-            'loan_disbursed'
-        ))
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': '✅ Loan approved and disbursed successfully!'})
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        print(f"❌ Error in admin approve: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ============================================================
-# ADMIN - VIEW LOAN DETAILS (Reuses Treasurer Template)
-# ============================================================
-@app.route("/admin/loan/view/<int:loan_id>")
-def admin_view_loan(loan_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        loan = db.execute("""
-            SELECT l.*, u.full_name, u.sacco_number, u.email, u.phone, u.savings_balance
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.id = ?
-        """, (loan_id,)).fetchone()
-        
-        if not loan:
-            flash('Loan not found', 'danger')
-            db.close()
-            return redirect(url_for('admin_dashboard'))
-        
-        guarantors = db.execute("SELECT * FROM loan_guarantors WHERE loan_id = ?", (loan_id,)).fetchall()
-        repayments = db.execute("SELECT * FROM repayments WHERE loan_id = ? ORDER BY payment_date DESC", (loan_id,)).fetchall()
-        total_paid = sum(r['amount'] for r in repayments) if repayments else 0
-        
-        db.close()
-        
-        return render_template(
-            "treasurer/treasurer-view-loan.html",
-            loan=loan,
-            guarantors=guarantors,
-            repayments=repayments,
-            total_paid=total_paid,
-            role='admin'
-        )
-        
-    except Exception as e:
-        db.close()
-        flash(f'Error: {str(e)}', 'danger')
-        return redirect(url_for('admin_dashboard'))
-
-# ============================================================
-# ADMIN - GENERATE REPORTS (FIXED)
-# ============================================================
-@app.route("/admin/reports/generate/<string:report_type>")
-def generate_report(report_type):
-    if session.get("role") not in ["admin", "chairperson"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        if report_type == 'members':
-            # Get all members with their details
-            members = db.execute("""
-                SELECT 
-                    id, full_name, sacco_number, phone, email,
-                    savings_balance, status, registration_date,
-                    next_of_kin_name, next_of_kin_phone, gender, dob, address
-                FROM users 
-                WHERE LOWER(role) = 'member'
-                ORDER BY full_name
-            """).fetchall()
-            
-            # Convert to dictionaries and add loan counts (FIXED)
-            members_list = []
-            for member in members:
-                # Convert sqlite3.Row to dictionary
-                member_dict = dict(member)
-                loan_count = db.execute("""
-                    SELECT COUNT(*) FROM loans WHERE user_id = ? AND status IN ('disbursed', 'active')
-                """, (member_dict['id'],)).fetchone()[0]
-                member_dict['active_loans'] = loan_count  # ✅ Now this works
-                members_list.append(member_dict)
-            
-            db.close()
-            return render_template(
-                "admin/reports/member-report.html",
-                members=members_list,  # Pass list of dictionaries
-                total_members=len(members_list),
-                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                report_title="Member Report",
-                now=datetime.now()
-            )
-            
-        elif report_type == 'financial':
-            # Financial summary data
-            total_members = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
-            total_savings = db.execute("SELECT COALESCE(SUM(savings_balance), 0) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
-            
-            # Loan statistics
-            total_loans = db.execute("SELECT COUNT(*) FROM loans").fetchone()[0]
-            pending_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
-            approved_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'approved'").fetchone()[0]
-            disbursed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'disbursed'").fetchone()[0]
-            completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-            rejected_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
-            
-            # Total loan amounts
-            total_loan_amount = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans").fetchone()[0]
-            total_disbursed = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status IN ('disbursed', 'active', 'completed')").fetchone()[0]
-            
-            # Repayments
-            total_repayments = db.execute("SELECT COALESCE(SUM(amount), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
-            
-            # Staff counts
-            staff_counts = {
-                'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
-                'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
-                'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
-                'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
-            }
-            
-            db.close()
-            
-            return render_template(
-                "admin/reports/financial-report.html",
-                total_members=total_members,
-                total_savings=total_savings,
-                total_loans=total_loans,
-                pending_loans=pending_loans,
-                approved_loans=approved_loans,
-                disbursed_loans=disbursed_loans,
-                completed_loans=completed_loans,
-                rejected_loans=rejected_loans,
-                total_loan_amount=total_loan_amount,
-                total_disbursed=total_disbursed,
-                total_repayments=total_repayments,
-                staff_counts=staff_counts,
-                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                report_title="Financial Summary Report",
-                now=datetime.now()
-            )
-            
-        elif report_type == 'loans':
-            # Get all loans with member details
-            loans = db.execute("""
-                SELECT 
-                    l.*,
-                    u.full_name,
-                    u.sacco_number,
-                    u.phone,
-                    u.email,
-                    COALESCE((
-                        SELECT COUNT(*) FROM repayments 
-                        WHERE loan_id = l.id AND status = 'completed'
-                    ), 0) as payment_count,
-                    COALESCE((
-                        SELECT SUM(amount) FROM repayments 
-                        WHERE loan_id = l.id AND status = 'completed'
-                    ), 0) as total_paid
-                FROM loans l
-                JOIN users u ON l.user_id = u.id
-                ORDER BY l.application_date DESC
-            """).fetchall()
-            
-            # Get loan statistics - convert to list of dicts if needed
-            loans_list = [dict(loan) for loan in loans]  # Convert to dictionaries
-            
-            total_loans = len(loans_list)
-            total_amount = sum(l['amount'] for l in loans_list) if loans_list else 0
-            total_balance = sum(l.get('current_balance', 0) or 0 for l in loans_list) if loans_list else 0
-            
-            db.close()
-            
-            return render_template(
-                "admin/reports/loan-report.html",
-                loans=loans_list,  # Pass list of dictionaries
-                total_loans=total_loans,
-                total_amount=total_amount,
-                total_balance=total_balance,
-                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                report_title="Loan Portfolio Report",
-                now=datetime.now()
-            )
-            
-        elif report_type == 'savings':
-            # Get all savings deposits with member details
-            savings = db.execute("""
-                SELECT 
-                    sd.*,
-                    u.full_name,
-                    u.sacco_number,
-                    u.phone,
-                    u.email
-                FROM savings_deposits sd
-                JOIN users u ON sd.user_id = u.id
-                ORDER BY sd.deposit_date DESC
-            """).fetchall()
-            
-            # Get member savings summaries
-            member_savings = db.execute("""
-                SELECT 
-                    u.id,
-                    u.full_name,
-                    u.sacco_number,
-                    u.savings_balance,
-                    COUNT(sd.id) as deposit_count,
-                    COALESCE(SUM(sd.amount), 0) as total_deposited
-                FROM users u
-                LEFT JOIN savings_deposits sd ON u.id = sd.user_id
-                WHERE LOWER(u.role) = 'member'
-                GROUP BY u.id
-                ORDER BY u.savings_balance DESC
-            """).fetchall()
-            
-            # Convert to dictionaries
-            savings_list = [dict(s) for s in savings]
-            member_savings_list = [dict(m) for m in member_savings]
-            
-            total_savings_amount = sum(m['savings_balance'] for m in member_savings_list) if member_savings_list else 0
-            
-            db.close()
-            
-            return render_template(
-                "admin/reports/savings-report.html",
-                savings=savings_list,  # Pass list of dictionaries
-                member_savings=member_savings_list,  # Pass list of dictionaries
-                total_savings=total_savings_amount,
-                total_deposits=len(savings_list),
-                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                report_title="Savings Report",
-                now=datetime.now()
-            )
-            
-        else:
-            flash('Invalid report type', 'danger')
-            return redirect(url_for('admin_dashboard'))
-            
-    except Exception as e:
-        db.close()
-        flash(f'Error generating report: {str(e)}', 'danger')
-        return redirect(url_for('admin_dashboard'))
-    
-# ============================================================
-# ADMIN - VIEW USER (JSON)
-# ============================================================
-@app.route("/admin/users/view/<int:user_id>")
-def admin_view_user(user_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        user = db.execute("""
-            SELECT id, full_name, email, phone, sacco_number, role, status
-            FROM users WHERE id = ?
-        """, (user_id,)).fetchone()
-        
-        if not user:
-            db.close()
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        db.close()
-        return jsonify({'success': True, 'user': dict(user)})
-        
-    except Exception as e:
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# ============================================================
-# ADMIN - UPDATE USER
-# ============================================================
-@app.route("/admin/users/update/<int:user_id>", methods=["POST"])
-def admin_update_user(user_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
-    
-    db = get_db()
-    
-    try:
-        user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user:
-            db.close()
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        # Check if email is already used by another user
-        email = data.get('email', '').strip()
-        if email:
-            existing = db.execute("""
-                SELECT id FROM users WHERE email = ? AND id != ? AND email != ''
-            """, (email, user_id)).fetchone()
-            if existing:
-                db.close()
-                return jsonify({'success': False, 'message': 'Email already in use by another user'}), 400
-        
-        # Check if phone is already used by another user
-        phone = data.get('phone', '').strip()
-        if phone:
-            existing = db.execute("""
-                SELECT id FROM users WHERE phone = ? AND id != ? AND phone != ''
-            """, (phone, user_id)).fetchone()
-            if existing:
-                db.close()
-                return jsonify({'success': False, 'message': 'Phone number already in use by another user'}), 400
-        
-        db.execute("""
-            UPDATE users 
-            SET full_name = ?,
-                email = ?,
-                phone = ?,
-                role = ?,
-                status = ?
-            WHERE id = ?
-        """, (
-            data.get('full_name', '').strip(),
-            email,
-            phone,
-            data.get('role', 'member'),
-            data.get('status', 'active'),
-            user_id
-        ))
-        
-        db.commit()
-        db.close()
-        return jsonify({'success': True, 'message': 'User updated successfully'})
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# ADMIN - RESET PASSWORD
-# ============================================================
-@app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
-def admin_reset_password(user_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    import secrets
-    import string
-    
-    db = get_db()
-    
-    try:
-        user = db.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user:
-            db.close()
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        # Generate a random password
-        alphabet = string.ascii_letters + string.digits
-        new_password = ''.join(secrets.choice(alphabet) for _ in range(10))
-        
-        db.execute("""
-            UPDATE users SET password = ? WHERE id = ?
-        """, (new_password, user_id))
-        
-        db.commit()
-        db.close()
-        return jsonify({
-            'success': True, 
-            'message': 'Password reset successfully',
-            'new_password': new_password
-        })
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# ADMIN - DELETE USER (FIXED - Accepts both DELETE and POST)
-# ============================================================
-@app.route("/admin/users/delete/<int:user_id>", methods=["DELETE", "POST"])
-def admin_delete_user(user_id):
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        user = db.execute("SELECT id, full_name, role, sacco_number FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user:
-            db.close()
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        # Prevent deleting the last admin
-        if user['role'] == 'admin':
-            admin_count = db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
-            if admin_count <= 1:
-                db.close()
-                return jsonify({'success': False, 'message': 'Cannot delete the last admin user'}), 400
-        
-        # Prevent deleting self
-        if user_id == session.get('user_id'):
-            db.close()
-            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
-        
-        # Check if user has active loans
-        if user['role'] == 'member':
-            active_loans = db.execute("""
-                SELECT COUNT(*) FROM loans 
-                WHERE user_id = ? AND status IN ('pending', 'approved', 'disbursed', 'active')
-            """, (user_id,)).fetchone()[0]
-            
-            if active_loans > 0:
-                db.close()
-                return jsonify({
-                    'success': False, 
-                    'message': f'Cannot delete member with {active_loans} active loan(s). Please resolve loans first.'
-                }), 400
-            
-            # Check if member has savings balance
-            savings = db.execute("SELECT savings_balance FROM users WHERE id = ?", (user_id,)).fetchone()
-            if savings and savings['savings_balance'] > 0:
-                db.close()
-                return jsonify({
-                    'success': False, 
-                    'message': f'Cannot delete member with savings balance of UGX {savings["savings_balance"]:,.0f}. Please withdraw savings first.'
-                }), 400
-        
-        # Delete related records first (foreign key constraints)
-        # Delete loan guarantors
-        db.execute("DELETE FROM loan_guarantors WHERE loan_id IN (SELECT id FROM loans WHERE user_id = ?)", (user_id,))
-        # Delete repayments
-        db.execute("DELETE FROM repayments WHERE user_id = ?", (user_id,))
-        # Delete loans
-        db.execute("DELETE FROM loans WHERE user_id = ?", (user_id,))
-        # Delete savings deposits
-        db.execute("DELETE FROM savings_deposits WHERE user_id = ?", (user_id,))
-        # Delete notifications
-        db.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
-        # Finally delete the user
-        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': f'User "{user["full_name"]}" deleted successfully'})
-        
-    except sqlite3.IntegrityError as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': f'Database constraint error: {str(e)}'}), 400
-    except Exception as e:
-        db.rollback()
-        db.close()
-        print(f"Delete user error: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# ============================================================
-# ADMIN - GET SETTINGS
-# ============================================================
-@app.route("/admin/settings/get")
-def get_settings():
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        # Check if settings table exists, create if not
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS system_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sacco_name TEXT DEFAULT 'Karacel Association',
-                registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
-                savings_interest_rate REAL DEFAULT 6.5,
-                loan_interest_rate REAL DEFAULT 12,
-                penalty_rate REAL DEFAULT 5,
-                max_loan_amount TEXT DEFAULT '10000000',
-                min_loan_amount TEXT DEFAULT '10000',
-                max_tenure INTEGER DEFAULT 24,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        db.commit()
-        
-        # Get settings
-        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        
-        if not settings:
-            # Insert default settings
-            db.execute("""
-                INSERT INTO system_settings (
-                    sacco_name, registration_number, savings_interest_rate,
-                    loan_interest_rate, penalty_rate, max_loan_amount,
-                    min_loan_amount, max_tenure
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, ('Karacel Association', 'SACCO/REG/2024/001', 6.5, 12, 5, '10000000', '10000', 24)
-            )
-            db.commit()
-            settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        
-        db.close()
-        return jsonify({'success': True, 'settings': dict(settings)})
-        
-    except Exception as e:
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# ADMIN - UPDATE SETTINGS
-# ============================================================
-@app.route("/admin/settings/update", methods=["POST"])
-def update_settings():
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
-    
-    db = get_db()
-    
-    try:
-        # Ensure settings table exists
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS system_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sacco_name TEXT DEFAULT 'Karacel Association',
-                registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
-                savings_interest_rate REAL DEFAULT 6.5,
-                loan_interest_rate REAL DEFAULT 12,
-                penalty_rate REAL DEFAULT 5,
-                max_loan_amount TEXT DEFAULT '10000000',
-                min_loan_amount TEXT DEFAULT '10000',
-                max_tenure INTEGER DEFAULT 24,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        db.commit()
-        
-        # Check if settings exist
-        settings = db.execute("SELECT id FROM system_settings LIMIT 1").fetchone()
-        
-        if settings:
-            db.execute("""
-                UPDATE system_settings SET
-                    sacco_name = ?,
-                    registration_number = ?,
-                    savings_interest_rate = ?,
-                    loan_interest_rate = ?,
-                    penalty_rate = ?,
-                    max_loan_amount = ?,
-                    min_loan_amount = ?,
-                    max_tenure = ?,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (
-                data.get('sacco_name', 'Karacel Association'),
-                data.get('registration_number', 'SACCO/REG/2024/001'),
-                data.get('savings_interest_rate', 6.5),
-                data.get('loan_interest_rate', 12),
-                data.get('penalty_rate', 5),
-                data.get('max_loan_amount', '10000000'),
-                data.get('min_loan_amount', '10000'),
-                data.get('max_tenure', 24),
-                settings['id']
-            ))
-        else:
-            db.execute("""
-                INSERT INTO system_settings (
-                    sacco_name, registration_number, savings_interest_rate,
-                    loan_interest_rate, penalty_rate, max_loan_amount,
-                    min_loan_amount, max_tenure
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                data.get('sacco_name', 'Karacel Association'),
-                data.get('registration_number', 'SACCO/REG/2024/001'),
-                data.get('savings_interest_rate', 6.5),
-                data.get('loan_interest_rate', 12),
-                data.get('penalty_rate', 5),
-                data.get('max_loan_amount', '10000000'),
-                data.get('min_loan_amount', '10000'),
-                data.get('max_tenure', 24)
-            ))
-        
-        db.commit()
-        db.close()
-        return jsonify({'success': True, 'message': 'Settings updated successfully'})
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# ADMIN - USER MANAGEMENT
-# ============================================================
-@app.route("/admin/users/register", methods=["GET", "POST"])
-def admin_register_user():
-    if session.get("role") not in ["admin", "chairperson"]:
-        flash('Access denied. Only Admin or Chairperson can register users.', 'danger')
-        return redirect("/login")
-    
-    if request.method == "POST":
-        full_name = request.form.get('full_name')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        role = request.form.get('role')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        if not full_name or not email or not role:
-            flash('All fields are required', 'danger')
-            return render_template("admin/register-user.html")
-        
-        if password != confirm_password:
-            flash('Passwords do not match', 'danger')
-            return render_template("admin/register-user.html")
-        
-        if len(password) < 6:
-            flash('Password must be at least 6 characters', 'danger')
-            return render_template("admin/register-user.html")
-        
-        sacco_number = f"STAFF-{datetime.now().strftime('%Y%m')}-{role[:3].upper()}{int(datetime.now().timestamp()) % 1000}"
-        
-        db = get_db()
-        
-        existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-        if existing:
-            flash('Email already registered', 'danger')
-            db.close()
-            return render_template("admin/register-user.html")
-        
-        cursor = db.cursor()
-        cursor.execute("""
-            INSERT INTO users (
-                full_name, email, phone, sacco_number, password, role, status, registration_date
-            ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
-        """, (full_name, email, phone, sacco_number, password, role, datetime.now().strftime('%Y-%m-%d')))
-        
-        db.commit()
-        db.close()
-        
-        flash(f'User {full_name} registered successfully as {role}!', 'success')
-        return redirect(url_for('admin_manage_users'))
-    
-    return render_template("admin/register-user.html")
-
-
-@app.route("/admin/users/manage")
-def admin_manage_users():
-    if session.get("role") not in ["admin", "chairperson"]:
-        flash('Access denied. Only Admin or Chairperson can manage users.', 'danger')
-        return redirect("/login")
-    
-    db = get_db()
-    
-    staff_users = db.execute("""
-        SELECT * FROM users 
-        WHERE LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
-        ORDER BY 
-            CASE 
-                WHEN LOWER(role) = 'admin' THEN 1
-                WHEN LOWER(role) = 'chairperson' THEN 2
-                WHEN LOWER(role) = 'treasurer' THEN 3
-                WHEN LOWER(role) = 'secretary' THEN 4
-                WHEN LOWER(role) = 'publicity' THEN 5
-            END,
-            full_name
-    """).fetchall()
-    
-    staff_counts = {
-        'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
-        'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
-        'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
-        'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
-    }
-    
-    db.close()
-    
-    return render_template(
-        "admin/manage-users.html",
-        staff_users=staff_users,
-        staff_counts=staff_counts
-    )
-
-
-# ============================================================
-# DEBUG ROUTE
-# ============================================================
-@app.route("/debug/repayments/<int:user_id>")
-def debug_member_repayments(user_id):
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    repayments = db.execute("""
-        SELECT * FROM repayments WHERE user_id = ?
-    """, (user_id,)).fetchall()
-    
-    db.close()
-    
-    return f"Found {len(repayments)} repayments for user {user_id}"
-
-
-# ============================================================
-# TREASURER - VIEW MEMBER DETAILS (HTML Page)
-# ============================================================
-@app.route("/treasurer/members/view/<int:member_id>")
-def treasurer_member_details(member_id):
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        member = db.execute("""
-            SELECT * FROM users WHERE id = ? AND LOWER(role) = 'member'
-        """, (member_id,)).fetchone()
-        
-        if not member:
-            flash('Member not found', 'danger')
-            return redirect(url_for('treasurer_dashboard'))
-        
-        loans = db.execute("""
-            SELECT * FROM loans WHERE user_id = ? ORDER BY application_date DESC
-        """, (member_id,)).fetchall()
-        
-        deposits = db.execute("""
-            SELECT * FROM savings_deposits WHERE user_id = ? ORDER BY deposit_date DESC
-        """, (member_id,)).fetchall()
-        
-        repayments = db.execute("""
-            SELECT r.*, l.loan_number 
-            FROM repayments r
-            JOIN loans l ON r.loan_id = l.id
-            WHERE r.user_id = ?
-            ORDER BY r.payment_date DESC
-        """, (member_id,)).fetchall()
-        
-        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-        
-        db.close()
-        
-        return render_template(
-            "treasurer/member-details.html",
-            member=member,
-            loans=loans,
-            deposits=deposits,
-            repayments=repayments,
-            completed_loans=completed_loans
-        )
-        
-    except Exception as e:
-        db.close()
-        flash(f'Error: {str(e)}', 'danger')
-        return redirect(url_for('treasurer_dashboard'))
-
-
-# ============================================================
-# TREASURER - VIEW MEMBER (JSON for Edit Modal)
-# ============================================================
-@app.route("/treasurer/member/view/<int:member_id>")
-def treasurer_member_view_json(member_id):
-    """Return member data as JSON for AJAX calls"""
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        member = db.execute("""
-            SELECT id, full_name, sacco_number, phone, email, 
-                   gender, dob, address, savings_balance, status, 
-                   registration_date, next_of_kin_name, next_of_kin_phone, relationship
-            FROM users 
-            WHERE id = ? AND LOWER(role) = 'member'
-        """, (member_id,)).fetchone()
-        
-        if not member:
-            db.close()
-            return jsonify({'success': False, 'message': 'Member not found'}), 404
-        
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'member': dict(member)
-        })
-        
-    except Exception as e:
-        db.close()
-        print(f"❌ Error getting member: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# ============================================================
-# TREASURER - UPDATE MEMBER
-# ============================================================
-@app.route("/treasurer/member/update/<int:member_id>", methods=["POST"])
-def treasurer_update_member(member_id):
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
-    
-    db = get_db()
-    
-    try:
-        member = db.execute("""
-            SELECT id, sacco_number FROM users WHERE id = ? AND LOWER(role) = 'member'
-        """, (member_id,)).fetchone()
-        
-        if not member:
-            db.close()
-            return jsonify({'success': False, 'message': 'Member not found'}), 404
-        
-        phone = data.get('phone', '').strip()
-        if phone:
-            existing = db.execute("""
-                SELECT id FROM users WHERE phone = ? AND id != ?
-            """, (phone, member_id)).fetchone()
-            if existing:
-                db.close()
-                return jsonify({'success': False, 'message': 'Phone number already in use by another member'}), 400
-        
-        email = data.get('email', '').strip()
-        if email:
-            existing = db.execute("""
-                SELECT id FROM users WHERE email = ? AND id != ? AND email != ''
-            """, (email, member_id)).fetchone()
-            if existing:
-                db.close()
-                return jsonify({'success': False, 'message': 'Email already in use by another member'}), 400
-        
-        sacco_number = data.get('sacco_number', '').strip().upper()
-        if sacco_number:
-            existing = db.execute("""
-                SELECT id FROM users WHERE sacco_number = ? AND id != ?
-            """, (sacco_number, member_id)).fetchone()
-            if existing:
-                db.close()
-                return jsonify({'success': False, 'message': 'SACCO number already in use by another member'}), 400
-        
-        db.execute("""
-            UPDATE users 
-            SET full_name = ?,
-                sacco_number = ?,
-                phone = ?,
-                email = ?,
-                gender = ?,
-                dob = ?,
-                address = ?,
-                status = ?
-            WHERE id = ?
-        """, (
-            data.get('full_name', '').strip(),
-            sacco_number,
-            phone,
-            email,
-            data.get('gender', ''),
-            data.get('dob', ''),
-            data.get('address', ''),
-            data.get('status', 'active'),
-            member_id
-        ))
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': 'Member updated successfully'})
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        print(f"Error updating member: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# TREASURER - DELETE MEMBER
-# ============================================================
-@app.route("/treasurer/member/delete/<int:member_id>", methods=["DELETE"])
-def treasurer_delete_member(member_id):
-    if session.get("role") not in ["treasurer", "admin"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    
-    try:
-        member = db.execute("""
-            SELECT id, full_name, savings_balance FROM users WHERE id = ? AND LOWER(role) = 'member'
-        """, (member_id,)).fetchone()
-        
-        if not member:
-            db.close()
-            return jsonify({'success': False, 'message': 'Member not found'}), 404
-        
-        active_loans = db.execute("""
-            SELECT COUNT(*) as count FROM loans 
-            WHERE user_id = ? AND status IN ('pending', 'approved', 'disbursed', 'active')
-        """, (member_id,)).fetchone()[0]
-        
-        if active_loans > 0:
-            db.close()
-            return jsonify({
-                'success': False, 
-                'message': f'Cannot delete member with {active_loans} active loan(s). Please resolve loans first.'
-            }), 400
-        
-        if member['savings_balance'] > 0:
-            db.close()
-            return jsonify({
-                'success': False, 
-                'message': f'Cannot delete member with savings balance of UGX {member["savings_balance"]:,.0f}. Please withdraw savings first.'
-            }), 400
-        
-        db.execute("DELETE FROM users WHERE id = ?", (member_id,))
-        db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': f'Member "{member["full_name"]}" deleted successfully'})
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
 # MEMBER SEARCH FOR GUARANTORS
 # ============================================================
 @app.route("/member/search-members", methods=["GET"])
@@ -3643,237 +3326,1093 @@ def search_members():
             'message': str(e)
         }), 500
 
-
-# ============================================================
-# GET ALL MEMBERS
-# ============================================================
-@app.route("/member/get-members", methods=["GET"])
-def get_all_members():
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+@app.route("/treasurer/savings-reports")
+def treasurer_savings_reports():
+    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
     
-    current_user_id = session["user_id"]
     db = get_db()
     db.row_factory = sqlite3.Row
     
     try:
+        # Get all members
         members = db.execute("""
-            SELECT 
-                id,
-                full_name,
-                sacco_number,
-                phone,
-                email,
-                savings_balance,
-                status
-            FROM users 
-            WHERE LOWER(role) = 'member' 
-            AND id != ?
-            AND status = 'active'
-            ORDER BY full_name ASC
-            LIMIT 50
-        """, (current_user_id,)).fetchall()
+            SELECT * FROM users WHERE LOWER(role) = 'member'
+            ORDER BY full_name
+        """).fetchall()
         
-        member_list = []
+        total_members = len(members)
+        
+        # Calculate savings by type
+        kai_total = 0
+        ks_total = 0
+        kac_total = 0
+        registration_fees_total = 0
+        kai_members = 0
+        ks_members = 0
+        kac_members = 0
+        registration_fees_count = 0
+        kai_shares = 0
+        ks_shares = 0
+        
         for member in members:
-            member_list.append({
-                'id': member['id'],
-                'full_name': member['full_name'],
-                'sacco_number': member['sacco_number'],
-                'phone': member['phone'] or '',
-                'email': member['email'] or '',
-                'savings_balance': member['savings_balance'] or 0
-            })
+            member_dict = dict(member)
+            
+            if 'kai_shares' in member_dict and member_dict['kai_shares']:
+                shares = member_dict['kai_shares']
+                kai_shares += shares
+                kai_total += shares * 100000
+                kai_members += 1
+            
+            if 'ks_shares' in member_dict and member_dict['ks_shares']:
+                shares = member_dict['ks_shares']
+                ks_shares += shares
+                ks_total += shares * 10000
+                ks_members += 1
+            
+            if 'kac_paid' in member_dict and member_dict['kac_paid']:
+                kac_total += 100000
+                kac_members += 1
+            
+            if 'registration_fee_paid' in member_dict and member_dict['registration_fee_paid']:
+                registration_fees_total += 20000
+                registration_fees_count += 1
         
         db.close()
         
-        return jsonify({
-            'success': True,
-            'members': member_list,
-            'count': len(member_list)
-        })
+        return render_template(
+            "treasurer/savings-reports.html",
+            members=members,
+            total_members=total_members,
+            kai_total=kai_total,
+            ks_total=ks_total,
+            kac_total=kac_total,
+            registration_fees_total=registration_fees_total,
+            kai_members=kai_members,
+            ks_members=ks_members,
+            kac_members=kac_members,
+            registration_fees_count=registration_fees_count,
+            kai_shares=kai_shares,
+            ks_shares=ks_shares
+        )
         
     except Exception as e:
         db.close()
-        print(f"Error getting members: {str(e)}")
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('treasurer_dashboard'))
+
+# ============================================================
+# ADMIN - EDIT USER
+# ============================================================
+@app.route("/admin/users/edit/<int:user_id>", methods=["GET", "POST"])
+def admin_edit_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('admin_manage_users'))
+        
+        if request.method == "POST":
+            full_name = request.form.get('full_name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            role = request.form.get('role')
+            status = request.form.get('status')
+            
+            # Check if email is already used by another user
+            if email:
+                existing = db.execute("""
+                    SELECT id FROM users WHERE email = ? AND id != ?
+                """, (email, user_id)).fetchone()
+                if existing:
+                    flash('Email already in use by another user', 'danger')
+                    db.close()
+                    return render_template("admin/edit-user.html", user=user)
+            
+            db.execute("""
+                UPDATE users 
+                SET full_name = ?, email = ?, phone = ?, role = ?, status = ?
+                WHERE id = ?
+            """, (full_name, email, phone, role, status, user_id))
+            
+            db.commit()
+            db.close()
+            
+            flash('User updated successfully!', 'success')
+            return redirect(url_for('admin_manage_users'))
+        
+        db.close()
+        return render_template("admin/edit-user.html", user=user, now=datetime.now())
+        
+    except Exception as e:
+        db.close()
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('admin_manage_users'))
+
+# ============================================================
+# ADMIN - MANAGE USERS
+# ============================================================
+@app.route("/admin/users/manage")
+def admin_manage_users():
+    if session.get("role") not in ["admin", "chairperson"]:
+        flash('Access denied. Only Admin or Chairperson can manage users.', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        # Get all staff users
+        staff_users = db.execute("""
+            SELECT * FROM users 
+            WHERE LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+            ORDER BY 
+                CASE 
+                    WHEN LOWER(role) = 'admin' THEN 1
+                    WHEN LOWER(role) = 'chairperson' THEN 2
+                    WHEN LOWER(role) = 'treasurer' THEN 3
+                    WHEN LOWER(role) = 'secretary' THEN 4
+                    WHEN LOWER(role) = 'publicity' THEN 5
+                END,
+                full_name
+        """).fetchall()
+        
+        # Get staff counts
+        staff_counts = {
+            'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
+            'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
+            'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
+            'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
+        }
+        
+        db.close()
+        
+        return render_template(
+            "admin/manage-users.html",
+            staff_users=staff_users,
+            staff_counts=staff_counts,
+            now=datetime.now()
+        )
+        
+    except Exception as e:
+        db.close()
+        flash(f'Error loading users: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+# ============================================================
+# ADMIN - REGISTER USER
+# ============================================================
+@app.route("/admin/users/register", methods=["GET", "POST"])
+def admin_register_user():
+    if session.get("role") not in ["admin", "chairperson"]:
+        flash('Access denied. Only Admin or Chairperson can register users.', 'danger')
+        return redirect("/login")
+    
+    if request.method == "POST":
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        role = request.form.get('role')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not full_name or not email or not role:
+            flash('All fields are required', 'danger')
+            return render_template("admin/register-user.html")
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'danger')
+            return render_template("admin/register-user.html")
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters', 'danger')
+            return render_template("admin/register-user.html")
+        
+        sacco_number = f"STAFF-{datetime.now().strftime('%Y%m')}-{role[:3].upper()}{int(datetime.now().timestamp()) % 1000}"
+        
+        db = get_db()
+        
+        existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if existing:
+            flash('Email already registered', 'danger')
+            db.close()
+            return render_template("admin/register-user.html")
+        
+        cursor = db.cursor()
+        cursor.execute("""
+            INSERT INTO users (
+                full_name, email, phone, sacco_number, password, role, status, registration_date
+            ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
+        """, (full_name, email, phone, sacco_number, password, role, datetime.now().strftime('%Y-%m-%d')))
+        
+        db.commit()
+        db.close()
+        
+        flash(f'User {full_name} registered successfully as {role}!', 'success')
+        return redirect(url_for('admin_manage_users'))
+    
+    return render_template("admin/register-user.html")
+
+# ============================================================
+# ADMIN - DELETE USER
+# ============================================================
+@app.route("/admin/users/delete/<int:user_id>", methods=["POST"])
+def admin_delete_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        user = db.execute("SELECT id, full_name, role FROM users WHERE id = ?", (user_id,)).fetchone()
+        
+        if not user:
+            db.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        if user_id == session.get('user_id'):
+            db.close()
+            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
+        
+        if user['role'] == 'admin':
+            admin_count = db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
+            if admin_count <= 1:
+                db.close()
+                return jsonify({'success': False, 'message': 'Cannot delete the last admin user'}), 400
+        
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        db.commit()
+        db.close()
+        
+        return jsonify({'success': True, 'message': f'User "{user["full_name"]}" deleted successfully'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # ============================================================
-# GET MEMBER BY ID
+# ADMIN - RESET PASSWORD
 # ============================================================
-@app.route("/member/get-member/<int:member_id>", methods=["GET"])
-def get_member_by_id(member_id):
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+@app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
+def admin_reset_password(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
     
-    current_user_id = session["user_id"]
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid request'}), 400
     
-    if member_id == current_user_id:
-        return jsonify({
-            'success': False,
-            'message': 'You cannot select yourself as a guarantor'
-        }), 400
+    new_password = data.get('password', '').strip()
+    
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
     
     db = get_db()
-    db.row_factory = sqlite3.Row
     
     try:
-        member = db.execute("""
-            SELECT 
-                id,
-                full_name,
-                sacco_number,
-                phone,
-                email,
-                savings_balance,
-                status,
-                gender,
-                dob,
-                address,
-                registration_date
-            FROM users 
-            WHERE id = ? AND LOWER(role) = 'member' AND status = 'active'
-        """, (member_id,)).fetchone()
-        
-        if not member:
+        user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
             db.close()
-            return jsonify({
-                'success': False,
-                'message': 'Member not found or inactive'
-            }), 404
+            return jsonify({'success': False, 'message': 'User not found'}), 404
         
-        loan_count = db.execute("""
-            SELECT COUNT(*) as count 
-            FROM loans 
-            WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
-        """, (member_id,)).fetchone()['count']
-        
+        db.execute("UPDATE users SET password = ? WHERE id = ?", (new_password, user_id))
+        db.commit()
         db.close()
         
-        return jsonify({
-            'success': True,
-            'member': {
-                'id': member['id'],
-                'full_name': member['full_name'],
-                'sacco_number': member['sacco_number'],
-                'phone': member['phone'] or '',
-                'email': member['email'] or '',
-                'savings_balance': member['savings_balance'] or 0,
-                'active_loans': loan_count,
-                'status': member['status'],
-                'gender': member['gender'],
-                'dob': member['dob'],
-                'address': member['address'],
-                'registration_date': member['registration_date']
+        return jsonify({'success': True, 'message': 'Password reset successfully'})
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+# ============================================================
+# ADMIN - VIEW USER (JSON)
+# ============================================================
+@app.route("/admin/users/view/<int:user_id>")
+def admin_view_user(user_id):
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        user = db.execute("""
+            SELECT id, full_name, email, phone, sacco_number, role, status
+            FROM users WHERE id = ?
+        """, (user_id,)).fetchone()
+        
+        if not user:
+            db.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        db.close()
+        return jsonify({'success': True, 'user': dict(user)})
+        
+    except Exception as e:
+        db.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ============================================================
+# ADMIN - GENERATE REPORTS
+# ============================================================
+@app.route("/admin/reports/generate/<string:report_type>")
+def generate_report(report_type):
+    if session.get("role") not in ["admin", "chairperson", "treasurer"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    
+    try:
+        if report_type == 'members':
+            # Get all members with their details
+            members = db.execute("""
+                SELECT 
+                    id, full_name, sacco_number, phone, email,
+                    savings_balance, status, registration_date,
+                    next_of_kin_name, next_of_kin_phone, gender, dob, address,
+                    COALESCE(kai_shares, 0) as kai_shares,
+                    COALESCE(ks_shares, 0) as ks_shares,
+                    COALESCE(kac_paid, 0) as kac_paid,
+                    COALESCE(registration_fee_paid, 0) as registration_fee_paid
+                FROM users 
+                WHERE LOWER(role) = 'member'
+                ORDER BY full_name
+            """).fetchall()
+            
+            members_list = []
+            for member in members:
+                member_dict = dict(member)
+                loan_count = db.execute("""
+                    SELECT COUNT(*) FROM loans 
+                    WHERE user_id = ? AND status IN ('disbursed', 'active')
+                """, (member_dict['id'],)).fetchone()[0]
+                member_dict['active_loans'] = loan_count
+                members_list.append(member_dict)
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/member-report.html",
+                members=members_list,
+                total_members=len(members_list),
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                now=datetime.now(),
+                session=session
+            )
+            
+        elif report_type == 'financial':
+            # Financial summary data
+            total_members = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
+            total_savings = db.execute("SELECT COALESCE(SUM(savings_balance), 0) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
+            
+            total_loans = db.execute("SELECT COUNT(*) FROM loans").fetchone()[0]
+            pending_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
+            approved_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'approved'").fetchone()[0]
+            disbursed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'disbursed'").fetchone()[0]
+            active_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')").fetchone()[0]
+            completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+            rejected_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
+            
+            total_loan_amount = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans").fetchone()[0]
+            total_disbursed = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status IN ('disbursed', 'active', 'completed')").fetchone()[0]
+            total_repayments = db.execute("SELECT COALESCE(SUM(amount), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
+            total_interest = db.execute("SELECT COALESCE(SUM(interest_paid), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
+            
+            # Savings by type
+            kai_total = 0
+            ks_total = 0
+            kac_total = 0
+            reg_total = 0
+            all_members = db.execute("SELECT * FROM users WHERE LOWER(role) = 'member'").fetchall()
+            for member in all_members:
+                member_dict = dict(member)
+                if member_dict.get('kai_shares'):
+                    kai_total += member_dict['kai_shares'] * 100000
+                if member_dict.get('ks_shares'):
+                    ks_total += member_dict['ks_shares'] * 10000
+                if member_dict.get('kac_paid'):
+                    kac_total += 100000
+                if member_dict.get('registration_fee_paid'):
+                    reg_total += 20000
+            
+            # Get staff counts
+            staff_counts = {
+                'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
+                'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
+                'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
+                'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
             }
-        })
-        
+            
+            db.close()
+            
+            # Debug - print to console
+            print("=" * 60)
+            print("📊 GENERATING FINANCIAL REPORT")
+            print(f"📊 Total Members: {total_members}")
+            print(f"📊 Total Savings: {total_savings}")
+            print(f"📊 Template: admin/reports/financial-report.html")
+            print("=" * 60)
+            
+            return render_template(
+                "admin/reports/financial-report.html",
+                total_members=total_members,
+                total_savings=total_savings,
+                total_loans=total_loans,
+                pending_loans=pending_loans,
+                approved_loans=approved_loans,
+                disbursed_loans=disbursed_loans,
+                active_loans=active_loans,
+                completed_loans=completed_loans,
+                rejected_loans=rejected_loans,
+                total_loan_amount=total_loan_amount,
+                total_disbursed=total_disbursed,
+                total_repayments=total_repayments,
+                total_interest=total_interest,
+                kai_total=kai_total,
+                ks_total=ks_total,
+                kac_total=kac_total,
+                reg_total=reg_total,
+                staff_counts=staff_counts,
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                now=datetime.now(),
+                session=session
+            )
+            
+        elif report_type == 'loans':
+            # Get all loans with member details
+            loans = db.execute("""
+                SELECT 
+                    l.*,
+                    u.full_name,
+                    u.sacco_number,
+                    u.phone,
+                    u.email,
+                    COALESCE(((
+                        SELECT COUNT(*) FROM repayments 
+                        WHERE loan_id = l.id AND status = 'completed'
+                    ), 0) as payment_count,
+                    COALESCE(((
+                        SELECT SUM(amount) FROM repayments 
+                        WHERE loan_id = l.id AND status = 'completed'
+                    ), 0) as total_paid
+                FROM loans l
+                JOIN users u ON l.user_id = u.id
+                ORDER BY l.application_date DESC
+            """).fetchall()
+            
+            loans_list = [dict(loan) for loan in loans]
+            total_loans = len(loans_list)
+            total_amount = sum(l.get('amount', 0) for l in loans_list) if loans_list else 0
+            total_balance = sum(l.get('current_balance', 0) for l in loans_list) if loans_list else 0
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/loan-report.html",
+                loans=loans_list,
+                total_loans=total_loans,
+                total_amount=total_amount,
+                total_balance=total_balance,
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                now=datetime.now(),
+                session=session
+            )
+            
+        elif report_type == 'savings':
+            # Get all savings deposits with member details
+            savings = db.execute("""
+                SELECT 
+                    sd.*,
+                    u.full_name,
+                    u.sacco_number,
+                    u.phone,
+                    u.email
+                FROM savings_deposits sd
+                JOIN users u ON sd.user_id = u.id
+                ORDER BY sd.deposit_date DESC
+            """).fetchall()
+            
+            member_savings = db.execute("""
+                SELECT 
+                    u.id,
+                    u.full_name,
+                    u.sacco_number,
+                    u.savings_balance,
+                    u.kai_shares,
+                    u.ks_shares,
+                    u.kac_paid,
+                    u.registration_fee_paid,
+                    COUNT(sd.id) as deposit_count,
+                    COALESCE(SUM(sd.amount), 0) as total_deposited
+                FROM users u
+                LEFT JOIN savings_deposits sd ON u.id = sd.user_id
+                WHERE LOWER(u.role) = 'member'
+                GROUP BY u.id
+                ORDER BY u.savings_balance DESC
+            """).fetchall()
+            
+            savings_list = [dict(s) for s in savings]
+            member_savings_list = [dict(m) for m in member_savings]
+            total_savings_amount = sum(m.get('savings_balance', 0) for m in member_savings_list) if member_savings_list else 0
+            
+            db.close()
+            
+            return render_template(
+                "admin/reports/savings-report.html",
+                savings=savings_list,
+                member_savings=member_savings_list,
+                total_savings=total_savings_amount,
+                total_deposits=len(savings_list),
+                generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                now=datetime.now(),
+                session=session
+            )
+            
+        else:
+            flash('Invalid report type', 'danger')
+            return redirect(url_for('admin_dashboard'))
+            
     except Exception as e:
         db.close()
-        print(f"Error getting member: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        print(f"❌ Error generating report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error generating report: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+# ============================================================
+# OTHER DASHBOARDS
+# ============================================================
+@app.route("/chairperson/dashboard")
+def chairperson_dashboard():
+    if session.get("role") != "chairperson":
+        return redirect("/login")
+    return render_template("chairperson/chairperson-dashboard.html")
+
+
+@app.route("/secretary/dashboard")
+def secretary_dashboard():
+    if session.get("role") != "secretary":
+        return redirect("/login")
+    return render_template("secretary/secretary-dashboard.html")
 
 
 # ============================================================
-# CHECK IF MEMBER CAN BE GUARANTOR
+# PUBLICITY ROUTES - FULL CRUD
 # ============================================================
-@app.route("/member/check-guarantor/<int:member_id>", methods=["GET"])
-def check_guarantor_eligibility(member_id):
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+@app.route("/publicity/dashboard")
+def publicity_dashboard():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
     
-    db = get_db()
-    db.row_factory = sqlite3.Row
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
     
     try:
-        guarantee_count = db.execute("""
-            SELECT COUNT(*) as count 
-            FROM loan_guarantors 
-            WHERE phone IN (SELECT phone FROM users WHERE id = ?)
-            AND status IN ('active', 'accepted')
-        """, (member_id,)).fetchone()['count']
+        # Get total members
+        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
         
-        db.close()
+        # Get announcements count
+        total_announcements = conn.execute("SELECT COUNT(*) FROM announcements").fetchone()[0]
         
-        is_eligible = guarantee_count < 2
+        # Get upcoming events count
+        upcoming_events = conn.execute("SELECT COUNT(*) FROM events WHERE event_date >= date('now')").fetchone()[0]
         
-        return jsonify({
-            'success': True,
-            'is_eligible': is_eligible,
-            'current_guarantees': guarantee_count,
-            'max_allowed': 2,
-            'message': f'This member is currently guaranteeing {guarantee_count} loan(s). Maximum allowed is 2.' if not is_eligible else 'This member is eligible to be a guarantor.'
-        })
+        # Get newsletters count
+        total_newsletters = conn.execute("SELECT COUNT(*) FROM newsletters").fetchone()[0]
         
-    except Exception as e:
-        db.close()
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
-
-# ============================================================
-# DEBUG - CHECK REGISTERED ROUTES
-# ============================================================
-print("=" * 60)
-print("🔍 ALL REGISTERED ROUTES:")
-for rule in app.url_map.iter_rules():
-    print(f"   {rule.rule}")
-print("=" * 60)
-
-# Check if approve route is registered
-routes = [str(rule.rule) for rule in app.url_map.iter_rules()]
-if '/treasurer/loan/approve/<int:loan_id>' in routes:
-    print("✅ APPROVE ROUTE IS REGISTERED!")
-else:
-    print("❌ LOAN ACTION ROUTE IS NOT REGISTERED!")
-
-if '/treasurer/loan/disburse/<int:loan_id>' in routes:
-    print("✅ DISBURSE ROUTE IS REGISTERED!")
-else:
-    print("❌ DISBURSE ROUTE IS NOT REGISTERED!")
-print("=" * 60)
-
-@app.route("/debug/completed-loans")
-def debug_completed_loans():
-    if session.get("role") != "treasurer":
-        return jsonify({'error': 'Access denied'}), 403
+        # Get recent announcements
+        announcements = conn.execute("""
+            SELECT * FROM announcements 
+            ORDER BY created_at DESC 
+            LIMIT 5
+        """).fetchall()
+        
+        # Get upcoming events
+        events = conn.execute("""
+            SELECT * FROM events 
+            WHERE event_date >= date('now')
+            ORDER BY event_date ASC 
+            LIMIT 4
+        """).fetchall()
+        
+    except sqlite3.Error as e:
+        print(f"❌ Database Error: {str(e)}")
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect(url_for('login'))
+    finally:
+        conn.close()
     
-    db = get_db()
-    db.row_factory = sqlite3.Row
+    return render_template(
+        "publicity/publicity-dashboard.html",
+        total_members=total_members,
+        total_announcements=total_announcements,
+        upcoming_events=upcoming_events,
+        total_newsletters=total_newsletters,
+        announcements=announcements,
+        events=events,
+        session=session,  
+    )
+
+
+@app.route("/publicity/announcements")
+def publicity_announcements():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
     
     try:
-        # Check all loans with status 'completed'
-        completed = db.execute("""
-            SELECT id, loan_number, status, completed_date, current_balance 
-            FROM loans 
-            WHERE status = 'completed'
+        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
+        announcements = conn.execute("""
+            SELECT a.*, 
+                   (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active') as recipients
+            FROM announcements a
+            ORDER BY a.created_at DESC
+        """).fetchall()
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect("/publicity/dashboard")
+    finally:
+        conn.close()
+    
+    return render_template("publicity/publicity-announcements.html", 
+                          announcements=announcements, 
+                          total_members=total_members)
+
+
+@app.route("/publicity/announcement/create", methods=['POST'])
+def create_announcement():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    
+    if not title or not content:
+        flash('Please fill in all fields', 'danger')
+        return redirect("/publicity/announcements")
+    
+    conn = get_db()
+    
+    try:
+        # Insert announcement
+        conn.execute("""
+            INSERT INTO announcements (title, content, created_at, created_by)
+            VALUES (?, ?, datetime('now'), ?)
+        """, (title, content, session.get('user_id')))
+        conn.commit()
+        
+        # Get all active members
+        members = conn.execute("""
+            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
         """).fetchall()
         
-        # Check all loans (to see what statuses exist)
-        all_loans = db.execute("""
-            SELECT id, loan_number, status, current_balance 
-            FROM loans 
-            ORDER BY id DESC
-            LIMIT 20
+        # Create notifications for all members
+        for member in members:
+            conn.execute("""
+                INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
+                VALUES (?, 'announcement', ?, ?, '/publicity/announcements', datetime('now'), 0)
+            """, (member['id'], title, content[:200]))
+        
+        conn.commit()
+        
+        flash(f'✅ Announcement posted and sent to {len(members)} members!', 'success')
+        
+    except sqlite3.Error as e:
+        print(f"❌ Database Error: {str(e)}")
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/announcements")
+
+
+@app.route("/publicity/announcement/delete/<int:id>", methods=['POST'])
+def delete_announcement(id):
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM announcements WHERE id = ?", (id,))
+        conn.commit()
+        flash('Announcement deleted successfully!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/announcements")
+
+
+# ============================================================
+# EVENTS ROUTES
+# ============================================================
+
+@app.route("/publicity/events")
+def publicity_events():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        events = conn.execute("""
+            SELECT * FROM events 
+            ORDER BY event_date ASC, event_time ASC
+        """).fetchall()
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect("/publicity/dashboard")
+    finally:
+        conn.close()
+    
+    return render_template("publicity/publicity-events.html", events=events)
+
+
+@app.route("/publicity/event/create", methods=['POST'])
+def create_event():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    title = request.form.get('title', '').strip()
+    event_date = request.form.get('event_date', '').strip()
+    event_time = request.form.get('event_time', '').strip()
+    location = request.form.get('location', '').strip()
+    description = request.form.get('description', '').strip()
+    
+    if not title or not event_date or not location:
+        flash('Please fill in all required fields', 'danger')
+        return redirect("/publicity/events")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("""
+            INSERT INTO events (title, event_date, event_time, location, description, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+        """, (title, event_date, event_time or None, location, description, session.get('user_id')))
+        conn.commit()
+        
+        # Get all active members
+        members = conn.execute("""
+            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
         """).fetchall()
         
-        db.close()
+        # Create notifications for all members
+        for member in members:
+            conn.execute("""
+                INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
+                VALUES (?, 'event', ?, ?, '/publicity/events', datetime('now'), 0)
+            """, (member['id'], f"📅 New Event: {title}", f"Join us for {title} on {event_date} at {location}"))
         
-        return jsonify({
-            'completed_count': len(completed),
-            'completed_loans': [dict(c) for c in completed],
-            'all_loans': [dict(l) for l in all_loans]
-        })
+        conn.commit()
         
-    except Exception as e:
-        db.close()
-        return jsonify({'error': str(e)}), 500
+        flash(f'✅ Event created and notified {len(members)} members!', 'success')
+        
+    except sqlite3.Error as e:
+        print(f"❌ Database Error: {str(e)}")
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/events")
+
+
+@app.route("/publicity/event/delete/<int:id>", methods=['POST'])
+def delete_event(id):
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM events WHERE id = ?", (id,))
+        conn.commit()
+        flash('Event deleted successfully!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/events")
+
+
+# ============================================================
+# NEWSLETTER ROUTES
+# ============================================================
+
+@app.route("/publicity/newsletters")
+def publicity_newsletters():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
+        newsletters = conn.execute("""
+            SELECT n.*,
+                   (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active') as recipients
+            FROM newsletters n
+            ORDER BY n.sent_date DESC
+        """).fetchall()
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect("/publicity/dashboard")
+    finally:
+        conn.close()
+    
+    return render_template("publicity/publicity-newsletters.html", 
+                          newsletters=newsletters, 
+                          total_members=total_members)
+
+
+@app.route("/publicity/newsletter/create", methods=['POST'])
+def create_newsletter():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    
+    if not title or not content:
+        flash('Please fill in all fields', 'danger')
+        return redirect("/publicity/newsletters")
+    
+    conn = get_db()
+    
+    try:
+        # Get all active members
+        members = conn.execute("""
+            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
+        """).fetchall()
+        
+        # Insert newsletter
+        conn.execute("""
+            INSERT INTO newsletters (title, content, sent_date, recipients, created_by)
+            VALUES (?, ?, datetime('now'), ?, ?)
+        """, (title, content, len(members), session.get('user_id')))
+        conn.commit()
+        
+        # Create notifications for all members
+        for member in members:
+            conn.execute("""
+                INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
+                VALUES (?, 'newsletter', ?, ?, '/publicity/newsletters', datetime('now'), 0)
+            """, (member['id'], f"📰 Newsletter: {title}", content[:200]))
+        
+        conn.commit()
+        
+        flash(f'✅ Newsletter sent to {len(members)} members!', 'success')
+        
+    except sqlite3.Error as e:
+        print(f"❌ Database Error: {str(e)}")
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/newsletters")
+
+
+@app.route("/publicity/newsletter/delete/<int:id>", methods=['POST'])
+def delete_newsletter(id):
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM newsletters WHERE id = ?", (id,))
+        conn.commit()
+        flash('Newsletter deleted successfully!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/newsletters")
+
+
+# ============================================================
+# SOCIAL MEDIA ROUTES
+# ============================================================
+
+@app.route("/publicity/social")
+def publicity_social():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        social_posts = conn.execute("""
+            SELECT * FROM social_posts
+            ORDER BY created_at DESC
+        """).fetchall()
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect("/publicity/dashboard")
+    finally:
+        conn.close()
+    
+    return render_template("publicity/publicity-social.html", social_posts=social_posts)
+
+
+@app.route("/publicity/social/create", methods=['POST'])
+def create_social_post():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    platform = request.form.get('platform', '').strip()
+    post = request.form.get('post', '').strip()
+    
+    if not platform or not post:
+        flash('Please fill in all fields', 'danger')
+        return redirect("/publicity/social")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("""
+            INSERT INTO social_posts (platform, content, created_at, created_by)
+            VALUES (?, ?, datetime('now'), ?)
+        """, (platform, post, session.get('user_id')))
+        conn.commit()
+        
+        flash(f'✅ Posted to {platform}!', 'success')
+        
+    except sqlite3.Error as e:
+        print(f"❌ Database Error: {str(e)}")
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/social")
+
+
+@app.route("/publicity/social/delete/<int:id>", methods=['POST'])
+def delete_social_post(id):
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM social_posts WHERE id = ?", (id,))
+        conn.commit()
+        flash('Social post deleted successfully!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/social")
+
+
+# ============================================================
+# NOTIFICATIONS ROUTES
+# ============================================================
+
+@app.route("/publicity/notifications")
+def publicity_notifications():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        notifications = conn.execute("""
+            SELECT n.*, u.full_name as member_name
+            FROM notifications n
+            JOIN users u ON n.user_id = u.id
+            ORDER BY n.created_at DESC
+            LIMIT 100
+        """).fetchall()
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect("/publicity/dashboard")
+    finally:
+        conn.close()
+    
+    return render_template("publicity/publicity-notifications.html", notifications=notifications)
+
+
+@app.route("/publicity/notification/delete/<int:id>", methods=['POST'])
+def delete_notification(id):
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM notifications WHERE id = ?", (id,))
+        conn.commit()
+        flash('Notification deleted!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/notifications")
+
+
+@app.route("/publicity/notifications/clear", methods=['POST'])
+def clear_all_notifications():
+    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
+    
+    conn = get_db()
+    
+    try:
+        conn.execute("DELETE FROM notifications")
+        conn.commit()
+        flash('All notifications cleared!', 'success')
+    except sqlite3.Error as e:
+        flash(f'Database error: {str(e)}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect("/publicity/notifications")
 
 
 # ============================================================

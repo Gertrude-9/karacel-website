@@ -1,0 +1,104 @@
+{% extends "publicity/publicity-base.html" %}
+
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="publicity-events">
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:30px; background:linear-gradient(135deg, rgba(0,224,255,0.05), rgba(245,197,66,0.02)); border-radius:16px; padding:20px 28px; border:1px solid rgba(255,255,255,0.04);">
+        <div>
+            <h1 style="font-size:1.6rem; font-weight:600; margin:0; display:flex; align-items:center; gap:12px;">
+                <i class="fas fa-calendar-alt" style="color:#00e0ff;"></i> 
+                Events
+            </h1>
+            <p style="color:rgba(255,255,255,0.3); margin:4px 0 0; font-size:0.85rem;">
+                <i class="fas fa-info-circle"></i> Create and manage SACCO events. Members will be notified.
+            </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; background:rgba(0,224,255,0.08); padding:6px 16px; border-radius:30px; border:1px solid rgba(0,224,255,0.08);">
+            <i class="fas fa-calendar-check" style="color:#00e0ff; font-size:0.9rem;"></i>
+            <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">{{ events|length }} events</span>
+        </div>
+    </div>
+
+    <!-- Create Event -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px; margin-bottom:24px;">
+        <h3 style="color:#f5c542; font-size:1.15rem; font-weight:600; margin:0 0 18px 0; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-plus-circle" style="color:#00e0ff;"></i> 
+            Create New Event
+            <span style="font-size:0.65rem; color:rgba(255,255,255,0.15); font-weight:400; margin-left:auto;">
+                <i class="fas fa-info-circle"></i> Will be sent to all members
+            </span>
+        </h3>
+        
+        <form method="POST" action="/publicity/event/create">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                <input type="text" name="title" placeholder="Event Title..." style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#00e0ff'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'" required>
+                <input type="date" name="event_date" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#00e0ff'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'" required>
+                <input type="time" name="event_time" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#00e0ff'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'">
+                <input type="text" name="location" placeholder="Location..." style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#00e0ff'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'" required>
+                <textarea name="description" placeholder="Event Description..." style="grid-column:1/-1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#eaeef2; min-height:80px; resize:vertical; font-size:0.95rem; transition:border 0.3s;" onfocus="this.style.borderColor='#00e0ff'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'"></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button type="submit" style="background:#f5c542; border:none; padding:12px 30px; border-radius:30px; color:#0a0a14; font-weight:600; cursor:pointer; transition:all 0.3s;" onmouseover="this.style.background='#ffd966'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#f5c542'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-plus-circle"></i> Add Event
+                </button>
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.2);">
+                    <i class="fas fa-check-circle" style="color:#4ade80;"></i> All members will be notified
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <!-- All Events -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="color:#f5c542; font-size:1.15rem; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-list" style="color:#00e0ff;"></i> 
+                All Events
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.2); font-weight:400; margin-left:4px;">
+                    ({{ events|length }} total)
+                </span>
+            </h3>
+        </div>
+        
+        {% if events %}
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+            {% for event in events %}
+                <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:12px; padding:18px; transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(0,224,255,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.04)'">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                            <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,224,255,0.08); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                <i class="fas fa-calendar-day" style="color:#00e0ff; font-size:0.8rem;"></i>
+                            </div>
+                            <h4 style="color:#00e0ff; margin:0; font-size:0.95rem; font-weight:500;">{{ event.title }}</h4>
+                        </div>
+                        <form method="POST" action="/publicity/event/delete/{{ event.id }}">
+                            <button type="submit" onclick="return confirm('Delete this event?')" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.08); color:#ff6b6b; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.65rem; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div style="font-size:0.8rem; color:rgba(255,255,255,0.5); margin-left:46px;">
+                        <div><i class="fas fa-calendar-check" style="width:14px;"></i> {{ event.event_date }}{% if event.event_time %} at {{ event.event_time }}{% endif %}</div>
+                        <div style="margin-top:2px;"><i class="fas fa-map-marker-alt" style="width:14px;"></i> {{ event.location }}</div>
+                    </div>
+                    {% if event.description %}
+                        <div style="font-size:0.85rem; color:rgba(255,255,255,0.45); margin-top:8px; margin-left:46px; line-height:1.5;">{{ event.description }}</div>
+                    {% endif %}
+                    <div style="font-size:0.6rem; color:rgba(255,255,255,0.1); margin-top:10px; margin-left:46px;">
+                        <i class="far fa-clock"></i> Created: {{ event.created_at[:16] }}
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.08);">
+                <i class="fas fa-calendar-plus" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <h3 style="color:rgba(255,255,255,0.15); margin:0 0 6px 0; font-weight:400;">No events scheduled</h3>
+                <p style="margin:0; font-size:0.85rem;">Create your first event above to notify all members.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

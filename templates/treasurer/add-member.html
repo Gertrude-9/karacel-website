@@ -24,7 +24,7 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="flash-message {{ category }}" style="padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <div class="flash-message {{ category }}" style="padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; background: {% if category == 'success' %}rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: #4ade80;{% elif category == 'danger' %}rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.2); color: #ff6b6b;{% else %}rgba(245,197,66,0.1); border: 1px solid rgba(245,197,66,0.2); color: #f5c542;{% endif %}">
                     <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
                     {{ message }}
                 </div>
@@ -106,18 +106,6 @@
                     
                     <div class="form-group">
                         <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                            Initial Savings Balance
-                        </label>
-                        <div style="display:flex; align-items:center; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; overflow:hidden;">
-                            <span style="padding:10px 14px; color:rgba(255,255,255,0.3); font-weight:600; background:rgba(255,255,255,0.02); border-right:1px solid rgba(255,255,255,0.06);">UGX</span>
-                            <input type="number" name="savings_balance" class="form-control" 
-                                   placeholder="0" step="1000" value="0" style="border:none !important; border-radius:0 !important; background:transparent !important; padding:10px 14px; flex:1; color:white;">
-                        </div>
-                        <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Optional initial deposit amount</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
                             Login Password
                         </label>
                         <input type="password" name="password" class="form-control" 
@@ -144,6 +132,110 @@
                             <option value="member" selected>Member</option>
                         </select>
                         <small style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">Only Member role is available for registration</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================================ -->
+            <!-- SAVINGS TYPE SELECTION & REGISTRATION FEE -->
+            <!-- ============================================================ -->
+            <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 24px; margin-bottom: 24px;">
+                <h3 style="color: #f5c542; margin-bottom: 16px; font-size: 1rem;">
+                    <i class="fas fa-piggy-bank"></i> Savings & Registration
+                </h3>
+                
+                <!-- Registration Fee -->
+                <div style="background: rgba(255,107,107,0.04); border: 1px solid rgba(255,107,107,0.1); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-file-invoice" style="color: #ff6b6b;"></i>
+                            <span style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: 500;">Registration Fee (UGX 20,000)</span>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-left: auto;">
+                            <input type="checkbox" name="registration_fee_paid" id="registrationFeePaid" style="width:18px; height:18px; accent-color:#ff6b6b;">
+                            <span style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Paid</span>
+                        </label>
+                    </div>
+                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> One-time registration fee required for all new members
+                    </div>
+                </div>
+
+                <!-- Savings Type Selection -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <!-- KAI - Karacel Investment -->
+                    <div style="background: rgba(74,222,128,0.04); border: 2px solid rgba(74,222,128,0.1); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.3s ease;" 
+                         onclick="toggleSavingsType('KAI')" id="kaiCard">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="savings_types" value="KAI" id="savingsKAI" style="width:18px; height:18px; accent-color:#4ade80;" onchange="updateSavingsTotal()">
+                            <div>
+                                <div style="color: #4ade80; font-weight: 600; font-size: 0.9rem;">KAI</div>
+                                <div style="color: rgba(255,255,255,0.2); font-size: 0.6rem;">Investment</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <span style="color: rgba(255,255,255,0.3); font-size: 0.65rem;">UGX 100,000/share</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" onclick="adjustShares('KAI', -1)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); color:white; width:24px; height:24px; border-radius:50%; cursor:pointer;">-</button>
+                                <input type="number" name="kai_shares" id="kaiShares" value="0" min="0" max="100" style="width:50px; text-align:center; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; color:white; padding:4px;" readonly>
+                                <button type="button" onclick="adjustShares('KAI', 1)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); color:white; width:24px; height:24px; border-radius:50%; cursor:pointer;">+</button>
+                            </div>
+                        </div>
+                        <div id="kaiTotal" style="color: #4ade80; font-size: 0.7rem; text-align: right; margin-top: 4px;">UGX 0</div>
+                    </div>
+
+                    <!-- KS - Karacel Savings -->
+                    <div style="background: rgba(0,224,255,0.04); border: 2px solid rgba(0,224,255,0.1); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.3s ease;" 
+                         onclick="toggleSavingsType('KS')" id="ksCard">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="savings_types" value="KS" id="savingsKS" style="width:18px; height:18px; accent-color:#00e0ff;" onchange="updateSavingsTotal()">
+                            <div>
+                                <div style="color: #00e0ff; font-weight: 600; font-size: 0.9rem;">KS</div>
+                                <div style="color: rgba(255,255,255,0.2); font-size: 0.6rem;">Savings</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <span style="color: rgba(255,255,255,0.3); font-size: 0.65rem;">UGX 10,000/share</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" onclick="adjustShares('KS', -1)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); color:white; width:24px; height:24px; border-radius:50%; cursor:pointer;">-</button>
+                                <input type="number" name="ks_shares" id="ksShares" value="0" min="0" max="500" style="width:50px; text-align:center; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; color:white; padding:4px;" readonly>
+                                <button type="button" onclick="adjustShares('KS', 1)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); color:white; width:24px; height:24px; border-radius:50%; cursor:pointer;">+</button>
+                            </div>
+                        </div>
+                        <div id="ksTotal" style="color: #00e0ff; font-size: 0.7rem; text-align: right; margin-top: 4px;">UGX 0</div>
+                    </div>
+
+                    <!-- KAC - Karacel Condolence (NO SHARES) -->
+                    <div style="background: rgba(245,197,66,0.04); border: 2px solid rgba(245,197,66,0.1); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.3s ease;" 
+                         onclick="toggleSavingsType('KAC')" id="kacCard">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="savings_types" value="KAC" id="savingsKAC" style="width:18px; height:18px; accent-color:#f5c542;" onchange="updateSavingsTotal()">
+                            <div>
+                                <div style="color: #f5c542; font-weight: 600; font-size: 0.9rem;">KAC</div>
+                                <div style="color: rgba(255,255,255,0.2); font-size: 0.6rem;">Condolence</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <span style="color: rgba(255,255,255,0.3); font-size: 0.65rem;">UGX 100,000/year</span>
+                            <span style="color: rgba(255,255,255,0.2); font-size: 0.65rem;">No shares</span>
+                        </div>
+                        <div id="kacTotal" style="color: #f5c542; font-size: 0.7rem; text-align: right; margin-top: 4px;">UGX 0</div>
+                    </div>
+                </div>
+
+                <!-- Savings Summary -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 14px 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">
+                            <i class="fas fa-calculator"></i> Total Initial Savings
+                        </span>
+                        <span id="totalSavingsDisplay" style="color: #4ade80; font-size: 1.1rem; font-weight: 600;">UGX 0</span>
+                    </div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 0.7rem;">
+                        <span id="kaiSummary" style="color: #4ade80;">KAI: UGX 0</span>
+                        <span id="ksSummary" style="color: #00e0ff;">KS: UGX 0</span>
+                        <span id="kacSummary" style="color: #f5c542;">KAC: UGX 0</span>
+                        <span id="regSummary" style="color: #ff6b6b;">Reg Fee: UGX 0</span>
                     </div>
                 </div>
             </div>
@@ -215,6 +307,94 @@
 
 <script>
     // ============================================================
+    // SAVINGS TYPE TOGGLE & SHARE ADJUSTMENT
+    // ============================================================
+    const SHARE_PRICES = {
+        'KAI': 100000,
+        'KS': 10000,
+        'KAC': 100000,
+        'REGISTRATION': 20000
+    };
+
+    function toggleSavingsType(type) {
+        const checkbox = document.getElementById('savings' + type);
+        const card = document.getElementById(type + 'Card');
+        
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            if (checkbox.checked) {
+                card.style.borderColor = 
+                    type === 'KAI' ? '#4ade80' : 
+                    type === 'KS' ? '#00e0ff' : 
+                    '#f5c542';
+                card.style.background = 
+                    type === 'KAI' ? 'rgba(74,222,128,0.08)' : 
+                    type === 'KS' ? 'rgba(0,224,255,0.08)' : 
+                    'rgba(245,197,66,0.08)';
+            } else {
+                card.style.borderColor = 
+                    type === 'KAI' ? 'rgba(74,222,128,0.1)' : 
+                    type === 'KS' ? 'rgba(0,224,255,0.1)' : 
+                    'rgba(245,197,66,0.1)';
+                card.style.background = 
+                    type === 'KAI' ? 'rgba(74,222,128,0.04)' : 
+                    type === 'KS' ? 'rgba(0,224,255,0.04)' : 
+                    'rgba(245,197,66,0.04)';
+                
+                // Reset shares for KAI and KS if unchecked
+                if (type === 'KAI') {
+                    document.getElementById('kaiShares').value = 0;
+                } else if (type === 'KS') {
+                    document.getElementById('ksShares').value = 0;
+                }
+            }
+            updateSavingsTotal();
+        }
+    }
+
+    function adjustShares(type, delta) {
+        const checkbox = document.getElementById('savings' + type);
+        if (!checkbox.checked) {
+            checkbox.checked = true;
+            toggleSavingsType(type);
+            return;
+        }
+        
+        const input = document.getElementById(type + 'Shares');
+        let value = parseInt(input.value) || 0;
+        const newValue = Math.max(0, value + delta);
+        input.value = newValue;
+        updateSavingsTotal();
+    }
+
+    function updateSavingsTotal() {
+        const kaiChecked = document.getElementById('savingsKAI').checked;
+        const ksChecked = document.getElementById('savingsKS').checked;
+        const kacChecked = document.getElementById('savingsKAC').checked;
+        const regFeePaid = document.getElementById('registrationFeePaid').checked;
+        
+        const kaiShares = parseInt(document.getElementById('kaiShares').value) || 0;
+        const ksShares = parseInt(document.getElementById('ksShares').value) || 0;
+        
+        const kaiTotal = kaiChecked ? kaiShares * SHARE_PRICES.KAI : 0;
+        const ksTotal = ksChecked ? ksShares * SHARE_PRICES.KS : 0;
+        const kacTotal = kacChecked ? SHARE_PRICES.KAC : 0;
+        const regTotal = regFeePaid ? SHARE_PRICES.REGISTRATION : 0;
+        
+        const grandTotal = kaiTotal + ksTotal + kacTotal + regTotal;
+        
+        document.getElementById('kaiTotal').textContent = 'UGX ' + kaiTotal.toLocaleString();
+        document.getElementById('ksTotal').textContent = 'UGX ' + ksTotal.toLocaleString();
+        document.getElementById('kacTotal').textContent = kacChecked ? 'UGX ' + kacTotal.toLocaleString() : 'UGX 0';
+        document.getElementById('totalSavingsDisplay').textContent = 'UGX ' + grandTotal.toLocaleString();
+        
+        document.getElementById('kaiSummary').textContent = 'KAI: UGX ' + kaiTotal.toLocaleString();
+        document.getElementById('ksSummary').textContent = 'KS: UGX ' + ksTotal.toLocaleString();
+        document.getElementById('kacSummary').textContent = 'KAC: UGX ' + kacTotal.toLocaleString();
+        document.getElementById('regSummary').textContent = 'Reg Fee: UGX ' + regTotal.toLocaleString();
+    }
+
+    // ============================================================
     // FORM VALIDATION
     // ============================================================
     document.getElementById('registrationForm').addEventListener('submit', function(e) {
@@ -232,6 +412,37 @@
                 field.style.boxShadow = '';
             }
         });
+
+        // Check if at least one savings type is selected
+        const kaiChecked = document.getElementById('savingsKAI').checked;
+        const ksChecked = document.getElementById('savingsKS').checked;
+        const kacChecked = document.getElementById('savingsKAC').checked;
+        const regFeePaid = document.getElementById('registrationFeePaid').checked;
+        
+        if (!kaiChecked && !ksChecked && !kacChecked && !regFeePaid) {
+            e.preventDefault();
+            alert('❌ Please select at least one savings type or pay registration fee.');
+            return;
+        }
+
+        // Check if KAI or KS has shares selected
+        if (kaiChecked) {
+            const kaiShares = parseInt(document.getElementById('kaiShares').value) || 0;
+            if (kaiShares === 0) {
+                e.preventDefault();
+                alert('❌ Please select at least 1 KAI share or uncheck KAI.');
+                return;
+            }
+        }
+        
+        if (ksChecked) {
+            const ksShares = parseInt(document.getElementById('ksShares').value) || 0;
+            if (ksShares === 0) {
+                e.preventDefault();
+                alert('❌ Please select at least 1 KS share or uncheck KS.');
+                return;
+            }
+        }
 
         if (!isValid) {
             e.preventDefault();
@@ -286,6 +497,17 @@
                 saccoInput.value = `KAR-${initials}${random}`;
             }
         }
+    });
+
+    // ============================================================
+    // INITIALIZE - Update totals on page load
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Listen for registration fee checkbox change
+        document.getElementById('registrationFeePaid').addEventListener('change', updateSavingsTotal);
+        
+        // Initial update
+        updateSavingsTotal();
     });
 </script>
 

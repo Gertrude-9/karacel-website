@@ -42,7 +42,45 @@
             <h3>{{ pending_loans }}</h3>
             <p>Pending Loans</p>
         </div>
+    </div>
+
+    <!-- Savings Overview Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <!-- KAI - Karacel Investment -->
+        <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.1); border-radius: 10px; padding: 14px 18px;">
+            <div style="color: rgba(255,255,255,0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-chart-line" style="color: #4ade80;"></i> KAI (Investment)
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 600; color: #4ade80;">UGX {{ "{:,.0f}".format(kai_total|default(0)) }}</div>
+            <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2);">{{ kai_members|default(0) }} members • {{ kai_shares|default(0) }} shares</div>
+        </div>
         
+        <!-- KS - Karacel Savings -->
+        <div style="background: rgba(0,224,255,0.06); border: 1px solid rgba(0,224,255,0.1); border-radius: 10px; padding: 14px 18px;">
+            <div style="color: rgba(255,255,255,0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-piggy-bank" style="color: #00e0ff;"></i> KS (Savings)
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 600; color: #00e0ff;">UGX {{ "{:,.0f}".format(ks_total|default(0)) }}</div>
+            <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2);">{{ ks_members|default(0) }} members • {{ ks_shares|default(0) }} shares</div>
+        </div>
+        
+        <!-- KAC - Karacel Condolence (NOT in shares) -->
+        <div style="background: rgba(245,197,66,0.06); border: 1px solid rgba(245,197,66,0.1); border-radius: 10px; padding: 14px 18px;">
+            <div style="color: rgba(255,255,255,0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-hand-holding-heart" style="color: #f5c542;"></i> KAC (Condolence)
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 600; color: #f5c542;">UGX {{ "{:,.0f}".format(kac_total|default(0)) }}</div>
+            <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2);">{{ kac_members|default(0) }} members • Annual Fee: UGX 100,000</div>
+        </div>
+        
+        <!-- Registration Fee (Separate) -->
+        <div style="background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.1); border-radius: 10px; padding: 14px 18px;">
+            <div style="color: rgba(255,255,255,0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-file-invoice" style="color: #ff6b6b;"></i> Registration Fees
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 600; color: #ff6b6b;">UGX {{ "{:,.0f}".format(registration_fees_total|default(0)) }}</div>
+            <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2);">{{ registration_fees_count|default(0) }} members paid • UGX 20,000 each</div>
+        </div>
     </div>
 
     <!-- Quick Actions -->
@@ -60,7 +98,6 @@
             <a href="#" onclick="showPanel('repayments')" class="btn-primary">
                 <i class="fas fa-undo-alt"></i> Enter Loan Repayment
             </a>
-            
         </div>
     </div>
 
@@ -76,6 +113,7 @@
                         <th>Date</th>
                         <th>Member</th>
                         <th>Activity</th>
+                        <th>Type</th>
                         <th>Amount</th>
                     </tr>
                 </thead>
@@ -85,6 +123,18 @@
                         <td>{{ deposit.deposit_date }}</td>
                         <td>{{ deposit.full_name }}</td>
                         <td style="color: #4ade80;">Savings Deposit</td>
+                        <td>
+                            <span style="
+                                {% if deposit.savings_type == 'KAI' %}color:#4ade80;
+                                {% elif deposit.savings_type == 'KS' %}color:#00e0ff;
+                                {% elif deposit.savings_type == 'KAC' %}color:#f5c542;
+                                {% elif deposit.savings_type == 'REGISTRATION' %}color:#ff6b6b;
+                                {% else %}color:rgba(255,255,255,0.3);{% endif %}
+                                font-weight:600; font-size:0.7rem;
+                            ">
+                                {{ deposit.savings_type or 'KAI' }}
+                            </span>
+                        </td>
                         <td style="color: #4ade80;">UGX {{ "{:,.0f}".format(deposit.amount) }}</td>
                     </tr>
                     {% endfor %}
@@ -93,12 +143,17 @@
                         <td>{{ repayment.payment_date }}</td>
                         <td>{{ repayment.full_name }}</td>
                         <td style="color: #00e0ff;">Loan Repayment</td>
+                        <td>
+                            <span style="color:#ff6b6b; font-weight:600; font-size:0.7rem;">
+                                <i class="fas fa-check-circle"></i> Repayment
+                            </span>
+                        </td>
                         <td style="color: #00e0ff;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
                     </tr>
                     {% endfor %}
                     {% if not recent_deposits and not recent_repayments %}
                     <tr>
-                        <td colspan="4" style="text-align:center; color: rgba(255,255,255,0.3);">No recent activities</td>
+                        <td colspan="5" style="text-align:center; color: rgba(255,255,255,0.3);">No recent activities</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -111,10 +166,10 @@
 <div id="savings-panel" class="content-panel">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
         <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
+            <i class="fas fa-arrow-left"></i> Back 
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-piggy-bank"></i> Savings Deposits
+            <i class="fas fa-piggy-bank"></i> Savings Management
         </span>
     </div>
 
@@ -122,22 +177,78 @@
         <div class="action-title">
             <i class="fas fa-piggy-bank"></i> Record Savings Deposit
         </div>
-        <form method="POST" action="{{ url_for('treasurer_savings_deposit') }}" style="max-width: 600px;">
+        <form method="POST" action="{{ url_for('treasurer_savings_deposit') }}" style="max-width: 700px;">
             <div class="form-group">
-                <label style="color: rgba(255,255,255,0.4);">Select Member *</label>
-                <select name="user_id" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Select Member *</label>
+                <select name="user_id" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" onchange="updateMemberSavings(this.value)">
                     <option value="">-- Select Member --</option>
                     {% for member in members %}
-                    <option value="{{ member.id }}">{{ member.full_name }} ({{ member.sacco_number }})</option>
+                    <option value="{{ member.id }}" 
+                            data-kai="{{ member.kai_shares or 0 }}"
+                            data-ks="{{ member.ks_shares or 0 }}"
+                            data-kac="{{ member.kac_paid or 0 }}"
+                            data-reg="{{ member.registration_fee_paid or 0 }}">
+                        {{ member.full_name }} ({{ member.sacco_number }})
+                    </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group">
-                <label style="color: rgba(255,255,255,0.4);">Amount (UGX) *</label>
-                <input type="number" step="0.01" name="amount" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+
+            <!-- Member Savings Display -->
+            <div id="memberSavingsDisplay" style="display: none; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:14px; margin-bottom:16px;">
+                <div style="color:rgba(255,255,255,0.3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                    Current Member Savings
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px;">
+                    <div>
+                        <span style="color:#4ade80; font-weight:600;">KAI:</span>
+                        <span id="displayKAI" style="color:rgba(255,255,255,0.7);">0 shares</span>
+                    </div>
+                    <div>
+                        <span style="color:#00e0ff; font-weight:600;">KS:</span>
+                        <span id="displayKS" style="color:rgba(255,255,255,0.7);">0 shares</span>
+                    </div>
+                    <div>
+                        <span style="color:#f5c542; font-weight:600;">KAC:</span>
+                        <span id="displayKAC" style="color:rgba(255,255,255,0.7);">Not paid</span>
+                    </div>
+                    <div>
+                        <span style="color:#ff6b6b; font-weight:600;">Registration:</span>
+                        <span id="displayREG" style="color:rgba(255,255,255,0.7);">Not paid</span>
+                    </div>
+                </div>
             </div>
+
             <div class="form-group">
-                <label style="color: rgba(255,255,255,0.4);">Payment Method</label>
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Savings Type *</label>
+                <select name="savings_type" id="savingsType" class="form-control" required style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" onchange="updateSavingsTypeInfo()">
+                    <option value="">-- Select Savings Type --</option>
+                    <option value="KAI">KAI - Karacel Investment (UGX 100,000 per share)</option>
+                    <option value="KS">KS - Karacel Savings (UGX 10,000 per share)</option>
+                    <option value="KAC">KAC - Karacel Condolence (UGX 100,000 per year) - No shares</option>
+                    <option value="REGISTRATION">Registration Fee (UGX 20,000 one-time) - No shares</option>
+                </select>
+            </div>
+
+            <!-- Savings Type Info -->
+            <div id="savingsTypeInfo" style="display: none; padding: 12px; background:rgba(0,224,255,0.04); border-radius:8px; margin-bottom:16px;">
+                <div id="savingsTypeDetails"></div>
+            </div>
+
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Amount (UGX) *</label>
+                <input type="number" step="0.01" name="amount" id="amountInput" class="form-control" required placeholder="Enter amount" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" oninput="validateAmount()">
+                <div id="savingsAmountValidation" style="margin-top: 6px; font-size:0.85rem;"></div>
+            </div>
+
+            <!-- Number of Shares (Only for KAI and KS) -->
+            <div class="form-group" id="sharesGroup">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Number of Shares</label>
+                <input type="number" id="numberOfShares" class="form-control" placeholder="Auto-calculated from amount" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;" readonly>
+            </div>
+
+            <div class="form-group">
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Payment Method</label>
                 <select name="payment_method" class="form-control" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     <option value="cash">Cash</option>
                     <option value="bank_transfer">Bank Transfer</option>
@@ -145,18 +256,22 @@
                     <option value="cheque">Cheque</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label style="color: rgba(255,255,255,0.4);">Receipt Number</label>
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Receipt Number</label>
                 <input type="text" name="receipt_number" class="form-control" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
+
             <div class="form-group">
-                <label style="color: rgba(255,255,255,0.4);">Notes</label>
+                <label style="color: rgba(255,255,255,0.4); display:block; margin-bottom:6px;">Notes</label>
                 <textarea name="notes" class="form-control" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; min-height:60px;"></textarea>
             </div>
+
             <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Record Deposit</button>
         </form>
     </div>
 
+    <!-- All Savings Deposits Table -->
     <div class="action-card" style="margin-top: 16px;">
         <div class="action-title">
             <i class="fas fa-list"></i> All Savings Deposits
@@ -164,7 +279,7 @@
                 Total: UGX {{ "{:,.0f}".format(total_deposits) }}
             </span>
         </div>
-        
+
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchSavingsMember" placeholder="Search by member name or SACCO number..." 
@@ -172,12 +287,13 @@
                        style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
             <div>
-                <select id="filterSavingsMember" onchange="filterSavingsByMember()" 
+                <select id="filterSavingsType" onchange="filterSavingsByMember()" 
                         style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                    <option value="all">All Members</option>
-                    {% for member in members %}
-                    <option value="{{ member.id }}">{{ member.full_name }} ({{ member.sacco_number }})</option>
-                    {% endfor %}
+                    <option value="all">All Types</option>
+                    <option value="KAI">KAI - Investment</option>
+                    <option value="KS">KS - Savings</option>
+                    <option value="KAC">KAC - Condolence</option>
+                    <option value="REGISTRATION">Registration</option>
                 </select>
             </div>
             <div>
@@ -191,7 +307,7 @@
                 </select>
             </div>
         </div>
-        
+
         <div class="table-wrapper">
             <table class="styled-table" id="savingsTable">
                 <thead>
@@ -199,7 +315,9 @@
                         <th>#</th>
                         <th>Member</th>
                         <th>SACCO No.</th>
+                        <th>Type</th>
                         <th>Amount</th>
+                        <th>Shares</th>
                         <th>Date</th>
                         <th>Method</th>
                         <th>Receipt</th>
@@ -208,11 +326,38 @@
                 <tbody>
                     {% if all_deposits %}
                         {% for deposit in all_deposits %}
-                        <tr data-member-id="{{ deposit.user_id }}" data-member-name="{{ deposit.full_name|lower }}" data-sacco="{{ deposit.sacco_number|lower }}" data-method="{{ deposit.payment_method }}">
+                        <tr data-member-id="{{ deposit.user_id }}" 
+                            data-member-name="{{ deposit.full_name|lower }}" 
+                            data-sacco="{{ deposit.sacco_number|lower }}" 
+                            data-type="{{ deposit.savings_type }}"
+                            data-method="{{ deposit.payment_method }}">
                             <td>{{ loop.index }}</td>
                             <td><strong>{{ deposit.full_name }}</strong></td>
                             <td style="color:#f5c542; font-family:monospace;">{{ deposit.sacco_number }}</td>
-                            <td style="color:#4ade80;">UGX {{ "{:,.0f}".format(deposit.amount) }}</td>
+                            <td>
+                                <span style="
+                                    {% if deposit.savings_type == 'KAI' %}color:#4ade80;
+                                    {% elif deposit.savings_type == 'KS' %}color:#00e0ff;
+                                    {% elif deposit.savings_type == 'KAC' %}color:#f5c542;
+                                    {% elif deposit.savings_type == 'REGISTRATION' %}color:#ff6b6b;
+                                    {% else %}color:rgba(255,255,255,0.3);{% endif %}
+                                    font-weight:600; font-size:0.8rem;
+                                ">
+                                    {{ deposit.savings_type }}
+                                </span>
+                            </td>
+                            <td style="color:#4ade80; font-weight:500;">UGX {{ "{:,.0f}".format(deposit.amount) }}</td>
+                            <td style="color:rgba(255,255,255,0.5);">
+                                {% if deposit.savings_type == 'KAI' or deposit.savings_type == 'KS' %}
+                                    {% if deposit.shares %}
+                                        {{ deposit.shares }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.2);">N/A</span>
+                                {% endif %}
+                            </td>
                             <td style="color:rgba(255,255,255,0.5);">{{ deposit.deposit_date }}</td>
                             <td>{{ deposit.payment_method|capitalize }}</td>
                             <td>
@@ -226,7 +371,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" style="text-align:center; padding:40px; color:rgba(255,255,255,0.3);">
+                            <td colspan="9" style="text-align:center; padding:40px; color:rgba(255,255,255,0.3);">
                                 <i class="fas fa-piggy-bank" style="font-size:3rem; display:block; margin-bottom:12px; opacity:0.2;"></i>
                                 No deposits recorded yet
                             </td>
@@ -268,6 +413,48 @@
         </div>
     </div>
 
+    <!-- Interest & Fee Summary Cards -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+        <div style="background:rgba(255,107,107,0.04); border:1px solid rgba(255,107,107,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-percent" style="color:#ff6b6b;"></i> Total Interest Accrued
+            </div>
+            <div style="font-size:1.2rem; font-weight:600; color:#ff6b6b;">UGX {{ "{:,.0f}".format(total_interest_accrued|default(0)) }}</div>
+        </div>
+        <div style="background:rgba(74,222,128,0.04); border:1px solid rgba(74,222,128,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-check-circle" style="color:#4ade80;"></i> Interest Paid
+            </div>
+            <div style="font-size:1.2rem; font-weight:600; color:#4ade80;">UGX {{ "{:,.0f}".format(total_interest_paid|default(0)) }}</div>
+        </div>
+        <div style="background:rgba(245,197,66,0.04); border:1px solid rgba(245,197,66,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-clock" style="color:#f5c542;"></i> Outstanding Interest
+            </div>
+            <div style="font-size:1.2rem; font-weight:600; color:#f5c542;">UGX {{ "{:,.0f}".format(total_interest_outstanding|default(0)) }}</div>
+        </div>
+        <div style="background:rgba(0,224,255,0.04); border:1px solid rgba(0,224,255,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-file-invoice" style="color:#00e0ff;"></i> Loan App Fees
+            </div>
+            <div style="font-size:1.2rem; font-weight:600; color:#00e0ff;">UGX {{ "{:,.0f}".format(total_loan_fees|default(0)) }}</div>
+        </div>
+        <div style="background:rgba(168,85,247,0.04); border:1px solid rgba(168,85,247,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-trophy" style="color:#a855f7;"></i> Highest Borrower
+            </div>
+            <div style="font-size:0.9rem; font-weight:600; color:#a855f7;">{{ highest_borrower.name|default('N/A') }}</div>
+            <div style="font-size:0.7rem; color:rgba(255,255,255,0.2);">UGX {{ "{:,.0f}".format(highest_borrower.total|default(0)) }}</div>
+        </div>
+        <div style="background:rgba(74,222,128,0.04); border:1px solid rgba(74,222,128,0.08); border-radius:10px; padding:14px 18px;">
+            <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-undo-alt" style="color:#4ade80;"></i> Highest Interest Return
+            </div>
+            <div style="font-size:0.9rem; font-weight:600; color:#4ade80;">{{ highest_interest_borrower.name|default('N/A') }}</div>
+            <div style="font-size:0.7rem; color:rgba(255,255,255,0.2);">UGX {{ "{:,.0f}".format(highest_interest_borrower.interest|default(0)) }}</div>
+        </div>
+    </div>
+
     <div class="action-card">
         <div class="action-title">
             <i class="fas fa-file-invoice"></i> Loan Applications
@@ -276,6 +463,7 @@
             </span>
         </div>
         
+        <!-- Search and Filter -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchLoans" placeholder="Search by member, loan number..." 
@@ -296,29 +484,31 @@
             </div>
         </div>
 
-        <div class="table-wrapper">
-            <table class="styled-table" id="loansTable">
-                <thead>
+        <!-- Scrollable Table -->
+        <div style="overflow-x: auto; overflow-y: auto; max-height: 600px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+            <table class="styled-table" id="loansTable" style="width:100%; border-collapse: collapse; font-size: 0.8rem;">
+                <thead style="position: sticky; top: 0; z-index: 20; background: #1a1a2e;">
                     <tr>
-                        <th>#</th>
-                        <th>Loan #</th>
-                        <th>Member</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Balance</th>
-                        <th style="min-width:80px;">Guarantors</th>
-                        <th>Date</th>
-                        <th>Actions</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">#</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Loan #</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Member</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Amount (UGX)</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Status</th>
+                        <th style="padding: 10px 12px; text-align: left; color: #f5c542; font-weight: 500; white-space: nowrap;">Balance (UGX)</th>
+                        <th style="padding: 10px 12px; text-align: left; color: #ff6b6b; font-weight: 500; white-space: nowrap;">Interest (UGX)</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap; min-width: 120px;">Guarantors</th>
+                        <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Date</th>
+                        <th style="padding: 10px 12px; text-align: center; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap; position: sticky; right: 0; background: #1a1a2e; z-index: 21;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for loan in all_loan_applications %}
-                    <tr data-status="{{ loan.status }}">
-                        <td>{{ loop.index }}</td>
-                        <td class="mono" style="color:#f5c542; font-size:0.8rem;">{{ loan.loan_number }}</td>
-                        <td><strong>{{ loan.full_name }}</strong></td>
-                        <td style="color:#4ade80; font-weight:500;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
-                        <td>
+                    <tr data-status="{{ loan.status }}" style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
+                        <td style="padding: 8px 12px; color:#f5c542; font-size:0.75rem; font-family:monospace; font-weight:600; white-space:nowrap;">{{ loan.loan_number }}</td>
+                        <td style="padding: 8px 12px; font-weight:500; color:rgba(255,255,255,0.9); white-space:nowrap;">{{ loan.full_name }}</td>
+                        <td style="padding: 8px 12px; color:#4ade80; font-weight:500; white-space:nowrap;">{{ "{:,.0f}".format(loan.amount) }}</td>
+                        <td style="padding: 8px 12px; white-space:nowrap;">
                             {% if loan.status == 'pending' %}
                                 <span class="status-badge pending">Pending</span>
                             {% elif loan.status == 'approved' %}
@@ -326,7 +516,7 @@
                             {% elif loan.status == 'disbursed' or loan.status == 'active' %}
                                 <span class="status-badge active">Active</span>
                             {% elif loan.status == 'completed' %}
-                                <span class="status-badge completed" style="background:rgba(74,222,128,0.15); color:#4ade80; padding:4px 12px; border-radius:20px; font-size:0.7rem; font-weight:600;">
+                                <span class="status-badge completed" style="background:rgba(74,222,128,0.15); color:#4ade80; padding:2px 10px; border-radius:20px; font-size:0.6rem; font-weight:600;">
                                     <i class="fas fa-check-circle"></i> Completed
                                 </span>
                             {% elif loan.status == 'rejected' %}
@@ -335,7 +525,7 @@
                                 <span class="status-badge secondary">{{ loan.status|title }}</span>
                             {% endif %}
                         </td>
-                        <td style="color:#f5c542; font-size:0.85rem;">
+                        <td style="padding: 8px 12px; color:#f5c542; font-size:0.8rem; white-space:nowrap;">
                             {% if loan.status in ['disbursed', 'active', 'approved'] %}
                                 {% if loan.current_balance is not none and loan.current_balance > 0 %}
                                     UGX {{ "{:,.0f}".format(loan.current_balance) }}
@@ -343,14 +533,31 @@
                                     UGX {{ "{:,.0f}".format(loan.amount) }}
                                 {% endif %}
                             {% elif loan.status == 'completed' %}
-                                <span style="color:#4ade80;">
-                                    <i class="fas fa-check-circle" style="font-size:0.6rem;"></i> Paid
+                                <span style="color:#4ade80; font-size:0.7rem;">
+                                    <i class="fas fa-check-circle"></i> Paid
                                 </span>
                             {% else %}
                                 <span style="color:rgba(255,255,255,0.2);">—</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td style="padding: 8px 12px; font-size:0.75rem; white-space:nowrap;">
+                            <div style="display:flex; flex-direction:column; gap:1px;">
+                                <span style="color:#ff6b6b;">
+                                    <i class="fas fa-percent" style="font-size:0.5rem;"></i> 
+                                    Accrued: {{ "{:,.0f}".format(loan.total_interest_accrued or 0) }}
+                                </span>
+                                <span style="color:#4ade80;">
+                                    <i class="fas fa-check" style="font-size:0.5rem;"></i> 
+                                    Paid: {{ "{:,.0f}".format(loan.interest_paid or 0) }}
+                                </span>
+                                {% if loan.interest_paid and loan.total_interest_accrued and loan.total_interest_accrued > 0 %}
+                                <span style="color:#f5c542; font-size:0.55rem;">
+                                    {{ "%.1f"|format((loan.interest_paid / loan.total_interest_accrued * 100)) }}% cleared
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 8px 12px; white-space:nowrap;">
                             {% if loan.guarantors %}
                                 <div style="display:flex; flex-direction:column; gap:3px;">
                                     {% for guarantor in loan.guarantors[:2] %}
@@ -374,7 +581,7 @@
                                 <span style="color:rgba(255,255,255,0.1); font-size:0.6rem;">—</span>
                             {% endif %}
                         </td>
-                        <td style="color:rgba(255,255,255,0.4); font-size:0.75rem;">
+                        <td style="padding: 8px 12px; color:rgba(255,255,255,0.4); font-size:0.7rem; white-space:nowrap;">
                             {% if loan.status == 'pending' %}
                                 {{ loan.application_date }}
                             {% elif loan.status == 'approved' %}
@@ -387,41 +594,141 @@
                                 {{ loan.application_date }}
                             {% endif %}
                         </td>
-                        <td class="action-btns" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-                            <button class="view-btn" onclick="viewLoan('{{ loan.id }}')" title="View Details" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(0,224,255,0.08); color:#00e0ff; border:1px solid rgba(0,224,255,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
-                                <i class="fas fa-eye" style="font-size:0.6rem;"></i> View
+                        <td style="padding: 8px 12px; text-align: center; white-space: nowrap; position: sticky; right: 0; background: #0a0e1a; z-index: 10;">
+                            <!-- Three Dots Button -->
+                            <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" style="
+                                background:rgba(255,255,255,0.03);
+                                border:1px solid rgba(255,255,255,0.06);
+                                border-radius:6px;
+                                color:rgba(255,255,255,0.5);
+                                padding:6px 14px;
+                                cursor:pointer;
+                                font-size:0.8rem;
+                                transition:all 0.2s;
+                                display:inline-flex;
+                                align-items:center;
+                                gap:6px;
+                                font-family:inherit;
+                            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+                               onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                                <i class="fas fa-ellipsis-v"></i>
+                                <span style="font-size:0.65rem; color:rgba(255,255,255,0.3);">Actions</span>
                             </button>
                             
-                            {% if loan.status == 'pending' %}
-                            <button class="approve-btn" onclick="openApproveModal('{{ loan.id }}')" title="Approve Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(74,222,128,0.08); color:#4ade80; border:1px solid rgba(74,222,128,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
-                                <i class="fas fa-check" style="font-size:0.6rem;"></i> Approve
-                            </button>
-                            <button class="reject-btn" onclick="openRejectModal('{{ loan.id }}')" title="Reject Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(255,107,107,0.08); color:#ff6b6b; border:1px solid rgba(255,107,107,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
-                                <i class="fas fa-times" style="font-size:0.6rem;"></i> Reject
-                            </button>
-                            {% endif %}
-                            
-                            {% if loan.status == 'approved' %}
-                            <button class="disburse-btn" onclick="disburseLoan('{{ loan.id }}')" title="Disburse Loan" style="display:inline-flex; align-items:center; gap:3px; padding:4px 10px; background:rgba(245,197,66,0.08); color:#f5c542; border:1px solid rgba(245,197,66,0.1); border-radius:5px; font-size:0.65rem; cursor:pointer; transition:all 0.2s;">
-                                <i class="fas fa-hand-holding-usd" style="font-size:0.6rem;"></i> Disburse
-                            </button>
-                            {% endif %}
-                            
-                            {% if loan.status == 'completed' %}
-                            <span style="font-size:0.6rem; color:#4ade80; background:rgba(74,222,128,0.06); padding:2px 8px; border-radius:4px;">
-                                <i class="fas fa-check-circle"></i> Done
-                            </span>
-                            {% endif %}
-                            {% if loan.status == 'rejected' %}
-                            <span style="font-size:0.6rem; color:#ff6b6b; background:rgba(255,107,107,0.06); padding:2px 8px; border-radius:4px;">
-                                <i class="fas fa-times-circle"></i> Rejected
-                            </span>
-                            {% endif %}
+                            <!-- Horizontal Dropdown Menu -->
+                            <div class="dropdown-menu" id="dropdown-{{ loan.id }}" style="
+                                display:none;
+                                position:fixed;
+                                background:#1a1a2e;
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:12px;
+                                padding:10px 16px;
+                                z-index:9999;
+                                box-shadow:0 12px 48px rgba(0,0,0,0.6);
+                                white-space:nowrap;
+                                flex-direction:row;
+                                align-items:center;
+                                gap:6px;
+                                backdrop-filter:blur(10px);
+                                -webkit-backdrop-filter:blur(10px);
+                            ">
+                                <!-- View Details -->
+                                <button onclick="viewLoan('{{ loan.id }}'); closeAllDropdowns();" title="View Details" style="
+                                    background:rgba(0,224,255,0.08);
+                                    border:1px solid rgba(0,224,255,0.12);
+                                    color:#00e0ff;
+                                    padding:6px 14px;
+                                    border-radius:6px;
+                                    cursor:pointer;
+                                    font-size:0.7rem;
+                                    transition:all 0.2s;
+                                    display:inline-flex;
+                                    align-items:center;
+                                    gap:6px;
+                                    font-family:inherit;
+                                    font-weight:500;
+                                " onmouseover="this.style.background='rgba(0,224,255,0.15)'; this.style.transform='translateY(-1px)'" 
+                                   onmouseout="this.style.background='rgba(0,224,255,0.08)'; this.style.transform='translateY(0)'">
+                                    <i class="fas fa-eye" style="font-size:0.6rem;"></i> View
+                                </button>
+                                
+                                {% if loan.status == 'pending' %}
+                                <button onclick="openApproveModal('{{ loan.id }}'); closeAllDropdowns();" title="Approve" style="
+                                    background:rgba(74,222,128,0.08);
+                                    border:1px solid rgba(74,222,128,0.12);
+                                    color:#4ade80;
+                                    padding:6px 14px;
+                                    border-radius:6px;
+                                    cursor:pointer;
+                                    font-size:0.7rem;
+                                    transition:all 0.2s;
+                                    display:inline-flex;
+                                    align-items:center;
+                                    gap:6px;
+                                    font-family:inherit;
+                                    font-weight:500;
+                                " onmouseover="this.style.background='rgba(74,222,128,0.15)'; this.style.transform='translateY(-1px)'" 
+                                   onmouseout="this.style.background='rgba(74,222,128,0.08)'; this.style.transform='translateY(0)'">
+                                    <i class="fas fa-check" style="font-size:0.6rem;"></i> Approve
+                                </button>
+                                <button onclick="openRejectModal('{{ loan.id }}'); closeAllDropdowns();" title="Reject" style="
+                                    background:rgba(255,107,107,0.08);
+                                    border:1px solid rgba(255,107,107,0.12);
+                                    color:#ff6b6b;
+                                    padding:6px 14px;
+                                    border-radius:6px;
+                                    cursor:pointer;
+                                    font-size:0.7rem;
+                                    transition:all 0.2s;
+                                    display:inline-flex;
+                                    align-items:center;
+                                    gap:6px;
+                                    font-family:inherit;
+                                    font-weight:500;
+                                " onmouseover="this.style.background='rgba(255,107,107,0.15)'; this.style.transform='translateY(-1px)'" 
+                                   onmouseout="this.style.background='rgba(255,107,107,0.08)'; this.style.transform='translateY(0)'">
+                                    <i class="fas fa-times" style="font-size:0.6rem;"></i> Reject
+                                </button>
+                                {% endif %}
+                                
+                                {% if loan.status == 'approved' %}
+                                <button onclick="disburseLoan('{{ loan.id }}'); closeAllDropdowns();" title="Disburse" style="
+                                    background:rgba(245,197,66,0.08);
+                                    border:1px solid rgba(245,197,66,0.12);
+                                    color:#f5c542;
+                                    padding:6px 14px;
+                                    border-radius:6px;
+                                    cursor:pointer;
+                                    font-size:0.7rem;
+                                    transition:all 0.2s;
+                                    display:inline-flex;
+                                    align-items:center;
+                                    gap:6px;
+                                    font-family:inherit;
+                                    font-weight:500;
+                                " onmouseover="this.style.background='rgba(245,197,66,0.15)'; this.style.transform='translateY(-1px)'" 
+                                   onmouseout="this.style.background='rgba(245,197,66,0.08)'; this.style.transform='translateY(0)'">
+                                    <i class="fas fa-hand-holding-usd" style="font-size:0.6rem;"></i> Disburse
+                                </button>
+                                {% endif %}
+                                
+                                {% if loan.status == 'completed' %}
+                                <span style="font-size:0.6rem; color:#4ade80; background:rgba(74,222,128,0.08); padding:4px 12px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; font-weight:500;">
+                                    <i class="fas fa-check-circle"></i> Done
+                                </span>
+                                {% endif %}
+                                
+                                {% if loan.status == 'rejected' %}
+                                <span style="font-size:0.6rem; color:#ff6b6b; background:rgba(255,107,107,0.08); padding:4px 12px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; font-weight:500;">
+                                    <i class="fas fa-times-circle"></i> Rejected
+                                </span>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="9" style="text-align:center; padding:40px; color:rgba(255,255,255,0.3);">
+                        <td colspan="10" style="text-align:center; padding:40px; color:rgba(255,255,255,0.3);">
                             <i class="fas fa-file-invoice" style="font-size:3rem; display:block; margin-bottom:12px; opacity:0.2;"></i>
                             No loan applications found
                         </td>
@@ -429,369 +736,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-<!-- ========== MODALS ========== -->
-
-<!-- Rejection Reason Modal -->
-<div id="rejectModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="margin:0; color:#ff6b6b; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-exclamation-triangle"></i> Reject Loan
-            </h3>
-            <button onclick="closeRejectModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div style="margin-bottom:16px;">
-            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Please provide a reason for rejecting this loan application:</p>
-            <textarea id="rejectReason" rows="4" style="width:100%; padding:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; font-family:inherit; resize:vertical;" placeholder="Enter rejection reason..."></textarea>
-        </div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;">
-            <button onclick="closeRejectModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
-            <button onclick="confirmReject()" style="padding:10px 24px; background:#ff6b6b; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                <i class="fas fa-times"></i> Reject
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Approve Confirmation Modal -->
-<div id="approveModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="margin:0; color:#4ade80; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-check-circle"></i> Approve Loan
-            </h3>
-            <button onclick="closeApproveModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div style="margin-bottom:16px;">
-            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Are you sure you want to approve this loan application?</p>
-            <p style="color:rgba(255,255,255,0.3); font-size:0.85rem; margin-top:8px;">
-                <i class="fas fa-info-circle"></i> 
-                <span id="approveLoanInfo">This will mark the loan as approved and it will be reviewed by the Chairman.</span>
-            </p>
-        </div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;">
-            <button onclick="closeApproveModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
-            <button onclick="confirmApprove()" style="padding:10px 24px; background:#4ade80; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                <i class="fas fa-check"></i> Yes, Approve
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ========== COMPLETED LOANS PANEL ========== -->
-<div id="completed-panel" class="content-panel" style="display:none;">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
-        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-check-circle"></i> Completed Loans
-        </span>
-        <span style="margin-left: auto; color: #4ade80; font-size: 0.9rem; background: rgba(74,222,128,0.1); padding: 4px 16px; border-radius: 20px; border: 1px solid rgba(74,222,128,0.15);">
-            <i class="fas fa-check-circle"></i> Total: {{ completed_loans }}
-        </span>
-    </div>
-
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-check-circle" style="color: #4ade80;"></i> Completed Loans
-            <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-                Loans that have been fully repaid
-            </span>
-            {% if completed_loans_list %}
-            <span style="margin-left: auto; font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.1); padding:2px 12px; border-radius:12px;">
-                {{ completed_loans_list|length }} records
-            </span>
-            {% endif %}
-        </div>
-        
-        <!-- Search and Filter for Completed Loans -->
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
-            <div style="flex:1; min-width:200px;">
-                <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..." 
-                       onkeyup="filterCompletedLoans()" 
-                       style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; placeholder-color: rgba(255,255,255,0.3);">
-            </div>
-            <div>
-                <select id="filterCompletedDate" onchange="filterCompletedLoans()" 
-                        style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                    <option value="all">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="year">This Year</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="table-wrapper">
-            <table class="styled-table" id="completedLoansTable">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Loan #</th>
-                        <th>Member</th>
-                        <th>Amount</th>
-                        <th>Total Paid</th>
-                        <th>Payments</th>
-                        <th>Completed Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if completed_loans_list %}
-                        {% for loan in completed_loans_list %}
-                        <tr data-completed-date="{{ loan.completed_date }}">
-                            <td>{{ loop.index }}</td>
-                            <td style="color:#4ade80; font-family:monospace; font-weight:600;">{{ loan.loan_number }}</td>
-                            <td><strong>{{ loan.full_name }}</strong></td>
-                            <td style="color:#f5c542;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
-                            <td style="color:#4ade80; font-weight:600;">UGX {{ "{:,.0f}".format(loan.total_paid or loan.amount) }}</td>
-                            <td style="text-align:center;">
-                                <span style="background:rgba(255,255,255,0.05); padding:2px 10px; border-radius:10px; font-size:0.75rem;">
-                                    {{ loan.payment_count or 0 }}
-                                </span>
-                            </td>
-                            <td style="color:rgba(255,255,255,0.5);">
-                                {% if loan.completed_date %}
-                                    {{ loan.completed_date[:10] if loan.completed_date|length > 10 else loan.completed_date }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="status-badge completed" style="background:rgba(74,222,128,0.12); color:#4ade80; padding:4px 14px; border-radius:20px; font-size:0.7rem; font-weight:600; border:1px solid rgba(74,222,128,0.15);">
-                                    <i class="fas fa-check-circle"></i> COMPLETED
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);">
-                                <i class="fas fa-check-circle" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.15; color:#4ade80;"></i>
-                                <p style="font-size:1rem; color:rgba(255,255,255,0.2);">No completed loans yet</p>
-                                <p style="font-size:0.8rem; color:rgba(255,255,255,0.1);">Loans will appear here once they are fully repaid</p>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-                <tfoot>
-                    <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
-                        <td colspan="8" style="padding:12px 16px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; color:rgba(255,255,255,0.3); font-size:0.8rem;">
-                                <span>
-                                    <i class="fas fa-check-circle" style="color:#4ade80;"></i> 
-                                    Total Completed: <strong style="color:#4ade80;">{{ completed_loans_list|length if completed_loans_list else 0 }}</strong>
-                                </span>
-                                <span>
-                                    Total Amount Repaid: <strong style="color:#f5c542;">UGX {{ "{:,.0f}".format(completed_loans_list|sum(attribute='amount') if completed_loans_list else 0) }}</strong>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- ========== EDIT MEMBER MODAL ========== -->
-<div id="editMemberModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
-            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-user-edit"></i> Edit Member
-            </h3>
-            <button onclick="closeEditModal()" style="
-                background:rgba(255,255,255,0.04);
-                border:1px solid rgba(255,255,255,0.06);
-                color:rgba(255,255,255,0.4);
-                width:36px;
-                height:36px;
-                border-radius:50%;
-                cursor:pointer;
-                font-size:1.2rem;
-                transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
-               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <form id="editMemberForm" onsubmit="submitEditMember(event)">
-            <input type="hidden" id="editMemberId" name="member_id">
-            
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Full Name <span style="color:#ff6b6b;">*</span></label>
-                <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name" 
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; transition:all 0.2s;">
-            </div>
-            
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">SACCO Number <span style="color:#ff6b6b;">*</span></label>
-                <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001" 
-                       style="text-transform:uppercase; width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-            </div>
-            
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Phone <span style="color:#ff6b6b;">*</span></label>
-                    <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number" 
-                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                </div>
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Email</label>
-                    <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address" 
-                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                </div>
-            </div>
-            
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Gender</label>
-                    <select id="editGender" name="gender" class="form-control" 
-                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Date of Birth</label>
-                    <input type="date" id="editDob" name="dob" class="form-control" 
-                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                </div>
-            </div>
-            
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Address</label>
-                <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address" 
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-            </div>
-            
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Status</label>
-                <select id="editStatus" name="status" class="form-control" 
-                        style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                </select>
-            </div>
-            
-            <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
-                <button type="button" onclick="closeEditModal()" style="
-                    padding:10px 24px;
-                    background:rgba(255,255,255,0.05);
-                    color:rgba(255,255,255,0.7);
-                    border:1px solid rgba(255,255,255,0.1);
-                    border-radius:8px;
-                    cursor:pointer;
-                    font-weight:500;
-                    transition:all 0.2s;
-                " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
-                   onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                    Cancel
-                </button>
-                <button type="submit" id="editMemberSubmitBtn" style="
-                    padding:10px 24px;
-                    background:#f5c542;
-                    color:#0a0a14;
-                    border:none;
-                    border-radius:8px;
-                    cursor:pointer;
-                    font-weight:600;
-                    transition:all 0.2s;
-                    display:inline-flex;
-                    align-items:center;
-                    gap:8px;
-                " onmouseover="this.style.background='#eab308'" 
-                   onmouseout="this.style.background='#f5c542'">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- ========== DELETE CONFIRMATION MODAL ========== -->
-<div id="deleteConfirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:450px; width:100%; text-align:center; animation:modalSlideIn 0.3s ease;">
-        <div style="font-size:3rem; color:#ff6b6b; margin-bottom:12px;">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <h3 style="color:#ff6b6b; margin-bottom:8px;">Confirm Delete</h3>
-        <p id="deleteMessage" style="color:rgba(255,255,255,0.6); margin-bottom:20px;">
-            Are you sure you want to delete this member?
-        </p>
-        <input type="hidden" id="deleteMemberId">
-        <div style="display:flex; gap:12px; justify-content:center;">
-            <button onclick="closeDeleteModal()" style="
-                padding:10px 24px;
-                background:rgba(255,255,255,0.05);
-                color:rgba(255,255,255,0.7);
-                border:1px solid rgba(255,255,255,0.1);
-                border-radius:8px;
-                cursor:pointer;
-                font-weight:500;
-                transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
-               onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                Cancel
-            </button>
-            <button class="btn-danger" onclick="confirmDeleteMember()" style="
-                padding:10px 24px;
-                background:#ff6b6b;
-                color:#fff;
-                border:none;
-                border-radius:8px;
-                cursor:pointer;
-                font-weight:600;
-                transition:all 0.2s;
-                display:inline-flex;
-                align-items:center;
-                gap:8px;
-            " onmouseover="this.style.background='#ef4444'" 
-               onmouseout="this.style.background='#ff6b6b'">
-                <i class="fas fa-trash"></i> Delete Permanently
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ========== GUARANTOR DETAILS MODAL ========== -->
-<div id="guarantorDetailsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
-            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-user-shield"></i> Guarantor Details
-            </h3>
-            <button onclick="closeGuarantorModal()" style="
-                background:rgba(255,255,255,0.04);
-                border:1px solid rgba(255,255,255,0.06);
-                color:rgba(255,255,255,0.4);
-                width:36px;
-                height:36px;
-                border-radius:50%;
-                cursor:pointer;
-                font-size:1.2rem;
-                transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
-               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div id="guarantorDetailsContent">
-            <!-- Dynamically populated -->
         </div>
     </div>
 </div>
@@ -1081,8 +1025,10 @@
                         <th>SACCO No.</th>
                         <th>Full Name</th>
                         <th>Phone</th>
-                        <th>Email</th>
-                        <th>Savings (UGX)</th>
+                        <th>KAI</th>
+                        <th>KS</th>
+                        <th>KAC</th>
+                        <th>Reg Fee</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -1095,8 +1041,22 @@
                             <td style="color:#f5c542; font-family:monospace;">{{ member.sacco_number }}</td>
                             <td><strong>{{ member.full_name }}</strong></td>
                             <td>{{ member.phone or '-' }}</td>
-                            <td>{{ member.email or '-' }}</td>
-                            <td style="color:#4ade80;">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
+                            <td style="color:#4ade80;">{{ member.kai_shares or 0 }}</td>
+                            <td style="color:#00e0ff;">{{ member.ks_shares or 0 }}</td>
+                            <td style="color:#f5c542;">
+                                {% if member.kac_paid %}
+                                    <span style="color:#4ade80;">✓ Paid</span>
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.2);">✗ Not Paid</span>
+                                {% endif %}
+                            </td>
+                            <td style="color:#ff6b6b;">
+                                {% if member.registration_fee_paid %}
+                                    <span style="color:#4ade80;">✓ Paid</span>
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.2);">✗ Not Paid</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if member.status == 'active' %}
                                     <span class="badge success">Active</span>
@@ -1119,7 +1079,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="8" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
+                            <td colspan="10" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
                                 No members registered yet. 
                                 <a href="{{ url_for('treasurer_add_members') }}" style="color: #f5c542; text-decoration: none;">
                                     <i class="fas fa-user-plus"></i> Register one now
@@ -1222,6 +1182,7 @@
                         <th>Date</th>
                         <th>Member</th>
                         <th>SACCO No.</th>
+                        <th>Type</th>
                         <th>Amount (UGX)</th>
                         <th>Method</th>
                         <th>Receipt</th>
@@ -1236,6 +1197,18 @@
                             <td style="color: rgba(255,255,255,0.5);">{{ deposit.deposit_date }}</td>
                             <td><strong>{{ deposit.full_name }}</strong></td>
                             <td style="color:#f5c542; font-family:monospace;">{{ deposit.sacco_number }}</td>
+                            <td>
+                                <span style="
+                                    {% if deposit.savings_type == 'KAI' %}color:#4ade80;
+                                    {% elif deposit.savings_type == 'KS' %}color:#00e0ff;
+                                    {% elif deposit.savings_type == 'KAC' %}color:#f5c542;
+                                    {% elif deposit.savings_type == 'REGISTRATION' %}color:#ff6b6b;
+                                    {% else %}color:rgba(255,255,255,0.3);{% endif %}
+                                    font-weight:600; font-size:0.7rem;
+                                ">
+                                    {{ deposit.savings_type or 'KAI' }}
+                                </span>
+                            </td>
                             <td style="color:#4ade80; font-weight:600;">{{ "{:,.0f}".format(deposit.amount) }}</td>
                             <td>
                                 <span class="badge 
@@ -1261,7 +1234,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color: rgba(255,255,255,0.3);">
+                            <td colspan="9" style="text-align:center; padding:40px; color: rgba(255,255,255,0.3);">
                                 <i class="fas fa-piggy-bank" style="font-size:3rem; display:block; margin-bottom:12px; opacity:0.2;"></i>
                                 No deposits recorded yet.
                             </td>
@@ -1270,7 +1243,7 @@
                 </tbody>
                 <tfoot>
                     <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
-                        <td colspan="4" style="text-align:right; font-weight:600; color: rgba(255,255,255,0.5);">
+                        <td colspan="5" style="text-align:right; font-weight:600; color: rgba(255,255,255,0.5);">
                             Total:
                         </td>
                         <td style="color:#4ade80; font-weight:700; font-size:1.1rem;">
@@ -1297,297 +1270,666 @@
     </div>
 </div>
 
-<!-- ============================================================
-COMPLETE JAVASCRIPT - FIXED FOR FLASK ROUTES
-============================================================ -->
+<!-- ========== COMPLETED LOANS PANEL ========== -->
+<div id="completed-panel" class="content-panel" style="display:none;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
+        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
+            <i class="fas fa-check-circle"></i> Completed Loans
+        </span>
+        <span style="margin-left: auto; color: #4ade80; font-size: 0.9rem; background: rgba(74,222,128,0.1); padding: 4px 16px; border-radius: 20px; border: 1px solid rgba(74,222,128,0.15);">
+            <i class="fas fa-check-circle"></i> Total: {{ completed_loans }}
+        </span>
+    </div>
+
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-check-circle" style="color: #4ade80;"></i> Completed Loans
+            <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
+                Loans that have been fully repaid
+            </span>
+            {% if completed_loans_list %}
+            <span style="margin-left: auto; font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.1); padding:2px 12px; border-radius:12px;">
+                {{ completed_loans_list|length }} records
+            </span>
+            {% endif %}
+        </div>
+        
+        <!-- Search and Filter for Completed Loans -->
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
+            <div style="flex:1; min-width:200px;">
+                <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..." 
+                       onkeyup="filterCompletedLoans()" 
+                       style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; placeholder-color: rgba(255,255,255,0.3);">
+            </div>
+            <div>
+                <select id="filterCompletedDate" onchange="filterCompletedLoans()" 
+                        style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="year">This Year</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="styled-table" id="completedLoansTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Loan #</th>
+                        <th>Member</th>
+                        <th>Amount</th>
+                        <th>Total Paid</th>
+                        <th>Payments</th>
+                        <th>Completed Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if completed_loans_list %}
+                        {% for loan in completed_loans_list %}
+                        <tr data-completed-date="{{ loan.completed_date }}">
+                            <td>{{ loop.index }}</td>
+                            <td style="color:#4ade80; font-family:monospace; font-weight:600;">{{ loan.loan_number }}</td>
+                            <td><strong>{{ loan.full_name }}</strong></td>
+                            <td style="color:#f5c542;">UGX {{ "{:,.0f}".format(loan.amount) }}</td>
+                            <td style="color:#4ade80; font-weight:600;">UGX {{ "{:,.0f}".format(loan.total_paid or loan.amount) }}</td>
+                            <td style="text-align:center;">
+                                <span style="background:rgba(255,255,255,0.05); padding:2px 10px; border-radius:10px; font-size:0.75rem;">
+                                    {{ loan.payment_count or 0 }}
+                                </span>
+                            </td>
+                            <td style="color:rgba(255,255,255,0.5);">
+                                {% if loan.completed_date %}
+                                    {{ loan.completed_date[:10] if loan.completed_date|length > 10 else loan.completed_date }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-badge completed" style="background:rgba(74,222,128,0.12); color:#4ade80; padding:4px 14px; border-radius:20px; font-size:0.7rem; font-weight:600; border:1px solid rgba(74,222,128,0.15);">
+                                    <i class="fas fa-check-circle"></i> COMPLETED
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);">
+                                <i class="fas fa-check-circle" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.15; color:#4ade80;"></i>
+                                <p style="font-size:1rem; color:rgba(255,255,255,0.2);">No completed loans yet</p>
+                                <p style="font-size:0.8rem; color:rgba(255,255,255,0.1);">Loans will appear here once they are fully repaid</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
+                        <td colspan="8" style="padding:12px 16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; color:rgba(255,255,255,0.3); font-size:0.8rem;">
+                                <span>
+                                    <i class="fas fa-check-circle" style="color:#4ade80;"></i> 
+                                    Total Completed: <strong style="color:#4ade80;">{{ completed_loans_list|length if completed_loans_list else 0 }}</strong>
+                                </span>
+                                <span>
+                                    Total Amount Repaid: <strong style="color:#f5c542;">UGX {{ "{:,.0f}".format(completed_loans_list|sum(attribute='amount') if completed_loans_list else 0) }}</strong>
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODALS ========== -->
+<!-- Rejection Reason Modal -->
+<div id="rejectModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#ff6b6b; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-exclamation-triangle"></i> Reject Loan
+            </h3>
+            <button onclick="closeRejectModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="margin-bottom:16px;">
+            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Please provide a reason for rejecting this loan application:</p>
+            <textarea id="rejectReason" rows="4" style="width:100%; padding:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; font-family:inherit; resize:vertical;" placeholder="Enter rejection reason..."></textarea>
+        </div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button onclick="closeRejectModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
+            <button onclick="confirmReject()" style="padding:10px 24px; background:#ff6b6b; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-times"></i> Reject
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div id="approveModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:32px; max-width:500px; width:90%; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#4ade80; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-check-circle"></i> Approve Loan
+            </h3>
+            <button onclick="closeApproveModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="margin-bottom:16px;">
+            <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Are you sure you want to approve this loan application?</p>
+            <p style="color:rgba(255,255,255,0.3); font-size:0.85rem; margin-top:8px;">
+                <i class="fas fa-info-circle"></i> 
+                <span id="approveLoanInfo">This will mark the loan as approved and it will be reviewed by the Chairman.</span>
+            </p>
+        </div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button onclick="closeApproveModal()" style="padding:10px 24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:rgba(255,255,255,0.5); cursor:pointer;">Cancel</button>
+            <button onclick="confirmApprove()" style="padding:10px 24px; background:#4ade80; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-check"></i> Yes, Approve
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== EDIT MEMBER MODAL ========== -->
+<div id="editMemberModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-user-edit"></i> Edit Member
+            </h3>
+            <button onclick="closeEditModal()" style="
+                background:rgba(255,255,255,0.04);
+                border:1px solid rgba(255,255,255,0.06);
+                color:rgba(255,255,255,0.4);
+                width:36px;
+                height:36px;
+                border-radius:50%;
+                cursor:pointer;
+                font-size:1.2rem;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="editMemberForm" onsubmit="submitEditMember(event)">
+            <input type="hidden" id="editMemberId" name="member_id">
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Full Name <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name" 
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; transition:all 0.2s;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">SACCO Number <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001" 
+                       style="text-transform:uppercase; width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Phone <span style="color:#ff6b6b;">*</span></label>
+                    <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Email</label>
+                    <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Gender</label>
+                    <select id="editGender" name="gender" class="form-control" 
+                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Date of Birth</label>
+                    <input type="date" id="editDob" name="dob" class="form-control" 
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Address</label>
+                <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address" 
+                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.85rem; display:block; margin-bottom:4px;">Status</label>
+                <select id="editStatus" name="status" class="form-control" 
+                        style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                </select>
+            </div>
+            
+            <!-- KAI Shares -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(74,222,128,0.6); font-size:0.85rem; display:block; margin-bottom:4px;">
+                    <i class="fas fa-chart-line"></i> KAI Shares (UGX 100,000 each)
+                </label>
+                <input type="number" id="editKaiShares" name="kai_shares" class="form-control" placeholder="Number of KAI shares" 
+                       style="width:100%; padding:10px 14px; background:rgba(74,222,128,0.03); border:1px solid rgba(74,222,128,0.1); border-radius:8px; color:white;">
+            </div>
+            
+            <!-- KS Shares -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(0,224,255,0.6); font-size:0.85rem; display:block; margin-bottom:4px;">
+                    <i class="fas fa-piggy-bank"></i> KS Shares (UGX 10,000 each)
+                </label>
+                <input type="number" id="editKsShares" name="ks_shares" class="form-control" placeholder="Number of KS shares" 
+                       style="width:100%; padding:10px 14px; background:rgba(0,224,255,0.03); border:1px solid rgba(0,224,255,0.1); border-radius:8px; color:white;">
+            </div>
+            
+            <!-- KAC Paid (Checkbox - NOT shares) -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(245,197,66,0.6); font-size:0.85rem; display:block; margin-bottom:4px;">
+                    <i class="fas fa-hand-holding-heart"></i> KAC Paid (UGX 100,000 per year) - No shares
+                </label>
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:rgba(245,197,66,0.03); border:1px solid rgba(245,197,66,0.1); border-radius:8px;">
+                    <input type="checkbox" id="editKacPaid" name="kac_paid" style="width:20px; height:20px; accent-color:#f5c542;">
+                    <label for="editKacPaid" style="color:rgba(255,255,255,0.5); font-size:0.85rem; cursor:pointer;">
+                        Member has paid KAC for this year
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Registration Fee Paid (Checkbox - NOT shares) -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="color:rgba(255,107,107,0.6); font-size:0.85rem; display:block; margin-bottom:4px;">
+                    <i class="fas fa-file-invoice"></i> Registration Fee Paid (UGX 20,000) - No shares
+                </label>
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:rgba(255,107,107,0.03); border:1px solid rgba(255,107,107,0.1); border-radius:8px;">
+                    <input type="checkbox" id="editRegFeePaid" name="registration_fee_paid" style="width:20px; height:20px; accent-color:#ff6b6b;">
+                    <label for="editRegFeePaid" style="color:rgba(255,255,255,0.5); font-size:0.85rem; cursor:pointer;">
+                        Member has paid registration fee
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
+                <button type="button" onclick="closeEditModal()" style="
+                    padding:10px 24px;
+                    background:rgba(255,255,255,0.05);
+                    color:rgba(255,255,255,0.7);
+                    border:1px solid rgba(255,255,255,0.1);
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:500;
+                    transition:all 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+                   onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    Cancel
+                </button>
+                <button type="submit" id="editMemberSubmitBtn" style="
+                    padding:10px 24px;
+                    background:#f5c542;
+                    color:#0a0a14;
+                    border:none;
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:600;
+                    transition:all 0.2s;
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                " onmouseover="this.style.background='#eab308'" 
+                   onmouseout="this.style.background='#f5c542'">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== DELETE CONFIRMATION MODAL ========== -->
+<div id="deleteConfirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:450px; width:100%; text-align:center; animation:modalSlideIn 0.3s ease;">
+        <div style="font-size:3rem; color:#ff6b6b; margin-bottom:12px;">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 style="color:#ff6b6b; margin-bottom:8px;">Confirm Delete</h3>
+        <p id="deleteMessage" style="color:rgba(255,255,255,0.6); margin-bottom:20px;">
+            Are you sure you want to delete this member?
+        </p>
+        <input type="hidden" id="deleteMemberId">
+        <div style="display:flex; gap:12px; justify-content:center;">
+            <button onclick="closeDeleteModal()" style="
+                padding:10px 24px;
+                background:rgba(255,255,255,0.05);
+                color:rgba(255,255,255,0.7);
+                border:1px solid rgba(255,255,255,0.1);
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:500;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                Cancel
+            </button>
+            <button class="btn-danger" onclick="confirmDeleteMember()" style="
+                padding:10px 24px;
+                background:#ff6b6b;
+                color:#fff;
+                border:none;
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:600;
+                transition:all 0.2s;
+                display:inline-flex;
+                align-items:center;
+                gap:8px;
+            " onmouseover="this.style.background='#ef4444'" 
+               onmouseout="this.style.background='#ff6b6b'">
+                <i class="fas fa-trash"></i> Delete Permanently
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== GUARANTOR DETAILS MODAL ========== -->
+<div id="guarantorDetailsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-user-shield"></i> Guarantor Details
+            </h3>
+            <button onclick="closeGuarantorModal()" style="
+                background:rgba(255,255,255,0.04);
+                border:1px solid rgba(255,255,255,0.06);
+                color:rgba(255,255,255,0.4);
+                width:36px;
+                height:36px;
+                border-radius:50%;
+                cursor:pointer;
+                font-size:1.2rem;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="guarantorDetailsContent">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- COMPLETE JAVASCRIPT -->
+<!-- ============================================================ -->
 <script>
 // ============================================================
-// LOAN APPROVAL & REJECTION FUNCTIONS
+// SAVINGS TYPE INFO
 // ============================================================
+function updateSavingsTypeInfo() {
+    const type = document.getElementById('savingsType').value;
+    const infoDiv = document.getElementById('savingsTypeInfo');
+    const detailsDiv = document.getElementById('savingsTypeDetails');
+    const shareInput = document.getElementById('numberOfShares');
+    const sharesGroup = document.getElementById('sharesGroup');
+    const amountInput = document.getElementById('amountInput');
 
-let pendingLoanId = null;
-let pendingAction = null;
-
-// ============================================================
-// OPEN APPROVE MODAL
-// ============================================================
-function openApproveModal(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    pendingLoanId = loanId;
-    pendingAction = 'approve';
-    document.getElementById('approveModal').style.display = 'flex';
-}
-
-// ============================================================
-// CLOSE APPROVE MODAL
-// ============================================================
-function closeApproveModal() {
-    document.getElementById('approveModal').style.display = 'none';
-    pendingLoanId = null;
-    pendingAction = null;
-}
-
-// ============================================================
-// CONFIRM APPROVE
-// ============================================================
-function confirmApprove() {
-
-    if (!pendingLoanId) {
-        alert('Error: No loan selected.');
-        return;
-    }
-
-    const loanId = pendingLoanId;
-
-    const btns = document.querySelectorAll(
-        `button[onclick*="openApproveModal('${loanId}')"]`
-    );
-
-    btns.forEach(btn => {
-        btn.innerHTML =
-            '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        btn.disabled = true;
-    });
-
-    closeApproveModal();
-
-    // ========================================================
-    // IMPORTANT - THIS IS THE CORRECT FLASK ROUTE
-    // ========================================================
-
-    const url = '/treasurer/loan/action/' + loanId;
-
-    console.log('====================================');
-    console.log('📤 APPROVING LOAN');
-    console.log('Loan ID:', loanId);
-    console.log('URL:', url);
-    console.log('Method: POST');
-    console.log('====================================');
-
-    fetch(url, {
-        method: 'POST',
-
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+    const typeInfo = {
+        'KAI': {
+            name: 'Karacel Investment',
+            share: 100000,
+            desc: 'Investment shares in Karacel SACCO. Each share is UGX 100,000.',
+            color: '#4ade80',
+            hasShares: true
         },
+        'KS': {
+            name: 'Karacel Savings',
+            share: 10000,
+            desc: 'Regular savings account. Each share is UGX 10,000.',
+            color: '#00e0ff',
+            hasShares: true
+        },
+        'KAC': {
+            name: 'Karacel Condolence',
+            share: 100000,
+            desc: 'Annual condolence contribution. UGX 100,000 per year. NO SHARES.',
+            color: '#f5c542',
+            hasShares: false
+        },
+        'REGISTRATION': {
+            name: 'Registration Fee',
+            share: 20000,
+            desc: 'One-time registration fee. UGX 20,000. NO SHARES.',
+            color: '#ff6b6b',
+            hasShares: false
+        }
+    };
 
-        body: JSON.stringify({
-            action: 'approve'
-        })
-    })
+    if (type && typeInfo[type]) {
+        infoDiv.style.display = 'block';
+        detailsDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <span style="color:${typeInfo[type].color}; font-weight:600; font-size:1.1rem;">
+                        <i class="fas fa-info-circle"></i> ${typeInfo[type].name}
+                    </span>
+                    <div style="color:rgba(255,255,255,0.4); font-size:0.8rem; margin-top:4px;">
+                        ${typeInfo[type].desc}
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="color:${typeInfo[type].color}; font-weight:600; font-size:1rem;">
+                        UGX ${typeInfo[type].share.toLocaleString()} ${typeInfo[type].hasShares ? 'per share' : 'flat fee'}
+                    </div>
+                    ${type === 'KAC' ? '<div style="color:rgba(255,255,255,0.2); font-size:0.7rem;">Annual payment - NO shares</div>' : ''}
+                    ${type === 'REGISTRATION' ? '<div style="color:rgba(255,255,255,0.2); font-size:0.7rem;">One-time payment - NO shares</div>' : ''}
+                </div>
+            </div>
+        `;
 
-    .then(response => {
+        if (sharesGroup) {
+            sharesGroup.style.display = typeInfo[type].hasShares ? 'block' : 'none';
+        }
 
-        console.log('📡 HTTP STATUS:', response.status);
+        if (amountInput) {
+            amountInput.placeholder = `Enter amount (min UGX ${typeInfo[type].share.toLocaleString()})`;
+            amountInput.min = typeInfo[type].share;
+        }
 
-        return response.text().then(text => {
-
-            console.log('📡 SERVER RESPONSE:', text);
-
-            let data;
-
-            try {
-                data = JSON.parse(text);
-            } catch (error) {
-                data = {
-                    success: false,
-                    message: text || 'Invalid server response'
-                };
-            }
-
-            return {
-                ok: response.ok,
-                status: response.status,
-                data: data
+        if (amountInput) {
+            amountInput.oninput = function() {
+                const amount = parseFloat(this.value) || 0;
+                const sharePrice = typeInfo[type].share;
+                
+                if (typeInfo[type].hasShares && amount > 0 && sharePrice > 0) {
+                    const shares = Math.floor(amount / sharePrice);
+                    if (shareInput) {
+                        shareInput.value = shares > 0 ? shares : '';
+                    }
+                    const validation = document.getElementById('savingsAmountValidation');
+                    if (validation) {
+                        if (amount % sharePrice !== 0) {
+                            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be a multiple of UGX ${sharePrice.toLocaleString()}</span>`;
+                        } else if (shares === 0) {
+                            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount must be at least UGX ${sharePrice.toLocaleString()}</span>`;
+                        } else {
+                            validation.innerHTML = `<span style="color:#4ade80;">✅ ${shares} share${shares > 1 ? 's' : ''} at UGX ${sharePrice.toLocaleString()} each</span>`;
+                        }
+                    }
+                } else if (!typeInfo[type].hasShares && amount > 0) {
+                    const validation = document.getElementById('savingsAmountValidation');
+                    if (validation) {
+                        if (amount === sharePrice) {
+                            validation.innerHTML = `<span style="color:#4ade80;">✅ Correct amount for ${typeInfo[type].name}</span>`;
+                        } else {
+                            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be exactly UGX ${sharePrice.toLocaleString()}</span>`;
+                        }
+                    }
+                    if (shareInput) shareInput.value = 'N/A';
+                } else {
+                    if (shareInput) shareInput.value = '';
+                }
             };
-        });
-    })
-
-    .then(result => {
-
-        console.log('📦 RESULT:', result);
-
-        if (result.ok && result.data.success) {
-
-            alert(
-                '✅ ' +
-                (result.data.message ||
-                 'Loan approved successfully.')
-            );
-
-            window.location.reload();
-
-        } else {
-
-            alert(
-                '❌ Error: ' +
-                (result.data.message ||
-                 'Unable to approve loan.')
-            );
         }
-    })
 
-    .catch(error => {
-
-        console.error('❌ APPROVE ERROR:', error);
-
-        alert(
-            '❌ Error: ' +
-            error.message
-        );
-    })
-
-    .finally(() => {
-
-        btns.forEach(btn => {
-            btn.innerHTML =
-                '<i class="fas fa-check"></i> Approve';
-
-            btn.disabled = false;
-        });
-
-        pendingLoanId = null;
-        pendingAction = null;
-    });
-}
-
-// ============================================================
-// OPEN REJECT MODAL
-// ============================================================
-function openRejectModal(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    pendingLoanId = loanId;
-    pendingAction = 'reject';
-    document.getElementById('rejectModal').style.display = 'flex';
-    document.getElementById('rejectReason').value = '';
-    setTimeout(() => {
-        document.getElementById('rejectReason').focus();
-    }, 100);
-}
-
-// ============================================================
-// CLOSE REJECT MODAL
-// ============================================================
-function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
-    pendingLoanId = null;
-    pendingAction = null;
-    document.getElementById('rejectReason').value = '';
-}
-
-// ============================================================
-// CONFIRM REJECT
-// ============================================================
-function confirmReject() {
-    const reason = document.getElementById('rejectReason').value.trim();
-    if (!reason) {
-        alert('❌ Please provide a reason for rejecting this loan.');
-        document.getElementById('rejectReason').focus();
-        return;
-    }
-    if (!pendingLoanId) {
-        alert('Error: No loan selected.');
-        return;
-    }
-    
-    const btns = document.querySelectorAll(`button[onclick*="openRejectModal('${pendingLoanId}')"]`);
-    btns.forEach(btn => {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        btn.disabled = true;
-    });
-    
-    const loanId = pendingLoanId;
-    closeRejectModal();
-    
-    const url = '/treasurer/loan/action/' + loanId;
-    console.log('📤 Sending REJECT request to:', url);
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ action: 'reject', reason: reason })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ ' + data.message);
-            location.reload();
-        } else {
-            alert('❌ Error: ' + (data.message || 'Unknown error'));
+    } else {
+        infoDiv.style.display = 'none';
+        if (amountInput) {
+            amountInput.placeholder = 'Enter amount';
+            amountInput.min = 0;
+            amountInput.oninput = function() {};
         }
-    })
-    .catch(error => {
-        console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
-    })
-    .finally(() => {
-        btns.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-times"></i> Reject';
-            btn.disabled = false;
-        });
-        pendingLoanId = null;
-        pendingAction = null;
+        if (shareInput) shareInput.value = '';
+        if (sharesGroup) sharesGroup.style.display = 'block';
+    }
+}
+
+// ============================================================
+// UPDATE MEMBER SAVINGS DISPLAY
+// ============================================================
+function updateMemberSavings(memberId) {
+    const select = document.getElementById('savingsType');
+    const displayDiv = document.getElementById('memberSavingsDisplay');
+    if (!memberId) {
+        displayDiv.style.display = 'none';
+        return;
+    }
+
+    const option = select.querySelector(`option[value="${memberId}"]`);
+    if (!option) {
+        displayDiv.style.display = 'none';
+        return;
+    }
+
+    const kai = parseInt(option.dataset.kai) || 0;
+    const ks = parseInt(option.dataset.ks) || 0;
+    const kac = parseInt(option.dataset.kac) || 0;
+    const reg = parseInt(option.dataset.reg) || 0;
+
+    document.getElementById('displayKAI').textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
+    document.getElementById('displayKS').textContent = ks + ' shares (UGX ' + (ks * 10000).toLocaleString() + ')';
+    document.getElementById('displayKAC').textContent = kac > 0 ? '✓ Paid (UGX 100,000)' : 'Not paid';
+    document.getElementById('displayREG').textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
+
+    displayDiv.style.display = 'block';
+}
+
+// ============================================================
+// TOGGLE DROPDOWN - Horizontal Layout
+// ============================================================
+function toggleDropdown(loanId) {
+    const dropdown = document.getElementById('dropdown-' + loanId);
+    if (!dropdown) return;
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu.id !== 'dropdown-' + loanId) {
+            menu.style.display = 'none';
+        }
+    });
+    
+    // Toggle this dropdown
+    if (dropdown.style.display === 'flex') {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    // Get the button position
+    const btn = document.querySelector(`[onclick*="toggleDropdown('${loanId}')"]`);
+    if (!btn) {
+        dropdown.style.display = 'flex';
+        return;
+    }
+    
+    const rect = btn.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate menu dimensions
+    const menuWidth = dropdown.scrollWidth || 350;
+    const menuHeight = 50;
+    
+    // Position: Below the button, centered
+    let left = rect.left + (rect.width / 2) - (menuWidth / 2);
+    let top = rect.bottom + 8;
+    
+    // If menu would go off right edge, align to right
+    if (left + menuWidth > viewportWidth - 10) {
+        left = viewportWidth - menuWidth - 10;
+    }
+    
+    // If menu would go off left edge, align to left
+    if (left < 10) {
+        left = 10;
+    }
+    
+    // If menu would go off bottom, position above
+    if (top + menuHeight > viewportHeight - 10) {
+        top = rect.top - menuHeight - 8;
+    }
+    
+    // Apply position
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = top + 'px';
+    dropdown.style.display = 'flex';
+    dropdown.style.flexDirection = 'row';
+    dropdown.style.alignItems = 'center';
+    dropdown.style.gap = '6px';
+    
+    // Add animation
+    dropdown.style.animation = 'menuSlideDown 0.2s ease';
+}
+
+// ============================================================
+// CLOSE ALL DROPDOWNS
+// ============================================================
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
     });
 }
 
 // ============================================================
-// DISBURSE LOAN
+// CLOSE DROPDOWNS ON OUTSIDE CLICK
 // ============================================================
-function disburseLoan(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-btn') && !event.target.closest('.dropdown-menu')) {
+        closeAllDropdowns();
     }
-    if (!confirm('💰 Disburse this loan to the member?')) {
-        return;
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAllDropdowns();
     }
-    
-    const btns = document.querySelectorAll(`button[onclick*="disburseLoan(${loanId})"]`);
-    btns.forEach(btn => {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        btn.disabled = true;
-    });
-    
-    const url = '/treasurer/loan/disburse/' + loanId;
-    console.log('📤 Sending DISBURSE request to:', url);
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ ' + data.message);
-            location.reload();
-        } else {
-            alert('❌ Error: ' + (data.message || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
-    })
-    .finally(() => {
-        btns.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> Disburse';
-            btn.disabled = false;
-        });
-    });
-}
+});
+
+window.addEventListener('scroll', function() {
+    closeAllDropdowns();
+});
+
+window.addEventListener('resize', function() {
+    closeAllDropdowns();
+});
 
 // ============================================================
 // VIEW LOAN
@@ -1601,64 +1943,154 @@ function viewLoan(loanId) {
 }
 
 // ============================================================
-// VIEW MEMBER - FIXED WITH DEBUGGING
-// ============================================================
-// ============================================================
-// VIEW MEMBER - Navigate to member details page
+// VIEW MEMBER
 // ============================================================
 function viewMember(memberId) {
     if (!memberId) {
         alert('Error: Member ID is missing.');
         return;
     }
-    console.log('👤 Viewing member:', memberId);
     window.location.href = '/treasurer/members/view/' + memberId;
 }
+
 // ============================================================
-// PANEL NAVIGATION
+// OPEN APPROVE MODAL
 // ============================================================
-function showPanel(panelName) {
-    document.querySelectorAll(".content-panel").forEach(panel => {
-        panel.classList.remove("active");
-    });
-    const selectedPanel = document.getElementById(panelName + "-panel");
-    if (selectedPanel) {
-        selectedPanel.classList.add("active");
+function openApproveModal(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
     }
-    document.querySelectorAll(".admin-nav-item").forEach(link => {
-        link.classList.remove("active");
-    });
-    const selectedLink = document.querySelector(`.admin-nav-item[data-panel="${panelName}"]`);
-    if (selectedLink) {
-        selectedLink.classList.add("active");
+    document.getElementById('approveModal').style.display = 'flex';
+}
+
+function closeApproveModal() {
+    document.getElementById('approveModal').style.display = 'none';
+}
+
+function confirmApprove() {
+    const loanId = pendingLoanId;
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
     }
-    
-    const titles = {
-        'dashboard': 'Treasurer Dashboard',
-        'savings': 'Record Savings Deposit',
-        'loan_applications': 'Loan Management',
-        'repayments': 'Loan Repayments',
-        'members': 'Member Management',
-        'deposits': 'Deposits History',
-        'completed': 'Completed Loans'
-    };
-    const titleEl = document.getElementById('appBarTitle');
-    if (titleEl && titles[panelName]) {
-        const iconMap = {
-            'dashboard': 'tachometer-alt',
-            'savings': 'piggy-bank',
-            'loan_applications': 'file-invoice',
-            'repayments': 'undo-alt',
-            'members': 'users',
-            'deposits': 'history',
-            'completed': 'check-circle'
-        };
-        titleEl.innerHTML = `<i class="fas fa-${iconMap[panelName] || 'circle'}"></i> ${titles[panelName]}`;
+    if (confirm('✅ Approve this loan application?')) {
+        fetch('/treasurer/loan/action/' + loanId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ action: 'approve' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('❌ Error: ' + error.message);
+        });
     }
 }
 
 // ============================================================
-// LOAN FILTERING
+// OPEN REJECT MODAL
+// ============================================================
+function openRejectModal(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    pendingLoanId = loanId;
+    document.getElementById('rejectModal').style.display = 'flex';
+    document.getElementById('rejectReason').value = '';
+    setTimeout(() => {
+        document.getElementById('rejectReason').focus();
+    }, 100);
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    pendingLoanId = null;
+    document.getElementById('rejectReason').value = '';
+}
+
+function confirmReject() {
+    const loanId = pendingLoanId;
+    const reason = document.getElementById('rejectReason').value.trim();
+    
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    if (!reason) {
+        alert('❌ Please provide a reason for rejecting this loan.');
+        document.getElementById('rejectReason').focus();
+        return;
+    }
+    
+    if (confirm('❌ Reject this loan application?')) {
+        fetch('/treasurer/loan/action/' + loanId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ action: 'reject', reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('❌ Error: ' + error.message);
+        });
+    }
+}
+
+// ============================================================
+// DISBURSE LOAN
+// ============================================================
+function disburseLoan(loanId) {
+    if (!loanId) {
+        alert('Error: Loan ID is missing.');
+        return;
+    }
+    if (confirm('💰 Disburse this loan to the member?')) {
+        fetch('/treasurer/loan/disburse/' + loanId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('❌ Error: ' + error.message);
+        });
+    }
+}
+
+// ============================================================
+// FILTER FUNCTIONS
 // ============================================================
 function filterLoansTable() {
     const searchTerm = document.getElementById('searchLoans').value.toLowerCase().trim();
@@ -1684,16 +2116,13 @@ function filterLoansTable() {
     if (countEl) countEl.textContent = visibleCount;
 }
 
-// ============================================================
-// SAVINGS FILTER
-// ============================================================
 function filterSavingsByMember() {
     const searchInput = document.getElementById('searchSavingsMember');
-    const memberFilter = document.getElementById('filterSavingsMember');
+    const typeFilter = document.getElementById('filterSavingsType');
     const methodFilter = document.getElementById('filterSavingsMethod');
     
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const memberId = memberFilter ? memberFilter.value : 'all';
+    const type = typeFilter ? typeFilter.value : 'all';
     const method = methodFilter ? methodFilter.value : 'all';
     const table = document.getElementById('savingsTable');
     if (!table) return;
@@ -1703,20 +2132,17 @@ function filterSavingsByMember() {
         if (row.querySelector('td[colspan]')) return;
         const memberName = row.getAttribute('data-member-name') || '';
         const sacco = row.getAttribute('data-sacco') || '';
-        const rowMemberId = row.getAttribute('data-member-id') || '';
+        const rowType = row.getAttribute('data-type') || '';
         const rowMethod = row.getAttribute('data-method') || '';
         const text = (memberName + ' ' + sacco).toLowerCase();
         let show = true;
         if (searchTerm && !text.includes(searchTerm)) show = false;
-        if (show && memberId !== 'all' && rowMemberId !== memberId) show = false;
+        if (show && type !== 'all' && rowType !== type) show = false;
         if (show && method !== 'all' && rowMethod !== method) show = false;
         row.style.display = show ? '' : 'none';
     });
 }
 
-// ============================================================
-// REPAYMENTS FILTER
-// ============================================================
 function filterRepaymentsByMember() {
     const searchInput = document.getElementById('searchRepaymentMember');
     const memberFilter = document.getElementById('filterRepaymentMember');
@@ -1744,9 +2170,6 @@ function filterRepaymentsByMember() {
     });
 }
 
-// ============================================================
-// MEMBERS FILTER
-// ============================================================
 function filterMembersTable() {
     const searchInput = document.getElementById('searchMembers');
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
@@ -1760,9 +2183,6 @@ function filterMembersTable() {
     });
 }
 
-// ============================================================
-// DEPOSITS FILTER
-// ============================================================
 function filterDeposits() {
     const searchInput = document.getElementById('searchDeposits');
     const methodFilter = document.getElementById('filterMethod');
@@ -1781,7 +2201,7 @@ function filterDeposits() {
         if (row.querySelector('td[colspan]')) return;
         const text = row.textContent.toLowerCase();
         const cells = row.querySelectorAll('td');
-        const methodCell = cells[5];
+        const methodCell = cells[6];
         const dateCell = cells[1];
         let show = true;
         if (searchTerm && !text.includes(searchTerm)) show = false;
@@ -1931,6 +2351,11 @@ function viewGuarantorDetails(guarantorId) {
         });
 }
 
+function closeGuarantorModal() {
+    const modal = document.getElementById('guarantorDetailsModal');
+    if (modal) modal.style.display = 'none';
+}
+
 // ============================================================
 // RENDER GUARANTOR DETAILS
 // ============================================================
@@ -2043,14 +2468,6 @@ function escapeHtml(unsafe) {
 }
 
 // ============================================================
-// CLOSE GUARANTOR MODAL
-// ============================================================
-function closeGuarantorModal() {
-    const modal = document.getElementById('guarantorDetailsModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// ============================================================
 // CLOSE MODALS ON ESCAPE
 // ============================================================
 document.addEventListener('keydown', function(event) {
@@ -2058,6 +2475,9 @@ document.addEventListener('keydown', function(event) {
         closeApproveModal();
         closeRejectModal();
         closeGuarantorModal();
+        closeEditModal();
+        closeDeleteModal();
+        closeAllDropdowns();
     }
 });
 
@@ -2071,6 +2491,10 @@ document.addEventListener('click', function(event) {
     if (rejectModal && event.target === rejectModal) closeRejectModal();
     const guarantorModal = document.getElementById('guarantorDetailsModal');
     if (guarantorModal && event.target === guarantorModal) closeGuarantorModal();
+    const editModal = document.getElementById('editMemberModal');
+    if (editModal && event.target === editModal) closeEditModal();
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    if (deleteModal && event.target === deleteModal) closeDeleteModal();
 });
 
 // ============================================================
@@ -2263,6 +2687,10 @@ function editMember(memberId) {
                 document.getElementById('editDob').value = member.dob || '';
                 document.getElementById('editAddress').value = member.address || '';
                 document.getElementById('editStatus').value = member.status || 'active';
+                document.getElementById('editKaiShares').value = member.kai_shares || 0;
+                document.getElementById('editKsShares').value = member.ks_shares || 0;
+                document.getElementById('editKacPaid').checked = member.kac_paid || false;
+                document.getElementById('editRegFeePaid').checked = member.registration_fee_paid || false;
             } else {
                 alert('❌ Error: ' + (data.message || 'Could not load member data'));
                 closeEditModal();
@@ -2316,7 +2744,11 @@ function submitEditMember(event) {
         gender: formData.get('gender') || '',
         dob: formData.get('dob') || '',
         address: formData.get('address') || '',
-        status: formData.get('status') || 'active'
+        status: formData.get('status') || 'active',
+        kai_shares: parseInt(formData.get('kai_shares')) || 0,
+        ks_shares: parseInt(formData.get('ks_shares')) || 0,
+        kac_paid: formData.get('kac_paid') ? 1 : 0,
+        registration_fee_paid: formData.get('registration_fee_paid') ? 1 : 0
     };
     
     fetch('/treasurer/member/update/' + memberId, {
@@ -2398,14 +2830,6 @@ function confirmDeleteMember() {
 }
 
 // ============================================================
-// VALIDATE EMAIL
-// ============================================================
-function isValidEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-}
-
-// ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -2424,9 +2848,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (amountInput) {
         amountInput.addEventListener('input', validateAmount);
     }
+    
+    // Check for edit parameter
+    const editMemberId = urlParams.get('edit');
+    if (editMemberId) {
+        setTimeout(function() {
+            editMember(editMemberId);
+        }, 500);
+    }
 });
 
-// Debug - test viewMember on page load
 console.log('🔍 Testing viewMember function...');
 console.log('typeof viewMember:', typeof viewMember);
 if (typeof viewMember === 'function') {
@@ -2435,4 +2866,5 @@ if (typeof viewMember === 'function') {
     console.log('❌ viewMember function is NOT loaded!');
 }
 </script>
+
 {% endblock %}
