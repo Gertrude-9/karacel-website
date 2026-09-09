@@ -84,6 +84,23 @@
             </a>
         </div>
 
+       <!-- In your sidebar or navigation -->
+        <li class="nav-item staff-member-portal-item">
+            <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
+                <span class="nav-icon-wrapper">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="icon-pulse"></span>
+                </span>
+                <span class="nav-text">My Member Portal</span>
+                <span class="badge staff-badge">
+                    <i class="fas fa-star"></i> Staff
+                </span>
+                <span class="nav-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </a>
+        </li>
+
         <div class="sidebar-footer">
             <a href="{{ url_for('logout') }}" class="logout-sidebar">
                 <i class="fas fa-sign-out-alt"></i>

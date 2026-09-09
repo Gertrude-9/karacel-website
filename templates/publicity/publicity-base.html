@@ -317,6 +317,228 @@
                 width: 100%;
             }
         }
+
+        /* ============================================================
+   STAFF MEMBER PORTAL NAV ITEM
+   ============================================================ */
+
+.staff-member-portal-item {
+    margin: 8px 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.08), rgba(0, 224, 255, 0.04));
+    border: 1px solid rgba(245, 197, 66, 0.12);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.staff-member-portal-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(245, 197, 66, 0.05), 
+        rgba(0, 224, 255, 0.02)
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.staff-member-portal-item:hover::before {
+    opacity: 1;
+}
+
+.staff-member-portal-item:hover {
+    border-color: rgba(245, 197, 66, 0.3);
+    box-shadow: 0 4px 20px rgba(245, 197, 66, 0.08);
+    transform: translateX(4px);
+}
+
+.staff-member-portal-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-decoration: none !important;
+    border-radius: 12px !important;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    position: relative;
+    z-index: 1;
+}
+
+.staff-member-portal-link:hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.staff-member-portal-link .nav-icon-wrapper {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.15), rgba(0, 224, 255, 0.08));
+    border-radius: 50%;
+    border: 1px solid rgba(245, 197, 66, 0.15);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.staff-member-portal-link:hover .nav-icon-wrapper {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.25), rgba(0, 224, 255, 0.15));
+    border-color: rgba(245, 197, 66, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(245, 197, 66, 0.1);
+}
+
+.staff-member-portal-link .nav-icon-wrapper i {
+    font-size: 1.1rem;
+    color: #f5c542;
+    transition: all 0.3s ease;
+}
+
+.staff-member-portal-link:hover .nav-icon-wrapper i {
+    color: #f5c542;
+    transform: scale(1.1);
+}
+
+/* Pulse animation for the icon */
+.icon-pulse {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #4ade80;
+    border-radius: 50%;
+    border: 2px solid #0a0a14;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+}
+
+.staff-member-portal-link .nav-text {
+    font-weight: 500;
+    font-size: 0.9rem;
+    letter-spacing: 0.3px;
+    flex: 1;
+}
+
+/* Staff Badge */
+.staff-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #f5c542, #eab308);
+    color: #0a0a14;
+    border: none;
+    box-shadow: 0 2px 10px rgba(245, 197, 66, 0.2);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.staff-badge i {
+    font-size: 0.5rem;
+}
+
+.staff-member-portal-link:hover .staff-badge {
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(245, 197, 66, 0.3);
+}
+
+/* Nav Arrow */
+.staff-member-portal-link .nav-arrow {
+    color: rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+}
+
+.staff-member-portal-link:hover .nav-arrow {
+    color: rgba(245, 197, 66, 0.5);
+    transform: translateX(4px);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+    .staff-member-portal-link {
+        padding: 10px 14px !important;
+    }
+    
+    .staff-member-portal-link .nav-text {
+        font-size: 0.85rem;
+    }
+    
+    .staff-badge {
+        font-size: 0.5rem;
+        padding: 2px 8px;
+    }
+    
+    .staff-badge i {
+        display: none;
+    }
+}
+
+/* ============================================================
+   DARK THEME SUPPORT
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+    .staff-member-portal-item {
+        background: linear-gradient(135deg, rgba(245, 197, 66, 0.05), rgba(0, 224, 255, 0.02));
+    }
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Optional: Add a subtle shimmer effect on hover */
+.staff-member-portal-item:hover::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(245, 197, 66, 0.03), 
+        transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+    pointer-events: none;
+}
     </style>
 </head>
 <body>
@@ -344,6 +566,23 @@
         <a class="publicity-nav-item {% if request.path == '/publicity/notifications' %}active{% endif %}" href="/publicity/notifications">
             <i class="fas fa-bell"></i> Notifications
         </a>
+
+                <!-- In your sidebar or navigation -->
+        <li class="nav-item staff-member-portal-item">
+            <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
+                <span class="nav-icon-wrapper">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="icon-pulse"></span>
+                </span>
+                <span class="nav-text">My Member Portal</span>
+                <span class="badge staff-badge">
+                    <i class="fas fa-star"></i> Staff
+                </span>
+                <span class="nav-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </a>
+        </li>
 
         <div class="sidebar-footer">
             <a href="/logout" class="publicity-nav-item" style="color: #ff6b6b;">

@@ -85,14 +85,38 @@
                 </span>
                 {% endif %}
             </a>
-           <!-- Savings Reports -->
-            <!-- In sidebar -->
+            
+            <!-- Savings Reports -->
             <a href="{{ url_for('treasurer_savings_reports') }}" class="admin-nav-item">
                 <i class="fas fa-chart-pie"></i>
                 <span>Savings Reports</span>
             </a>
+
+            <!-- ===== NEW: CHAT SECTION ===== -->
+            <a href="#" class="admin-nav-item" data-panel="chat" onclick="showPanel('chat')" style="border-left: 3px solid #00e0ff; background: rgba(0,224,255,0.05);">
+                <i class="fas fa-comments" style="color: #00e0ff;"></i>
+                <span style="color: #00e0ff;">Chat Center</span>
+                <span id="chatSidebarBadge" style="margin-left: auto; background: #ff6b6b; color: #fff; padding: 0 8px; border-radius: 12px; font-size: 0.6rem; font-weight: 700; min-width: 18px; text-align: center; display: none;">0</span>
+            </a>
            
         </div>
+        
+        <!-- Staff Member Portal -->
+        <li class="nav-item staff-member-portal-item" style="list-style: none;">
+            <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
+                <span class="nav-icon-wrapper">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="icon-pulse"></span>
+                </span>
+                <span class="nav-text">My Member Portal</span>
+                <span class="badge staff-badge">
+                    <i class="fas fa-star"></i> Staff
+                </span>
+                <span class="nav-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </a>
+        </li>
 
         <div class="sidebar-footer">
             <a href="{{ url_for('logout') }}" class="logout-sidebar">
@@ -164,7 +188,8 @@ JAVASCRIPT - Core Navigation Only
             'repayments': 'Loan Repayments',
             'members': 'Member Management',
             'deposits': 'Deposits History',
-            'completed': 'Completed Loans'
+            'completed': 'Completed Loans',
+            'chat': 'Chat Center'
         };
         
         const titleEl = document.getElementById('appBarTitle');
@@ -176,7 +201,8 @@ JAVASCRIPT - Core Navigation Only
                 'repayments': 'undo-alt',
                 'members': 'users',
                 'deposits': 'history',
-                'completed': 'check-circle'
+                'completed': 'check-circle',
+                'chat': 'comments'
             };
             titleEl.innerHTML = `<i class="fas fa-${iconMap[panelName] || 'circle'}"></i> ${titles[panelName]}`;
         }
@@ -191,7 +217,8 @@ JAVASCRIPT - Core Navigation Only
                 'repayments': 'Record and manage loan repayments',
                 'members': 'Manage SACCO members',
                 'deposits': 'View all deposits history',
-                'completed': 'View all completed loans'
+                'completed': 'View all completed loans',
+                'chat': 'Chat with members and staff'
             };
             subtitleEl.textContent = subtitles[panelName] || 'Karacel SACCO Financial Management';
         }
@@ -211,7 +238,7 @@ JAVASCRIPT - Core Navigation Only
     document.addEventListener("DOMContentLoaded", function () {
         // Check URL hash for panel
         const hash = window.location.hash.replace("#", "");
-        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits', 'completed', 'savings_reports'];
+        const validPanels = ['dashboard', 'members', 'savings', 'loan_applications', 'repayments', 'deposits', 'completed', 'savings_reports', 'chat'];
         if (hash && validPanels.includes(hash)) {
             showPanel(hash);
         }

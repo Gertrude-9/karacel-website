@@ -4,120 +4,688 @@
 
 {% block content %}
 
+<style>
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    
+    @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 20px rgba(245, 197, 66, 0.1); }
+        50% { box-shadow: 0 0 40px rgba(245, 197, 66, 0.2); }
+    }
+    
+    /* ===== MAIN CARD ===== */
+    .register-card {
+        background: linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 20px;
+        padding: 40px;
+        animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .register-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f5c542, #4ade80, #00e0ff, #f5c542);
+        background-size: 300% 100%;
+        animation: shimmer 4s ease-in-out infinite;
+    }
+    
+    .register-card::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(245,197,66,0.03), transparent 70%);
+        pointer-events: none;
+    }
+    
+    /* ===== FORM GROUPS ===== */
+    .form-group-modern {
+        margin-bottom: 20px;
+        position: relative;
+    }
+    
+    .form-label {
+        display: block;
+        color: rgba(255,255,255,0.5);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        transition: color 0.3s ease;
+    }
+    
+    .form-label .required {
+        color: #ff6b6b;
+        margin-left: 2px;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        outline: none;
+    }
+    
+    .form-input:hover {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.12);
+    }
+    
+    .form-input:focus {
+        border-color: #f5c542;
+        background: rgba(255,255,255,0.06);
+        box-shadow: 0 0 0 4px rgba(245, 197, 66, 0.08);
+    }
+    
+    .form-input::placeholder {
+        color: rgba(255,255,255,0.2);
+        font-weight: 400;
+    }
+    
+    /* ===== SELECT DROPDOWN ===== */
+    .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+    }
+    
+    .form-select:hover {
+        background-color: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.12);
+    }
+    
+    .form-select:focus {
+        border-color: #f5c542;
+        box-shadow: 0 0 0 4px rgba(245, 197, 66, 0.08);
+    }
+    
+    .form-select option {
+        background: #1a1a2e;
+        color: #fff;
+        padding: 8px;
+    }
+    
+    /* ===== ROLE OPTIONS STYLING ===== */
+    .role-option-admin { color: #ff6b6b; }
+    .role-option-chairperson { color: #f5c542; }
+    .role-option-treasurer { color: #4ade80; }
+    .role-option-secretary { color: #00e0ff; }
+    .role-option-publicity { color: #a78bfa; }
+    
+    /* ===== ROLE DESCRIPTION ===== */
+    .role-description {
+        margin-top: 10px;
+        padding: 14px 18px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        border-left: 3px solid rgba(255,255,255,0.1);
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.4);
+        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .role-description.active {
+        background: rgba(245,197,66,0.05);
+        border-left-color: #f5c542;
+        color: rgba(255,255,255,0.7);
+    }
+    
+    .role-description .icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    /* ===== PASSWORD INPUT ===== */
+    .password-wrapper {
+        position: relative;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.3);
+        cursor: pointer;
+        padding: 4px 8px;
+        transition: color 0.3s ease;
+        border-radius: 6px;
+    }
+    
+    .password-toggle:hover {
+        color: rgba(255,255,255,0.6);
+        background: rgba(255,255,255,0.05);
+    }
+    
+    /* ===== PASSWORD STRENGTH ===== */
+    .strength-bar {
+        margin-top: 8px;
+        height: 4px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .strength-bar-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 4px;
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.5s ease;
+    }
+    
+    .strength-text {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.7rem;
+        transition: color 0.3s ease;
+        min-height: 18px;
+    }
+    
+    /* ===== PASSWORD MATCH ===== */
+    .match-message {
+        margin-top: 6px;
+        font-size: 0.75rem;
+        min-height: 20px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    /* ===== BUTTONS ===== */
+    .btn-register {
+        flex: 1;
+        padding: 14px 24px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #f5c542, #eab308);
+        color: #0a0a14;
+        box-shadow: 0 4px 20px rgba(245, 197, 66, 0.25);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 35px rgba(245, 197, 66, 0.35);
+    }
+    
+    .btn-register:active {
+        transform: translateY(0);
+    }
+    
+    .btn-register::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 60%);
+        opacity: 0;
+        transition: opacity 0.5s ease;
+    }
+    
+    .btn-register:hover::after {
+        opacity: 1;
+    }
+    
+    .btn-cancel {
+        flex: 1;
+        padding: 14px 24px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.6);
+        text-decoration: none;
+    }
+    
+    .btn-cancel:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        border-color: rgba(255,255,255,0.15);
+        transform: translateY(-2px);
+    }
+    
+    /* ===== NOTE BOX ===== */
+    .note-box {
+        margin-top: 24px;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, rgba(245,197,66,0.05), rgba(245,197,66,0.02));
+        border-radius: 12px;
+        border-left: 4px solid #f5c542;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        color: rgba(255,255,255,0.4);
+        font-size: 0.85rem;
+    }
+    
+    .note-box .icon {
+        color: #f5c542;
+        font-size: 1rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    
+    .note-box strong {
+        color: rgba(255,255,255,0.6);
+    }
+    
+    /* ===== FLASH MESSAGES ===== */
+    .flash-message {
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: fadeInUp 0.4s ease;
+    }
+    
+    .flash-message.success {
+        background: rgba(74,222,128,0.08);
+        border: 1px solid rgba(74,222,128,0.15);
+        color: #4ade80;
+    }
+    
+    .flash-message.error {
+        background: rgba(255,107,107,0.08);
+        border: 1px solid rgba(255,107,107,0.15);
+        color: #ff6b6b;
+    }
+    
+    .flash-message.info {
+        background: rgba(245,197,66,0.08);
+        border: 1px solid rgba(245,197,66,0.15);
+        color: #f5c542;
+    }
+    
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 640px) {
+        .register-card {
+            padding: 24px;
+        }
+        
+        .btn-register,
+        .btn-cancel {
+            flex: 1 1 100%;
+        }
+        
+        .app-bar-left h2 {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+
 <!-- App Bar -->
 <div class="app-bar">
     <div class="app-bar-left">
-        <h2><i class="fas fa-user-plus"></i> Register Staff User</h2>
+        <h2><i class="fas fa-user-plus" style="color: #f5c542;"></i> Register Staff User</h2>
         <span>Create a new staff account</span>
     </div>
     <div class="app-bar-right">
-        <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary">
+        <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary" style="display:inline-flex; align-items:center; gap:8px; padding:8px 18px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:rgba(255,255,255,0.6); text-decoration:none; font-weight:500; transition:all 0.3s ease;"
+           onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'"
+           onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
             <i class="fas fa-arrow-left"></i> Back to Users
         </a>
     </div>
 </div>
 
 <!-- Main Content -->
-<div style="padding: 24px 32px 40px; max-width: 700px; margin: 0 auto;">
-
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 32px;">
+<div style="padding: 24px 32px 40px; max-width: 720px; margin: 0 auto;">
+    
+    <div class="register-card">
         
-        <form method="POST" action="{{ url_for('admin_register_user') }}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle" style="font-size:1.1rem;"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-exclamation-circle" style="font-size:1.1rem;"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle" style="font-size:1.1rem;"></i>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="{{ url_for('admin_register_user') }}" id="registerForm">
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Full Name <span style="color: #ff6b6b;">*</span>
+            <!-- Full Name -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-user" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Full Name <span class="required">*</span>
                 </label>
-                <input type="text" name="full_name" class="form-control" required 
-                       placeholder="Enter full name"
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                <input type="text" name="full_name" class="form-input" required 
+                       placeholder="e.g. John M. Doe"
+                       autocomplete="name">
             </div>
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Email Address <span style="color: #ff6b6b;">*</span>
+            <!-- Email -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-envelope" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Email Address <span class="required">*</span>
                 </label>
-                <input type="email" name="email" class="form-control" required 
-                       placeholder="Enter email address"
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                <input type="email" name="email" class="form-input" required 
+                       placeholder="e.g. john@karacel.co.ug"
+                       autocomplete="email">
             </div>
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Phone Number <span style="color: #ff6b6b;">*</span>
+            <!-- Phone -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-phone" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Phone Number <span class="required">*</span>
                 </label>
-                <input type="tel" name="phone" class="form-control" required 
-                       placeholder="Enter phone number"
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                <input type="tel" name="phone" class="form-input" required 
+                       placeholder="e.g. +256 712 345 678"
+                       autocomplete="tel">
             </div>
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Role <span style="color: #ff6b6b;">*</span>
+            <!-- Role -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-briefcase" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Role <span class="required">*</span>
                 </label>
-                <select name="role" class="form-control" required 
-                        style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
-                    <option value="">-- Select Role --</option>
-                    <option value="treasurer">Treasurer</option>
-                    <option value="secretary">Secretary</option>
-                    <option value="publicity">Publicity</option>
+                <select name="role" class="form-select" required id="roleSelect">
+                    <option value="">— Select Role —</option>
+                    <option value="admin" class="role-option-admin">🔐 Admin</option>
+                    <option value="chairperson" class="role-option-chairperson">👑 Chairperson</option>
+                    <option value="treasurer" class="role-option-treasurer">💰 Treasurer</option>
+                    <option value="secretary" class="role-option-secretary">📋 Secretary</option>
+                    <option value="publicity" class="role-option-publicity">📢 Publicity</option>
                 </select>
-                <small style="color: rgba(255,255,255,0.3); font-size: 0.75rem; display: block; margin-top: 4px;">
-                    <i class="fas fa-info-circle"></i> 
-                    Treasurer: Manages savings, loans, and repayments<br>
-                    Secretary: Manages members and documentation<br>
-                    Publicity: Handles communications and events
-                </small>
+                
+                <!-- Role Description -->
+                <div class="role-description" id="roleDescription">
+                    <span class="icon">ℹ️</span>
+                    <span id="roleDescriptionText">Select a role to see its responsibilities</span>
+                </div>
             </div>
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Password <span style="color: #ff6b6b;">*</span>
+            <!-- Password -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-lock" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Password <span class="required">*</span>
                 </label>
-                <input type="password" name="password" class="form-control" required 
-                       placeholder="Enter password (min 6 characters)" minlength="6"
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" class="form-input" required 
+                           placeholder="Create a strong password (min 6 characters)" minlength="6"
+                           autocomplete="new-password">
+                    <button type="button" class="password-toggle" onclick="togglePassword('password')" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye" id="passwordIcon"></i>
+                    </button>
+                </div>
+                <div class="strength-bar">
+                    <div class="strength-bar-fill" id="strengthBar"></div>
+                </div>
+                <span class="strength-text" id="strengthText">Enter a password to check strength</span>
             </div>
             
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: block; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 4px;">
-                    Confirm Password <span style="color: #ff6b6b;">*</span>
+            <!-- Confirm Password -->
+            <div class="form-group-modern">
+                <label class="form-label">
+                    <i class="fas fa-lock" style="margin-right:6px; color:rgba(255,255,255,0.2);"></i>
+                    Confirm Password <span class="required">*</span>
                 </label>
-                <input type="password" name="confirm_password" class="form-control" required 
-                       placeholder="Confirm password"
-                       style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:white;">
+                <div class="password-wrapper">
+                    <input type="password" name="confirm_password" id="confirmPassword" class="form-input" required 
+                           placeholder="Re-enter your password"
+                           autocomplete="new-password"
+                           oninput="checkMatch()">
+                    <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye" id="confirmPasswordIcon"></i>
+                    </button>
+                </div>
+                <div class="match-message" id="matchMessage"></div>
             </div>
             
-            <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
-                <button type="submit" class="btn-primary" style="flex:1; padding:12px; font-size: 1rem; justify-content:center;">
-                    <i class="fas fa-save"></i> Register User
+            <!-- Buttons -->
+            <div style="display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap;">
+                <button type="submit" class="btn-register">
+                    <i class="fas fa-user-plus"></i> Register User
                 </button>
-                <a href="{{ url_for('admin_manage_users') }}" class="btn-secondary" style="flex:1; padding:12px; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:10px; font-weight:600;">
+                <a href="{{ url_for('admin_manage_users') }}" class="btn-cancel">
                     <i class="fas fa-times"></i> Cancel
                 </a>
             </div>
         </form>
         
-        <div style="margin-top: 20px; padding: 16px; background: rgba(245,197,66,0.05); border-radius: 10px; border-left: 3px solid #f5c542;">
-            <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">
-                <i class="fas fa-shield-alt" style="color: #f5c542;"></i> 
-                <strong>Note:</strong> The user will receive their login credentials via email and SMS.
+        <!-- Note -->
+        <div class="note-box">
+            <span class="icon"><i class="fas fa-shield-alt"></i></span>
+            <div>
+                <strong>Note:</strong> The user will receive their login credentials via email and SMS upon successful registration.
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Password confirmation validation
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const password = this.querySelector('input[name="password"]').value;
-        const confirm = this.querySelector('input[name="confirm_password"]').value;
-        
-        if (password !== confirm) {
-            e.preventDefault();
-            alert('❌ Passwords do not match!');
-        }
-    });
+// ============================================================
+// PASSWORD TOGGLE
+// ============================================================
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + 'Icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// ============================================================
+// PASSWORD STRENGTH
+// ============================================================
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const bar = document.getElementById('strengthBar');
+    const text = document.getElementById('strengthText');
+    
+    if (password.length === 0) {
+        bar.style.width = '0%';
+        text.textContent = 'Enter a password to check strength';
+        text.style.color = 'rgba(255,255,255,0.3)';
+        return;
+    }
+    
+    let score = 0;
+    
+    // Length
+    if (password.length >= 6) score += 1;
+    if (password.length >= 10) score += 1;
+    
+    // Complexity
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+    
+    const maxScore = 7;
+    const percentage = Math.min((score / maxScore) * 100, 100);
+    bar.style.width = percentage + '%';
+    
+    let color, message;
+    
+    if (score <= 2) {
+        color = '#ff6b6b';
+        message = '🔴 Weak — Add more characters and mix uppercase, lowercase, numbers, and symbols';
+    } else if (score <= 4) {
+        color = '#f5c542';
+        message = '🟡 Fair — Try adding more variety for better security';
+    } else if (score <= 6) {
+        color = '#4ade80';
+        message = '🟢 Good — Your password is fairly strong';
+    } else {
+        color = '#00e0ff';
+        message = '🟣 Strong! — Excellent password security';
+    }
+    
+    bar.style.background = color;
+    text.textContent = message;
+    text.style.color = color;
+});
+
+// ============================================================
+// PASSWORD MATCH
+// ============================================================
+function checkMatch() {
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    const message = document.getElementById('matchMessage');
+    
+    if (confirm.length === 0) {
+        message.innerHTML = '';
+        return;
+    }
+    
+    if (password === confirm) {
+        message.innerHTML = '<i class="fas fa-check-circle" style="color: #4ade80;"></i> Passwords match!';
+        message.style.color = '#4ade80';
+        document.getElementById('confirmPassword').style.borderColor = 'rgba(74,222,128,0.3)';
+    } else {
+        message.innerHTML = '<i class="fas fa-times-circle" style="color: #ff6b6b;"></i> Passwords do not match';
+        message.style.color = '#ff6b6b';
+        document.getElementById('confirmPassword').style.borderColor = 'rgba(255,107,107,0.3)';
+    }
+}
+
+// ============================================================
+// ROLE DESCRIPTION
+// ============================================================
+document.getElementById('roleSelect').addEventListener('change', function() {
+    const role = this.value;
+    const desc = document.getElementById('roleDescription');
+    const text = document.getElementById('roleDescriptionText');
+    
+    const roleInfo = {
+        admin: { icon: '🔐', desc: 'Full system access. Can manage all modules, users, and system settings.' },
+        chairperson: { icon: '👑', desc: 'Oversees SACCO operations. Can approve loans and view all reports.' },
+        treasurer: { icon: '💰', desc: 'Manages savings, loans, and repayments. Can process financial transactions.' },
+        secretary: { icon: '📋', desc: 'Manages members and documentation. Can register members and handle records.' },
+        publicity: { icon: '📢', desc: 'Handles communications, announcements, and events.' }
+    };
+    
+    if (role && roleInfo[role]) {
+        desc.className = 'role-description active';
+        text.innerHTML = `<strong>${roleInfo[role].icon}</strong> ${roleInfo[role].desc}`;
+    } else {
+        desc.className = 'role-description';
+        text.textContent = 'Select a role to see its responsibilities';
+    }
+});
+
+// ============================================================
+// FORM VALIDATION
+// ============================================================
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    
+    if (password !== confirm) {
+        e.preventDefault();
+        alert('❌ Passwords do not match!');
+        document.getElementById('confirmPassword').focus();
+        return false;
+    }
+    
+    if (password.length < 6) {
+        e.preventDefault();
+        alert('❌ Password must be at least 6 characters long!');
+        document.getElementById('password').focus();
+        return false;
+    }
+});
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', function(e) {
+    // Escape to cancel
+    if (e.key === 'Escape') {
+        window.location.href = "{{ url_for('admin_manage_users') }}";
+    }
+});
+
+console.log('✅ Registration page loaded successfully');
 </script>
 
 {% endblock %}
