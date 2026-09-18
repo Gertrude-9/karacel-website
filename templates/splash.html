@@ -9,35 +9,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='splash.css') }}">
-    <script>
-        // Smooth percentage counter
-        document.addEventListener('DOMContentLoaded', function() {
-            const percentageEl = document.getElementById('percentage');
-            let startTime = Date.now();
-            const duration = 8000; // matches animation duration
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const percentageEl = document.getElementById('percentage');
+        let startTime = Date.now();
+        const duration = 8000;
 
-            function updatePercentage() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                // Ease out cubic for more natural feel
-                const eased = 1 - Math.pow(1 - progress, 3);
-                const percent = Math.round(eased * 100);
-                if (percentageEl) {
-                    percentageEl.textContent = percent + '%';
-                }
-                if (progress < 1) {
-                    requestAnimationFrame(updatePercentage);
-                }
+        function updatePercentage() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const percent = Math.round(eased * 100);
+            if (percentageEl) {
+                percentageEl.textContent = percent + '%';
             }
+            if (progress < 1) {
+                requestAnimationFrame(updatePercentage);
+            }
+        }
 
-            updatePercentage();
+        updatePercentage();
 
-            // Redirect after animation completes + small buffer
-            setTimeout(() => {
-                window.location.href = "/login";
-            }, 9000);
-        });
-    </script>
+        // ✅ REDIRECT TO HOME PAGE
+        setTimeout(() => {
+            window.location.href = "/home";
+        }, 9000);
+    });
+</script>
 </head>
 
 <body>

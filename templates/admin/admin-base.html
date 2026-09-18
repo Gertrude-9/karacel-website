@@ -298,43 +298,106 @@
         document.getElementById('resetPasswordModal').style.display = 'none';
         document.getElementById('resetUserId').value = '';
     }
+function confirmResetPassword() {
+    const userId = document.getElementById('resetUserId').value;
+    const newPassword = document.getElementById('resetNewPassword').value;
+    const confirmPassword = document.getElementById('resetConfirmPassword').value;
+    const btn = document.getElementById('confirmResetPasswordBtn');
 
-    function confirmResetPassword() {
-        const userId = document.getElementById('resetUserId').value;
-        if (!userId) {
-            alert('Error: User ID is missing.');
-            return;
-        }
-        const btn = document.querySelector('#resetPasswordModal button:last-child');
-        if (!btn) return;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-        btn.disabled = true;
-        fetch('/admin/users/reset-password/' + userId, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                alert('✅ Password reset successfully!\n\nNew Password: ' + data.new_password);
-                closeResetPasswordModal();
-            } else {
-                alert('❌ Error: ' + (data.message || 'Could not reset password'));
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error:', error);
-            alert('❌ Error: ' + error.message);
-        })
-        .finally(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
+    if (!userId) {
+        alert('Error: User ID is missing.');
+        return;
     }
+
+    if (!newPassword) {
+        alert('Please enter a new password.');
+        document.getElementById('resetNewPassword').focus();
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        document.getElementById('resetNewPassword').focus();
+        return;
+    }
+
+    if (!confirmPassword) {
+        alert('Please confirm the new password.');
+        document.getElementById('resetConfirmPassword').focus();
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        alert('❌ Passwords do not match.');
+        document.getElementById('resetConfirmPassword').focus();
+        return;
+    }
+
+    if (!confirm('Are you sure you want to set this new password for the user?')) {
+        return;
+    }
+
+    if (!btn) {
+        console.error('Reset password button not found.');
+        return;
+    }
+
+    const originalText = btn.innerHTML;
+
+    btn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    btn.disabled = true;
+
+    fetch('/admin/users/reset-password/' + encodeURIComponent(userId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            password: newPassword
+        })
+    })
+    .then(async response => {
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            throw new Error(
+                data?.message ||
+                'Server error. HTTP status: ' + response.status
+            );
+        }
+
+        return data;
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ Password changed successfully.');
+
+            closeResetPasswordModal();
+        } else {
+            alert(
+                '❌ Error: ' +
+                (data.message || 'Could not reset password.')
+            );
+        }
+    })
+    .catch(error => {
+        console.error('Password reset error:', error);
+
+        alert(
+            '❌ Error resetting password: ' +
+            error.message
+        );
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
 
     // ============================================================
     // EDIT USER FUNCTIONS

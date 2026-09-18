@@ -656,51 +656,61 @@ app.jinja_env.filters['sum'] = sum_filter
 # ============================================
 # AUTHENTICATION ROUTES
 # ============================================
+ROLE_ROUTES = {
+    "admin":       "/admin/dashboard",
+    "chairperson": "/admin/dashboard",
+    "treasurer":   "/treasurer/dashboard",
+    "secretary":   "/secretary/dashboard",
+    "publicity":   "/publicity/dashboard",
+    "member":      "/member/dashboard",
+}
+
 @app.route("/")
 def splash():
+    if session.get("logged_in"):
+        return redirect(ROLE_ROUTES.get(session.get("role"), "/home"))
     return render_template("splash.html")
 
+@app.route("/home")
+def home():
+    return render_template("website/home-page.html")
 
-# ============================================================
-# UPDATED LOGIN - Staff get both dashboards
-# ============================================================
+@app.route("/about")
+def about():
+    """About Us page"""
+    return render_template("website/about.html")
+
+
+@app.route("/contact")
+def contact():
+    """Contact page"""
+    return render_template("website/contact.html")
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         sacco_number = request.form["sacco_number"].strip().upper()
-        password = request.form["password"].strip()
+        password = request.form["password"]  # don't strip passwords
 
         conn = get_db()
-        conn.row_factory = sqlite3.Row
-        user = conn.execute(
-            "SELECT * FROM users WHERE sacco_number = ? AND password = ?",
-            (sacco_number, password)
-        ).fetchone()
-        conn.close()
+        try:
+            conn.row_factory = sqlite3.Row
+            user = conn.execute(
+                "SELECT * FROM users WHERE sacco_number = ?",
+                (sacco_number,)
+            ).fetchone()
+        finally:
+            conn.close()
 
-        if user:
-            session["user_id"] = user["id"]
-            session["sacco_number"] = user["sacco_number"]
-            session["full_name"] = user["full_name"]
-            session["role"] = user["role"]
-            session["logged_in"] = True
-            
-            # Store that this user is also a member
-            session["is_member"] = True
-
-            # Redirect based on role
-            if user["role"] == "admin":
-                return redirect("/admin/dashboard")
-            elif user["role"] == "chairperson":
-                return redirect("/admin/dashboard")
-            elif user["role"] == "treasurer":
-                return redirect("/treasurer/dashboard")
-            elif user["role"] == "secretary":
-                return redirect("/secretary/dashboard")
-            elif user["role"] == "publicity":
-                return redirect("/publicity/dashboard")
-            else:
-                return redirect("/member/dashboard")
+        if user and user["password"] == password:      # ← plain-text comparison
+            session.update({
+                "user_id":      user["id"],
+                "sacco_number": user["sacco_number"],
+                "full_name":    user["full_name"],
+                "role":         user["role"],
+                "logged_in":    True,
+            })
+            return redirect(ROLE_ROUTES.get(user["role"], "/member/dashboard"))
 
         flash("Invalid SACCO number or password", "error")
 
@@ -4087,41 +4097,93 @@ def admin_delete_user(user_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ============================================================
-# ADMIN - RESET PASSWORD
-# ============================================================
 @app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
 def admin_reset_password(user_id):
+
+    # Check authorization
     if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request'}), 400
-    
-    new_password = data.get('password', '').strip()
-    
-    if len(new_password) < 6:
-        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
-    
+        return jsonify({
+            "success": False,
+            "message": "Access denied"
+        }), 403
+
     db = get_db()
-    
+
     try:
-        user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        # Find user
+        user = db.execute(
+            """
+            SELECT id, username, name
+            FROM users
+            WHERE id = ?
+            """,
+            (user_id,)
+        ).fetchone()
+
         if not user:
-            db.close()
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        db.execute("UPDATE users SET password = ? WHERE id = ?", (new_password, user_id))
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        # Get JSON request body
+        data = request.get_json(silent=True)
+
+        if not isinstance(data, dict):
+            return jsonify({
+                "success": False,
+                "message": "Invalid request"
+            }), 400
+
+        # Get password
+        new_password = data.get("password")
+
+        if not isinstance(new_password, str) or not new_password:
+            return jsonify({
+                "success": False,
+                "message": "Password is required"
+            }), 400
+
+        # Server-side password validation
+        if len(new_password) < 8:
+            return jsonify({
+                "success": False,
+                "message": "Password must be at least 8 characters long"
+            }), 400
+
+        # Hash password before storing it
+        hashed_password = generate_password_hash(new_password)
+
+        # Update password
+        db.execute(
+            """
+            UPDATE users
+            SET password = ?
+            WHERE id = ?
+            """,
+            (hashed_password, user_id)
+        )
+
         db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': 'Password reset successfully'})
-        
+
+        return jsonify({
+            "success": True,
+            "message": "Password changed successfully"
+        }), 200
+
     except Exception as e:
         db.rollback()
+
+        print("Password reset error:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to reset password"
+        }), 500
+
+    finally:
         db.close()
-        return jsonify({'success': False, 'message': str(e)}), 500
+
 # ============================================================
 # ADMIN - VIEW USER (JSON)
 # ============================================================
@@ -5355,6 +5417,17 @@ def create_chat_table():
 
 # Call this when app starts
 # create_chat_table()
+@app.route('/savings')
+def savings():
+    return render_template('/website/savings.html')
+
+@app.route('/credit')
+def credit():
+    return render_template('website/credit.html')
+
+@app.route('/welfare')
+def welfare():
+    return render_template('website/welfare.html')
 
 
 
