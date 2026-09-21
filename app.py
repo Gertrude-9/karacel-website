@@ -31,6 +31,16 @@ def get_db():
     return conn
 
 
+# ============================================================
+# REGISTER CHAT BLUEPRINT
+# ============================================================
+from chat_api import chat_api, create_chat_table
+app.register_blueprint(chat_api)
+
+with app.app_context():
+    create_chat_table()
+
+
 def create_database():
     conn = get_db()
     cursor = conn.cursor()
@@ -5251,269 +5261,31 @@ def mark_all_notifications_read():
 # ============================================================
 # CHAT API ROUTES
 # ============================================================
-@app.route('/treasurer/chat')
-def treasurer_chat():
-    """Render the treasurer chat center page."""
-    # Auth check — same pattern as your other treasurer routes
-    if "user_id" not in session:
-        return redirect(url_for('login'))
+from flask import Blueprint, jsonify, request, session, redirect, url_for, render_template
+import sqlite3
 
-    if session.get("role") not in ["admin", "chairperson", "treasurer", "secretary", "publicity"]:
-        return redirect(url_for('login'))
+import functools
 
-    db = get_db()
-    db.row_factory = sqlite3.Row
+chat_api = Blueprint('chat_api', __name__)
 
-    # Load members for the contact list
-    members = db.execute("""
-        SELECT 
-            u.id,
-            u.full_name,
-            u.sacco_number,
-            u.email,
-            u.phone,
-            u.status,
-            u.savings_balance
-        FROM users u
-        WHERE LOWER(u.role) = 'member'
-        ORDER BY u.full_name ASC
-    """).fetchall()
-
-    db.close()
-
-    return render_template(
-        'treasurer/chat.html',
-        members=[dict(m) for m in members]
-    )
-
-@app.route('/api/chat/members/list')
-def api_chat_members_list():
-    """Get all members with unread count for chat"""
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
-    
-    # Only staff can access chat
-    if session.get("role") not in ["admin", "chairperson", "treasurer", "secretary", "publicity"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        members = db.execute("""
-            SELECT 
-                u.id,
-                u.full_name,
-                u.sacco_number,
-                u.email,
-                u.phone,
-                u.status,
-                u.savings_balance,
-                (
-                    SELECT COUNT(*) 
-                    FROM chat_messages 
-                    WHERE sender_id = u.id 
-                    AND receiver_id = ? 
-                    AND is_read = 0
-                ) as unread_count
-            FROM users u
-            WHERE LOWER(u.role) = 'member'
-            ORDER BY u.full_name ASC
-        """, (session['user_id'],)).fetchall()
-        
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'members': [dict(m) for m in members]
-        })
-        
-    except Exception as e:
-        db.close()
-        print(f"Error loading members: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+# ------------------------------------------------------------
+# Roles
+# ------------------------------------------------------------
+STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
 
 
-@app.route('/api/chat/messages/<int:member_id>')
-def api_chat_messages(member_id):
-    """Get chat messages between logged-in user and member"""
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
-    
-    user_id = session['user_id']
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    try:
-        messages = db.execute("""
-            SELECT 
-                cm.id,
-                cm.sender_id,
-                cm.receiver_id,
-                cm.message,
-                cm.message_type,
-                cm.is_read,
-                cm.created_at,
-                u.full_name as sender_name,
-                u.role as sender_role
-            FROM chat_messages cm
-            JOIN users u ON cm.sender_id = u.id
-            WHERE (cm.sender_id = ? AND cm.receiver_id = ?)
-               OR (cm.sender_id = ? AND cm.receiver_id = ?)
-            ORDER BY cm.created_at ASC
-            LIMIT 200
-        """, (user_id, member_id, member_id, user_id)).fetchall()
-        
-        # Count unread messages
-        unread_count = db.execute("""
-            SELECT COUNT(*) as count
-            FROM chat_messages
-            WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
-        """, (member_id, user_id)).fetchone()['count']
-        
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'messages': [dict(m) for m in messages],
-            'unread_count': unread_count
-        })
-        
-    except Exception as e:
-        db.close()
-        print(f"Error loading messages: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+def staff_required(f):
+    """Decorator: only allow logged-in staff roles."""
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'}), 401
+        if (session.get("role") or "").lower() not in STAFF_ROLES:
+            return jsonify({'success': False, 'message': 'Access denied'}), 403
+        return f(*args, **kwargs)
+    return wrapper
 
 
-@app.route('/api/chat/send', methods=['POST'])
-def api_chat_send():
-    """Send a chat message to a member"""
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request'}), 400
-    
-    member_id = data.get('member_id')
-    message = data.get('message', '').strip()
-    message_type = data.get('type', 'general')
-    sender_role = data.get('sender_role', 'Secretary')
-    
-    if not member_id or not message:
-        return jsonify({'success': False, 'message': 'Member ID and message are required'}), 400
-    
-    user_id = session['user_id']
-    
-    db = get_db()
-    
-    try:
-        # Verify member exists
-        member = db.execute("SELECT id FROM users WHERE id = ? AND LOWER(role) = 'member'", (member_id,)).fetchone()
-        if not member:
-            db.close()
-            return jsonify({'success': False, 'message': 'Member not found'}), 404
-        
-        # Insert message
-        db.execute("""
-            INSERT INTO chat_messages (sender_id, receiver_id, message, message_type, created_at, is_read)
-            VALUES (?, ?, ?, ?, datetime('now'), 0)
-        """, (user_id, member_id, message, message_type))
-        
-        # Create notification for the member
-        sender_name = session.get('full_name', sender_role)
-        db.execute("""
-            INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
-            VALUES (?, 'chat', ?, ?, '/member/dashboard', datetime('now'), 0)
-        """, (member_id, f"📩 New message from {sender_name} ({sender_role})", message[:200]))
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Message sent successfully'
-        })
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        print(f"Error sending message: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/chat/mark-read', methods=['POST'])
-def api_chat_mark_read():
-    """Mark all messages from a member as read"""
-    if "user_id" not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request'}), 400
-    
-    member_id = data.get('member_id')
-    if not member_id:
-        return jsonify({'success': False, 'message': 'Member ID is required'}), 400
-    
-    user_id = session['user_id']
-    
-    db = get_db()
-    
-    try:
-        db.execute("""
-            UPDATE chat_messages 
-            SET is_read = 1 
-            WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
-        """, (member_id, user_id))
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Messages marked as read'
-        })
-        
-    except Exception as e:
-        db.rollback()
-        db.close()
-        print(f"Error marking messages as read: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# CREATE CHAT TABLE (Run once)
-# ============================================================
-def create_chat_table():
-    db = get_db()
-    try:
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS chat_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                message TEXT NOT NULL,
-                message_type TEXT DEFAULT 'general',
-                is_read INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (sender_id) REFERENCES users(id),
-                FOREIGN KEY (receiver_id) REFERENCES users(id)
-            )
-        """)
-        db.execute("CREATE INDEX IF NOT EXISTS idx_chat_sender ON chat_messages(sender_id)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_chat_receiver ON chat_messages(receiver_id)")
-        db.commit()
-        db.close()
-        print("✅ Chat messages table created")
-    except Exception as e:
-        print(f"Error creating chat table: {str(e)}")
-        db.rollback()
-        db.close()
-
-# Call this when app starts
-# create_chat_table()
 @app.route('/savings')
 def savings():
     return render_template('/website/savings.html')
