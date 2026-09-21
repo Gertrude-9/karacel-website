@@ -13,7 +13,7 @@
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="{{ url_for('static', filename='treasurer.css') }}">
-    
+
     <!-- Page-specific styles block -->
     {% block extra_styles %}{% endblock %}
 </head>
@@ -68,13 +68,13 @@
                 <i class="fas fa-users"></i>
                 <span>Members</span>
             </a>
-            
+
             <!-- Deposits History -->
             <a href="#" class="admin-nav-item" data-panel="deposits" onclick="showPanel('deposits')">
                 <i class="fas fa-history"></i>
                 <span>Deposits History</span>
             </a>
-            
+
             <!-- Completed Loans -->
             <a href="#" class="admin-nav-item" data-panel="completed" onclick="showPanel('completed')">
                 <i class="fas fa-check-circle"></i>
@@ -85,22 +85,22 @@
                 </span>
                 {% endif %}
             </a>
-            
+
             <!-- Savings Reports -->
             <a href="{{ url_for('treasurer_savings_reports') }}" class="admin-nav-item">
                 <i class="fas fa-chart-pie"></i>
                 <span>Savings Reports</span>
             </a>
 
-            <!-- ===== NEW: CHAT SECTION ===== -->
-            <a href="#" class="admin-nav-item" data-panel="chat" onclick="showPanel('chat')" style="border-left: 3px solid #00e0ff; background: rgba(0,224,255,0.05);">
-                <i class="fas fa-comments" style="color: #00e0ff;"></i>
-                <span style="color: #00e0ff;">Chat Center</span>
+            <!-- ===== CHAT CENTER ===== -->
+            <a href="{{ url_for('treasurer_chat') }}" class="admin-nav-item">
+                <i class="fas fa-comments"></i>
+                <span>Chat Center</span>
                 <span id="chatSidebarBadge" style="margin-left: auto; background: #ff6b6b; color: #fff; padding: 0 8px; border-radius: 12px; font-size: 0.6rem; font-weight: 700; min-width: 18px; text-align: center; display: none;">0</span>
             </a>
-           
+
         </div>
-        
+
         <!-- Staff Member Portal -->
         <li class="nav-item staff-member-portal-item" style="list-style: none;">
             <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
@@ -1284,6 +1284,13 @@ JAVASCRIPT - Core Navigation Only
             panel.style.display = 'none';
         });
 
+        // Also hide any legacy panels that may not have the content-panel class
+        document.querySelectorAll("[id$='-panel']").forEach(panel => {
+            if (!panel.classList.contains("content-panel")) {
+                panel.style.display = 'none';
+            }
+        });
+
         // Show selected panel
         const selectedPanel = document.getElementById(panelName + "-panel");
         if (selectedPanel) {
@@ -1314,7 +1321,7 @@ JAVASCRIPT - Core Navigation Only
             'completed': 'Completed Loans',
             'chat': 'Chat Center'
         };
-        
+
         const titleEl = document.getElementById('appBarTitle');
         if (titleEl && titles[panelName]) {
             const iconMap = {
@@ -1378,7 +1385,7 @@ JAVASCRIPT - Core Navigation Only
             };
             appBarLeft.prepend(hamburger);
         }
-        
+
         // Ensure completed panel is hidden by default if not active
         const completedPanel = document.getElementById('completed-panel');
         if (completedPanel && !completedPanel.classList.contains('active')) {
@@ -1397,8 +1404,6 @@ JAVASCRIPT - Core Navigation Only
             overlay.classList.remove('active');
         }
     });
-
-    
 </script>
 
 <!-- Page-specific JavaScript block -->

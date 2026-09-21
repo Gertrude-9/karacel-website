@@ -219,7 +219,7 @@
         </div>
     </div>
 
-    <!-- ========== LOAN APPLICATIONS PANEL ========== -->
+<!-- ========== LOAN APPLICATIONS PANEL ========== -->
     <div id="loan_applications-panel" class="content-panel">
         <div class="admin-stats">
             <div class="stat-box">
@@ -322,7 +322,7 @@
                                 </td>
                                 <td>
                                     <div class="dropdown" style="position:relative; display:inline-block;">
-                                        <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" style="
+                                        <button class="dropdown-btn" onclick="event.stopPropagation(); toggleDropdown('{{ loan.id }}')" style="
                                             background:rgba(255,255,255,0.03);
                                             border:1px solid rgba(255,255,255,0.06);
                                             border-radius:6px;
@@ -1009,73 +1009,25 @@ function filterStaffUsers() {
 }
 
 // ============================================================
-// DROPDOWN TOGGLE
-// ============================================================
-// ============================================================
-// TOGGLE DROPDOWN - Horizontal Layout
+// TOGGLE DROPDOWN — FIXED: just toggles display, no layout overrides
 // ============================================================
 function toggleDropdown(loanId) {
     const dropdown = document.getElementById('dropdown-' + loanId);
     if (!dropdown) return;
-    
-    // Close all other dropdowns
+
+    // Was this dropdown already open?
+    const isOpen = dropdown.style.display === 'block';
+
+    // Close every open dropdown first
     document.querySelectorAll('.dropdown-menu').forEach(menu => {
-        if (menu.id !== 'dropdown-' + loanId) {
-            menu.style.display = 'none';
-        }
+        menu.style.display = 'none';
     });
-    
-    // Toggle this dropdown
-    if (dropdown.style.display === 'flex') {
-        dropdown.style.display = 'none';
-        return;
-    }
-    
-    // Get the button position
-    const btn = document.querySelector(`[onclick*="toggleDropdown('${loanId}')"]`);
-    if (!btn) {
-        dropdown.style.display = 'flex';
-        return;
-    }
-    
-    const rect = btn.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Calculate menu dimensions
-    const menuWidth = dropdown.scrollWidth || 350;
-    const menuHeight = 50;
-    
-    // Position: Below the button, centered
-    let left = rect.left + (rect.width / 2) - (menuWidth / 2);
-    let top = rect.bottom + 8;
-    
-    // If menu would go off right edge, align to right
-    if (left + menuWidth > viewportWidth - 10) {
-        left = viewportWidth - menuWidth - 10;
-    }
-    
-    // If menu would go off left edge, align to left
-    if (left < 10) {
-        left = 10;
-    }
-    
-    // If menu would go off bottom, position above
-    if (top + menuHeight > viewportHeight - 10) {
-        top = rect.top - menuHeight - 8;
-    }
-    
-    // Apply position
-    dropdown.style.position = 'fixed';
-    dropdown.style.left = left + 'px';
-    dropdown.style.top = top + 'px';
-    dropdown.style.display = 'flex';
-    dropdown.style.flexDirection = 'row';
-    dropdown.style.alignItems = 'center';
-    dropdown.style.gap = '6px';
-    
-    // Add animation
-    dropdown.style.animation = 'menuSlideDown 0.2s ease';
+
+    // If it was open, we just closed it — done
+    if (isOpen) return;
+
+    // Open this one using its inline styles (position:absolute, right:0, top:100%)
+    dropdown.style.display = 'block';
 }
 
 // ============================================================
@@ -1088,41 +1040,32 @@ function closeAllDropdowns() {
 }
 
 // ============================================================
-// CLOSE DROPDOWNS ON OUTSIDE CLICK
+// CLOSE DROPDOWNS ON OUTSIDE CLICK — SINGLE listener
 // ============================================================
 document.addEventListener('click', function(event) {
-    if (!event.target.closest('.dropdown-btn') && !event.target.closest('.dropdown-menu')) {
+    if (!event.target.closest('.dropdown')) {
         closeAllDropdowns();
     }
 });
 
+// ============================================================
+// CLOSE DROPDOWNS ON ESCAPE — SINGLE listener
+// ============================================================
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeAllDropdowns();
     }
 });
 
+// ============================================================
+// CLOSE DROPDOWNS ON SCROLL / RESIZE
+// ============================================================
 window.addEventListener('scroll', function() {
     closeAllDropdowns();
 });
 
 window.addEventListener('resize', function() {
     closeAllDropdowns();
-});
-document.addEventListener('click', function(event) {
-    if (!event.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    }
-});
-
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    }
 });
 
 // ============================================================
@@ -1225,7 +1168,7 @@ function showSettingsMessage(message, type) {
 }
 
 // ============================================================
-// ADMIN LOAN FUNCTIONS
+// ADMIN LOAN FUNCTIONS — FIXED button selector quotes
 // ============================================================
 function adminApproveLoan(loanId) {
     if (!loanId) {
@@ -1233,7 +1176,7 @@ function adminApproveLoan(loanId) {
         return;
     }
     if (confirm('✅ FINAL APPROVAL: This will approve and disburse the loan.\n\nThe member and treasurer will be notified.')) {
-        const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan(${loanId})"]`);
+        const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan('${loanId}')"]`);
         btns.forEach(btn => {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
@@ -1277,7 +1220,7 @@ function adminRejectLoan(loanId) {
         return;
     }
     if (confirm('❌ FINAL REJECT: This will permanently reject this loan application.\n\nReason: ' + reason)) {
-        const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan(${loanId})"]`);
+        const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan('${loanId}')"]`);
         btns.forEach(btn => {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;

@@ -5251,6 +5251,40 @@ def mark_all_notifications_read():
 # ============================================================
 # CHAT API ROUTES
 # ============================================================
+@app.route('/treasurer/chat')
+def treasurer_chat():
+    """Render the treasurer chat center page."""
+    # Auth check — same pattern as your other treasurer routes
+    if "user_id" not in session:
+        return redirect(url_for('login'))
+
+    if session.get("role") not in ["admin", "chairperson", "treasurer", "secretary", "publicity"]:
+        return redirect(url_for('login'))
+
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    # Load members for the contact list
+    members = db.execute("""
+        SELECT 
+            u.id,
+            u.full_name,
+            u.sacco_number,
+            u.email,
+            u.phone,
+            u.status,
+            u.savings_balance
+        FROM users u
+        WHERE LOWER(u.role) = 'member'
+        ORDER BY u.full_name ASC
+    """).fetchall()
+
+    db.close()
+
+    return render_template(
+        'treasurer/chat.html',
+        members=[dict(m) for m in members]
+    )
 
 @app.route('/api/chat/members/list')
 def api_chat_members_list():

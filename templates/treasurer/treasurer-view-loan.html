@@ -55,7 +55,7 @@
             {% elif loan.status == 'completed' %}rgba(74,222,128,0.15)
             {% elif loan.status == 'rejected' %}rgba(255,107,107,0.15)
             {% else %}rgba(255,255,255,0.05){% endif %};
-    ">
+    
         <div style="display: flex; align-items: center; gap: 12px;">
             <span style="font-size: 1.5rem;">
                 {% if loan.status == 'pending' %}⏳

@@ -107,7 +107,7 @@
                         </td>
                         <td>
                             <span class="{% if deposit.savings_type == 'KAI' %}type-kai{% elif deposit.savings_type == 'KS' %}type-ks{% elif deposit.savings_type == 'KAC' %}type-kac{% elif deposit.savings_type == 'REGISTRATION' %}type-reg{% endif %}">
-                                {{ deposit.savings_type or 'KAI' }}
+                                {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type or 'KAI' }}{% endif %}
                             </span>
                         </td>
                         <td style="text-align:right; color: var(--tr-green); font-weight:600;">
@@ -352,7 +352,6 @@
                     <tr>
                         <th>#</th>
                         <th>Member</th>
-                        <th>Role</th>
                         <th>SACCO No.</th>
                         <th>Type</th>
                         <th style="text-align:right;">Amount (UGX)</th>
@@ -374,22 +373,7 @@
 
                             <td style="color:var(--tr-dim);">{{ loop.index }}</td>
                             <td><strong>{{ deposit.full_name }}</strong></td>
-                            <td>
-                                {% if deposit.role and deposit.role != 'member' %}
-                                    <span class="role-pill {{ deposit.role }}">
-                                        <i class="fas
-                                            {% if deposit.role == 'admin' %}fa-user-shield
-                                            {% elif deposit.role == 'chairperson' %}fa-gavel
-                                            {% elif deposit.role == 'treasurer' %}fa-coins
-                                            {% elif deposit.role == 'secretary' %}fa-clipboard
-                                            {% elif deposit.role == 'publicity' %}fa-bullhorn
-                                            {% endif %}"></i>
-                                        {{ deposit.role|title }}
-                                    </span>
-                                {% else %}
-                                    <span class="role-pill member">Member</span>
-                                {% endif %}
-                            </td>
+                            
                             <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
                                 {{ deposit.sacco_number }}
                             </td>
@@ -400,7 +384,7 @@
                                     {% elif deposit.savings_type == 'KAC' %}type-kac
                                     {% elif deposit.savings_type == 'REGISTRATION' %}type-reg
                                     {% endif %}">
-                                    {{ deposit.savings_type }}
+                                    {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type }}{% endif %}
                                 </span>
                             </td>
                             <td style="text-align:right; color:var(--tr-green); font-weight:600;">
@@ -428,7 +412,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="10" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
+                            <td colspan="9" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
                                 <i class="fas fa-piggy-bank" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
                                 <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
                                     No Deposits Yet
@@ -600,7 +584,6 @@
                         <th style="width:44px;">#</th>
                         <th style="width:130px;">Loan #</th>
                         <th style="width:150px;">Member</th>
-                        <th style="width:100px;">Role</th>
                         <th style="width:110px; text-align:right;">Amount (UGX)</th>
                         <th style="width:110px;">Status</th>
                         <th style="width:110px; text-align:right;">Balance (UGX)</th>
@@ -610,7 +593,7 @@
                         <th style="width:70px; text-align:center;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                 <tbody>
                     {% for loan in all_loan_applications %}
                     <tr data-status="{{ loan.status }}" data-role="{{ loan.role or 'member' }}">
                         <td style="color:var(--tr-dim); text-align:center;">{{ loop.index }}</td>
@@ -620,39 +603,20 @@
                         <td style="font-weight:500; color:var(--tr-text);">
                             {{ loan.full_name }}
                         </td>
-                        <td>
-                            {% if loan.role and loan.role != 'member' %}
-                                <span class="role-pill {{ loan.role }}">
-                                    <i class="fas
-                                        {% if loan.role == 'admin' %}fa-user-shield
-                                        {% elif loan.role == 'chairperson' %}fa-gavel
-                                        {% elif loan.role == 'treasurer' %}fa-coins
-                                        {% elif loan.role == 'secretary' %}fa-clipboard
-                                        {% elif loan.role == 'publicity' %}fa-bullhorn
-                                        {% endif %}"></i>
-                                    {{ loan.role|title }}
-                                </span>
-                            {% else %}
-                                <span class="role-pill member">Member</span>
-                            {% endif %}
-                        </td>
+                        
                         <td style="text-align:right; color:var(--tr-green); font-weight:600; white-space:nowrap;">
                             {{ "{:,.0f}".format(loan.amount) }}
                         </td>
                         <td>
-                            {% if loan.status == 'pending' %}
-                                <span class="status-badge pending">Pending</span>
-                            {% elif loan.status == 'approved' %}
-                                <span class="status-badge approved">Approved</span>
-                            {% elif loan.status == 'disbursed' or loan.status == 'active' %}
-                                <span class="status-badge active">Active</span>
-                            {% elif loan.status == 'completed' %}
-                                <span class="status-badge completed">Completed</span>
-                            {% elif loan.status == 'rejected' %}
-                                <span class="status-badge rejected">Rejected</span>
-                            {% else %}
-                                <span class="status-badge secondary">{{ loan.status|title }}</span>
-                            {% endif %}
+                            <span class="badge 
+                                {% if loan.status == 'pending' %}warning
+                                {% elif loan.status == 'approved' %}info
+                                {% elif loan.status in ['disbursed', 'active'] %}success
+                                {% elif loan.status == 'completed' %}success
+                                {% elif loan.status == 'rejected' %}danger
+                                {% else %}secondary{% endif %}">
+                                {{ loan.status|upper }}
+                            </span>
                         </td>
                         <td style="text-align:right; color:var(--tr-yellow); font-weight:600; white-space:nowrap;">
                             {% if loan.status in ['disbursed', 'active', 'approved'] %}
@@ -680,16 +644,16 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td>
+                       <td>
                             {% if loan.guarantors %}
                                 <div class="guarantor-list">
                                     {% for guarantor in loan.guarantors[:2] %}
                                         <span class="guarantor-tag" onclick="viewGuarantorDetails('{{ guarantor.id }}')">
                                             <i class="fas fa-user"></i>
                                             <span>{{ guarantor.guarantor_name }}</span>
-                                            {% if guarantor.status|upper == 'PENDING' %}
+                                            {% if guarantor.status|upper == 'Pending' %}
                                                 <span class="g-status pending">⏳</span>
-                                            {% elif guarantor.status|upper in ['ACTIVE', 'ACCEPTED'] %}
+                                            {% elif guarantor.status|upper in ['Active', 'Accepted'] %}
                                                 <span class="g-status active">✓</span>
                                             {% endif %}
                                         </span>
@@ -701,7 +665,16 @@
                                     {% endif %}
                                 </div>
                             {% else %}
-                                <span style="color:var(--tr-dim);">—</span>
+                                <span style="
+                                    display:inline-block;
+                                    padding:2px 10px;
+                                    border-radius:20px;
+                                    font-size:0.65rem;
+                                    font-weight:600;
+                                    background:rgba(255,255,255,0.04);
+                                    color:rgba(255,255,255,0.35);
+                                    border:1px solid rgba(255,255,255,0.06);
+                                ">Not Required</span>
                             {% endif %}
                         </td>
                         <td style="color:var(--tr-muted); font-size:0.75rem; white-space:nowrap;">
@@ -758,7 +731,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
+                        <td colspan="8" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
                             <i class="fas fa-file-invoice" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
                             <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
                                 No Loan Applications
@@ -993,7 +966,6 @@
                     <tr>
                         <th>#</th>
                         <th>Member</th>
-                        <th>Role</th>
                         <th>SACCO No.</th>
                         <th>Loan #</th>
                         <th style="text-align:right;">Amount</th>
@@ -1013,22 +985,7 @@
                             data-role="{{ repayment.role or 'member' }}">
                             <td style="color:var(--tr-dim);">{{ loop.index }}</td>
                             <td><strong>{{ repayment.full_name }}</strong></td>
-                            <td>
-                                {% if repayment.role and repayment.role != 'member' %}
-                                    <span class="role-pill {{ repayment.role }}">
-                                        <i class="fas
-                                            {% if repayment.role == 'admin' %}fa-user-shield
-                                            {% elif repayment.role == 'chairperson' %}fa-gavel
-                                            {% elif repayment.role == 'treasurer' %}fa-coins
-                                            {% elif repayment.role == 'secretary' %}fa-clipboard
-                                            {% elif repayment.role == 'publicity' %}fa-bullhorn
-                                            {% endif %}"></i>
-                                        {{ repayment.role|title }}
-                                    </span>
-                                {% else %}
-                                    <span class="role-pill member">Member</span>
-                                {% endif %}
-                            </td>
+                            
                             <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
                                 {{ repayment.sacco_number }}
                             </td>
@@ -1054,7 +1011,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="10" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
+                            <td colspan="9" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
                                 <i class="fas fa-history" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
                                 <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
                                     No Repayments Yet
@@ -1076,7 +1033,7 @@
 <div id="members-panel" class="content-panel">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
         <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
+            <i class="fas fa-arrow-left"></i> Back
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
             <i class="fas fa-users"></i> Members
@@ -1196,7 +1153,7 @@
 <div id="deposits-panel" class="content-panel">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
         <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
+            <i class="fas fa-arrow-left"></i> Back
         </a>
         <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
             <i class="fas fa-history"></i> Deposits History
@@ -1305,7 +1262,7 @@
                                     {% else %}color:rgba(255,255,255,0.3);{% endif %}
                                     font-weight:600; font-size:0.7rem;
                                 ">
-                                    {{ deposit.savings_type or 'KAI' }}
+                                    {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type or 'KAI' }}{% endif %}
                                 </span>
                             </td>
                             <td style="color:#4ade80; font-weight:600;">{{ "{:,.0f}".format(deposit.amount) }}</td>
@@ -2112,6 +2069,7 @@ function openApproveModal(loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
+    pendingLoanId = loanId;   // ✅ add this line
     document.getElementById('approveModal').style.display = 'flex';
 }
 
@@ -2125,28 +2083,27 @@ function confirmApprove() {
         alert('Error: Loan ID is missing.');
         return;
     }
-    if (confirm('✅ Approve this loan application?')) {
-        fetch('/treasurer/loan/action/' + loanId, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ action: 'approve' })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                location.reload();
-            } else {
-                alert('❌ Error: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            alert('❌ Error: ' + error.message);
-        });
-    }
+    fetch('/treasurer/loan/action/' + loanId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ action: 'approve' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeApproveModal();
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('❌ Error: ' + error.message);
+    });
 }
 
 // ============================================================

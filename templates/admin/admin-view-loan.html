@@ -4,17 +4,18 @@
 
 {% block content %}
 
+<!-- ============= APP BAR ============= -->
 <div class="app-bar">
     <div class="app-bar-left">
         <h2><i class="fas fa-file-invoice"></i> Loan Details</h2>
-        <span>{{ loan.loan_number }} - {{ loan.full_name }}</span>
+        <span>{{ loan.loan_number }} &middot; {{ loan.full_name }}</span>
     </div>
     <div class="app-bar-right">
         <a href="{{ url_for('admin_dashboard') }}#loan_applications" class="btn-secondary">
             <i class="fas fa-arrow-left"></i> Back
         </a>
         {% if loan.status == 'approved' %}
-            <button onclick="adminApproveLoan('{{ loan.id }}')" class="btn-primary" style="background: #4ade80; color: #0a0a14;">
+            <button onclick="adminApproveLoan('{{ loan.id }}')" class="btn-success">
                 <i class="fas fa-check-double"></i> Final Approve
             </button>
             <button onclick="adminRejectLoan('{{ loan.id }}')" class="btn-danger">
@@ -24,367 +25,926 @@
     </div>
 </div>
 
-<!-- REMOVED content-panel class and added inline style to ensure visibility -->
-<div style="padding: 24px 32px 40px; display: block;">
-    
-    <!-- Loan Status Banner -->
-    <div style="
-        padding: 16px 20px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 12px;
-        background: 
-            {% if loan.status == 'pending' %}rgba(245,197,66,0.08)
-            {% elif loan.status == 'approved' %}rgba(0,224,255,0.08)
-            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.08)
-            {% elif loan.status == 'completed' %}rgba(74,222,128,0.08)
-            {% elif loan.status == 'rejected' %}rgba(255,107,107,0.08)
-            {% else %}rgba(255,255,255,0.03){% endif %};
-        border: 1px solid 
-            {% if loan.status == 'pending' %}rgba(245,197,66,0.15)
-            {% elif loan.status == 'approved' %}rgba(0,224,255,0.15)
-            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.15)
-            {% elif loan.status == 'completed' %}rgba(74,222,128,0.15)
-            {% elif loan.status == 'rejected' %}rgba(255,107,107,0.15)
-            {% else %}rgba(255,255,255,0.05){% endif %};
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 1.5rem;">
-                {% if loan.status == 'pending' %}⏳
-                {% elif loan.status == 'approved' %}✅
-                {% elif loan.status == 'disbursed' %}💰
-                {% elif loan.status == 'completed' %}🎉
-                {% elif loan.status == 'rejected' %}❌
-                {% endif %}
-            </span>
-            <div>
-                <div style="font-weight: 600; color: rgba(255,255,255,0.9);">Status: 
-                    <span style="
-                        color: {% if loan.status == 'pending' %}#f5c542
-                               {% elif loan.status == 'approved' %}#00e0ff
-                               {% elif loan.status == 'disbursed' %}#4ade80
-                               {% elif loan.status == 'completed' %}#4ade80
-                               {% elif loan.status == 'rejected' %}#ff6b6b
-                               {% else %}rgba(255,255,255,0.5){% endif %};
-                    ">
-                        {{ loan.status|upper }}
-                        {% if loan.status == 'pending' %} (Awaiting Review)
-                        {% elif loan.status == 'approved' %} (Awaiting Final Approval)
-                        {% elif loan.status == 'disbursed' %} (Disbursed)
-                        {% elif loan.status == 'completed' %} (Completed)
-                        {% elif loan.status == 'rejected' %} (Rejected)
-                        {% endif %}
-                    </span>
+<!-- ============= PAGE WRAPPER ============= -->
+<div class="loan-detail-wrap">
+
+    {# ============ STATUS THEME VARIABLES ============ #}
+    {% if loan.status == 'pending' %}
+        {% set status_color = '#f5c542' %}
+        {% set status_bg = 'rgba(245,197,66,0.06)' %}
+        {% set status_border = 'rgba(245,197,66,0.22)' %}
+        {% set status_icon = 'fa-hourglass-half' %}
+        {% set status_label = 'Awaiting Review' %}
+    {% elif loan.status == 'approved' %}
+        {% set status_color = '#00e0ff' %}
+        {% set status_bg = 'rgba(0,224,255,0.06)' %}
+        {% set status_border = 'rgba(0,224,255,0.22)' %}
+        {% set status_icon = 'fa-check-circle' %}
+        {% set status_label = 'Awaiting Final Approval' %}
+    {% elif loan.status == 'disbursed' or loan.status == 'active' %}
+        {% set status_color = '#4ade80' %}
+        {% set status_bg = 'rgba(74,222,128,0.06)' %}
+        {% set status_border = 'rgba(74,222,128,0.22)' %}
+        {% set status_icon = 'fa-hand-holding-usd' %}
+        {% set status_label = 'Disbursed' %}
+    {% elif loan.status == 'completed' %}
+        {% set status_color = '#4ade80' %}
+        {% set status_bg = 'rgba(74,222,128,0.06)' %}
+        {% set status_border = 'rgba(74,222,128,0.22)' %}
+        {% set status_icon = 'fa-check-double' %}
+        {% set status_label = 'Completed' %}
+    {% elif loan.status == 'rejected' %}
+        {% set status_color = '#ff6b6b' %}
+        {% set status_bg = 'rgba(255,107,107,0.06)' %}
+        {% set status_border = 'rgba(255,107,107,0.22)' %}
+        {% set status_icon = 'fa-times-circle' %}
+        {% set status_label = 'Rejected' %}
+    {% else %}
+        {% set status_color = 'rgba(255,255,255,0.5)' %}
+        {% set status_bg = 'rgba(255,255,255,0.03)' %}
+        {% set status_border = 'rgba(255,255,255,0.08)' %}
+        {% set status_icon = 'fa-info-circle' %}
+        {% set status_label = loan.status|title %}
+    {% endif %}
+
+    {# ============ HERO BANNER ============ #}
+    <div class="hero-banner" style="background: {{ status_bg }}; border-color: {{ status_border }};">
+        <div class="hero-left">
+            <div class="hero-icon" style="background: {{ status_color }}18; color: {{ status_color }}; border: 1px solid {{ status_color }}30;">
+                <i class="fas {{ status_icon }}"></i>
+            </div>
+            <div class="hero-info">
+                <div class="hero-label">Loan Status</div>
+                <div class="hero-status" style="color: {{ status_color }};">
+                    {{ loan.status|upper }}
+                    <span class="hero-hint">{{ status_label }}</span>
                 </div>
+
                 {% if loan.status == 'rejected' and loan.rejection_reason %}
-                <div style="color: #ff6b6b; font-size: 0.9rem; margin-top: 4px;">
-                    <i class="fas fa-info-circle"></i> Reason: {{ loan.rejection_reason }}
+                <div class="hero-sub" style="color: #ff6b6b;">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Reason: {{ loan.rejection_reason }}</span>
                 </div>
                 {% endif %}
+
                 {% if loan.status == 'approved' %}
-                <div style="color: #00e0ff; font-size: 0.85rem; margin-top: 4px;">
-                    <i class="fas fa-clock"></i> Awaiting Admin final approval
+                <div class="hero-sub" style="color: #00e0ff;">
+                    <i class="fas fa-clock"></i>
+                    <span>Awaiting Admin final approval &mdash; disbursement pending</span>
+                </div>
+                {% endif %}
+
+                {% if loan.status == 'pending' %}
+                <div class="hero-sub" style="color: #f5c542;">
+                    <i class="fas fa-clock"></i>
+                    <span>Awaiting Treasurer review before final approval</span>
                 </div>
                 {% endif %}
             </div>
         </div>
-        <div style="text-align: right;">
-            <div style="font-size: 0.8rem; color: rgba(255,255,255,0.3);">Application Date</div>
-            <div style="font-weight: 500;">{{ loan.application_date }}</div>
+
+        <div class="hero-right">
+            <div class="hero-date-label">Application Date</div>
+            <div class="hero-date">{{ loan.application_date }}</div>
         </div>
     </div>
 
-    <!-- Two Column Layout -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        
-        <!-- Left Column: Loan Details -->
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 16px;">
-                <i class="fas fa-info-circle" style="color: #f5c542;"></i> Loan Information
+    {# ============ KEY METRICS ============ #}
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(74,222,128,0.08); color: #4ade80;">
+                <i class="fas fa-coins"></i>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Loan Number</div>
-                    <div style="color: #f5c542; font-family: monospace; font-weight: 600;">{{ loan.loan_number }}</div>
+            <div class="metric-info">
+                <div class="metric-label">Loan Amount</div>
+                <div class="metric-value" style="color: #4ade80;">
+                    UGX {{ "{:,.0f}".format(loan.amount) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(245,197,66,0.08); color: #f5c542;">
+                <i class="fas fa-percent"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Interest Rate</div>
+                <div class="metric-value">{{ loan.interest_rate }}%</div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(0,224,255,0.08); color: #00e0ff;">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Tenure</div>
+                <div class="metric-value">{{ loan.tenure }} months</div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(167,139,250,0.08); color: #a78bfa;">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Total Repayment</div>
+                <div class="metric-value">UGX {{ "{:,.0f}".format(loan.total_repayment) }}</div>
+            </div>
+        </div>
+    </div>
+
+    {# ============ TWO-COLUMN: LOAN + MEMBER ============ #}
+    <div class="two-col-grid">
+
+        <!-- Loan Information -->
+        <div class="detail-card">
+            <div class="detail-card-head">
+                <div class="detail-card-icon" style="background: rgba(245,197,66,0.08); color: #f5c542;">
+                    <i class="fas fa-info-circle"></i>
                 </div>
                 <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Status</div>
-                    <div>
-                        <span class="badge 
-                            {% if loan.status == 'pending' %}warning
-                            {% elif loan.status == 'approved' %}info
-                            {% elif loan.status == 'disbursed' %}success
-                            {% elif loan.status == 'completed' %}success
-                            {% else %}danger{% endif %}">
+                    <div class="detail-card-title">Loan Information</div>
+                    <div class="detail-card-sub">Full breakdown of the loan terms</div>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-item-label">Loan Number</div>
+                    <div class="detail-item-value mono" style="color: #f5c542;">{{ loan.loan_number }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-item-label">Status</div>
+                    <div class="detail-item-value">
+                        <span class="pill" style="background: {{ status_color }}18; color: {{ status_color }}; border: 1px solid {{ status_color }}33;">
                             {{ loan.status|upper }}
                         </span>
                     </div>
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Amount</div>
-                    <div style="color: #4ade80; font-weight: 600; font-size: 1.1rem;">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
+                <div class="detail-item">
+                    <div class="detail-item-label">Repayment Plan</div>
+                    <div class="detail-item-value">{{ loan.repayment_plan|title if loan.repayment_plan else 'Monthly' }}</div>
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Rate</div>
-                    <div>{{ loan.interest_rate }}%</div>
+                <div class="detail-item">
+                    <div class="detail-item-label">Interest Amount</div>
+                    <div class="detail-item-value">UGX {{ "{:,.0f}".format(loan.interest_amount) }}</div>
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Tenure</div>
-                    <div>{{ loan.tenure }} Months</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Repayment Plan</div>
-                    <div>{{ loan.repayment_plan|title if loan.repayment_plan else 'Monthly' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Repayment</div>
-                    <div style="color: #f5c542;">UGX {{ "{:,.0f}".format(loan.total_repayment) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Monthly Installment</div>
-                    <div>UGX {{ "{:,.0f}".format(loan.monthly_installment) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Amount</div>
-                    <div>UGX {{ "{:,.0f}".format(loan.interest_amount) }}</div>
-                </div>
-                <div style="grid-column: 1 / -1;">
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Purpose</div>
-                    <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
-                        {{ loan.purpose or 'Not specified' }}
+                <div class="detail-item">
+                    <div class="detail-item-label">Monthly Installment</div>
+                    <div class="detail-item-value" style="color: #f5c542; font-weight: 600;">
+                        UGX {{ "{:,.0f}".format(loan.monthly_installment) }}
                     </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-item-label">Total Repayment</div>
+                    <div class="detail-item-value" style="color: #4ade80; font-weight: 600;">
+                        UGX {{ "{:,.0f}".format(loan.total_repayment) }}
+                    </div>
+                </div>
+                <div class="detail-item full">
+                    <div class="detail-item-label">Purpose</div>
+                    <div class="detail-item-value purpose">{{ loan.purpose or 'Not specified' }}</div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: Member Details -->
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 16px;">
-                <i class="fas fa-user" style="color: #f5c542;"></i> Member Information
+        <!-- Member Information -->
+        <div class="detail-card">
+            <div class="detail-card-head">
+                <div class="detail-card-icon" style="background: rgba(0,224,255,0.08); color: #00e0ff;">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <div class="detail-card-title">Member Information</div>
+                    <div class="detail-card-sub">Applicant profile details</div>
+                </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div style="grid-column: 1 / -1;">
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Full Name</div>
-                    <div style="font-weight: 600; font-size: 1.05rem;">{{ loan.full_name }}</div>
+
+            <div class="member-hero">
+                <div class="member-avatar">
+                    {{ loan.full_name[0]|upper }}
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">SACCO Number</div>
-                    <div style="color: #f5c542; font-family: monospace;">{{ loan.sacco_number }}</div>
+                <div class="member-hero-info">
+                    <div class="member-hero-name">{{ loan.full_name }}</div>
+                    <div class="member-hero-sacco">
+                        <i class="fas fa-id-card"></i> {{ loan.sacco_number }}
+                    </div>
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Phone</div>
-                    <div>{{ loan.phone or 'Not provided' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Email</div>
-                    <div>{{ loan.email or 'Not provided' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Savings Balance</div>
-                    <div style="color: #4ade80;">UGX {{ "{:,.0f}".format(loan.savings_balance or 0) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Required Savings (10%)</div>
-                    <div style="color: {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}#4ade80{% else %}#ff6b6b{% endif %};">
-                        UGX {{ "{:,.0f}".format(loan.amount * 0.1) }}
-                        {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}
-                            <span style="color: #4ade80; font-size: 0.75rem;">✓ Met</span>
+            </div>
+
+            <div class="detail-grid" style="margin-top: 18px;">
+                <div class="detail-item">
+                    <div class="detail-item-label">Phone</div>
+                    <div class="detail-item-value">
+                        {% if loan.phone %}
+                            <i class="fas fa-phone" style="color: rgba(255,255,255,0.25); margin-right: 6px; font-size: 0.75rem;"></i>{{ loan.phone }}
                         {% else %}
-                            <span style="color: #ff6b6b; font-size: 0.75rem;">✗ Not Met</span>
+                            <span style="color: rgba(255,255,255,0.3);">Not provided</span>
                         {% endif %}
                     </div>
                 </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Application Date</div>
-                    <div>{{ loan.application_date }}</div>
+                <div class="detail-item">
+                    <div class="detail-item-label">Email</div>
+                    <div class="detail-item-value">
+                        {% if loan.email %}
+                            <i class="fas fa-envelope" style="color: rgba(255,255,255,0.25); margin-right: 6px; font-size: 0.75rem;"></i>{{ loan.email }}
+                        {% else %}
+                            <span style="color: rgba(255,255,255,0.3);">Not provided</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="detail-item full">
+                    <div class="detail-item-label">Savings Check (10% required)</div>
+                    <div class="savings-check">
+                        <div class="savings-row">
+                            <span class="savings-key">Available</span>
+                            <span class="savings-val" style="color: #4ade80; font-weight: 600;">
+                                UGX {{ "{:,.0f}".format(loan.savings_balance or 0) }}
+                            </span>
+                        </div>
+                        <div class="savings-row">
+                            <span class="savings-key">Required</span>
+                            <span class="savings-val" style="color: {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}#4ade80{% else %}#ff6b6b{% endif %}; font-weight: 600;">
+                                UGX {{ "{:,.0f}".format(loan.amount * 0.1) }}
+                            </span>
+                        </div>
+                        <div class="savings-status {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}ok{% else %}fail{% endif %}">
+                            {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}
+                                <i class="fas fa-check-circle"></i> Requirement Met
+                            {% else %}
+                                <i class="fas fa-exclamation-circle"></i> Not Met
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Guarantors Section -->
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 20px; margin-top: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 16px;">
-            <i class="fas fa-handshake" style="color: #f5c542;"></i> Guarantors
+    {# ============ GUARANTORS ============ #}
+    <div class="detail-card" style="margin-top: 20px;">
+        <div class="detail-card-head">
+            <div class="detail-card-icon" style="background: rgba(167,139,250,0.08); color: #a78bfa;">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <div>
+                <div class="detail-card-title">Guarantors</div>
+                <div class="detail-card-sub">
+                    {% if guarantors %}
+                        {{ guarantors|length }} guarantor{{ 's' if guarantors|length != 1 else '' }} on record
+                    {% else %}
+                        No guarantors required for this loan
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+
+        {% if guarantors %}
+        <div class="table-wrap">
+            <table class="nice-table">
                 <thead>
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">#</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Name</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Phone</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Email</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Relationship</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Status</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Accepted Date</th>
+                    <tr>
+                        <th style="width: 44px;">#</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Relationship</th>
+                        <th>Status</th>
+                        <th>Accepted</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% if guarantors %}
-                        {% for guarantor in guarantors %}
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.8);"><strong>{{ guarantor.guarantor_name }}</strong></td>
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ guarantor.phone }}</td>
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ guarantor.email or '-' }}</td>
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ guarantor.relationship or '-' }}</td>
-                            <td style="padding: 8px 12px;">
-                                <span class="badge 
-                                    {% if guarantor.status == 'accepted' %}success
-                                    {% elif guarantor.status == 'pending' %}warning
-                                    {% else %}danger{% endif %}">
-                                    {{ guarantor.status|upper }}
-                                </span>
-                            </td>
-                            <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ guarantor.accepted_at or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="7" style="text-align:center; padding:20px; color: rgba(255,255,255,0.3);">
-                                No guarantors registered
-                            </td>
-                        </tr>
-                    {% endif %}
+                    {% for guarantor in guarantors %}
+                    <tr>
+                        <td class="muted">{{ loop.index }}</td>
+                        <td class="strong">{{ guarantor.guarantor_name }}</td>
+                        <td class="muted">{{ guarantor.phone }}</td>
+                        <td class="muted">{{ guarantor.email or '—' }}</td>
+                        <td class="muted">{{ guarantor.relationship or '—' }}</td>
+                        <td>
+                            <span class="pill" style="
+                                {% if guarantor.status == 'accepted' %}
+                                    background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.2);
+                                {% elif guarantor.status == 'pending' %}
+                                    background: rgba(245,197,66,0.12); color: #f5c542; border: 1px solid rgba(245,197,66,0.2);
+                                {% else %}
+                                    background: rgba(255,107,107,0.12); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.2);
+                                {% endif %}
+                            ">{{ guarantor.status|upper }}</span>
+                        </td>
+                        <td class="muted">{{ guarantor.accepted_at or '—' }}</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-handshake-slash"></i>
+            <div class="empty-state-title">Not Required</div>
+            <div class="empty-state-sub">This loan does not require guarantors</div>
+        </div>
+        {% endif %}
     </div>
 
-    <!-- Repayments Section (if any) -->
+    {# ============ REPAYMENTS ============ #}
     {% if repayments %}
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 20px; margin-top: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 16px;">
-            <i class="fas fa-undo-alt" style="color: #f5c542;"></i> Repayment History
+    <div class="detail-card" style="margin-top: 20px;">
+        <div class="detail-card-head">
+            <div class="detail-card-icon" style="background: rgba(74,222,128,0.08); color: #4ade80;">
+                <i class="fas fa-undo-alt"></i>
+            </div>
+            <div style="flex: 1;">
+                <div class="detail-card-title">Repayment History</div>
+                <div class="detail-card-sub">{{ repayments|length }} payment{{ 's' if repayments|length != 1 else '' }} recorded</div>
+            </div>
+            <div class="total-paid-badge">
+                <span class="total-paid-label">Total Paid</span>
+                <span class="total-paid-value">UGX {{ "{:,.0f}".format(total_paid) }}</span>
+            </div>
         </div>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+
+        <div class="table-wrap">
+            <table class="nice-table">
                 <thead>
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">#</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Date</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Amount</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Method</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Reference</th>
-                        <th style="padding: 8px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 400;">Status</th>
+                    <tr>
+                        <th style="width: 44px;">#</th>
+                        <th>Date</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for repayment in repayments %}
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
-                        <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
-                        <td style="padding: 8px 12px; color: rgba(255,255,255,0.7);">{{ repayment.payment_date }}</td>
-                        <td style="padding: 8px 12px; color: #4ade80;">UGX {{ "{:,.0f}".format(repayment.amount) }}</td>
-                        <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ repayment.payment_method or 'N/A' }}</td>
-                        <td style="padding: 8px 12px; color: rgba(255,255,255,0.5);">{{ repayment.transaction_ref or '-' }}</td>
-                        <td style="padding: 8px 12px;"><span class="badge success">{{ repayment.status|upper }}</span></td>
+                    <tr>
+                        <td class="muted">{{ loop.index }}</td>
+                        <td class="muted">{{ repayment.payment_date }}</td>
+                        <td class="strong" style="text-align: right; color: #4ade80;">
+                            UGX {{ "{:,.0f}".format(repayment.amount) }}
+                        </td>
+                        <td class="muted">{{ repayment.payment_method or 'N/A' }}</td>
+                        <td class="muted mono">{{ repayment.transaction_ref or '—' }}</td>
+                        <td>
+                            <span class="pill" style="background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.2);">
+                                {{ repayment.status|upper }}
+                            </span>
+                        </td>
                     </tr>
                     {% endfor %}
-                    <tr style="border-top: 2px solid rgba(255,255,255,0.08);">
-                        <td colspan="2" style="text-align:right; font-weight:600; color: rgba(255,255,255,0.5);">Total Paid:</td>
-                        <td style="color: #4ade80; font-weight:700;">UGX {{ "{:,.0f}".format(total_paid) }}</td>
-                        <td colspan="3"></td>
-                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
     {% endif %}
 
-    <!-- Timeline -->
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 20px; margin-top: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 16px;">
-            <i class="fas fa-history" style="color: #f5c542;"></i> Loan Timeline
+    {# ============ TIMELINE ============ #}
+    <div class="detail-card" style="margin-top: 20px;">
+        <div class="detail-card-head">
+            <div class="detail-card-icon" style="background: rgba(0,224,255,0.08); color: #00e0ff;">
+                <i class="fas fa-history"></i>
+            </div>
+            <div>
+                <div class="detail-card-title">Loan Timeline</div>
+                <div class="detail-card-sub">Chronological progress of this application</div>
+            </div>
         </div>
-        <div style="padding: 8px 0;">
-            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Applied</div>
-                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #f5c542;"></div>
-                    <div style="color: rgba(255,255,255,0.7);">{{ loan.application_date }}</div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Application submitted</div>
+
+        <div class="timeline">
+            <!-- Applied -->
+            <div class="timeline-item">
+                <div class="timeline-dot" style="background: #f5c542; box-shadow: 0 0 0 4px rgba(245,197,66,0.12);"></div>
+                <div class="timeline-content">
+                    <div class="timeline-label">Applied</div>
+                    <div class="timeline-date">{{ loan.application_date }}</div>
+                    <div class="timeline-desc">Application submitted by member</div>
                 </div>
             </div>
+
             {% if loan.approved_date %}
-            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Approved</div>
-                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #00e0ff;"></div>
-                    <div style="color: rgba(255,255,255,0.7);">{{ loan.approved_date }}</div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Approved by Treasurer</div>
+            <div class="timeline-item">
+                <div class="timeline-dot" style="background: #00e0ff; box-shadow: 0 0 0 4px rgba(0,224,255,0.12);"></div>
+                <div class="timeline-content">
+                    <div class="timeline-label">Approved</div>
+                    <div class="timeline-date">{{ loan.approved_date }}</div>
+                    <div class="timeline-desc">Approved by Treasurer</div>
                 </div>
             </div>
             {% endif %}
+
             {% if loan.disbursed_date %}
-            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Disbursed</div>
-                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80;"></div>
-                    <div style="color: rgba(255,255,255,0.7);">{{ loan.disbursed_date }}</div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Loan disbursed to member</div>
+            <div class="timeline-item">
+                <div class="timeline-dot" style="background: #4ade80; box-shadow: 0 0 0 4px rgba(74,222,128,0.12);"></div>
+                <div class="timeline-content">
+                    <div class="timeline-label">Disbursed</div>
+                    <div class="timeline-date">{{ loan.disbursed_date }}</div>
+                    <div class="timeline-desc">Funds released to member</div>
                 </div>
             </div>
             {% endif %}
+
             {% if loan.completed_date %}
-            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Completed</div>
-                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80;"></div>
-                    <div style="color: rgba(255,255,255,0.7);">{{ loan.completed_date }}</div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Loan fully repaid</div>
+            <div class="timeline-item">
+                <div class="timeline-dot" style="background: #4ade80; box-shadow: 0 0 0 4px rgba(74,222,128,0.12);"></div>
+                <div class="timeline-content">
+                    <div class="timeline-label">Completed</div>
+                    <div class="timeline-date">{{ loan.completed_date }}</div>
+                    <div class="timeline-desc">Loan fully repaid</div>
                 </div>
             </div>
             {% endif %}
+
             {% if loan.rejected_date %}
-            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-                <div style="width: 120px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">Rejected</div>
-                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff6b6b;"></div>
-                    <div style="color: rgba(255,255,255,0.7);">{{ loan.rejected_date }}</div>
-                    <div style="color: #ff6b6b; font-size: 0.8rem;">Loan rejected</div>
+            <div class="timeline-item">
+                <div class="timeline-dot" style="background: #ff6b6b; box-shadow: 0 0 0 4px rgba(255,107,107,0.12);"></div>
+                <div class="timeline-content">
+                    <div class="timeline-label" style="color: #ff6b6b;">Rejected</div>
+                    <div class="timeline-date">{{ loan.rejected_date }}</div>
+                    <div class="timeline-desc">Application was rejected</div>
                 </div>
             </div>
             {% endif %}
         </div>
     </div>
+
 </div>
 
 <style>
+    /* ============================================
+       LOAN DETAIL PAGE — POLISHED REDESIGN
+       ============================================ */
+    .loan-detail-wrap {
+        padding: 24px 32px 56px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* ---- Buttons ---- */
+    .btn-success {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: rgba(74,222,128,0.1);
+        color: #4ade80;
+        border: 1px solid rgba(74,222,128,0.22);
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+    .btn-success:hover {
+        background: rgba(74,222,128,0.18);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(74,222,128,0.18);
+    }
     .btn-danger {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 10px 20px;
-        background: rgba(255, 107, 107, 0.12);
+        background: rgba(255,107,107,0.1);
         color: #ff6b6b;
-        border: 1px solid rgba(255, 107, 107, 0.15);
+        border: 1px solid rgba(255,107,107,0.22);
         border-radius: 10px;
         font-weight: 500;
         font-size: 0.85rem;
         cursor: pointer;
-        text-decoration: none;
-        transition: all 0.3s ease;
+        transition: all 0.25s ease;
     }
     .btn-danger:hover {
-        background: rgba(255, 107, 107, 0.2);
+        background: rgba(255,107,107,0.18);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(255,107,107,0.18);
+    }
+
+    /* ---- Hero Banner ---- */
+    .hero-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 24px 28px;
+        border-radius: 18px;
+        border: 1px solid transparent;
+        margin-bottom: 24px;
+        backdrop-filter: blur(12px);
+        transition: all 0.3s ease;
+    }
+    .hero-left {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-width: 0;
+    }
+    .hero-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    .hero-label {
+        font-size: 0.7rem;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+    .hero-status {
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .hero-hint {
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.35);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+    .hero-sub {
+        font-size: 0.82rem;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .hero-sub i { font-size: 0.75rem; }
+    .hero-right {
+        text-align: right;
+        flex-shrink: 0;
+    }
+    .hero-date-label {
+        font-size: 0.7rem;
+        color: rgba(255,255,255,0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 5px;
+    }
+    .hero-date {
+        font-weight: 600;
+        color: rgba(255,255,255,0.9);
+        font-size: 1rem;
+        font-family: 'SF Mono', Menlo, monospace;
+    }
+
+    /* ---- Metrics ---- */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .metric-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        transition: all 0.25s ease;
+    }
+    .metric-card:hover {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.1);
         transform: translateY(-2px);
     }
-    .badge {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 20px;
+    .metric-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+    }
+    .metric-info { min-width: 0; }
+    .metric-label {
+        font-size: 0.68rem;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .metric-value {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: rgba(255,255,255,0.9);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ---- Two Column ---- */
+    .two-col-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    @media (max-width: 900px) {
+        .two-col-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ---- Detail Cards ---- */
+    .detail-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        padding: 22px 24px;
+        transition: border-color 0.25s ease;
+    }
+    .detail-card:hover {
+        border-color: rgba(255,255,255,0.09);
+    }
+    .detail-card-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .detail-card-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    .detail-card-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.9);
+    }
+    .detail-card-sub {
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.3);
+        margin-top: 3px;
+    }
+
+    /* ---- Detail Grid ---- */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 20px;
+    }
+    .detail-item.full { grid-column: 1 / -1; }
+    .detail-item-label {
         font-size: 0.7rem;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 5px;
+    }
+    .detail-item-value {
+        font-size: 0.88rem;
+        color: rgba(255,255,255,0.85);
+        font-weight: 500;
+        word-break: break-word;
+    }
+    .detail-item-value.mono { font-family: 'SF Mono', Menlo, monospace; }
+    .detail-item-value.purpose {
+        background: rgba(255,255,255,0.025);
+        padding: 12px 14px;
+        border-radius: 10px;
+        color: rgba(255,255,255,0.7);
+        font-weight: 400;
+        line-height: 1.55;
+        border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* ---- Member Hero ---- */
+    .member-hero {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: rgba(255,255,255,0.02);
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.04);
+    }
+    .member-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f5c542, #eab308);
+        color: #0a0a14;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+        box-shadow: 0 6px 20px rgba(245,197,66,0.2);
+    }
+    .member-hero-name {
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: #fff;
+    }
+    .member-hero-sacco {
+        font-size: 0.78rem;
+        color: #f5c542;
+        font-family: 'SF Mono', Menlo, monospace;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .member-hero-sacco i { font-size: 0.7rem; opacity: 0.6; }
+
+    /* ---- Savings Check ---- */
+    .savings-check {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    .savings-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 0.82rem;
+    }
+    .savings-key { color: rgba(255,255,255,0.4); }
+    .savings-val { font-family: 'SF Mono', Menlo, monospace; }
+    .savings-status {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255,255,255,0.04);
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .savings-status.ok { color: #4ade80; }
+    .savings-status.fail { color: #ff6b6b; }
+
+    /* ---- Pills ---- */
+    .pill {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    /* ---- Tables ---- */
+    .table-wrap {
+        overflow-x: auto;
+        border-radius: 10px;
+    }
+    .nice-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .nice-table th {
+        text-align: left;
+        padding: 12px 14px;
+        color: rgba(255,255,255,0.35);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: rgba(255,255,255,0.01);
+    }
+    .nice-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.7);
+    }
+    .nice-table tbody tr {
+        transition: background 0.15s ease;
+    }
+    .nice-table tbody tr:hover {
+        background: rgba(255,255,255,0.02);
+    }
+    .nice-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .nice-table .muted { color: rgba(255,255,255,0.45); }
+    .nice-table .strong { color: rgba(255,255,255,0.9); font-weight: 500; }
+    .nice-table .mono { font-family: 'SF Mono', Menlo, monospace; font-size: 0.8rem; }
+
+    /* ---- Total Paid Badge ---- */
+    .total-paid-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding: 8px 16px;
+        background: rgba(74,222,128,0.08);
+        border: 1px solid rgba(74,222,128,0.18);
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+    .total-paid-label {
+        font-size: 0.62rem;
+        color: rgba(74,222,128,0.7);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
         font-weight: 600;
     }
-    .badge.success { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
-    .badge.warning { background: rgba(245, 197, 66, 0.12); color: #f5c542; }
-    .badge.info { background: rgba(0, 224, 255, 0.12); color: #00e0ff; }
-    .badge.danger { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+    .total-paid-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #4ade80;
+        font-family: 'SF Mono', Menlo, monospace;
+        margin-top: 2px;
+    }
+
+    /* ---- Empty State ---- */
+    .empty-state {
+        text-align: center;
+        padding: 48px 20px;
+        color: rgba(255,255,255,0.3);
+    }
+    .empty-state i {
+        font-size: 2.4rem;
+        display: block;
+        margin-bottom: 14px;
+        opacity: 0.35;
+        color: #a78bfa;
+    }
+    .empty-state-title {
+        font-size: 1rem;
+        color: rgba(255,255,255,0.6);
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    .empty-state-sub {
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.3);
+    }
+
+    /* ---- Timeline ---- */
+    .timeline {
+        position: relative;
+        padding-left: 10px;
+    }
+    .timeline-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+        padding: 14px 0;
+        position: relative;
+    }
+    .timeline-item:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 34px;
+        bottom: -6px;
+        width: 2px;
+        background: rgba(255,255,255,0.05);
+    }
+    .timeline-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+        z-index: 1;
+    }
+    .timeline-content { flex: 1; }
+    .timeline-label {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.9);
+        margin-bottom: 3px;
+    }
+    .timeline-date {
+        font-size: 0.78rem;
+        color: rgba(255,255,255,0.55);
+        font-family: 'SF Mono', Menlo, monospace;
+    }
+    .timeline-desc {
+        font-size: 0.73rem;
+        color: rgba(255,255,255,0.3);
+        margin-top: 4px;
+    }
 </style>
 
 <script>
@@ -397,12 +957,12 @@
             return;
         }
         if (confirm('✅ FINAL APPROVAL: This will approve the loan for disbursement.\n\nThe member and treasurer will be notified.')) {
-            const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan(${loanId})"]`);
+            const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan('${loanId}')"]`);
             btns.forEach(btn => {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 btn.disabled = true;
             });
-            
+
             fetch('/admin/loan/approve/' + loanId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -442,12 +1002,12 @@
             return;
         }
         if (confirm('❌ FINAL REJECT: This will permanently reject this loan application.\n\nReason: ' + reason)) {
-            const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan(${loanId})"]`);
+            const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan('${loanId}')"]`);
             btns.forEach(btn => {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 btn.disabled = true;
             });
-            
+
             fetch('/admin/loan/approve/' + loanId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
