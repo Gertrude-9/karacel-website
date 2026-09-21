@@ -2,10 +2,6 @@ from flask import Flask, jsonify, render_template, request, redirect, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
-import secrets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import re
 import os
@@ -136,7 +132,11 @@ def create_database():
         'loan_type': 'TEXT DEFAULT "standard"',
         'disbursed_amount': 'REAL DEFAULT 0',
         'total_fees_paid': 'REAL DEFAULT 0',
-        'total_penalties': 'REAL DEFAULT 0'
+        'total_penalties': 'REAL DEFAULT 0',
+        # ✅ NEW: Simple interest tracking
+        'accrued_interest': 'REAL DEFAULT 0',
+        'last_interest_applied_date': 'TEXT',
+        'total_interest_charged': 'REAL DEFAULT 0'
     }
     
     for col_name, col_type in loans_columns_to_add.items():
@@ -146,6 +146,28 @@ def create_database():
                 print(f"✅ Added column to loans: {col_name}")
             except Exception as e:
                 print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # ============================================================
+    # BACKFILL: Set last_interest_applied_date for existing loans
+    # ============================================================
+    try:
+        cursor.execute("""
+            UPDATE loans
+            SET last_interest_applied_date = COALESCE(
+                disbursed_date,
+                approved_date,
+                loan_start_date,
+                application_date
+            )
+            WHERE last_interest_applied_date IS NULL
+            AND status IN ('disbursed', 'active', 'approved')
+        """)
+        rows_updated = cursor.rowcount
+        if rows_updated > 0:
+            print(f"✅ Backfilled last_interest_applied_date for {rows_updated} existing loan(s)")
+    except Exception as e:
+        print(f"⚠️ Backfill warning: {e}")
+
     
     # ============================================================
     # CHECK NOTIFICATIONS TABLE FOR MISSING COLUMNS
@@ -259,6 +281,9 @@ def create_database():
         disbursed_amount REAL DEFAULT 0,
         total_fees_paid REAL DEFAULT 0,
         total_penalties REAL DEFAULT 0,
+        accrued_interest REAL DEFAULT 0,
+        last_interest_applied_date TEXT,
+        total_interest_charged REAL DEFAULT 0,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
     """)
@@ -3205,6 +3230,31 @@ def member_dashboard():
             AND is_read = 0
         """, (user_id,)).fetchone()['count']
 
+                # ============================================================
+        # SAVINGS BY TYPE (KAI, KS, KAC, Registration)
+        # ============================================================
+        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings:
+            kai_share_price  = settings['kai_share_price']  or 100000
+            ks_share_price   = settings['ks_share_price']   or 10000
+            kac_annual_fee   = settings['kac_annual_fee']   or 100000
+            registration_fee = settings['registration_fee'] or 20000
+        else:
+            kai_share_price  = 100000
+            ks_share_price   = 10000
+            kac_annual_fee   = 100000
+            registration_fee = 20000
+
+        kai_shares   = member['kai_shares'] or 0
+        ks_shares    = member['ks_shares'] or 0
+        kac_paid     = member['kac_paid'] or 0
+        reg_fee_paid = member['registration_fee_paid'] or 0
+
+        kai_amount = kai_shares * kai_share_price
+        ks_amount  = ks_shares  * ks_share_price
+        kac_amount = kac_annual_fee if kac_paid else 0
+        reg_amount = registration_fee if reg_fee_paid else 0
+
         db.close()
 
         # Check if user is staff (has a staff role)
@@ -3252,6 +3302,19 @@ def member_dashboard():
             role_display=role_display,
             role_dashboard_url=role_dashboard_url,
             staff_view=is_staff_view,
+                        # Savings by type
+            kai_shares=kai_shares,
+            ks_shares=ks_shares,
+            kac_paid=kac_paid,
+            reg_fee_paid=reg_fee_paid,
+            kai_amount=kai_amount,
+            ks_amount=ks_amount,
+            kac_amount=kac_amount,
+            reg_amount=reg_amount,
+            kai_share_price=kai_share_price,
+            ks_share_price=ks_share_price,
+            kac_annual_fee=kac_annual_fee,
+            registration_fee=registration_fee,
             now=datetime.now()
         )
 

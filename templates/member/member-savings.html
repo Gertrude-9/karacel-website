@@ -11,37 +11,865 @@
 {% set savings_balance = savings_balance|default(0) %}
 {% set total_savings = total_savings|default(0) %}
 
+<style>
+/* ============================================
+   KARACEL SAVINGS — PROFESSIONAL REDESIGN
+   ============================================ */
 
-    <!-- Deposits Table -->
-    <div class="deposits-table">
-        <div class="table-header">
-            <div class="table-title-section">
-                <div class="table-title">
-                    <i class="fas fa-history"></i> Deposit History
+:root {
+    --sv-bg: #0a1a2b;
+    --sv-card: rgba(255, 255, 255, 0.03);
+    --sv-card-hover: rgba(255, 255, 255, 0.05);
+    --sv-border: rgba(255, 255, 255, 0.08);
+    --sv-border-strong: rgba(255, 255, 255, 0.14);
+    --sv-gold: #c9a961;
+    --sv-gold-bright: #e0bf75;
+    --sv-gold-soft: rgba(201, 169, 97, 0.12);
+    --sv-text: #e8e2d4;
+    --sv-text-muted: rgba(255, 255, 255, 0.45);
+    --sv-text-dim: rgba(255, 255, 255, 0.28);
+    --sv-blue: #00e0ff;
+    --sv-green: #4ade80;
+    --sv-red: #ff6b6b;
+    --sv-pink: #ff8fb1;
+    --sv-yellow: #f5c542;
+    --sv-purple: #a78bfa;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: all 0.25s ease;
+}
+
+.savings-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
+
+/* ====== SUMMARY STRIP ====== */
+.savings-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.savings-summary-card {
+    padding: 20px 22px;
+    background: var(--sv-card);
+    border: 1px solid var(--sv-border);
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.savings-summary-card:hover {
+    border-color: var(--sv-border-strong);
+    background: var(--sv-card-hover);
+    transform: translateY(-2px);
+}
+
+.savings-summary-card::before {
+    content: "";
+    position: absolute;
+    top: -60%;
+    right: -20%;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(201, 169, 97, 0.1), transparent 70%);
+    pointer-events: none;
+}
+
+.savings-summary-card.accent-gold::before {
+    background: radial-gradient(circle, rgba(201, 169, 97, 0.15), transparent 70%);
+}
+
+.savings-summary-card.accent-blue::before {
+    background: radial-gradient(circle, rgba(0, 224, 255, 0.12), transparent 70%);
+}
+
+.savings-summary-card.accent-purple::before {
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.12), transparent 70%);
+}
+
+.savings-summary-card .ss-label {
+    font-size: 0.7rem;
+    color: var(--sv-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    z-index: 2;
+}
+
+.savings-summary-card .ss-label i {
+    font-size: 0.75rem;
+}
+
+.savings-summary-card .ss-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sv-text);
+    letter-spacing: -0.4px;
+    line-height: 1.1;
+    position: relative;
+    z-index: 2;
+}
+
+.savings-summary-card .ss-value.gold   { color: var(--sv-gold-bright); }
+.savings-summary-card .ss-value.blue   { color: var(--sv-blue); }
+.savings-summary-card .ss-value.purple { color: var(--sv-purple); }
+
+.savings-summary-card .ss-sub {
+    font-size: 0.72rem;
+    color: var(--sv-text-muted);
+    margin-top: 6px;
+    position: relative;
+    z-index: 2;
+}
+
+/* ====== SAVINGS BREAKDOWN ====== */
+.savings-breakdown-panel {
+    background: var(--sv-card);
+    border: 1px solid var(--sv-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 22px;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.savings-breakdown-panel:hover {
+    border-color: var(--sv-border-strong);
+}
+
+.savings-breakdown-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--sv-border);
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.savings-breakdown-header .icon-box {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: var(--sv-gold-soft);
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    color: var(--sv-gold-bright);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.savings-breakdown-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--sv-text);
+    letter-spacing: -0.2px;
+    margin: 0;
+    flex: 1;
+}
+
+.savings-breakdown-header .total-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(201, 169, 97, 0.1);
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    color: var(--sv-gold-bright);
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.savings-breakdown-body {
+    padding: 8px 0;
+}
+
+.savings-type-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.2s ease;
+}
+
+.savings-type-row:last-child {
+    border-bottom: none;
+}
+
+.savings-type-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.savings-type-row .str-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.type-badge-new {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.type-info-new {
+    min-width: 0;
+}
+
+.type-name-new {
+    color: var(--sv-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.type-meta-new {
+    color: var(--sv-text-muted);
+    font-size: 0.74rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.savings-type-row .str-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.row-amount-new {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+}
+
+.status-pill-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.status-pill-new.active {
+    color: var(--sv-green);
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.status-pill-new.inactive {
+    color: var(--sv-text-dim);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--sv-border);
+}
+
+/* ====== DEPOSITS TABLE ====== */
+.deposits-panel {
+    background: var(--sv-card);
+    border: 1px solid var(--sv-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.deposits-panel:hover {
+    border-color: var(--sv-border-strong);
+}
+
+.deposits-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--sv-border);
+    background: rgba(255, 255, 255, 0.015);
+    flex-wrap: wrap;
+}
+
+.deposits-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.deposits-header-left .icon-box {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: rgba(0, 224, 255, 0.1);
+    border: 1px solid rgba(0, 224, 255, 0.25);
+    color: var(--sv-blue);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.deposits-header-left h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--sv-text);
+    letter-spacing: -0.2px;
+    margin: 0;
+}
+
+.deposits-header-left .subtext {
+    font-size: 0.74rem;
+    color: var(--sv-text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Search */
+.sv-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.sv-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.sv-search-box i.search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--sv-text-dim);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.sv-search-box input {
+    width: 260px;
+    padding: 10px 36px 10px 38px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--sv-border);
+    border-radius: 100px;
+    color: var(--sv-text);
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition);
+    outline: none;
+}
+
+.sv-search-box input:focus {
+    border-color: var(--sv-gold);
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.08);
+}
+
+.sv-search-box input::placeholder {
+    color: var(--sv-text-dim);
+}
+
+.sv-search-box .search-clear {
+    position: absolute;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: var(--sv-text-muted);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: var(--transition);
+}
+
+.sv-search-box .search-clear:hover {
+    background: rgba(255, 107, 107, 0.2);
+    color: var(--sv-red);
+}
+
+.sv-result-count {
+    font-size: 0.72rem;
+    color: var(--sv-text-muted);
+    white-space: nowrap;
+    display: none;
+}
+
+/* Table */
+.sv-table-wrapper {
+    overflow-x: auto;
+}
+
+.sv-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sv-table thead th {
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--sv-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--sv-border);
+    white-space: nowrap;
+}
+
+.sv-table thead th:first-child {
+    padding-left: 24px;
+}
+
+.sv-table thead th:last-child {
+    padding-right: 24px;
+}
+
+.sv-table tbody td {
+    padding: 16px 20px;
+    font-size: 0.88rem;
+    color: var(--sv-text);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: middle;
+}
+
+.sv-table tbody td:first-child {
+    padding-left: 24px;
+    color: var(--sv-text-dim);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.sv-table tbody td:last-child {
+    padding-right: 24px;
+}
+
+.sv-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sv-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.sv-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sv-table tbody td strong {
+    color: var(--sv-green);
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: -0.2px;
+}
+
+/* Badges */
+.sv-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.sv-badge.type-deposit {
+    color: var(--sv-green);
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.sv-badge.type-initial {
+    color: var(--sv-purple);
+    background: rgba(167, 139, 250, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+}
+
+.sv-badge.method {
+    color: var(--sv-blue);
+    background: rgba(0, 224, 255, 0.08);
+    border: 1px solid rgba(0, 224, 255, 0.18);
+}
+
+.sv-receipt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--sv-green);
+    font-weight: 600;
+}
+
+.sv-receipt i {
+    font-size: 0.75rem;
+}
+
+.sv-empty-state {
+    padding: 60px 24px !important;
+    text-align: center;
+}
+
+.sv-empty-state .empty-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    background: rgba(201, 169, 97, 0.06);
+    border: 1px solid var(--sv-gold-soft);
+    color: var(--sv-gold-bright);
+    font-size: 1.8rem;
+}
+
+.sv-empty-state h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sv-text);
+    margin-bottom: 6px;
+}
+
+.sv-empty-state p {
+    font-size: 0.85rem;
+    color: var(--sv-text-muted);
+    line-height: 1.6;
+    max-width: 380px;
+    margin: 0 auto;
+}
+
+/* Footer */
+.sv-table-footer {
+    padding: 18px 24px;
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--sv-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.sv-footer-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+}
+
+.sv-footer-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sv-footer-stat .fs-label {
+    font-size: 0.68rem;
+    color: var(--sv-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sv-footer-stat .fs-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sv-text);
+    letter-spacing: -0.3px;
+}
+
+.sv-footer-stat .fs-value.highlight {
+    color: var(--sv-gold-bright);
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 820px) {
+    .savings-summary-strip {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .deposits-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sv-search-wrapper {
+        width: 100%;
+    }
+
+    .sv-search-box {
+        flex: 1;
+        width: 100%;
+    }
+
+    .sv-search-box input {
+        width: 100%;
+    }
+}
+
+@media (max-width: 620px) {
+    .sv-table thead th {
+        padding: 12px 14px;
+        font-size: 0.65rem;
+    }
+
+    .sv-table tbody td {
+        padding: 14px 14px;
+        font-size: 0.82rem;
+    }
+
+    .sv-table thead th:first-child,
+    .sv-table tbody td:first-child {
+        padding-left: 16px;
+    }
+
+    .sv-table thead th:last-child,
+    .sv-table tbody td:last-child {
+        padding-right: 16px;
+    }
+
+    .type-badge-new {
+        width: 40px;
+        height: 40px;
+        font-size: 0.74rem;
+    }
+
+    .row-amount-new {
+        font-size: 0.95rem;
+    }
+
+    .savings-breakdown-header,
+    .deposits-header {
+        padding: 16px 18px;
+    }
+
+    .savings-type-row {
+        padding: 14px 18px;
+    }
+
+    .sv-table-footer {
+        padding: 16px 18px;
+    }
+
+    .sv-footer-stats {
+        gap: 24px;
+    }
+}
+</style>
+
+<div class="savings-page">
+
+    <!-- ========== SUMMARY STRIP ========== -->
+    <div class="savings-summary-strip">
+        <div class="savings-summary-card accent-gold">
+            <div class="ss-label"><i class="fas fa-coins"></i> Current Balance</div>
+            <div class="ss-value gold">UGX {{ "{:,.0f}".format(savings_balance) if savings_balance else '0' }}</div>
+            <div class="ss-sub">Total in your savings account</div>
+        </div>
+        <div class="savings-summary-card accent-blue">
+            <div class="ss-label"><i class="fas fa-history"></i> Total Deposits</div>
+            <div class="ss-value blue">{{ savings_deposits|length if savings_deposits else 0 }}</div>
+            <div class="ss-sub">Transactions recorded</div>
+        </div>
+        <div class="savings-summary-card accent-purple">
+            <div class="ss-label"><i class="fas fa-calendar-alt"></i> Latest Activity</div>
+            <div class="ss-value purple" style="font-size: 1.05rem;">
+                {% if savings_deposits and savings_deposits|length > 0 %}
+                    {{ savings_deposits[0].deposit_date }}
+                {% else %}
+                    No activity
+                {% endif %}
+            </div>
+            <div class="ss-sub">Most recent deposit</div>
+        </div>
+    </div>
+
+    <!-- ========== SAVINGS BREAKDOWN ========== -->
+    <div class="savings-breakdown-panel">
+        <div class="savings-breakdown-header">
+            <div class="icon-box"><i class="fas fa-layer-group"></i></div>
+            <h3>Savings Breakdown</h3>
+            <span class="total-pill">
+                Total: UGX {{ "{:,.0f}".format(savings_balance) if savings_balance else '0' }}
+            </span>
+        </div>
+        <div class="savings-breakdown-body">
+
+            <!-- KAI -->
+            <div class="savings-type-row">
+                <div class="str-left">
+                    <div class="type-badge-new" style="background: linear-gradient(135deg, #e0bf75, #c9a961); color: #0a1a2b;">KAI</div>
+                    <div class="type-info-new">
+                        <div class="type-name-new">Karacel Advanced Investment</div>
+                        <div class="type-meta-new">
+                            {{ kai_shares or 0 }} share{{ 's' if (kai_shares or 0) != 1 else '' }}
+                            × UGX {{ "{:,.0f}".format(kai_share_price or 100000) }}
+                        </div>
+                    </div>
                 </div>
-                <div class="table-subtitle">
-                    <span class="info-badge">
-                        <i class="fas fa-info-circle"></i> 
-                        Total Deposits: {{ savings_deposits|length if savings_deposits else 0 }}
-                    </span>
+                <div class="str-right">
+                    <div class="row-amount-new" style="color: #e0bf75;">
+                        UGX {{ "{:,.0f}".format(kai_amount or 0) }}
+                    </div>
+                    {% if kai_shares and kai_shares > 0 %}
+                        <span class="status-pill-new active"><i class="fas fa-check-circle"></i> Active</span>
+                    {% else %}
+                        <span class="status-pill-new inactive">Not subscribed</span>
+                    {% endif %}
                 </div>
             </div>
-            
-            <!-- Search Bar -->
-            <div class="search-wrapper">
-                <div class="search-box">
+
+            <!-- KS -->
+            <div class="savings-type-row">
+                <div class="str-left">
+                    <div class="type-badge-new" style="background: linear-gradient(135deg, #00e0ff, #0088aa); color: #0a1a2b;">KS</div>
+                    <div class="type-info-new">
+                        <div class="type-name-new">Karacel Savings</div>
+                        <div class="type-meta-new">
+                            {{ ks_shares or 0 }} share{{ 's' if (ks_shares or 0) != 1 else '' }}
+                            × UGX {{ "{:,.0f}".format(ks_share_price or 10000) }}
+                        </div>
+                    </div>
+                </div>
+                <div class="str-right">
+                    <div class="row-amount-new" style="color: #00e0ff;">
+                        UGX {{ "{:,.0f}".format(ks_amount or 0) }}
+                    </div>
+                    {% if ks_shares and ks_shares > 0 %}
+                        <span class="status-pill-new active"><i class="fas fa-check-circle"></i> Active</span>
+                    {% else %}
+                        <span class="status-pill-new inactive">Not subscribed</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KAC -->
+            <div class="savings-type-row">
+                <div class="str-left">
+                    <div class="type-badge-new" style="background: linear-gradient(135deg, #ff8fb1, #cc5577); color: #0a1a2b;">KAC</div>
+                    <div class="type-info-new">
+                        <div class="type-name-new">Karacel Condolences</div>
+                        <div class="type-meta-new">
+                            Annual cover · UGX {{ "{:,.0f}".format(kac_annual_fee or 100000) }} / year
+                        </div>
+                    </div>
+                </div>
+                <div class="str-right">
+                    <div class="row-amount-new" style="color: #ff8fb1;">
+                        UGX {{ "{:,.0f}".format(kac_amount or 0) }}
+                    </div>
+                    {% if kac_paid %}
+                        <span class="status-pill-new active"><i class="fas fa-shield-alt"></i> Covered</span>
+                    {% else %}
+                        <span class="status-pill-new inactive">Not paid</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- REGISTRATION -->
+            <div class="savings-type-row">
+                <div class="str-left">
+                    <div class="type-badge-new" style="background: linear-gradient(135deg, #a78bfa, #7c5cd6); color: #0a1a2b;">REG</div>
+                    <div class="type-info-new">
+                        <div class="type-name-new">Registration Fee</div>
+                        <div class="type-meta-new">
+                            One-time · UGX {{ "{:,.0f}".format(registration_fee or 20000) }}
+                        </div>
+                    </div>
+                </div>
+                <div class="str-right">
+                    <div class="row-amount-new" style="color: #a78bfa;">
+                        UGX {{ "{:,.0f}".format(reg_amount or 0) }}
+                    </div>
+                    {% if reg_fee_paid %}
+                        <span class="status-pill-new active"><i class="fas fa-check-circle"></i> Paid</span>
+                    {% else %}
+                        <span class="status-pill-new inactive">Not paid</span>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========== DEPOSITS TABLE ========== -->
+    <div class="deposits-panel">
+        <div class="deposits-header">
+            <div class="deposits-header-left">
+                <div class="icon-box"><i class="fas fa-history"></i></div>
+                <div>
+                    <h3>Deposit History</h3>
+                    <div class="subtext">
+                        <i class="fas fa-info-circle"></i>
+                        {{ savings_deposits|length if savings_deposits else 0 }} transaction{{ 's' if (savings_deposits|length if savings_deposits else 0) != 1 else '' }} recorded
+                    </div>
+                </div>
+            </div>
+
+            <div class="sv-search-wrapper">
+                <div class="sv-search-box">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Search by date, amount, method..." onkeyup="searchTable()">
-                    <button class="search-clear" id="clearSearch" onclick="clearSearch()" style="display: none;">
+                    <input type="text" id="searchInput" placeholder="Search deposits..." onkeyup="searchTable()">
+                    <button class="search-clear" id="clearSearch" onclick="clearSearch()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <span class="search-hint" id="resultCount"></span>
+                <span class="sv-result-count" id="resultCount"></span>
             </div>
         </div>
 
-        <div class="table-wrapper">
-            <table class="styled-table" id="savingsTable">
+        <div class="sv-table-wrapper">
+            <table class="sv-table" id="savingsTable">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -63,34 +891,33 @@
                                 <td><strong>{{ "{:,.0f}".format(deposit.amount) }}</strong></td>
                                 <td>
                                     {% if deposit.payment_method == 'registration' %}
-                                        <span class="type-badge initial-badge">Registration</span>
+                                        <span class="sv-badge type-initial"><i class="fas fa-flag"></i> Initial</span>
                                     {% else %}
-                                        <span class="type-badge deposit-badge">Deposit</span>
+                                        <span class="sv-badge type-deposit"><i class="fas fa-arrow-down"></i> Deposit</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge">{{ deposit.payment_method|capitalize if deposit.payment_method else 'Cash' }}</span>
+                                    <span class="sv-badge method">
+                                        {{ deposit.payment_method|capitalize if deposit.payment_method else 'Cash' }}
+                                    </span>
                                 </td>
                                 <td>
                                     {% if deposit.receipt_number %}
-                                        <span class="receipt-link" title="Receipt uploaded">
-                                            <i class="fas fa-paperclip" style="color: #2ed573;"></i> 
-                                            {{ deposit.receipt_number }}
+                                        <span class="sv-receipt" title="Receipt available">
+                                            <i class="fas fa-paperclip"></i> {{ deposit.receipt_number }}
                                         </span>
                                     {% else %}
-                                        <span style="color: rgba(255,255,255,0.2);">—</span>
+                                        <span style="color: rgba(255,255,255,0.15);">—</span>
                                     {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" class="empty-state">
-                                <i class="fas fa-piggy-bank" style="font-size: 2.5rem; color: rgba(255,255,255,0.1); display: block; margin-bottom: 12px;"></i>
-                                <h4 style="color: rgba(255,255,255,0.3); margin-bottom: 6px;">No Savings Deposits Yet</h4>
-                                <span style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.2);">
-                                    Your savings deposits will appear here once recorded
-                                </span>
+                            <td colspan="7" class="sv-empty-state">
+                                <div class="empty-icon"><i class="fas fa-piggy-bank"></i></div>
+                                <h4>No Savings Deposits Yet</h4>
+                                <p>Your savings deposits will appear here once recorded by the treasurer.</p>
                             </td>
                         </tr>
                     {% endif %}
@@ -98,20 +925,21 @@
             </table>
         </div>
 
-        <!-- Summary Footer -->
-        <div class="table-footer">
-            <div class="footer-stats">
-                <div class="footer-stat">
-                    <span class="stat-label">Total Deposits:</span>
-                    <span class="stat-value">{{ savings_deposits|length if savings_deposits else 0 }}</span>
+        <!-- Footer -->
+        <div class="sv-table-footer">
+            <div class="sv-footer-stats">
+                <div class="sv-footer-stat">
+                    <span class="fs-label">Total Deposits</span>
+                    <span class="fs-value">{{ savings_deposits|length if savings_deposits else 0 }}</span>
                 </div>
-                <div class="footer-stat">
-                    <span class="stat-label">Current Balance:</span>
-                    <span class="stat-value highlight">UGX {{ "{:,.0f}".format(savings_balance) if savings_balance else '0' }}</span>
+                <div class="sv-footer-stat">
+                    <span class="fs-label">Current Balance</span>
+                    <span class="fs-value highlight">UGX {{ "{:,.0f}".format(savings_balance) if savings_balance else '0' }}</span>
                 </div>
             </div>
         </div>
     </div>
+
 </div>
 
 <script>
@@ -122,21 +950,21 @@
         const rows = table.getElementsByTagName('tr');
         const clearBtn = document.getElementById('clearSearch');
         const resultCount = document.getElementById('resultCount');
-        
+
         let visibleCount = 0;
         let totalRows = 0;
 
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = row.getElementsByTagName('td');
-            
-            if (cells.length === 0 || row.classList.contains('empty-state') || cells[0].colSpan > 1) {
+
+            if (cells.length === 0 || row.classList.contains('sv-empty-state') || cells[0].colSpan > 1) {
                 continue;
             }
-            
+
             totalRows++;
             let found = false;
-            
+
             for (let j = 0; j < cells.length; j++) {
                 const cellText = cells[j].textContent.toLowerCase();
                 if (cellText.indexOf(filter) > -1) {
@@ -144,7 +972,7 @@
                     break;
                 }
             }
-            
+
             if (found || filter === '') {
                 row.style.display = '';
                 visibleCount++;
@@ -155,34 +983,29 @@
 
         if (filter.length > 0) {
             clearBtn.style.display = 'flex';
-            resultCount.textContent = `Showing ${visibleCount} of ${totalRows} deposits`;
+            resultCount.textContent = `Showing ${visibleCount} of ${totalRows}`;
             resultCount.style.display = 'inline';
         } else {
             clearBtn.style.display = 'none';
             resultCount.style.display = 'none';
         }
 
-        // No results message
-        if (visibleCount === 0 && filter.length > 0) {
-            let noResultRow = document.getElementById('noResultRow');
+        let noResultRow = document.getElementById('noResultRow');
+        if (visibleCount === 0 && filter.length > 0 && totalRows > 0) {
             if (!noResultRow) {
                 noResultRow = document.createElement('tr');
                 noResultRow.id = 'noResultRow';
                 noResultRow.innerHTML = `
-                    <td colspan="7" class="empty-state">
-                        <i class="fas fa-search" style="font-size: 2rem; color: rgba(255,255,255,0.1); display: block; margin-bottom: 12px;"></i>
-                        <h4 style="color: rgba(255,255,255,0.3); margin-bottom: 4px;">No matching records found</h4>
-                        <span style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.2);">Try adjusting your search term</span>
+                    <td colspan="7" class="sv-empty-state">
+                        <div class="empty-icon"><i class="fas fa-search"></i></div>
+                        <h4>No Matching Records</h4>
+                        <p>Try adjusting your search term or clear the search to see all deposits.</p>
                     </td>
                 `;
-                const tbody = document.getElementById('tableBody');
-                tbody.appendChild(noResultRow);
+                document.getElementById('tableBody').appendChild(noResultRow);
             }
         } else {
-            const noResultRow = document.getElementById('noResultRow');
-            if (noResultRow) {
-                noResultRow.remove();
-            }
+            if (noResultRow) noResultRow.remove();
         }
     }
 
@@ -192,20 +1015,15 @@
         searchTable();
     }
 
-    // Debounce for better performance
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(searchTable, 300);
     });
 
-    // Search on Enter key
     document.getElementById('searchInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            searchTable();
-        }
+        if (e.key === 'Enter') searchTable();
     });
 </script>
-
 
 {% endblock %}

@@ -2,371 +2,1339 @@
 
 {% block title %}Karacel SACCO | Apply for a Loan{% endblock %}
 
-{% block page_title %}Loan Application Form{% endblock %}
-{% block page_subtitle %}Complete this form to apply for a loan{% endblock %}
+{% block page_title %}Loan Application{% endblock %}
+{% block page_subtitle %}Complete the form below to request a loan{% endblock %}
 
 {% block content %}
 
-<!-- Loan Application Container -->
-<div id="apply-loan-panel" class="content-panel active">
-    <div class="loan-application-wrapper">
-        
-        <!-- Header with Logo and Reference -->
-        <div class="application-header">
-            <div class="header-left">
-                <div class="organization-name">Karacel SACCO</div>
-                <div class="organization-tagline">Empowering Members Through Financial Solutions</div>
+<style>
+/* ============================================
+   KARACEL LOAN APPLICATION — PROFESSIONAL REDESIGN
+   ============================================ */
+
+:root {
+    --app-bg: #0a1a2b;
+    --app-card: rgba(255, 255, 255, 0.03);
+    --app-card-hover: rgba(255, 255, 255, 0.05);
+    --app-border: rgba(255, 255, 255, 0.08);
+    --app-border-strong: rgba(255, 255, 255, 0.14);
+    --app-gold: #c9a961;
+    --app-gold-bright: #e0bf75;
+    --app-gold-soft: rgba(201, 169, 97, 0.12);
+    --app-text: #e8e2d4;
+    --app-text-muted: rgba(255, 255, 255, 0.45);
+    --app-text-dim: rgba(255, 255, 255, 0.28);
+    --app-blue: #00e0ff;
+    --app-green: #4ade80;
+    --app-red: #ff6b6b;
+    --app-pink: #ff8fb1;
+    --app-yellow: #f5c542;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: all 0.25s ease;
+}
+
+.loan-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
+
+/* ====== HEADER BAR ====== */
+.loan-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 26px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, rgba(201, 169, 97, 0.08), rgba(201, 169, 97, 0.02));
+    border: 1px solid var(--app-gold-soft);
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.loan-header-bar::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(201, 169, 97, 0.1), transparent 70%);
+    pointer-events: none;
+}
+
+.loan-header-left {
+    position: relative;
+    z-index: 2;
+}
+
+.loan-header-left .brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--app-gold-bright);
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+}
+
+.loan-header-left .subtitle {
+    font-size: 0.78rem;
+    color: var(--app-text-muted);
+    letter-spacing: 0.3px;
+}
+
+.loan-header-right {
+    position: relative;
+    z-index: 2;
+    text-align: right;
+}
+
+.loan-header-right .label {
+    font-size: 0.68rem;
+    color: var(--app-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.loan-header-right .value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--app-gold-bright);
+}
+
+/* ====== SECTION CARD ====== */
+.loan-section {
+    background: var(--app-card);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 18px;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.loan-section:hover {
+    border-color: var(--app-border-strong);
+}
+
+.loan-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--app-border);
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.loan-section-num {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--app-gold-soft);
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    color: var(--app-gold-bright);
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.loan-section-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--app-text);
+    letter-spacing: -0.2px;
+    margin: 0;
+    flex: 1;
+}
+
+.loan-section-header .section-hint {
+    font-size: 0.72rem;
+    color: var(--app-text-dim);
+    letter-spacing: 0.3px;
+}
+
+.loan-section-body {
+    padding: 24px 26px;
+}
+
+/* ====== FORM FIELDS ====== */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.form-grid.cols-1 {
+    grid-template-columns: 1fr;
+}
+
+.form-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--app-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.field label .required {
+    color: var(--app-gold-bright);
+    font-weight: 700;
+}
+
+.field label .optional {
+    color: var(--app-text-dim);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.7rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    padding: 13px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-sm);
+    color: var(--app-text);
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition);
+    outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    border-color: var(--app-gold);
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.08);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--app-text-dim);
+}
+
+.field input:disabled {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--app-text-muted);
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.04);
+}
+
+.field select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+}
+
+.field select option {
+    background: #0a1a2b;
+    color: var(--app-text);
+}
+
+.field textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.field-hint {
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: var(--app-text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 1.4;
+}
+
+/* ====== STATIC VALUE BOXES ====== */
+.static-field {
+    padding: 13px 16px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--app-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.static-field.green { color: var(--app-green); border-color: rgba(74, 222, 128, 0.15); }
+.static-field.gold  { color: var(--app-gold-bright); border-color: rgba(201, 169, 97, 0.2); }
+
+/* ====== TIER PREVIEW ====== */
+.tier-preview {
+    display: none;
+    margin-top: 16px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(201, 169, 97, 0.08), rgba(201, 169, 97, 0.02));
+    border: 1px solid rgba(201, 169, 97, 0.2);
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.tier-preview::before {
+    content: "";
+    position: absolute;
+    top: -60%;
+    right: -10%;
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(201, 169, 97, 0.15), transparent 70%);
+    pointer-events: none;
+}
+
+.tier-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.tier-preview-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tier-preview-item .tp-label {
+    font-size: 0.68rem;
+    color: var(--app-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tier-preview-item .tp-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--app-gold-bright);
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+}
+
+.tier-preview-item .tp-value.gold { color: var(--app-yellow); }
+
+/* ====== SUMMARY PANEL ====== */
+.summary-panel {
+    display: none;
+    margin-top: 16px;
+}
+
+.summary-grid-new {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.summary-box {
+    padding: 16px 18px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.summary-box:hover {
+    border-color: var(--app-border-strong);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.summary-box.highlight {
+    background: rgba(255, 143, 177, 0.05);
+    border-color: rgba(255, 143, 177, 0.18);
+}
+
+.summary-box .sb-label {
+    font-size: 0.68rem;
+    color: var(--app-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.summary-box .sb-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--app-text);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+.summary-box .sb-value.green  { color: var(--app-green); }
+.summary-box .sb-value.gold   { color: var(--app-yellow); }
+.summary-box .sb-value.blue   { color: var(--app-blue); }
+.summary-box .sb-value.pink   { color: var(--app-pink); }
+.summary-box .sb-value.red    { color: var(--app-red); }
+
+.summary-note {
+    padding: 16px 20px;
+    background: rgba(0, 224, 255, 0.04);
+    border: 1px solid rgba(0, 224, 255, 0.1);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--app-text-muted);
+    line-height: 1.65;
+    display: flex;
+    gap: 12px;
+}
+
+.summary-note i {
+    color: var(--app-blue);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.summary-note strong { color: var(--app-yellow); }
+.summary-note .green  { color: var(--app-green); }
+
+/* ====== RATE TABLE ====== */
+.rate-table-new {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--app-border);
+}
+
+.rate-table-new thead th {
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--app-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.rate-table-new tbody td {
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    color: var(--app-text);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rate-table-new tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rate-table-new tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.rate-badge-new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+.rate-5 { background: rgba(255, 107, 107, 0.12); color: #ff8f8f; border: 1px solid rgba(255, 107, 107, 0.25); }
+.rate-3 { background: rgba(245, 197, 66, 0.12);  color: #f5c542; border: 1px solid rgba(245, 197, 66, 0.25); }
+.rate-2 { background: rgba(0, 224, 255, 0.12);   color: #00e0ff; border: 1px solid rgba(0, 224, 255, 0.25); }
+.rate-1 { background: rgba(74, 222, 128, 0.12);  color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.25); }
+
+/* ====== SEND-TO PANEL ====== */
+.sendto-panel {
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+}
+
+.sendto-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 14px;
+}
+
+.sendto-secondary {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--app-border);
+}
+
+/* ====== GUARANTOR ====== */
+.guarantor-notice-box {
+    display: none;
+    padding: 14px 18px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    align-items: center;
+    gap: 12px;
+}
+
+.guarantor-notice-box i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.guarantor-notice-box.requires {
+    background: rgba(245, 197, 66, 0.08);
+    border: 1px solid rgba(245, 197, 66, 0.25);
+    color: var(--app-yellow);
+}
+
+.guarantor-notice-box.optional {
+    background: rgba(74, 222, 128, 0.06);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: var(--app-green);
+}
+
+.guarantor-card {
+    padding: 22px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.guarantor-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.guarantor-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--app-gold-bright);
+    letter-spacing: -0.2px;
+}
+
+.guarantor-required-badge {
+    display: none;
+    padding: 3px 10px;
+    background: rgba(245, 197, 66, 0.12);
+    border: 1px solid rgba(245, 197, 66, 0.3);
+    border-radius: 20px;
+    color: var(--app-yellow);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.selected-member {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(74, 222, 128, 0.05);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    border-radius: var(--radius-md);
+    margin-top: 10px;
+}
+
+.selected-member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.selected-member-name {
+    font-weight: 700;
+    color: var(--app-green);
+    font-size: 0.92rem;
+}
+
+.selected-member-details {
+    font-size: 0.75rem;
+    color: var(--app-text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.selected-member-details i {
+    color: var(--app-text-dim);
+    margin-right: 4px;
+}
+
+.remove-member-btn {
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    color: var(--app-red);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.remove-member-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+    transform: scale(1.05);
+}
+
+.member-search-container {
+    position: relative;
+}
+
+.member-search-input {
+    width: 100%;
+    padding: 13px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-sm);
+    color: var(--app-text);
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition);
+    outline: none;
+}
+
+.member-search-input:focus {
+    border-color: var(--app-gold);
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.08);
+}
+
+.member-search-results {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #0d2438;
+    border: 1px solid var(--app-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.member-search-results.show {
+    display: block;
+}
+
+.member-search-item {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.member-search-item:last-child {
+    border-bottom: none;
+}
+
+.member-search-item:hover {
+    background: rgba(201, 169, 97, 0.08);
+}
+
+.member-search-item .member-name {
+    font-weight: 600;
+    color: var(--app-text);
+    font-size: 0.9rem;
+}
+
+.guarantor-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 4px 0 20px;
+    color: var(--app-text-dim);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.guarantor-divider::before,
+.guarantor-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--app-border);
+}
+
+.guarantor-terms {
+    display: flex;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(201, 169, 97, 0.04);
+    border: 1px solid var(--app-gold-soft);
+    border-radius: var(--radius-md);
+    font-size: 0.83rem;
+    color: var(--app-text-muted);
+    line-height: 1.65;
+}
+
+.guarantor-terms > i {
+    color: var(--app-gold-bright);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.guarantor-terms strong {
+    color: var(--app-gold-bright);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.guarantor-terms ul {
+    margin: 6px 0 0 0;
+    padding-left: 18px;
+}
+
+.guarantor-terms ul li {
+    margin-bottom: 4px;
+}
+
+/* ====== DECLARATION ====== */
+.declaration-box {
+    padding: 22px 24px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    font-size: 0.88rem;
+    color: var(--app-text-muted);
+    line-height: 1.75;
+}
+
+.declaration-box p {
+    margin-bottom: 12px;
+    color: var(--app-text);
+}
+
+.declaration-box strong {
+    color: var(--app-gold-bright);
+}
+
+.declaration-box ul {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+}
+
+.declaration-box ul li {
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+}
+
+.declaration-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 18px;
+    background: rgba(74, 222, 128, 0.04);
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    border-radius: var(--radius-md);
+    margin-top: 16px;
+}
+
+.declaration-check input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--app-green);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.declaration-check label {
+    font-size: 0.85rem;
+    color: var(--app-text);
+    line-height: 1.6;
+    cursor: pointer;
+}
+
+.declaration-check label a {
+    color: var(--app-gold-bright);
+    text-decoration: underline;
+}
+
+/* ====== ACTIONS ====== */
+.form-actions-new {
+    display: flex;
+    gap: 14px;
+    justify-content: flex-end;
+    padding: 22px 26px;
+    background: var(--app-card);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-lg);
+    margin-top: 18px;
+}
+
+.btn-submit-new,
+.btn-reset-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 32px;
+    border-radius: 100px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-submit-new {
+    background: linear-gradient(135deg, var(--app-gold), var(--app-gold-bright));
+    color: #0a1a2b;
+    box-shadow: 0 8px 22px rgba(201, 169, 97, 0.25);
+}
+
+.btn-submit-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(201, 169, 97, 0.4);
+}
+
+.btn-submit-new:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-reset-new {
+    background: transparent;
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-border-strong);
+}
+
+.btn-reset-new:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--app-text);
+}
+
+/* ====== MODALS ====== */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 12, 22, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    max-width: 520px;
+    width: 100%;
+    background: #0d2438;
+    border: 1px solid var(--app-border-strong);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content .success-icon,
+.modal-content .error-icon {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 2rem;
+}
+
+.modal-content .success-icon {
+    background: rgba(74, 222, 128, 0.12);
+    border: 2px solid rgba(74, 222, 128, 0.3);
+    color: var(--app-green);
+}
+
+.modal-content .error-icon {
+    background: rgba(255, 107, 107, 0.12);
+    border: 2px solid rgba(255, 107, 107, 0.3);
+    color: var(--app-red);
+}
+
+.modal-content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--app-text);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+}
+
+.modal-content p {
+    color: var(--app-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.application-ref {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 18px;
+    background: rgba(201, 169, 97, 0.06);
+    border: 1px solid var(--app-gold-soft);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.application-ref span {
+    font-size: 0.72rem;
+    color: var(--app-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.application-ref strong {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    color: var(--app-gold-bright);
+    font-weight: 700;
+}
+
+.status-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(245, 197, 66, 0.08);
+    border: 1px solid rgba(245, 197, 66, 0.2);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    color: var(--app-text);
+    margin-bottom: 16px;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 820px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-grid-new {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .tier-preview-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .sendto-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .loan-header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .loan-header-right {
+        text-align: left;
+    }
+
+    .form-actions-new {
+        flex-direction: column-reverse;
+    }
+
+    .btn-submit-new,
+    .btn-reset-new {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 520px) {
+    .loan-section-body {
+        padding: 18px 18px;
+    }
+
+    .loan-section-header {
+        padding: 14px 18px;
+    }
+
+    .summary-grid-new {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        padding: 28px 22px;
+    }
+}
+</style>
+
+<div class="loan-page">
+
+    <!-- ========== HEADER BAR ========== -->
+    <div class="loan-header-bar">
+        <div class="loan-header-left">
+            <div class="brand">Karacel SACCO</div>
+            <div class="subtitle">Empowering Members Through Financial Solutions</div>
+        </div>
+        <div class="loan-header-right">
+            <div class="label">Application Date</div>
+            <div class="value">{{ now.strftime('%d %B %Y') if now else datetime.now().strftime('%d %B %Y') }}</div>
+        </div>
+    </div>
+
+    <!-- ========== FORM ========== -->
+    <form id="loanApplicationForm" onsubmit="submitLoanApplication(event)">
+
+        <!-- SECTION 1: APPLICANT -->
+        <div class="loan-section">
+            <div class="loan-section-header">
+                <div class="loan-section-num">01</div>
+                <h3>Applicant Information</h3>
+                <span class="section-hint">Auto-filled from your account</span>
             </div>
-            <div class="header-right">
-                <div class="form-reference">
-                    <span>Application Date</span>
-                    <strong>{{ now.strftime('%d %B %Y') if now else datetime.now().strftime('%d %B %Y') }}</strong>
+            <div class="loan-section-body">
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Full Name</label>
+                        <div class="static-field">{{ member.full_name }}</div>
+                    </div>
+                    <div class="field">
+                        <label>SACCO Number</label>
+                        <div class="static-field">{{ member.sacco_number }}</div>
+                    </div>
+                    <div class="field">
+                        <label>Phone Number</label>
+                        <div class="static-field">{{ member.phone or 'Not provided' }}</div>
+                    </div>
+                    <div class="field">
+                        <label>Email Address</label>
+                        <div class="static-field">{{ member.email or 'Not provided' }}</div>
+                    </div>
+                    <div class="field">
+                        <label>Current Savings Balance</label>
+                        <div class="static-field green">UGX {{ total_savings|format_number }}</div>
+                    </div>
+                    <div class="field">
+                        <label>Maximum Loan (95% of Savings)</label>
+                        <div class="static-field gold">UGX {{ (total_savings * 0.95)|format_number }}</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Application Form -->
-        <form id="loanApplicationForm" class="loan-application-form" onsubmit="submitLoanApplication(event)">
-            
-            <!-- SECTION 1: Member Information -->
-            <div class="form-section">
-                <div class="section-title">
-                    <span class="section-number">1</span>
-                    <h3>Applicant Information</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" value="{{ member.full_name }}" disabled class="disabled-input">
-                    </div>
-                    <div class="form-group">
-                        <label>SACCO Number</label>
-                        <input type="text" value="{{ member.sacco_number }}" disabled class="disabled-input">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="text" value="{{ member.phone or 'Not provided' }}" disabled class="disabled-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="text" value="{{ member.email or 'Not provided' }}" disabled class="disabled-input">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Current Savings Balance</label>
-                        <input type="text" value="UGX {{ total_savings|format_number }}" disabled class="disabled-input" style="color: #4ade80;">
-                    </div>
-                    <div class="form-group">
-                        <label>Maximum Loan Amount (95% of Savings)</label>
-                        <input type="text" value="UGX {{ (total_savings * 0.95)|format_number }}" disabled class="disabled-input" style="color: #f5c542;">
-                    </div>
-                </div>
+        <!-- SECTION 2: LOAN REQUEST -->
+        <div class="loan-section">
+            <div class="loan-section-header">
+                <div class="loan-section-num">02</div>
+                <h3>Loan Request</h3>
+                <span class="section-hint">Enter amount & purpose</span>
             </div>
+            <div class="loan-section-body">
 
-            <!-- SECTION 2: Loan Details -->
-            <div class="form-section">
-                <div class="section-title">
-                    <span class="section-number">2</span>
-                    <h3>Loan Request Details</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group full-width">
+                <div class="form-grid cols-1">
+                    <div class="field">
                         <label for="loanAmount">Loan Amount (UGX) <span class="required">*</span></label>
-                        <div class="input-with-hint">
-                            <input type="number" id="loanAmount" name="loan_amount" 
-                                   placeholder="Enter amount between 10,000 and 100,000,000" 
-                                   min="10000" max="10000000"
-                                   oninput="calculateRepayment()" required>
-                            <span class="hint">Min: UGX 10,000 | Max: UGX 100,000,000</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- LOAN DURATION -->
-                <div class="form-row">
-                    <div class="form-group full-width">
-                        <label for="loanDuration">Loan Duration <span class="required">*</span></label>
-                        <select id="loanDuration" name="loan_duration" onchange="calculateRepayment()" required>
-                            <option value="1">1 Month (30 days) - Interest Applied</option>
-                            <option value="2">2 Months (60 days) - Interest Applied</option>
-                            <option value="3">3 Months (90 days) - Interest Applied</option>
-                            <option value="4">4 Months (120 days) - NO Interest</option>
-                            <option value="5">5 Months (150 days) - NO Interest</option>
-                            <option value="6">6 Months (180 days) - NO Interest</option>
-                        </select>
-                        <span class="hint" style="color: #f5c542;">
-                            <i class="fas fa-info-circle"></i> 
-                            <span id="interestNote">Interest compounds monthly for the first 3 months. No interest beyond 3 months.</span>
+                        <input type="number" id="loanAmount" name="loan_amount"
+                               placeholder="Enter amount between 10,000 and 10,000,000"
+                               min="10000" max="10000000"
+                               oninput="calculateRepayment()" required>
+                        <span class="field-hint">
+                            <i class="fas fa-info-circle"></i> Min: UGX 10,000 &nbsp;·&nbsp; Max: UGX 10,000,000
                         </span>
                     </div>
                 </div>
 
-                <!-- NEW: SEND MONEY TO FIELD - PHONE NUMBER OR ACCOUNT NUMBER -->
-                <div class="form-row">
-                    <div class="form-group full-width">
-                        <label for="sendToDetails">Send Money To <span class="required">*</span></label>
-                        <div style="
-                            background: rgba(255,255,255,0.03);
-                            border: 1px solid rgba(255,255,255,0.08);
-                            border-radius: 10px;
-                            padding: 16px;
-                            margin-top: 4px;
-                        ">
-                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
-                                <div>
-                                    <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">Select Method</label>
-                                    <select id="sendToType" name="send_to_type" onchange="toggleSendToFields()" style="
-                                        width: 100%;
-                                        padding: 10px 12px;
-                                        background: rgba(255,255,255,0.05);
-                                        border: 1px solid rgba(255,255,255,0.08);
-                                        border-radius: 8px;
-                                        color: #fff;
-                                        font-size: 0.9rem;
-                                    ">
+                <!-- TIER PREVIEW -->
+                <div class="tier-preview" id="tierPreview">
+                    <div class="tier-preview-grid">
+                        <div class="tier-preview-item">
+                            <div class="tp-label"><i class="fas fa-tag"></i> Your Tier Rate</div>
+                            <div class="tp-value" id="tierPreviewRate">0%</div>
+                        </div>
+                        <div class="tier-preview-item">
+                            <div class="tp-label"><i class="fas fa-coins"></i> Interest per 30 Days</div>
+                            <div class="tp-value gold" id="tierPreviewInterest">UGX 0</div>
+                        </div>
+                        <div class="tier-preview-item">
+                            <div class="tp-label"><i class="fas fa-layer-group"></i> Tier Range</div>
+                            <div class="tp-value" id="tierPreviewLabel" style="font-size: 1rem;">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top: 18px;">
+                    <div class="field">
+                        <label for="loanDuration">
+                            How Soon Do You Plan to Repay?
+                            <span class="optional">(optional)</span>
+                        </label>
+                        <select id="loanDuration" name="loan_duration" onchange="calculateRepayment()">
+                            <option value="1">Within 1 Month</option>
+                            <option value="2">Within 2 Months</option>
+                            <option value="3" selected>Within 3 Months</option>
+                            <option value="4">Within 4 Months</option>
+                            <option value="6">Within 6 Months</option>
+                            <option value="12">Within 1 Year</option>
+                            <option value="24">Longer than 1 Year</option>
+                        </select>
+                        <span class="field-hint">
+                            <i class="fas fa-info-circle"></i> Helps estimate your total. No fixed end date — interest accrues every 30 days.
+                        </span>
+                    </div>
+
+                    <div class="field">
+                        <label for="loanPurpose">Purpose of Loan <span class="required">*</span></label>
+                        <textarea id="loanPurpose" name="purpose" rows="3"
+                                  placeholder="Describe what you need this loan for..." required></textarea>
+                    </div>
+                </div>
+
+                <!-- SEND TO -->
+                <div class="form-grid cols-1" style="margin-top: 18px;">
+                    <div class="field">
+                        <label>Send Money To <span class="required">*</span></label>
+                        <div class="sendto-panel">
+                            <div class="sendto-grid">
+                                <div class="field">
+                                    <label style="margin-bottom: 6px;">Method</label>
+                                    <select id="sendToType" name="send_to_type" onchange="toggleSendToFields()">
                                         <option value="phone">Phone Number</option>
                                         <option value="account">Account Number</option>
-                                        <option value="both">Both (Phone & Account)</option>
+                                        <option value="both">Both</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">
-                                        Enter <span id="sendToLabel">Phone Number</span> <span class="required">*</span>
+                                <div class="field">
+                                    <label style="margin-bottom: 6px;">
+                                        <span id="sendToLabel">Phone Number</span> <span class="required">*</span>
                                     </label>
-                                    <input type="text" id="sendToValue" name="send_to_value" 
-                                           placeholder="e.g. 0772 123 456" 
-                                           style="
-                                               width: 100%;
-                                               padding: 10px 12px;
-                                               background: rgba(255,255,255,0.05);
-                                               border: 1px solid rgba(255,255,255,0.08);
-                                               border-radius: 8px;
-                                               color: #fff;
-                                               font-size: 0.9rem;
-                                           " required>
-                                    <div id="sendToHint" style="font-size: 0.65rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
-                                        <i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent
-                                    </div>
+                                    <input type="text" id="sendToValue" name="send_to_value"
+                                           placeholder="e.g. 0772 123 456" required>
                                 </div>
                             </div>
-                            <!-- Secondary field for "both" option -->
-                            <div id="sendToSecondaryContainer" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
-                                <label style="font-size: 0.7rem; color: rgba(255,255,255,0.3); display: block; margin-bottom: 4px;">
-                                    Account Number <span class="required">*</span>
-                                </label>
-                                <input type="text" id="sendToSecondaryValue" name="send_to_secondary_value" 
-                                       placeholder="e.g. 1234567890" 
-                                       style="
-                                           width: 100%;
-                                           padding: 10px 12px;
-                                           background: rgba(255,255,255,0.05);
-                                           border: 1px solid rgba(255,255,255,0.08);
-                                           border-radius: 8px;
-                                           color: #fff;
-                                           font-size: 0.9rem;
-                                       ">
-                                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.2); margin-top: 4px;">
-                                    <i class="fas fa-info-circle"></i> Enter the account number (e.g., Mobile Money account, Bank account)
+                            <div id="sendToSecondaryContainer" class="sendto-secondary">
+                                <div class="field">
+                                    <label style="margin-bottom: 6px;">Account Number <span class="required">*</span></label>
+                                    <input type="text" id="sendToSecondaryValue" name="send_to_secondary_value"
+                                           placeholder="e.g. 1234567890">
                                 </div>
                             </div>
                         </div>
+                        <span class="field-hint" id="sendToHint">
+                            <i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent
+                        </span>
                     </div>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group full-width">
-                        <label for="loanPurpose">Purpose of Loan <span class="required">*</span></label>
-                        <textarea id="loanPurpose" name="purpose" rows="3" 
-                                  placeholder="Describe in detail the purpose of this loan..." required></textarea>
+
+            </div>
+        </div>
+
+        <!-- SECTION 3: SUMMARY -->
+        <div class="loan-section" id="repaymentSummary" style="display: none;">
+            <div class="loan-section-header">
+                <div class="loan-section-num">03</div>
+                <h3>Loan Summary</h3>
+                <span class="section-hint">Estimated figures</span>
+            </div>
+            <div class="loan-section-body">
+                <div class="summary-grid-new">
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-hand-holding-usd"></i> Principal</div>
+                        <div class="sb-value green" id="displayAmount">UGX 0</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-percent"></i> Monthly Rate</div>
+                        <div class="sb-value blue" id="displayRate">0%</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-calendar-day"></i> Interest / 30 Days</div>
+                        <div class="sb-value gold" id="displayInterestPerMonth">UGX 0</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-chart-line"></i> Est. Total Interest</div>
+                        <div class="sb-value" id="displayInterest">UGX 0</div>
+                    </div>
+                    <div class="summary-box highlight" style="grid-column: span 2;">
+                        <div class="sb-label"><i class="fas fa-calculator"></i> Est. Total Due</div>
+                        <div class="sb-value pink" id="displayTotal" style="font-size: 1.4rem;">UGX 0</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-clock"></i> Est. Period</div>
+                        <div class="sb-value" id="displaySummaryDuration" style="font-size: 1rem;">3 Months</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="sb-label"><i class="fas fa-calendar-check"></i> Est. Clear Date</div>
+                        <div class="sb-value red" id="displayDueDateSummary" style="font-size: 0.92rem;">—</div>
+                    </div>
+                    <div class="summary-box" style="grid-column: span 4;">
+                        <div class="sb-label"><i class="fas fa-paper-plane"></i> Money Will Be Sent To</div>
+                        <div class="sb-value" id="displaySendTo" style="font-size: 0.95rem; color: var(--app-yellow);">Not specified</div>
                     </div>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Loan Term</label>
-                        <input type="text" id="displayTerm" value="1 Month (30 Days)" disabled class="disabled-input" style="color: #f5c542;">
-                    </div>
-                    <div class="form-group">
-                        <label>Due Date</label>
-                        <input type="text" id="displayDueDate" value="{{ due_date_formatted }}" disabled class="disabled-input" style="color: #ff6b6b;">
+
+                <div class="summary-note">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>How interest works:</strong> Interest is added every 30 days as a flat amount — it never compounds.
+                        Payments go to <strong>interest first, then principal</strong>. The rate depends on your current principal balance.
+                        There is no fixed end date — the loan lives until fully cleared.
+                        <span style="display:block; margin-top: 6px; color: var(--app-green);">
+                            Pay early and pay often — every shilling off the principal lowers future interest.
+                        </span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- SECTION 3: Loan Repayment Summary -->
-            <div class="form-section" id="repaymentSummary" style="display: none;">
-                <div class="section-title">
-                    <span class="section-number">3</span>
-                    <h3>Loan Summary</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <!-- Summary Cards -->
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <span class="summary-label">Principal Amount</span>
-                        <span class="summary-value" id="displayAmount">UGX 0</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Interest Rate (Monthly)</span>
-                        <span class="summary-value" id="displayRate">0%</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Total Interest</span>
-                        <span class="summary-value" id="displayInterest">UGX 0</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Total Due</span>
-                        <span class="summary-value" id="displayTotal">UGX 0</span>
-                    </div>
-                    <div class="summary-item" style="grid-column: span 1;">
-                        <span class="summary-label">Duration</span>
-                        <span class="summary-value" id="displaySummaryDuration" style="color: #f5c542;">1 Month</span>
-                    </div>
-                    <div class="summary-item" style="grid-column: span 1;">
-                        <span class="summary-label">Due Date</span>
-                        <span class="summary-value" style="color: #ff6b6b;" id="displayDueDateSummary">{{ due_date_formatted }}</span>
-                    </div>
-                    <div class="summary-item" style="grid-column: span 2; background: rgba(0,224,255,0.04); border-radius: 8px; border: 1px solid rgba(0,224,255,0.08); padding: 10px 14px;">
-                        <span class="summary-label">Disbursement Method</span>
-                        <span class="summary-value" id="displayDisbursement" style="color: #4ade80; font-size: 0.9rem;">Not selected</span>
-                    </div>
-                    <div class="summary-item" style="grid-column: span 2; background: rgba(74,222,128,0.04); border-radius: 8px; border: 1px solid rgba(74,222,128,0.08); padding: 10px 14px;">
-                        <span class="summary-label">Send Money To</span>
-                        <span class="summary-value" id="displaySendTo" style="color: #fbbf24; font-size: 0.9rem;">Not specified</span>
-                    </div>
-                </div>
-
-                <!-- Payment Installment Info -->
-                <div style="margin-top: 16px; padding: 12px 16px; background: rgba(0,224,255,0.04); border-radius: 8px; border: 1px solid rgba(0,224,255,0.08);">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-info-circle" style="color: #00e0ff;"></i>
-                        <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
-                            <strong style="color: #f5c542;">Flexible Installments:</strong> 
-                            You can pay in multiple installments during the loan period. 
-                            <span style="color: #4ade80;">Full amount must be cleared by the due date.</span>
-                            <span id="interestInfoText" style="display: block; margin-top: 4px; color: #f5c542; font-size: 0.8rem;">
-                                <i class="fas fa-calculator"></i> Interest compounds monthly for the first 3 months.
-                            </span>
-                        </div>
-                    </div>
-                </div>
+        <!-- SECTION 4: RATE REFERENCE -->
+        <div class="loan-section">
+            <div class="loan-section-header">
+                <div class="loan-section-num">04</div>
+                <h3>Interest Rate Reference</h3>
+                <span class="section-hint">Based on current principal</span>
             </div>
+            <div class="loan-section-body">
+                <table class="rate-table-new">
+                    <thead>
+                        <tr>
+                            <th>Principal Balance (UGX)</th>
+                            <th>Monthly Rate</th>
+                            <th>Interest Every 30 Days</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Up to 999,999</td>
+                            <td><span class="rate-badge-new rate-5">5%</span></td>
+                            <td style="font-size: 0.8rem; color: var(--app-text-muted);">5% of current balance</td>
+                        </tr>
+                        <tr>
+                            <td>1,000,000 – 4,999,999</td>
+                            <td><span class="rate-badge-new rate-3">3%</span></td>
+                            <td style="font-size: 0.8rem; color: var(--app-text-muted);">3% of current balance</td>
+                        </tr>
+                        <tr>
+                            <td>5,000,000 – 9,999,999</td>
+                            <td><span class="rate-badge-new rate-2">2%</span></td>
+                            <td style="font-size: 0.8rem; color: var(--app-text-muted);">2% of current balance</td>
+                        </tr>
+                        <tr>
+                            <td>10,000,000 and above</td>
+                            <td><span class="rate-badge-new rate-1">1%</span></td>
+                            <td style="font-size: 0.8rem; color: var(--app-text-muted);">1% of current balance</td>
+                        </tr>
+                    </tbody>
+                </table>
 
-            <!-- SECTION 4: Interest Rate Reference -->
-            <div class="form-section">
-                <div class="section-title">
-                    <span class="section-number">4</span>
-                    <h3>Interest Rate Reference</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <div class="interest-reference">
-                    <table class="reference-table">
-                        <thead>
-                            <tr>
-                                <th>Loan Amount (UGX)</th>
-                                <th>Monthly Interest Rate</th>
-                                <th>1 Month</th>
-                                <th>2 Months (Compound)</th>
-                                <th>3 Months (Compound)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>10,000 - 1,999,999</td>
-                                <td><span class="rate-badge rate-5">5%</span></td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">25,000</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">51,250</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">78,813</td>
-                            </tr>
-                            <tr>
-                                <td>2,000,000 - 4,999,999</td>
-                                <td><span class="rate-badge rate-3">3%</span></td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">15,000</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">30,450</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">46,364</td>
-                            </tr>
-                            <tr>
-                                <td>5,000,000 - 9,999,999</td>
-                                <td><span class="rate-badge rate-2">2%</span></td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">10,000</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">20,200</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">30,608</td>
-                            </tr>
-                            <tr>
-                                <td>10,000,000 and above</td>
-                                <td><span class="rate-badge rate-1">1%</span></td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">5,000</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">10,050</td>
-                                <td style="font-size:0.7rem; color:rgba(255,255,255,0.3);">15,151</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div class="interest-note">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>How It Works:</strong>
-                        <ul style="margin: 8px 0 0 0; padding-left: 20px; color: rgba(255,255,255,0.4);">
-                            <li>Loan is for <strong>1 to 6 months</strong> (30 to 180 days)</li>
-                            <li>Interest <strong>compounds monthly</strong> for the first 3 months</li>
-                            <li><strong>No interest</strong> charged for months 4, 5, and 6</li>
-                            <li>Total due = <strong>Principal + Total Compound Interest</strong></li>
-                            <li>You can pay in <strong>multiple installments</strong> during the loan period</li>
-                            <li>Full amount <strong>must be paid by the due date</strong></li>
-                            <li>Late payment may incur additional penalties</li>
+                <div class="summary-note" style="margin-top: 16px;">
+                    <i class="fas fa-lightbulb" style="color: var(--app-yellow);"></i>
+                    <div style="color: var(--app-text-muted); line-height: 1.7;">
+                        <strong style="color: var(--app-gold-bright);">How It Works:</strong>
+                        <ul style="margin: 8px 0 0; padding-left: 18px;">
+                            <li>Interest is added every <strong style="color: var(--app-yellow);">30 days</strong> from the day you receive the loan.</li>
+                            <li>It is <strong style="color: var(--app-yellow);">a flat amount</strong> — never compounds on itself.</li>
+                            <li>The rate always depends on your <strong style="color: var(--app-yellow);">current principal balance</strong>.</li>
+                            <li><strong style="color: var(--app-yellow);">Every payment may change your rate.</strong> Clearing a big chunk can drop you into a lower tier faster.</li>
+                            <li><strong style="color: var(--app-yellow);">Example:</strong> Borrow 5,000,000 (2% tier) → 100,000 interest per 30 days. Pay 4,500,000 → principal drops to 500,000 (5% tier) → interest becomes 25,000 per 30 days.</li>
+                            <li>You can pay <strong style="color: var(--app-yellow);">any amount, any time</strong>. The faster you clear the principal, the faster interest drops.</li>
                         </ul>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- SECTION 5: Guarantor Information -->
-            <div class="form-section" id="guarantorSection">
-                <div class="section-title">
-                    <span class="section-number">5</span>
-                    <h3>Guarantor Information</h3>
-                    <span class="section-divider"></span>
-                </div>
-                
-                <!-- Guarantor Requirement Notice -->
-                <div id="guarantorNotice" class="guarantor-notice" style="display: none;"></div>
-                
-                <!-- Guarantor 1 -->
-                <div class="guarantor-block">
-                    <div class="guarantor-header">
-                        <span class="guarantor-number">Guarantor 1</span>
-                        <span class="guarantor-required" style="display: none;">Required *</span>
+        <!-- SECTION 5: GUARANTORS -->
+        <div class="loan-section">
+            <div class="loan-section-header">
+                <div class="loan-section-num">05</div>
+                <h3>Guarantor Information</h3>
+                <span class="section-hint" id="guarantorSectionHint">Required only if over 95% of savings</span>
+            </div>
+            <div class="loan-section-body">
+
+                <div id="guarantorNotice" class="guarantor-notice-box"></div>
+
+                <!-- GUARANTOR 1 -->
+                <div class="guarantor-card">
+                    <div class="guarantor-card-header">
+                        <div class="guarantor-card-title">Guarantor 1</div>
+                        <span class="guarantor-required guarantor-required-badge">Required</span>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor1Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <div class="member-search-container">
-                                <input type="text" id="guarantor1Search" 
-                                       placeholder="Type member name or SACCO number to search..."
-                                       class="member-search-input"
-                                       autocomplete="off">
-                                <div id="guarantor1Results" class="member-search-results"></div>
-                            </div>
+
+                    <div class="field" style="margin-bottom: 14px;">
+                        <label>Search Member</label>
+                        <div class="member-search-container">
+                            <input type="text" id="guarantor1Search"
+                                   placeholder="Type member name or SACCO number..."
+                                   class="member-search-input"
+                                   autocomplete="off">
+                            <div id="guarantor1Results" class="member-search-results"></div>
                         </div>
                     </div>
-                    
-                    <!-- Hidden fields to store selected member data -->
+
                     <input type="hidden" id="guarantor1Id" name="guarantor1_id">
                     <input type="hidden" id="guarantor1Name" name="guarantor1_name">
                     <input type="hidden" id="guarantor1Phone" name="guarantor1_phone">
                     <input type="hidden" id="guarantor1Email" name="guarantor1_email">
-                    
-                    <!-- Selected Member Display -->
-                    <div id="guarantor1Selected" class="selected-member" style="display: none;">
+
+                    <div id="guarantor1Selected" class="selected-member">
                         <div class="selected-member-info">
                             <span class="selected-member-name" id="g1DisplayName"></span>
                             <span class="selected-member-details" id="g1DisplayDetails"></span>
@@ -375,55 +1343,46 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    
-                    <div class="form-row" style="margin-top: 12px;">
-                        <div class="form-group full-width">
-                            <label for="guarantor1Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input">
-                                <option value="">Select Relationship</option>
-                                <option value="family">Family Member</option>
-                                <option value="friend">Friend</option>
-                                <option value="colleague">Colleague</option>
-                                <option value="business_partner">Business Partner</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
+
+                    <div class="field" style="margin-top: 14px;">
+                        <label>Relationship</label>
+                        <select id="guarantor1Relationship" name="guarantor1_relationship" class="guarantor-input" disabled>
+                            <option value="">Select Relationship</option>
+                            <option value="family">Family Member</option>
+                            <option value="friend">Friend</option>
+                            <option value="colleague">Colleague</option>
+                            <option value="business_partner">Business Partner</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Divider between guarantors -->
-                <div class="guarantor-divider">
-                    <span>AND</span>
-                </div>
+                <div class="guarantor-divider">And</div>
 
-                <!-- Guarantor 2 -->
-                <div class="guarantor-block">
-                    <div class="guarantor-header">
-                        <span class="guarantor-number">Guarantor 2</span>
-                        <span class="guarantor-required" style="display: none;">Required *</span>
+                <!-- GUARANTOR 2 -->
+                <div class="guarantor-card">
+                    <div class="guarantor-card-header">
+                        <div class="guarantor-card-title">Guarantor 2</div>
+                        <span class="guarantor-required guarantor-required-badge">Required</span>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group full-width">
-                            <label for="guarantor2Search">Search Member <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <div class="member-search-container">
-                                <input type="text" id="guarantor2Search" 
-                                       placeholder="Type member name or SACCO number to search..."
-                                       class="member-search-input"
-                                       autocomplete="off">
-                                <div id="guarantor2Results" class="member-search-results"></div>
-                            </div>
+
+                    <div class="field" style="margin-bottom: 14px;">
+                        <label>Search Member</label>
+                        <div class="member-search-container">
+                            <input type="text" id="guarantor2Search"
+                                   placeholder="Type member name or SACCO number..."
+                                   class="member-search-input"
+                                   autocomplete="off">
+                            <div id="guarantor2Results" class="member-search-results"></div>
                         </div>
                     </div>
-                    
-                    <!-- Hidden fields to store selected member data -->
+
                     <input type="hidden" id="guarantor2Id" name="guarantor2_id">
                     <input type="hidden" id="guarantor2Name" name="guarantor2_name">
                     <input type="hidden" id="guarantor2Phone" name="guarantor2_phone">
                     <input type="hidden" id="guarantor2Email" name="guarantor2_email">
-                    
-                    <!-- Selected Member Display -->
-                    <div id="guarantor2Selected" class="selected-member" style="display: none;">
+
+                    <div id="guarantor2Selected" class="selected-member">
                         <div class="selected-member-info">
                             <span class="selected-member-name" id="g2DisplayName"></span>
                             <span class="selected-member-details" id="g2DisplayDetails"></span>
@@ -432,155 +1391,139 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    
-                    <div class="form-row" style="margin-top: 12px;">
-                        <div class="form-group full-width">
-                            <label for="guarantor2Relationship">Relationship <span class="required guarantor-required" style="display: none;">*</span></label>
-                            <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input">
-                                <option value="">Select Relationship</option>
-                                <option value="family">Family Member</option>
-                                <option value="friend">Friend</option>
-                                <option value="colleague">Colleague</option>
-                                <option value="business_partner">Business Partner</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
+
+                    <div class="field" style="margin-top: 14px;">
+                        <label>Relationship</label>
+                        <select id="guarantor2Relationship" name="guarantor2_relationship" class="guarantor-input" disabled>
+                            <option value="">Select Relationship</option>
+                            <option value="family">Family Member</option>
+                            <option value="friend">Friend</option>
+                            <option value="colleague">Colleague</option>
+                            <option value="business_partner">Business Partner</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Guarantor Terms -->
                 <div class="guarantor-terms">
                     <i class="fas fa-shield-alt"></i>
                     <div>
-                        <strong>Guarantor Agreement:</strong>
-                        By providing guarantor information, you confirm that:
+                        <strong>Guarantor Agreement</strong>
                         <ul>
-                            <li>Both guarantors are different individuals (cannot be the same person)</li>
+                            <li>Both guarantors must be different individuals</li>
                             <li>Guarantors will be contacted manually by the SACCO team</li>
                             <li>Guarantors are responsible for repayment if you default</li>
                         </ul>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- SECTION 6: Declaration -->
-            <div class="form-section">
-                <div class="section-title">
-                    <span class="section-number">6</span>
-                    <h3>Declaration &amp; Agreement</h3>
-                    <span class="section-divider"></span>
+        <!-- SECTION 6: DECLARATION -->
+        <div class="loan-section">
+            <div class="loan-section-header">
+                <div class="loan-section-num">06</div>
+                <h3>Declaration & Agreement</h3>
+                <span class="section-hint">Please read carefully</span>
+            </div>
+            <div class="loan-section-body">
+                <div class="declaration-box">
+                    <p>
+                        I, <strong>{{ member.full_name }}</strong>, hereby apply for a loan from Karacel SACCO.
+                        I declare that the information provided in this application is true and correct to the best of my knowledge.
+                    </p>
+                    <p>I understand that:</p>
+                    <ul>
+                        <li>Interest is added <strong>every 30 days</strong> from the day I receive the loan.</li>
+                        <li>Interest is <strong>flat</strong> — it never compounds on itself.</li>
+                        <li>The rate depends on my <strong>current principal balance</strong>.</li>
+                        <li>If my principal drops below a tier boundary, <strong>my rate changes automatically</strong>.</li>
+                        <li>Payments are applied to <strong>interest first, then principal</strong>.</li>
+                        <li>I can pay any amount, any time. There is <strong>no fixed end date</strong> — the loan lives until fully paid.</li>
+                        <li>Late payments may result in penalties and action against my savings and guarantors.</li>
+                    </ul>
                 </div>
-                
-                <div class="declaration-container">
-                    <div class="declaration-text">
-                        <p>
-                            I, <strong>{{ member.full_name }}</strong>, hereby apply for a loan from Karacel SACCO. 
-                            I declare that the information provided in this application is true and correct to the best of my knowledge.
-                        </p>
-                        <p>
-                            I understand that:
-                        </p>
-                        <ul>
-                            <li>This is a <strong>1 to 6 month</strong> loan (30 to 180 days)</li>
-                            <li>Interest <strong>compounds monthly</strong> for the first 3 months</li>
-                            <li><strong>No interest</strong> is charged beyond 3 months</li>
-                            <li>Total due = <strong>Principal + Total Compound Interest</strong></li>
-                            <li>I can pay in <strong>multiple installments</strong> during the loan period</li>
-                            <li>Full amount <strong>must be paid by the due date</strong></li>
-                            <li>Late payment may result in penalties and action against my savings and guarantors</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="declaration-check">
-                        <input type="checkbox" id="termsCheck" required>
-                        <label for="termsCheck">
-                            I agree to the <a href="#" onclick="showTerms(event)">Terms &amp; Conditions</a> and 
-                            confirm that all information provided is accurate.
-                        </label>
-                    </div>
+
+                <div class="declaration-check">
+                    <input type="checkbox" id="termsCheck" required>
+                    <label for="termsCheck">
+                        I agree to the <a href="#" onclick="showTerms(event)">Terms &amp; Conditions</a> and confirm
+                        that all information provided is accurate.
+                    </label>
                 </div>
             </div>
+        </div>
 
-            <!-- Submit Button -->
-            <div class="form-actions">
-                <button type="submit" class="submit-btn">
-                    <i class="fas fa-paper-plane"></i>
-                    Submit Loan Application
-                </button>
-                <button type="reset" class="reset-btn" onclick="resetForm()">
-                    <i class="fas fa-undo"></i>
-                    Clear Form
-                </button>
-            </div>
+        <!-- ACTIONS -->
+        <div class="form-actions-new">
+            <button type="reset" class="btn-reset-new" onclick="resetForm()">
+                <i class="fas fa-undo"></i> Clear Form
+            </button>
+            <button type="submit" class="btn-submit-new">
+                <i class="fas fa-paper-plane"></i> Submit Application
+            </button>
+        </div>
 
-        </form>
-    </div>
+    </form>
 </div>
 
-<!-- Success Modal -->
-<div id="successModal" class="modal" style="display:none;">
+<!-- SUCCESS MODAL -->
+<div id="successModal" class="modal">
     <div class="modal-content">
-        <div class="success-icon">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <h2>Application Submitted!</h2>
-        <p id="successMessage">Your loan application has been submitted successfully.</p>
+        <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+        <h2>Application Submitted</h2>
+        <p id="successMessage">Your loan application has been received.</p>
+
         <div class="application-ref">
-            <span>Application Reference:</span>
+            <span>Reference Number</span>
             <strong id="applicationRef">LN-2026-XXXX</strong>
         </div>
+
         <div class="status-notice" id="statusNotice">
             <i class="fas fa-clock"></i>
             <span>Status: <strong style="color:#f5c542;">PENDING</strong></span>
         </div>
-        <div id="loanSummary" style="margin: 12px 0; padding: 12px; background:rgba(255,255,255,0.02); border-radius:8px; font-size:0.85rem; text-align:left;">
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5);">
-                <span>Principal:</span>
-                <span id="summaryPrincipal" style="color:#4ade80; font-weight:600;"></span>
+
+        <div id="loanSummary" style="margin: 16px 0; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 12px; font-size: 0.85rem; text-align: left; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex; justify-content:space-between; padding: 6px 0;">
+                <span style="color: rgba(255,255,255,0.5);">Principal:</span>
+                <span id="summaryPrincipal" style="color:#4ade80; font-weight: 700;"></span>
             </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Total Interest:</span>
-                <span id="summaryInterest" style="color:#f5c542; font-weight:600;"></span>
+            <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+                <span style="color: rgba(255,255,255,0.5);">Monthly Rate:</span>
+                <span id="summaryRate" style="color:#00e0ff; font-weight: 700;"></span>
             </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Total Due:</span>
-                <span id="summaryTotal" style="color:#ff6b6b; font-weight:600;"></span>
+            <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+                <span style="color: rgba(255,255,255,0.5);">Interest / 30 Days:</span>
+                <span id="summaryInterest" style="color:#f5c542; font-weight: 700;"></span>
             </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Duration:</span>
-                <span id="summaryDuration" style="color:#f5c542; font-weight:600;"></span>
+            <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+                <span style="color: rgba(255,255,255,0.5);">Est. Total Due:</span>
+                <span id="summaryTotal" style="color:#ff6b6b; font-weight: 700;"></span>
             </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Due Date:</span>
-                <span id="summaryDueDate" style="color:#f5c542; font-weight:600;"></span>
-            </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Disbursement:</span>
-                <span id="summaryDisbursement" style="color:#4ade80; font-weight:600;"></span>
-            </div>
-            <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.5); margin-top:4px;">
-                <span>Send Money To:</span>
-                <span id="summarySendTo" style="color:#fbbf24; font-weight:600;"></span>
+            <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+                <span style="color: rgba(255,255,255,0.5);">Send Money To:</span>
+                <span id="summarySendTo" style="color:#fbbf24; font-weight: 700;"></span>
             </div>
         </div>
+
         <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 8px;" id="successDetails">
             Your loan will be reviewed by the Treasurer shortly.
         </p>
-        <button class="submit-btn" onclick="goToDashboard()" style="margin-top: 12px;">
+
+        <button class="btn-submit-new" onclick="goToDashboard()" style="width: 100%; justify-content: center; margin-top: 12px;">
             <i class="fas fa-arrow-right"></i> Go to Dashboard
         </button>
     </div>
 </div>
 
-<!-- Error Modal -->
-<div id="errorModal" class="modal" style="display:none;">
+<!-- ERROR MODAL -->
+<div id="errorModal" class="modal">
     <div class="modal-content">
-        <div class="error-icon">
-            <i class="fas fa-exclamation-circle"></i>
-        </div>
+        <div class="error-icon"><i class="fas fa-exclamation-circle"></i></div>
         <h2 style="color: #ff6b6b;">Validation Error</h2>
         <p id="errorMessage">Please check your input and try again.</p>
-        <button class="submit-btn" onclick="closeErrorModal()" style="background: #ff6b6b;">
+        <button class="btn-submit-new" onclick="closeErrorModal()" style="background: #ff6b6b; color: white; width: 100%; justify-content: center; margin-top: 8px;">
             <i class="fas fa-times"></i> Close
         </button>
     </div>
@@ -588,750 +1531,450 @@
 
 <script>
 // ============================================
-// LOAN APPLICATION JAVASCRIPT
+// KARACEL LOAN APPLICATION — JavaScript
 // ============================================
 
-// Member savings from Flask
 const memberSavings = {{ total_savings }};
 const savingsThreshold = memberSavings * 0.95;
-
-// Due date passed from Flask
-const dueDateFormatted = '{{ due_date_formatted }}';
-const dueDateISO = '{{ due_date_iso }}';
-
-// ============================================
-// GUARANTOR SELECTION STATE
-// ============================================
 
 let selectedGuarantors = { 1: null, 2: null };
 let searchTimeout = { 1: null, 2: null };
 
-// ============================================
-// SEND TO FIELD FUNCTIONS
-// ============================================
-
+// ===== SEND-TO =====
 function toggleSendToFields() {
-    const sendToType = document.getElementById('sendToType').value;
+    const type = document.getElementById('sendToType').value;
     const label = document.getElementById('sendToLabel');
     const hint = document.getElementById('sendToHint');
-    const secondaryContainer = document.getElementById('sendToSecondaryContainer');
-    const secondaryInput = document.getElementById('sendToSecondaryValue');
-    const mainInput = document.getElementById('sendToValue');
-    
-    if (sendToType === 'phone') {
+    const sec = document.getElementById('sendToSecondaryContainer');
+    const secInput = document.getElementById('sendToSecondaryValue');
+    const main = document.getElementById('sendToValue');
+
+    if (type === 'phone') {
         label.textContent = 'Phone Number';
-        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent (e.g., 0772 123 456)';
-        secondaryContainer.style.display = 'none';
-        secondaryInput.removeAttribute('required');
-        mainInput.placeholder = 'e.g. 0772 123 456';
-        mainInput.setAttribute('required', 'required');
-    } else if (sendToType === 'account') {
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent';
+        sec.style.display = 'none';
+        secInput.removeAttribute('required');
+        main.placeholder = 'e.g. 0772 123 456';
+        main.setAttribute('required', 'required');
+    } else if (type === 'account') {
         label.textContent = 'Account Number';
-        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the account number where the money should be sent (e.g., 1234567890)';
-        secondaryContainer.style.display = 'none';
-        secondaryInput.removeAttribute('required');
-        mainInput.placeholder = 'e.g. 1234567890';
-        mainInput.setAttribute('required', 'required');
-    } else if (sendToType === 'both') {
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter the account number where the money should be sent';
+        sec.style.display = 'none';
+        secInput.removeAttribute('required');
+        main.placeholder = 'e.g. 1234567890';
+        main.setAttribute('required', 'required');
+    } else {
         label.textContent = 'Phone Number';
-        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter your phone number';
-        secondaryContainer.style.display = 'block';
-        secondaryInput.setAttribute('required', 'required');
-        mainInput.placeholder = 'e.g. 0772 123 456';
-        mainInput.setAttribute('required', 'required');
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> Enter both your phone and account numbers';
+        sec.style.display = 'block';
+        secInput.setAttribute('required', 'required');
+        main.placeholder = 'e.g. 0772 123 456';
+        main.setAttribute('required', 'required');
     }
-    
-    // Update summary
     updateSendToSummary();
 }
 
 function updateSendToSummary() {
-    const sendToType = document.getElementById('sendToType').value;
-    const mainValue = document.getElementById('sendToValue').value;
-    const secondaryValue = document.getElementById('sendToSecondaryValue').value;
+    const type = document.getElementById('sendToType').value;
+    const main = document.getElementById('sendToValue').value;
+    const sec = document.getElementById('sendToSecondaryValue').value;
     const display = document.getElementById('displaySendTo');
-    
-    const typeLabels = {
-        'phone': '📱 Phone',
-        'account': '🏦 Account',
-        'both': '📱 + 🏦'
-    };
-    
-    if (sendToType === 'both') {
-        display.textContent = typeLabels[sendToType] + ': ' + mainValue + ' | ' + secondaryValue;
-    } else if (mainValue) {
-        display.textContent = typeLabels[sendToType] + ': ' + mainValue;
+
+    const labels = { 'phone': '📱 Phone', 'account': '🏦 Account', 'both': '📱 + 🏦' };
+
+    if (type === 'both') {
+        display.textContent = labels[type] + ': ' + main + ' | ' + sec;
+    } else if (main) {
+        display.textContent = labels[type] + ': ' + main;
     } else {
         display.textContent = 'Not specified';
     }
 }
 
-// ============================================
-// DISBURSEMENT SELECTION
-// ============================================
-
-function selectDisbursement(method, element) {
-    // Remove selection from all
-    document.querySelectorAll('#disbursementMobileMoney, #disbursementBank, #disbursementCash, #disbursementOther').forEach(el => {
-        el.style.borderColor = 'rgba(255,255,255,0.08)';
-        el.style.background = 'rgba(255,255,255,0.03)';
-    });
-    
-    // Highlight selected
-    element.style.borderColor = '#00e0ff';
-    element.style.background = 'rgba(0,224,255,0.06)';
-    
-    // Set hidden value
-    document.getElementById('disbursementMethod').value = method;
-    
-    // Show/hide other input
-    if (method === 'other') {
-        document.getElementById('otherDisbursementContainer').style.display = 'block';
-        document.getElementById('otherDisbursementText').setAttribute('required', 'required');
-    } else {
-        document.getElementById('otherDisbursementContainer').style.display = 'none';
-        document.getElementById('otherDisbursementText').removeAttribute('required');
-    }
-    
-    // Update summary
-    const display = document.getElementById('displayDisbursement');
-    if (display) {
-        const labels = {
-            'mobile_money': '📱 Mobile Money',
-            'bank': '🏦 Bank Account',
-            'cash': '💵 Cash Pickup',
-            'other': '📝 Other'
-        };
-        display.textContent = labels[method] || 'Not selected';
-    }
+// ===== TIER =====
+function getTierRate(principal) {
+    if (principal >= 10000000) return 1;
+    if (principal >= 5000000)  return 2;
+    if (principal >= 1000000)  return 3;
+    return 5;
 }
 
-// ============================================
-// LOAN CALCULATIONS WITH COMPOUND INTEREST
-// ============================================
-
-function getInterestRate(amount) {
-    if (amount >= 10000 && amount <= 1999999) {
-        return { rate: 5, tier: '5%' };
-    } else if (amount >= 2000000 && amount <= 4999999) {
-        return { rate: 3, tier: '3%' };
-    } else if (amount >= 5000000 && amount <= 9999999) {
-        return { rate: 2, tier: '2%' };
-    } else if (amount >= 10000000) {
-        return { rate: 1, tier: '1%' };
-    }
-    return { rate: 0, tier: '0%' };
+function getTierLabel(rate) {
+    if (rate === 1) return '10M and above';
+    if (rate === 2) return '5M – 9.99M';
+    if (rate === 3) return '1M – 4.99M';
+    return 'Under 1M';
 }
 
-function calculateCompoundInterest(principal, monthlyRate, months) {
-    const rate = monthlyRate / 100;
-    let amount = principal;
-    for (let i = 0; i < months; i++) {
-        amount = amount * (1 + rate);
-    }
-    const totalInterest = amount - principal;
-    return { totalAmount: amount, totalInterest: totalInterest };
-}
-
+// ===== CALCULATE =====
 function calculateRepayment() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    const durationMonths = parseInt(document.getElementById('loanDuration').value) || 1;
+    const months = parseInt(document.getElementById('loanDuration').value) || 3;
     const summaryDiv = document.getElementById('repaymentSummary');
-    
+    const tierPreview = document.getElementById('tierPreview');
+
     if (amount >= 10000 && amount <= 10000000) {
-        const interestInfo = getInterestRate(amount);
-        const monthlyRate = interestInfo.rate;
-        const interestMonths = Math.min(durationMonths, 3);
-        
-        let totalInterest = 0;
-        let totalDue = 0;
-        
-        if (interestMonths > 0 && monthlyRate > 0) {
-            const result = calculateCompoundInterest(amount, monthlyRate, interestMonths);
-            totalInterest = result.totalInterest;
-            totalDue = result.totalAmount;
-        } else {
-            totalDue = amount;
-            totalInterest = 0;
-        }
-        
+        const rate = getTierRate(amount);
+        const perPeriod = amount * (rate / 100);
+        const estInterest = perPeriod * months;
+        const estTotal = amount + estInterest;
+
         summaryDiv.style.display = 'block';
-        
-        const formatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0 });
-        
-        document.getElementById('displayAmount').textContent = 'UGX ' + formatter.format(amount);
-        document.getElementById('displayRate').textContent = monthlyRate > 0 ? monthlyRate + '% (monthly)' : '0%';
-        document.getElementById('displayInterest').textContent = 'UGX ' + formatter.format(Math.round(totalInterest));
-        document.getElementById('displayTotal').textContent = 'UGX ' + formatter.format(Math.round(totalDue));
-        
-        const durationLabels = ['', '1 Month (30 days)', '2 Months (60 days)', '3 Months (90 days)', '4 Months (120 days)', '5 Months (150 days)', '6 Months (180 days)'];
-        document.getElementById('displayTerm').value = durationLabels[durationMonths] || durationMonths + ' Months';
-        document.getElementById('displaySummaryDuration').textContent = durationLabels[durationMonths] || durationMonths + ' Months';
-        
-        const interestNote = document.getElementById('interestNote');
-        if (durationMonths <= 3) {
-            interestNote.innerHTML = `<i class="fas fa-calculator"></i> Interest compounds monthly for ${durationMonths} month${durationMonths > 1 ? 's' : ''}. Total: ${monthlyRate}% per month = ${Math.round(totalInterest).toLocaleString()} UGX interest.`;
-        } else {
-            interestNote.innerHTML = `<i class="fas fa-check-circle" style="color: #4ade80;"></i> Interest applies for first 3 months only (${durationMonths - 3} month${durationMonths - 3 > 1 ? 's' : ''} interest-free). Total: ${Math.round(totalInterest).toLocaleString()} UGX interest.`;
-        }
-        
-        const interestInfoText = document.getElementById('interestInfoText');
-        if (interestInfoText) {
-            if (durationMonths <= 3) {
-                interestInfoText.innerHTML = `<i class="fas fa-calculator"></i> Interest compounds monthly for ${durationMonths} month${durationMonths > 1 ? 's' : ''}. Total interest: UGX ${Math.round(totalInterest).toLocaleString()}`;
-            } else {
-                interestInfoText.innerHTML = `<i class="fas fa-check-circle" style="color: #4ade80;"></i> Interest on first 3 months only. ${durationMonths - 3} month${durationMonths - 3 > 1 ? 's' : ''} interest-free! Total interest: UGX ${Math.round(totalInterest).toLocaleString()}`;
-            }
-        }
-        
+        tierPreview.style.display = 'block';
+
+        const fmt = new Intl.NumberFormat('en-US');
+
+        document.getElementById('displayAmount').textContent = 'UGX ' + fmt.format(amount);
+        document.getElementById('displayRate').textContent = rate + '%';
+        document.getElementById('displayInterestPerMonth').textContent = 'UGX ' + fmt.format(Math.round(perPeriod));
+        document.getElementById('displayInterest').textContent = 'UGX ' + fmt.format(Math.round(estInterest));
+        document.getElementById('displayTotal').textContent = 'UGX ' + fmt.format(Math.round(estTotal));
+
+        document.getElementById('tierPreviewRate').textContent = rate + '%';
+        document.getElementById('tierPreviewInterest').textContent = 'UGX ' + fmt.format(Math.round(perPeriod));
+        document.getElementById('tierPreviewLabel').textContent = getTierLabel(rate);
+
+        const durationLabels = { 1: '1 Month', 2: '2 Months', 3: '3 Months', 4: '4 Months', 6: '6 Months', 12: '1 Year', 24: '2 Years' };
+        document.getElementById('displaySummaryDuration').textContent = durationLabels[months] || (months + ' Months');
+
         const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + (durationMonths * 30));
-        const dueDateStr = dueDate.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
+        dueDate.setDate(dueDate.getDate() + (months * 30));
+        document.getElementById('displayDueDateSummary').textContent = dueDate.toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric'
         });
-        document.getElementById('displayDueDate').value = dueDateStr;
-        document.getElementById('displayDueDateSummary').textContent = dueDateStr;
-        
+
         checkGuarantorRequirement(amount);
     } else {
         summaryDiv.style.display = 'none';
+        tierPreview.style.display = 'none';
     }
 }
 
-// ============================================
-// SEARCH GUARANTOR MEMBERS (SERVER-SIDE)
-// ============================================
+// ===== GUARANTOR SEARCH =====
+function searchGuarantorMembers(term, num) {
+    const c = document.getElementById('guarantor' + num + 'Results');
+    if (!c) return;
+    if (searchTimeout[num]) clearTimeout(searchTimeout[num]);
 
-function searchGuarantorMembers(searchTerm, guarantorNumber) {
-    const resultsContainer = document.getElementById('guarantor' + guarantorNumber + 'Results');
-    if (!resultsContainer) return;
-    
-    if (searchTimeout[guarantorNumber]) {
-        clearTimeout(searchTimeout[guarantorNumber]);
-    }
-    
-    if (!searchTerm || searchTerm.trim().length < 1) {
-        resultsContainer.classList.remove('show');
-        resultsContainer.innerHTML = '';
+    if (!term || term.trim().length < 1) {
+        c.classList.remove('show');
+        c.innerHTML = '';
         return;
     }
-    
-    resultsContainer.innerHTML = `
-        <div style="padding: 12px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.85rem;">
-            <i class="fas fa-spinner fa-spin"></i> Searching...
-        </div>
-    `;
-    resultsContainer.classList.add('show');
-    
-    searchTimeout[guarantorNumber] = setTimeout(() => {
-        const url = '/member/search-members?q=' + encodeURIComponent(searchTerm.trim());
-        
-        fetch(url)
-            .then(response => response.json())
+
+    c.innerHTML = `<div style="padding: 14px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>`;
+    c.classList.add('show');
+
+    searchTimeout[num] = setTimeout(() => {
+        fetch('/member/search-members?q=' + encodeURIComponent(term.trim()))
+            .then(r => r.json())
             .then(data => {
                 if (!data.success) {
-                    resultsContainer.innerHTML = `
-                        <div style="padding: 12px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">
-                            <i class="fas fa-exclamation-circle"></i> ${data.message || 'Error searching'}
-                        </div>
-                    `;
+                    c.innerHTML = `<div style="padding: 14px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">${data.message || 'Error'}</div>`;
                     return;
                 }
-                
                 if (!data.members || data.members.length === 0) {
-                    resultsContainer.innerHTML = `
-                        <div style="padding: 12px; text-align: center; color: rgba(255,255,255,0.3); font-size: 0.85rem;">
-                            <i class="fas fa-search"></i> 
-                            No members found matching "<strong>${searchTerm}</strong>"
-                        </div>
-                    `;
+                    c.innerHTML = `<div style="padding: 14px; text-align: center; color: rgba(255,255,255,0.3); font-size: 0.85rem;">No members found</div>`;
                     return;
                 }
-                
                 let html = '';
-                data.members.forEach(member => {
+                data.members.forEach(m => {
                     html += `
-                        <div class="member-search-item" onclick="selectGuarantor(${guarantorNumber}, ${member.id}, '${member.full_name.replace(/'/g, "\\'")}', '${member.sacco_number}', '${member.phone || ''}', '${member.email || ''}')">
+                        <div class="member-search-item" onclick="selectGuarantor(${num}, ${m.id}, '${m.full_name.replace(/'/g, "\\'")}', '${m.sacco_number}', '${m.phone || ''}', '${m.email || ''}')">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span class="member-name">${member.full_name}</span>
-                                <span class="badge-available" style="font-size: 0.65rem; padding: 2px 10px; background: rgba(74,222,128,0.12); color: #4ade80; border-radius: 12px;">Active</span>
+                                <span class="member-name">${m.full_name}</span>
+                                <span style="font-size: 0.65rem; padding: 2px 10px; background: rgba(74,222,128,0.12); color: #4ade80; border-radius: 12px;">Active</span>
                             </div>
-                            <div class="member-details" style="margin-top: 4px; color: rgba(255,255,255,0.4); font-size: 0.75rem;">
-                                <span><i class="fas fa-id-card"></i> ${member.sacco_number}</span>
-                                <span style="margin-left: 12px;"><i class="fas fa-phone"></i> ${member.phone || 'No phone'}</span>
-                                <span style="margin-left: 12px;"><i class="fas fa-envelope"></i> ${member.email || 'No email'}</span>
+                            <div style="margin-top: 4px; color: rgba(255,255,255,0.4); font-size: 0.75rem;">
+                                <span><i class="fas fa-id-card"></i> ${m.sacco_number}</span>
+                                <span style="margin-left: 12px;"><i class="fas fa-phone"></i> ${m.phone || 'No phone'}</span>
                             </div>
                         </div>
                     `;
                 });
-                
-                resultsContainer.innerHTML = html;
-                resultsContainer.classList.add('show');
+                c.innerHTML = html;
+                c.classList.add('show');
             })
-            .catch(error => {
-                console.error('Search error:', error);
-                resultsContainer.innerHTML = `
-                    <div style="padding: 12px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">
-                        <i class="fas fa-exclamation-circle"></i> Network error. Please try again.
-                    </div>
-                `;
+            .catch(() => {
+                c.innerHTML = `<div style="padding: 14px; text-align: center; color: #ff6b6b; font-size: 0.85rem;">Network error</div>`;
             });
     }, 300);
 }
 
-// ============================================
-// SETUP SEARCH LISTENERS
-// ============================================
-
 function setupSearchListeners() {
     [1, 2].forEach(num => {
-        const search = document.getElementById('guarantor' + num + 'Search');
-        if (search) {
-            search.addEventListener('input', function() {
-                searchGuarantorMembers(this.value, num);
-            });
-            search.addEventListener('blur', function() {
+        const s = document.getElementById('guarantor' + num + 'Search');
+        if (s) {
+            s.addEventListener('input', function() { searchGuarantorMembers(this.value, num); });
+            s.addEventListener('blur', function() {
                 setTimeout(() => {
-                    const results = document.getElementById('guarantor' + num + 'Results');
-                    if (results) results.classList.remove('show');
-                }, 300);
+                    const r = document.getElementById('guarantor' + num + 'Results');
+                    if (r) r.classList.remove('show');
+                }, 250);
             });
-            search.addEventListener('focus', function() {
-                if (this.value.length >= 1) {
-                    searchGuarantorMembers(this.value, num);
-                }
+            s.addEventListener('focus', function() {
+                if (this.value.length >= 1) searchGuarantorMembers(this.value, num);
             });
         }
     });
 }
 
-// ============================================
-// SELECT GUARANTOR
-// ============================================
-
-function selectGuarantor(number, id, name, saccoNumber, phone, email) {
-    const otherNumber = number === 1 ? 2 : 1;
-    if (selectedGuarantors[otherNumber] && selectedGuarantors[otherNumber].id === id) {
-        showError('This member is already selected as Guarantor ' + otherNumber + '. Please choose a different member.');
+function selectGuarantor(num, id, name, sacco, phone, email) {
+    const other = num === 1 ? 2 : 1;
+    if (selectedGuarantors[other] && selectedGuarantors[other].id === id) {
+        showError('This member is already selected as Guarantor ' + other + '.');
         return;
     }
-    
-    selectedGuarantors[number] = { id, name, phone, email };
-    
-    document.getElementById('guarantor' + number + 'Id').value = id;
-    document.getElementById('guarantor' + number + 'Name').value = name;
-    document.getElementById('guarantor' + number + 'Phone').value = phone || '';
-    document.getElementById('guarantor' + number + 'Email').value = email || '';
-    
-    const searchInput = document.getElementById('guarantor' + number + 'Search');
-    const resultsContainer = document.getElementById('guarantor' + number + 'Results');
-    const selectedDisplay = document.getElementById('guarantor' + number + 'Selected');
-    
-    if (searchInput) searchInput.style.display = 'none';
-    if (resultsContainer) {
-        resultsContainer.classList.remove('show');
-        resultsContainer.innerHTML = '';
-    }
-    
-    const displayName = document.getElementById('g' + number + 'DisplayName');
-    const displayDetails = document.getElementById('g' + number + 'DisplayDetails');
-    
-    if (displayName) displayName.textContent = name;
-    if (displayDetails) {
-        displayDetails.innerHTML = `
-            <span><i class="fas fa-id-card"></i> ${saccoNumber}</span>
-            <span style="margin-left: 16px;"><i class="fas fa-phone"></i> ${phone || 'No phone'}</span>
-            <span style="margin-left: 16px;"><i class="fas fa-envelope"></i> ${email || 'No email'}</span>
-        `;
-    }
-    if (selectedDisplay) selectedDisplay.style.display = 'flex';
-    
-    const relationship = document.getElementById('guarantor' + number + 'Relationship');
-    if (relationship) relationship.disabled = false;
+
+    selectedGuarantors[num] = { id, name, phone, email };
+
+    document.getElementById('guarantor' + num + 'Id').value = id;
+    document.getElementById('guarantor' + num + 'Name').value = name;
+    document.getElementById('guarantor' + num + 'Phone').value = phone || '';
+    document.getElementById('guarantor' + num + 'Email').value = email || '';
+
+    document.getElementById('guarantor' + num + 'Search').style.display = 'none';
+    document.getElementById('guarantor' + num + 'Results').classList.remove('show');
+
+    document.getElementById('g' + num + 'DisplayName').textContent = name;
+    document.getElementById('g' + num + 'DisplayDetails').innerHTML =
+        `<span><i class="fas fa-id-card"></i> ${sacco}</span>
+         <span><i class="fas fa-phone"></i> ${phone || 'No phone'}</span>`;
+
+    document.getElementById('guarantor' + num + 'Selected').style.display = 'flex';
+    document.getElementById('guarantor' + num + 'Relationship').disabled = false;
 }
 
-// ============================================
-// CLEAR GUARANTOR
-// ============================================
+function clearGuarantor(num) {
+    selectedGuarantors[num] = null;
 
-function clearGuarantor(number) {
-    selectedGuarantors[number] = null;
-    
-    document.getElementById('guarantor' + number + 'Id').value = '';
-    document.getElementById('guarantor' + number + 'Name').value = '';
-    document.getElementById('guarantor' + number + 'Phone').value = '';
-    document.getElementById('guarantor' + number + 'Email').value = '';
-    
-    const searchInput = document.getElementById('guarantor' + number + 'Search');
-    const selectedDisplay = document.getElementById('guarantor' + number + 'Selected');
-    const resultsContainer = document.getElementById('guarantor' + number + 'Results');
-    const relationship = document.getElementById('guarantor' + number + 'Relationship');
-    
-    if (searchInput) {
-        searchInput.style.display = 'block';
-        searchInput.value = '';
-    }
-    if (selectedDisplay) selectedDisplay.style.display = 'none';
-    if (resultsContainer) {
-        resultsContainer.classList.remove('show');
-        resultsContainer.innerHTML = '';
-    }
-    if (relationship) {
-        relationship.disabled = true;
-        relationship.value = '';
-    }
+    ['Id', 'Name', 'Phone', 'Email'].forEach(f => document.getElementById('guarantor' + num + f).value = '');
+
+    const s = document.getElementById('guarantor' + num + 'Search');
+    s.style.display = 'block';
+    s.value = '';
+
+    document.getElementById('guarantor' + num + 'Selected').style.display = 'none';
+    document.getElementById('guarantor' + num + 'Results').classList.remove('show');
+
+    const r = document.getElementById('guarantor' + num + 'Relationship');
+    r.disabled = true;
+    r.value = '';
 }
 
-// ============================================
-// GUARANTOR REQUIREMENT
-// ============================================
-
+// ===== GUARANTOR REQUIREMENT =====
 function checkGuarantorRequirement(amount) {
-    const guarantorNotice = document.getElementById('guarantorNotice');
+    const notice = document.getElementById('guarantorNotice');
     const requiredEls = document.querySelectorAll('.guarantor-required');
     const inputs = document.querySelectorAll('.guarantor-input');
-    
+
     if (amount && amount > savingsThreshold) {
-        if (guarantorNotice) {
-            guarantorNotice.className = 'guarantor-notice requires-guarantor';
-            guarantorNotice.innerHTML = `
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>Guarantors Required!</strong>
+        notice.className = 'guarantor-notice-box requires';
+        notice.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong>Guarantors Required</strong><br>
                 Your loan amount (UGX ${amount.toLocaleString()}) exceeds 95% of your savings (UGX ${savingsThreshold.toLocaleString()}).
                 You must provide 2 guarantors.
-            `;
-            guarantorNotice.style.display = 'block';
-        }
-        
-        requiredEls.forEach(el => el.style.display = 'inline');
+            </div>
+        `;
+        notice.style.display = 'flex';
+        requiredEls.forEach(el => el.style.display = 'inline-flex');
         inputs.forEach(el => el.setAttribute('required', 'required'));
     } else {
-        if (guarantorNotice) {
-            guarantorNotice.className = 'guarantor-notice no-guarantor';
-            guarantorNotice.innerHTML = `
-                <i class="fas fa-check-circle"></i>
-                <strong>No Guarantors Required!</strong>
+        notice.className = 'guarantor-notice-box optional';
+        notice.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <div>
+                <strong>No Guarantors Required</strong><br>
                 Your loan amount is within 95% of your savings.
-            `;
-            guarantorNotice.style.display = 'block';
-        }
-        
+            </div>
+        `;
+        notice.style.display = 'flex';
         requiredEls.forEach(el => el.style.display = 'none');
         inputs.forEach(el => el.removeAttribute('required'));
     }
 }
 
-// ============================================
-// VALIDATE GUARANTORS
-// ============================================
-
 function validateGuarantors() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    
-    if (amount <= savingsThreshold) {
-        return true;
-    }
-    
-    if (!selectedGuarantors[1]) {
-        showError('Please select Guarantor 1.');
-        return false;
-    }
-    
-    if (!selectedGuarantors[2]) {
-        showError('Please select Guarantor 2.');
-        return false;
-    }
-    
+    if (amount <= savingsThreshold) return true;
+
+    if (!selectedGuarantors[1]) { showError('Please select Guarantor 1.'); return false; }
+    if (!selectedGuarantors[2]) { showError('Please select Guarantor 2.'); return false; }
     if (selectedGuarantors[1].id === selectedGuarantors[2].id) {
-        showError('Guarantor 1 and Guarantor 2 cannot be the same member.');
-        return false;
+        showError('Guarantor 1 and Guarantor 2 cannot be the same member.'); return false;
     }
-    
-    const rel1 = document.getElementById('guarantor1Relationship').value;
-    const rel2 = document.getElementById('guarantor2Relationship').value;
-    
-    if (!rel1) {
-        showError('Please select a relationship for Guarantor 1.');
-        return false;
+    if (!document.getElementById('guarantor1Relationship').value) {
+        showError('Please select a relationship for Guarantor 1.'); return false;
     }
-    
-    if (!rel2) {
-        showError('Please select a relationship for Guarantor 2.');
-        return false;
+    if (!document.getElementById('guarantor2Relationship').value) {
+        showError('Please select a relationship for Guarantor 2.'); return false;
     }
-    
     return true;
 }
 
-// ============================================
-// SUBMIT APPLICATION
-// ============================================
+// ===== SUBMIT =====
+function submitLoanApplication(e) {
+    e.preventDefault();
 
-function submitLoanApplication(event) {
-    event.preventDefault();
-    
     const loanAmount = parseFloat(document.getElementById('loanAmount').value);
-    const durationMonths = parseInt(document.getElementById('loanDuration').value) || 1;
-    const disbursementMethod = document.getElementById('disbursementMethod').value;
-    const otherDisbursement = document.getElementById('otherDisbursementText')?.value || '';
-    
-    // Get send-to details
+    const months = parseInt(document.getElementById('loanDuration').value) || 3;
     const sendToType = document.getElementById('sendToType').value;
     const sendToValue = document.getElementById('sendToValue').value.trim();
     const sendToSecondaryValue = document.getElementById('sendToSecondaryValue').value.trim();
-    
-    if (loanAmount < 10000) {
-        showError('Loan amount must be at least UGX 10,000.');
-        return false;
-    }
-    if (loanAmount > 10000000) {
-        showError('Loan amount cannot exceed UGX 10,000,000.');
-        return false;
-    }
-    
-    if (!disbursementMethod) {
-        showError('Please select a preferred disbursement method.');
-        return false;
-    }
-    
-    if (disbursementMethod === 'other' && !otherDisbursement.trim()) {
-        showError('Please specify your preferred disbursement method.');
-        return false;
-    }
-    
-    // Validate send-to field
-    if (!sendToValue) {
-        showError('Please enter where the money should be sent (' + 
-            (sendToType === 'phone' ? 'phone number' : 
-             sendToType === 'account' ? 'account number' : 
-             'phone number') + ').');
-        return false;
-    }
-    
+
+    if (loanAmount < 10000) { showError('Minimum loan amount is UGX 10,000.'); return; }
+    if (loanAmount > 10000000) { showError('Maximum loan amount is UGX 10,000,000.'); return; }
+    if (!sendToValue) { showError('Please enter where the money should be sent.'); return; }
     if (sendToType === 'both' && !sendToSecondaryValue) {
-        showError('Please enter the account number for the second option.');
-        return false;
+        showError('Please enter the account number too.'); return;
     }
-    
+
     const purpose = document.getElementById('loanPurpose').value.trim();
-    if (!purpose) {
-        showError('Please provide a purpose for the loan.');
-        return false;
-    }
-    
-    if (!validateGuarantors()) {
-        return false;
-    }
-    
+    if (!purpose) { showError('Please provide a purpose for the loan.'); return; }
+
+    if (!validateGuarantors()) return;
     if (!document.getElementById('termsCheck').checked) {
-        showError('Please agree to the terms and conditions.');
-        return false;
+        showError('Please agree to the terms and conditions.'); return;
     }
-    
-    // Calculate interest
-    const interestInfo = getInterestRate(loanAmount);
-    const monthlyRate = interestInfo.rate;
-    const interestMonths = Math.min(durationMonths, 3);
-    
-    let totalInterest = 0;
-    let totalDue = 0;
-    
-    if (interestMonths > 0 && monthlyRate > 0) {
-        const result = calculateCompoundInterest(loanAmount, monthlyRate, interestMonths);
-        totalInterest = result.totalInterest;
-        totalDue = result.totalAmount;
-    } else {
-        totalDue = loanAmount;
-        totalInterest = 0;
-    }
-    
-    // Calculate due date
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (durationMonths * 30));
-    const dueDateStr = dueDate.toISOString().split('T')[0];
-    
-    // Build send-to details string
+
+    const rate = getTierRate(loanAmount);
+    const perPeriod = loanAmount * (rate / 100);
+    const estInterest = perPeriod * months;
+    const estTotal = loanAmount + estInterest;
+
     let sendToDisplay = '';
-    if (sendToType === 'phone') {
-        sendToDisplay = 'Phone: ' + sendToValue;
-    } else if (sendToType === 'account') {
-        sendToDisplay = 'Account: ' + sendToValue;
-    } else if (sendToType === 'both') {
-        sendToDisplay = 'Phone: ' + sendToValue + ' | Account: ' + sendToSecondaryValue;
-    }
-    
+    if (sendToType === 'phone') sendToDisplay = 'Phone: ' + sendToValue;
+    else if (sendToType === 'account') sendToDisplay = 'Account: ' + sendToValue;
+    else sendToDisplay = 'Phone: ' + sendToValue + ' | Account: ' + sendToSecondaryValue;
+
     const formData = {
         loan_amount: loanAmount,
         purpose: purpose,
-        loan_duration: durationMonths,
-        disbursement_method: disbursementMethod === 'other' ? 'other: ' + otherDisbursement : disbursementMethod,
+        loan_duration: months,
         send_to_type: sendToType,
         send_to_value: sendToValue,
         send_to_secondary: sendToSecondaryValue || '',
         send_to_display: sendToDisplay,
-        interest_rate: monthlyRate,
-        total_interest: Math.round(totalInterest),
-        total_repayment: Math.round(totalDue),
-        monthly_interest: Math.round(monthlyRate > 0 ? (loanAmount * monthlyRate / 100) : 0),
-        tenure: durationMonths,
-        due_date: dueDateStr
+        interest_rate: rate,
+        total_interest: Math.round(estInterest),
+        total_repayment: Math.round(estTotal),
+        monthly_interest: Math.round(perPeriod),
+        tenure: months
     };
-    
+
     if (loanAmount > savingsThreshold) {
         formData.guarantor1_id = selectedGuarantors[1].id;
         formData.guarantor1_name = selectedGuarantors[1].name;
         formData.guarantor1_phone = selectedGuarantors[1].phone;
         formData.guarantor1_email = selectedGuarantors[1].email;
         formData.guarantor1_relationship = document.getElementById('guarantor1Relationship').value;
-        
+
         formData.guarantor2_id = selectedGuarantors[2].id;
         formData.guarantor2_name = selectedGuarantors[2].name;
         formData.guarantor2_phone = selectedGuarantors[2].phone;
         formData.guarantor2_email = selectedGuarantors[2].email;
         formData.guarantor2_relationship = document.getElementById('guarantor2Relationship').value;
     }
-    
-    const submitBtn = document.querySelector('.submit-btn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    submitBtn.disabled = true;
-    
+
+    const btn = document.querySelector('.btn-submit-new');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    btn.disabled = true;
+
     fetch('/member/apply-loan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        
+        btn.innerHTML = original;
+        btn.disabled = false;
+
         if (data.success) {
             document.getElementById('applicationRef').textContent = data.loan_number || 'LN-2026-XXXX';
             document.getElementById('summaryPrincipal').textContent = 'UGX ' + loanAmount.toLocaleString();
-            document.getElementById('summaryInterest').textContent = 'UGX ' + Math.round(totalInterest).toLocaleString();
-            document.getElementById('summaryTotal').textContent = 'UGX ' + Math.round(totalDue).toLocaleString();
-            
-            const durationLabels = ['', '1 Month', '2 Months', '3 Months', '4 Months', '5 Months', '6 Months'];
-            document.getElementById('summaryDuration').textContent = durationLabels[durationMonths] || durationMonths + ' Months';
-            
-            const dueDisplay = new Date(dueDate).toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-            document.getElementById('summaryDueDate').textContent = dueDisplay;
-            
-            const dispLabels = {
-                'mobile_money': '📱 Mobile Money',
-                'bank': '🏦 Bank Account',
-                'cash': '💵 Cash Pickup'
-            };
-            document.getElementById('summaryDisbursement').textContent = 
-                dispLabels[disbursementMethod] || '📝 ' + otherDisbursement;
-            
+            document.getElementById('summaryRate').textContent = rate + '%';
+            document.getElementById('summaryInterest').textContent = 'UGX ' + Math.round(perPeriod).toLocaleString();
+            document.getElementById('summaryTotal').textContent = 'UGX ' + Math.round(estTotal).toLocaleString();
             document.getElementById('summarySendTo').textContent = sendToDisplay;
-            
+
             if (loanAmount <= savingsThreshold) {
-                document.getElementById('statusNotice').innerHTML = `
-                    <i class="fas fa-check-circle" style="color: #4ade80;"></i>
-                    <span>Status: <strong style="color:#4ade80;">No Guarantors Required</strong></span>
-                `;
-                document.getElementById('successDetails').textContent = 
-                    durationMonths + '-month loan. Total due: UGX ' + Math.round(totalDue).toLocaleString() + ' by ' + dueDisplay + '. Money will be sent to: ' + sendToDisplay;
+                document.getElementById('statusNotice').innerHTML = `<i class="fas fa-check-circle" style="color: #4ade80;"></i><span>Status: <strong style="color:#4ade80;">No Guarantors Required</strong></span>`;
+                document.getElementById('successDetails').textContent = 'Your loan will be reviewed by the Treasurer shortly.';
             } else {
-                document.getElementById('statusNotice').innerHTML = `
-                    <i class="fas fa-clock"></i>
-                    <span>Status: <strong style="color:#f5c542;">PENDING - Awaiting Review</strong></span>
-                `;
-                document.getElementById('successDetails').textContent = 
-                    'The Treasurer will review your application and contact your guarantors manually. Money will be sent to: ' + sendToDisplay;
+                document.getElementById('statusNotice').innerHTML = `<i class="fas fa-clock"></i><span>Status: <strong style="color:#f5c542;">PENDING</strong></span>`;
+                document.getElementById('successDetails').textContent = 'The Treasurer will review your application and contact your guarantors.';
             }
-            
+
             document.getElementById('successModal').style.display = 'flex';
         } else {
             showError(data.message || 'Failed to submit application.');
         }
     })
-    .catch(error => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+    .catch(err => {
+        btn.innerHTML = original;
+        btn.disabled = false;
         showError('Network error. Please try again.');
-        console.error('Error:', error);
+        console.error(err);
     });
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
+// ===== UTILS =====
+function showError(msg) {
+    document.getElementById('errorMessage').textContent = msg;
     document.getElementById('errorModal').style.display = 'flex';
 }
-
 function closeErrorModal() {
     document.getElementById('errorModal').style.display = 'none';
 }
-
 function goToDashboard() {
     document.getElementById('successModal').style.display = 'none';
     window.location.href = '/member/dashboard';
 }
 
 function resetForm() {
-    if (confirm('Clear all form fields?')) {
-        document.getElementById('loanApplicationForm').reset();
-        document.getElementById('repaymentSummary').style.display = 'none';
-        document.getElementById('guarantorNotice').style.display = 'none';
-        clearGuarantor(1);
-        clearGuarantor(2);
-        
-        // Reset disbursement selection
-        document.querySelectorAll('#disbursementMobileMoney, #disbursementBank, #disbursementCash, #disbursementOther').forEach(el => {
-            el.style.borderColor = 'rgba(255,255,255,0.08)';
-            el.style.background = 'rgba(255,255,255,0.03)';
-        });
-        document.getElementById('disbursementMethod').value = '';
-        document.getElementById('otherDisbursementContainer').style.display = 'none';
-        document.getElementById('displayDisbursement').textContent = 'Not selected';
-        
-        // Reset send-to fields
-        document.getElementById('sendToValue').value = '';
-        document.getElementById('sendToSecondaryValue').value = '';
-        document.getElementById('sendToType').value = 'phone';
-        document.getElementById('sendToSecondaryContainer').style.display = 'none';
-        document.getElementById('displaySendTo').textContent = 'Not specified';
-        document.getElementById('sendToLabel').textContent = 'Phone Number';
-        document.getElementById('sendToHint').innerHTML = '<i class="fas fa-info-circle"></i> Enter the phone number where the money should be sent';
-        
-        document.getElementById('displayTerm').value = '1 Month (30 Days)';
-        document.getElementById('displayDueDate').value = dueDateFormatted;
-        document.getElementById('displayDueDateSummary').textContent = dueDateFormatted;
-        
-        calculateRepayment();
-    }
+    if (!confirm('Clear all form fields?')) return;
+    document.getElementById('loanApplicationForm').reset();
+    document.getElementById('repaymentSummary').style.display = 'none';
+    document.getElementById('tierPreview').style.display = 'none';
+    document.getElementById('guarantorNotice').style.display = 'none';
+    clearGuarantor(1);
+    clearGuarantor(2);
+
+    document.getElementById('sendToValue').value = '';
+    document.getElementById('sendToSecondaryValue').value = '';
+    document.getElementById('sendToType').value = 'phone';
+    document.getElementById('sendToSecondaryContainer').style.display = 'none';
+    document.getElementById('displaySendTo').textContent = 'Not specified';
+
+    calculateRepayment();
 }
 
-function showTerms(event) {
-    event.preventDefault();
-    alert('Terms and Conditions:\n\n1. This is a 1 to 6 month loan (30 to 180 days).\n2. Interest compounds monthly for the first 3 months.\n3. No interest is charged beyond 3 months.\n4. Total due = Principal + Total Compound Interest.\n5. You can pay in multiple installments during the loan period.\n6. Full amount must be paid by the due date.\n7. Late payment may result in penalties and action against savings and guarantors.');
+function showTerms(e) {
+    e.preventDefault();
+    alert(
+        'Terms and Conditions:\n\n' +
+        '1. Interest is added every 30 days from the day you receive the loan.\n' +
+        '2. Interest is FLAT — it never compounds on itself.\n' +
+        '3. The rate depends on your CURRENT PRINCIPAL balance:\n' +
+        '   • Under 1M       → 5% per 30 days\n' +
+        '   • 1M – 4.99M     → 3% per 30 days\n' +
+        '   • 5M – 9.99M     → 2% per 30 days\n' +
+        '   • 10M and above  → 1% per 30 days\n' +
+        '4. Payments are applied to interest first, then principal.\n' +
+        '5. You can pay any amount, any time.\n' +
+        '6. There is no fixed end date — the loan lives until fully paid.\n' +
+        '7. Late payments may result in penalties and action against savings and guarantors.'
+    );
 }
 
-// ============================================
-// EVENT LISTENERS FOR SEND-TO FIELDS
-// ============================================
-
+// ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
-    // Send-to field listeners
     document.getElementById('sendToValue').addEventListener('input', updateSendToSummary);
     document.getElementById('sendToSecondaryValue').addEventListener('input', updateSendToSummary);
-    
-    // Initial setup
     toggleSendToFields();
     setupSearchListeners();
     calculateRepayment();

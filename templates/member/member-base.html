@@ -7,14 +7,60 @@
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="{{ url_for('static', filename='member_dashboard.css') }}">
-    
-    
-    
+
+    <!-- ===== BACK BUTTON STYLES ===== -->
+    <style>
+        .nav-back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-right: 14px;
+            font-family: inherit;
+        }
+
+        .nav-back-btn:hover {
+            background: rgba(201, 169, 97, 0.12);
+            border-color: rgba(201, 169, 97, 0.35);
+            color: #e0bf75;
+            transform: translateX(-2px);
+        }
+
+        .nav-back-btn:active {
+            transform: translateX(-3px) scale(0.96);
+        }
+
+        @media (max-width: 620px) {
+            .nav-back-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 0.82rem;
+                margin-right: 10px;
+            }
+        }
+
+        /* Ensure app-bar-left aligns the back button nicely */
+        .modern-app-bar .app-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 0; /* gap handled by the button's own margin */
+        }
+    </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -66,7 +112,7 @@
                         <i class="fas fa-file-invoice"></i>
                         <span>Apply for Loan</span>
                     </a>
-                    <a href="{{ url_for('member_repayments') }}" 
+                    <a href="{{ url_for('member_repayments') }}"
                        class="nav-item nav-dropdown-item {% if active_page == 'repayments' %}active{% endif %}"
                        onclick="window.location.href='{{ url_for('member_repayments') }}'; return false;">
                         <i class="fas fa-undo-alt"></i>
@@ -94,6 +140,12 @@
         <!-- App Bar -->
         <div class="modern-app-bar">
             <div class="app-bar-left">
+
+                <!-- ✅ BACK BUTTON -->
+                <button type="button" class="nav-back-btn" onclick="history.back()" title="Go back">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+
                 <div class="app-bar-icon">
                     <i class="fas fa-handshake"></i>
                 </div>
@@ -133,7 +185,7 @@
                         <div class="notification-dropdown-list">
                             {% if notifications and notifications|length > 0 %}
                                 {% for notification in notifications %}
-                                <div class="notification-dropdown-item {% if not notification.is_read %}unread{% endif %}" 
+                                <div class="notification-dropdown-item {% if not notification.is_read %}unread{% endif %}"
                                      data-id="{{ notification.id }}">
                                     <div class="item-header" onclick="toggleNotificationExpand('{{ notification.id }}', event)">
                                         <div class="item-icon type-{{ notification.type or 'info' }}">
@@ -228,12 +280,11 @@ ALL JAVASCRIPT - Single location at the bottom
         if (event) {
             event.stopPropagation();
         }
-        
+
         var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             dropdown.classList.toggle('open');
-            
-            // Close any expanded notifications when closing the dropdown
+
             if (!dropdown.classList.contains('open')) {
                 document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
                     item.classList.remove('expanded');
@@ -256,20 +307,17 @@ ALL JAVASCRIPT - Single location at the bottom
         if (event) {
             event.stopPropagation();
         }
-        
+
         var parent = event.currentTarget.closest('.notification-dropdown-item');
         if (parent) {
-            // Close other expanded notifications
             document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
                 if (item !== parent) {
                     item.classList.remove('expanded');
                 }
             });
-            
-            // Toggle this one
+
             parent.classList.toggle('expanded');
-            
-            // If this was unread, mark it as read
+
             if (parent.classList.contains('unread')) {
                 markAsRead(notificationId, event);
             }
@@ -280,7 +328,7 @@ ALL JAVASCRIPT - Single location at the bottom
         if (event) {
             event.stopPropagation();
         }
-        
+
         var parent = document.querySelector('.notification-dropdown-item[data-id="' + notificationId + '"]');
         if (parent) {
             var dot = parent.querySelector('.unread-dot');
@@ -289,8 +337,7 @@ ALL JAVASCRIPT - Single location at the bottom
             }
             parent.classList.remove('unread');
         }
-        
-        // Update badge count
+
         var badge = document.getElementById('notificationBadge');
         if (badge) {
             var current = parseInt(badge.textContent);
@@ -301,8 +348,7 @@ ALL JAVASCRIPT - Single location at the bottom
                 }
             }
         }
-        
-        // Send request to mark as read
+
         fetch('/member/notification/read/' + notificationId, {
             method: 'POST',
             headers: {
@@ -315,7 +361,7 @@ ALL JAVASCRIPT - Single location at the bottom
         if (event) {
             event.stopPropagation();
         }
-        
+
         var items = document.querySelectorAll('.notification-dropdown-item.unread');
         items.forEach(function(item) {
             var dot = item.querySelector('.unread-dot');
@@ -324,14 +370,13 @@ ALL JAVASCRIPT - Single location at the bottom
             }
             item.classList.remove('unread');
         });
-        
+
         var badge = document.getElementById('notificationBadge');
         if (badge) {
             badge.textContent = '0';
             badge.classList.add('zero');
         }
-        
-        // Send request to mark all as read
+
         fetch('/member/notification/mark-all-read', {
             method: 'POST',
             headers: {
@@ -340,11 +385,10 @@ ALL JAVASCRIPT - Single location at the bottom
         }).catch(error => console.error('Error marking all notifications as read:', error));
     }
 
-    // Close notification dropdown when clicking outside
     document.addEventListener('click', function(event) {
         var wrapper = document.querySelector('.notification-bell-wrapper');
         var dropdown = document.getElementById('notificationDropdown');
-        
+
         if (wrapper && dropdown && !wrapper.contains(event.target)) {
             dropdown.classList.remove('open');
             document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
@@ -353,7 +397,6 @@ ALL JAVASCRIPT - Single location at the bottom
         }
     });
 
-    // Close expanded notifications with Escape key
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             document.querySelectorAll('.notification-dropdown-item.expanded').forEach(function(item) {
@@ -369,8 +412,7 @@ ALL JAVASCRIPT - Single location at the bottom
         if (event) {
             event.preventDefault();
         }
-        
-        // For pages that have their own URL, redirect
+
         if (page === 'apply-loan') {
             window.location.href = "{{ url_for('member_apply_loan') }}";
             return false;
@@ -381,34 +423,31 @@ ALL JAVASCRIPT - Single location at the bottom
             window.location.href = "{{ url_for('member_guarantors') }}";
             return false;
         }
-        
-        // Hide all panels
+
         var panels = document.querySelectorAll('.content-panel');
         panels.forEach(function(panel) {
             panel.style.display = 'none';
             panel.classList.remove('active');
         });
-        
-        // Show target panel (only dashboard and savings)
+
         var targetPanel = document.getElementById(page + '-panel');
         if (targetPanel) {
             targetPanel.style.display = 'block';
             targetPanel.classList.add('active');
         }
-        
-        // Update page title for panels only
+
         var pageTitles = {
             'dashboard': 'Dashboard',
             'savings': 'My Savings'
         };
-        
+
         var titleElement = document.getElementById('pageTitle');
         var subtitleElement = document.getElementById('pageSubtitle');
-        
+
         if (titleElement && pageTitles[page]) {
             titleElement.textContent = pageTitles[page];
         }
-        
+
         if (subtitleElement) {
             var subtitles = {
                 'dashboard': 'Your SACCO overview',
@@ -418,12 +457,11 @@ ALL JAVASCRIPT - Single location at the bottom
                 subtitleElement.textContent = subtitles[page];
             }
         }
-        
-        // Update URL hash
+
         if (page) {
             window.location.hash = page;
         }
-        
+
         return false;
     }
 
@@ -435,12 +473,12 @@ ALL JAVASCRIPT - Single location at the bottom
             event.preventDefault();
             event.stopPropagation();
         }
-        
+
         var parent = event.currentTarget.closest('.nav-dropdown');
-        
+
         if (parent) {
             parent.classList.toggle('open');
-            
+
             var allDropdowns = document.querySelectorAll('.nav-dropdown');
             allDropdowns.forEach(function(dropdown) {
                 if (dropdown !== parent && dropdown.classList.contains('open')) {
@@ -448,7 +486,7 @@ ALL JAVASCRIPT - Single location at the bottom
                 }
             });
         }
-        
+
         return false;
     }
 
@@ -477,11 +515,10 @@ ALL JAVASCRIPT - Single location at the bottom
 
         var timeElement = document.getElementById('currentTime');
         var dateElement = document.getElementById('currentDate');
-        
+
         if (timeElement) timeElement.textContent = timeString;
         if (dateElement) dateElement.textContent = dateString;
 
-        // Update greeting
         var greetingTimeSpan = document.getElementById('greetingTime');
         if (greetingTimeSpan) {
             var hour = now.getHours();
@@ -499,11 +536,9 @@ ALL JAVASCRIPT - Single location at the bottom
     // HANDLE URL HASH ON LOAD
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Start the clock
         updateDateTime();
         setInterval(updateDateTime, 60000);
 
-        // Handle URL hash for navigation
         var hash = window.location.hash.replace('#', '');
         if (hash && hash !== '') {
             if (hash === 'apply-loan') {
@@ -520,7 +555,6 @@ ALL JAVASCRIPT - Single location at the bottom
             }
         }
 
-        // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
             var dropdowns = document.querySelectorAll('.nav-dropdown');
             dropdowns.forEach(function(dropdown) {
@@ -530,7 +564,6 @@ ALL JAVASCRIPT - Single location at the bottom
             });
         });
 
-        // Close dropdowns with Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 var dropdowns = document.querySelectorAll('.nav-dropdown.open');
@@ -540,10 +573,9 @@ ALL JAVASCRIPT - Single location at the bottom
             }
         });
 
-        // Highlight active nav item based on current path
         var currentPath = window.location.pathname;
         var navItems = document.querySelectorAll('.nav-item');
-        
+
         navItems.forEach(function(item) {
             var href = item.getAttribute('href');
             if (href && href !== '#' && currentPath.includes(href)) {
