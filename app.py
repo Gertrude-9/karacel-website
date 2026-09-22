@@ -35,10 +35,9 @@ def get_db():
 # REGISTER CHAT BLUEPRINT
 # ============================================================
 from chat_api import chat_api, create_chat_table
-app.register_blueprint(chat_api)
 
-with app.app_context():
-    create_chat_table()
+app.register_blueprint(chat_api)
+create_chat_table()
 
 
 def create_database():
@@ -5258,33 +5257,6 @@ def mark_all_notifications_read():
         db.close()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# ============================================================
-# CHAT API ROUTES
-# ============================================================
-from flask import Blueprint, jsonify, request, session, redirect, url_for, render_template
-import sqlite3
-
-import functools
-
-chat_api = Blueprint('chat_api', __name__)
-
-# ------------------------------------------------------------
-# Roles
-# ------------------------------------------------------------
-STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
-
-
-def staff_required(f):
-    """Decorator: only allow logged-in staff roles."""
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({'success': False, 'message': 'Not logged in'}), 401
-        if (session.get("role") or "").lower() not in STAFF_ROLES:
-            return jsonify({'success': False, 'message': 'Access denied'}), 403
-        return f(*args, **kwargs)
-    return wrapper
-
 
 @app.route('/savings')
 def savings():
@@ -5298,6 +5270,192 @@ def credit():
 def welfare():
     return render_template('website/welfare.html')
 
+
+# ============================================================
+# MEMBER <-> STAFF CHAT (member side)
+# Member picks a staff member to chat with.
+# ============================================================
+STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
+
+
+@app.route("/member/chat")
+def member_chat():
+    """Member chat page — shows list of staff, then thread with chosen staff."""
+    if "user_id" not in session:
+        return redirect("/login")
+
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    member = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    db.close()
+
+    if not member:
+        flash("Member not found", "danger")
+        return redirect("/login")
+
+    return render_template(
+        "member/member-chat.html",
+        member=member,
+        active_page="chat",
+        unread_count=0,
+        notifications=[]
+    )
+
+
+@app.route("/api/member-chat/staff-list")
+def api_member_staff_list():
+    """List of staff the member can chat with."""
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    member_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    placeholders = ",".join("?" * len(STAFF_ROLES))
+
+    staff = db.execute(f"""
+        SELECT
+            u.id,
+            u.full_name,
+            u.sacco_number,
+            u.role,
+            u.status,
+            (
+                SELECT COUNT(*)
+                FROM chat_messages cm
+                WHERE cm.sender_id = u.id
+                  AND cm.receiver_id = ?
+                  AND cm.is_read = 0
+            ) AS unread_count
+        FROM users u
+        WHERE LOWER(u.role) IN ({placeholders})
+          AND u.status = 'active'
+        ORDER BY
+            CASE LOWER(u.role)
+                WHEN 'treasurer'   THEN 1
+                WHEN 'secretary'   THEN 2
+                WHEN 'admin'       THEN 3
+                WHEN 'chairperson' THEN 4
+                WHEN 'publicity'   THEN 5
+                ELSE 9
+            END,
+            u.full_name ASC
+    """, (member_id, *STAFF_ROLES)).fetchall()
+
+    db.close()
+
+    return jsonify({
+        "success": True,
+        "staff": [{
+            "id": s["id"],
+            "full_name": s["full_name"],
+            "sacco_number": s["sacco_number"] or "",
+            "role": s["role"],
+            "status": s["status"] or "active",
+            "unread_count": s["unread_count"] or 0,
+        } for s in staff]
+    })
+
+
+@app.route("/api/member-chat/messages/<int:staff_id>")
+def api_member_chat_messages(staff_id):
+    """Messages between THIS member and one staff member."""
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    member_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    target = db.execute("SELECT id, role, full_name FROM users WHERE id = ?", (staff_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"success": False, "message": "Staff not found"}), 404
+    if (target["role"] or "").lower() not in STAFF_ROLES:
+        db.close()
+        return jsonify({"success": False, "message": "Can only chat with staff"}), 403
+
+    msgs = db.execute("""
+        SELECT
+            cm.id,
+            cm.sender_id,
+            cm.receiver_id,
+            cm.message,
+            cm.is_read,
+            cm.created_at,
+            u.full_name AS sender_name,
+            u.role      AS sender_role
+        FROM chat_messages cm
+        JOIN users u ON cm.sender_id = u.id
+        WHERE (cm.sender_id = ? AND cm.receiver_id = ?)
+           OR (cm.sender_id = ? AND cm.receiver_id = ?)
+        ORDER BY cm.created_at ASC
+        LIMIT 300
+    """, (member_id, staff_id, staff_id, member_id)).fetchall()
+
+    # Mark messages FROM this staff as read by the member
+    db.execute("""
+        UPDATE chat_messages
+        SET is_read = 1
+        WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
+    """, (staff_id, member_id))
+    db.commit()
+    db.close()
+
+    return jsonify({
+        "success": True,
+        "messages": [dict(m) for m in msgs]
+    })
+
+
+@app.route("/api/member-chat/send", methods=["POST"])
+def api_member_chat_send():
+    """Member sends to a staff member."""
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    body = (data.get("message") or "").strip()
+    staff_id = data.get("staff_id")
+
+    if not staff_id:
+        return jsonify({"success": False, "message": "Pick a staff member first"}), 400
+    if not body:
+        return jsonify({"success": False, "message": "Message is empty"}), 400
+    if len(body) > 2000:
+        return jsonify({"success": False, "message": "Message too long"}), 400
+
+    member_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    target = db.execute("SELECT id, role, full_name FROM users WHERE id = ?", (staff_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"success": False, "message": "Staff not found"}), 404
+    if (target["role"] or "").lower() not in STAFF_ROLES:
+        db.close()
+        return jsonify({"success": False, "message": "Members cannot message other members"}), 403
+
+    cursor = db.cursor()
+    cursor.execute("""
+        INSERT INTO chat_messages
+            (sender_id, receiver_id, message, message_type, is_read)
+        VALUES (?, ?, ?, 'general', 0)
+    """, (member_id, staff_id, body))
+
+    sender_name = session.get("full_name", "Member")
+    db.execute("""
+        INSERT INTO notifications
+            (user_id, type, title, message, link, created_at, is_read)
+        VALUES (?, 'chat', ?, ?, '/staff/chat', datetime('now'), 0)
+    """, (staff_id, f"📩 New message from {sender_name} (Member)", body[:200]))
+
+    db.commit()
+    db.close()
+
+    return jsonify({"success": True, "message": "Sent"})
 
 
 # ============================================================

@@ -123,6 +123,10 @@
                         <span>My Guarantors</span>
                     </a>
                 </div>
+                <a href="{{ url_for('member_chat') }}" class="nav-item {% if active_page == 'chat' %}active{% endif %}">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                </a>
             </div>
 
             <a href="{{ url_for('logout') }}" class="nav-item logout">
@@ -589,6 +593,8 @@ ALL JAVASCRIPT - Single location at the bottom
         console.log('Member Dashboard initialized.');
     });
 </script>
+
+{% block extra_css_js %}{% endblock %}
 
 </body>
 </html>
