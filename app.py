@@ -5457,7 +5457,181 @@ def api_member_chat_send():
 
     return jsonify({"success": True, "message": "Sent"})
 
+# ============================================================
+# PUBLICITY CHAT — separate from chat_api.py
+# Renders a member-chat-style page for publicity staff only.
+# ============================================================
+PUBLICITY_ALLOWED_ROLES = ["publicity"]     # only publicity can use these routes
+CHAT_STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
 
+
+def _require_publicity():
+    """Return None if OK, else a redirect response."""
+    if "user_id" not in session:
+        return redirect("/login")
+    role = (session.get("role") or "").lower()
+    if role not in PUBLICITY_ALLOWED_ROLES:
+        return redirect("/login")
+    return None
+
+
+@app.route("/publicity/chat")
+def publicity_chat():
+    """Publicity chat page — pick any member or other staff to chat with."""
+    bad = _require_publicity()
+    if bad:
+        return bad
+
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    me = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    db.close()
+
+    if not me:
+        flash("User not found", "danger")
+        return redirect("/login")
+
+    return render_template(
+        "publicity/publicity-chat.html",
+        member=me,
+        active_page="chat",
+        unread_count=0,
+        notifications=[]
+    )
+
+
+@app.route("/api/publicity-chat/contacts")
+def api_publicity_chat_contacts():
+    """Everyone publicity can chat with: all members + all other staff."""
+    bad = _require_publicity()
+    if bad:
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    me_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    placeholders = ",".join("?" * len(CHAT_STAFF_ROLES))
+
+    members = db.execute("""
+        SELECT
+            u.id, u.full_name, u.sacco_number, u.role, u.status,
+            (SELECT COUNT(*) FROM chat_messages cm
+             WHERE cm.sender_id = u.id AND cm.receiver_id = ? AND cm.is_read = 0
+            ) AS unread_count
+        FROM users u
+        WHERE LOWER(u.role) = 'member' AND u.id != ?
+        ORDER BY u.full_name ASC
+    """, (me_id, me_id)).fetchall()
+
+    staff = db.execute(f"""
+        SELECT
+            u.id, u.full_name, u.sacco_number, u.role, u.status,
+            (SELECT COUNT(*) FROM chat_messages cm
+             WHERE cm.sender_id = u.id AND cm.receiver_id = ? AND cm.is_read = 0
+            ) AS unread_count
+        FROM users u
+        WHERE LOWER(u.role) IN ({placeholders}) AND u.id != ?
+        ORDER BY u.full_name ASC
+    """, (me_id, *CHAT_STAFF_ROLES, me_id)).fetchall()
+
+    db.close()
+
+    contacts = []
+    for row in staff:
+        d = dict(row); d["type"] = "staff"; d["sacco_number"] = d.get("sacco_number") or ""
+        contacts.append(d)
+    for row in members:
+        d = dict(row); d["type"] = "member"; d["sacco_number"] = d.get("sacco_number") or ""
+        contacts.append(d)
+
+    return jsonify({"success": True, "contacts": contacts})
+
+
+@app.route("/api/publicity-chat/messages/<int:other_id>")
+def api_publicity_chat_messages(other_id):
+    bad = _require_publicity()
+    if bad:
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    me_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    target = db.execute("SELECT id FROM users WHERE id = ?", (other_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"success": False, "message": "Contact not found"}), 404
+
+    msgs = db.execute("""
+        SELECT cm.id, cm.sender_id, cm.receiver_id, cm.message, cm.is_read,
+               cm.created_at, u.full_name AS sender_name, u.role AS sender_role
+        FROM chat_messages cm
+        JOIN users u ON cm.sender_id = u.id
+        WHERE (cm.sender_id = ? AND cm.receiver_id = ?)
+           OR (cm.sender_id = ? AND cm.receiver_id = ?)
+        ORDER BY cm.created_at ASC
+        LIMIT 300
+    """, (me_id, other_id, other_id, me_id)).fetchall()
+
+    db.execute("""
+        UPDATE chat_messages SET is_read = 1
+        WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
+    """, (other_id, me_id))
+    db.commit()
+    db.close()
+
+    return jsonify({"success": True, "messages": [dict(m) for m in msgs]})
+
+
+@app.route("/api/publicity-chat/send", methods=["POST"])
+def api_publicity_chat_send():
+    bad = _require_publicity()
+    if bad:
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    data = request.get_json(silent=True) or {}
+    other_id = data.get("receiver_id")
+    body = (data.get("message") or "").strip()
+
+    if not other_id:
+        return jsonify({"success": False, "message": "Pick a contact first"}), 400
+    if not body:
+        return jsonify({"success": False, "message": "Message is empty"}), 400
+
+    try:
+        other_id = int(other_id)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Invalid contact"}), 400
+
+    me_id = session["user_id"]
+    db = get_db()
+    db.row_factory = sqlite3.Row
+
+    target = db.execute("SELECT id, role FROM users WHERE id = ?", (other_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"success": False, "message": "Contact not found"}), 404
+
+    db.execute("""
+        INSERT INTO chat_messages (sender_id, receiver_id, message, message_type, is_read)
+        VALUES (?, ?, ?, 'general', 0)
+    """, (me_id, other_id, body))
+
+    sender_name = session.get("full_name") or "Publicity"
+    link = "/staff/chat" if (target["role"] or "").lower() in CHAT_STAFF_ROLES else "/member/chat"
+
+    try:
+        db.execute("""
+            INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
+            VALUES (?, 'chat', ?, ?, ?, datetime('now'), 0)
+        """, (other_id, f"📩 New message from {sender_name} (Publicity)", body[:200], link))
+    except Exception as e:
+        print("Notification insert failed (non-fatal):", e)
+
+    db.commit()
+    db.close()
+    return jsonify({"success": True, "message": "Sent"})
+    
 # ============================================================
 # RUN THE APP
 # ============================================================

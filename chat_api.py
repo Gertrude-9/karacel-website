@@ -25,7 +25,7 @@ def get_db():
 # ============================================================
 chat_api = Blueprint('chat_api', __name__)
 
-STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
+STAFF_ROLES = ["admin",  "treasurer", "secretary"]
 
 # Which base template each staff role should extend.
 # If a role isn't listed, the fallback passed to _render_chat_page is used.
@@ -33,8 +33,7 @@ BASE_FOR_ROLE = {
     "treasurer":   "treasurer/treasurer-base.html",
     "secretary":   "secretary/secretary-base.html",
     "admin":       "admin/admin-base.html",
-    "chairperson": "admin/admin-base.html",
-    "publicity":   "publicity/publicity-base.html",
+   
 }
 
 
@@ -318,6 +317,9 @@ def api_chat_mark_read():
         db.close()
         print(f"Error marking messages as read: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
 
 
 # ============================================================
