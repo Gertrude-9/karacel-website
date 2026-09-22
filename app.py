@@ -1325,6 +1325,7 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
+                u.account_number,
                 u.email,
                 u.savings_balance,
                 u.role
@@ -1388,6 +1389,7 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
+                u.account_number,
                 u.email,
                 u.role
             FROM loans l
@@ -1431,6 +1433,7 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
+                u.account_number,
                 u.email,
                 u.role
             FROM loans l
@@ -5631,7 +5634,7 @@ def api_publicity_chat_send():
     db.commit()
     db.close()
     return jsonify({"success": True, "message": "Sent"})
-    
+
 # ============================================================
 # RUN THE APP
 # ============================================================

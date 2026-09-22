@@ -1021,6 +1021,7 @@
    LOAN TABLE — proper scroll containment
    ============================================================ */
 
+
 .tr-table-outer {
     width: 100%;
     max-height: 620px;
@@ -1028,6 +1029,11 @@
     background: rgba(0, 0, 0, 0.08);
     border-radius: 0 0 var(--tr-radius-sm) var(--tr-radius-sm);
     position: relative;
+}
+
+.tr-table-wide {
+    min-width: 1400px;
+    table-layout: auto;   /* ← change from 'fixed' */
 }
 
 .tr-table-outer::-webkit-scrollbar {

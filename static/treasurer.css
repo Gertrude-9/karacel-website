@@ -9,6 +9,45 @@
         /* ============================================================
        CHAT PANEL STYLES
     ============================================================ */
+    /* ==================== PAYOUT NUMBER ==================== */
+.payout-num {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    background: rgba(201, 169, 97, 0.07);
+    border: 1px solid rgba(201, 169, 97, 0.18);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--tr-text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+.payout-num:hover {
+    background: rgba(201, 169, 97, 0.14);
+    border-color: rgba(201, 169, 97, 0.4);
+}
+.payout-num.copied {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: rgba(74, 222, 128, 0.45);
+    color: #4ade80;
+}
+.payout-num.copied .payout-copy {
+    color: #4ade80;
+    opacity: 1;
+}
+.payout-copy {
+    font-size: 0.68rem;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+}
+.payout-num:hover .payout-copy {
+    opacity: 0.9;
+}
     .chat-panel {
         padding: 20px;
         height: calc(100vh - 120px);

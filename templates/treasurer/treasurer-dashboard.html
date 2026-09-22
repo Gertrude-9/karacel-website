@@ -543,209 +543,243 @@
         </div>
     </div>
 
-    <!-- ========== LOAN APPLICATIONS TABLE ========== -->
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-file-invoice"></i> Loan Applications
-            <span class="loan-count-pill">
-                <span id="loanCount">{{ all_loan_applications|length }}</span> loans found
-            </span>
-            <span class="role-pill" style="background:rgba(74,222,128,0.1); color:var(--tr-green);">
-                <i class="fas fa-user-tie"></i> Includes Staff
-            </span>
-        </div>
+   <!-- ========== LOAN APPLICATIONS TABLE ========== -->
+<div class="action-card">
+    <div class="action-title">
+        <i class="fas fa-file-invoice"></i> Loan Applications
+        <span class="loan-count-pill">
+            <span id="loanCount">{{ all_loan_applications|length }}</span> loans found
+        </span>
+        <span class="role-pill" style="background:rgba(74,222,128,0.1); color:var(--tr-green);">
+            <i class="fas fa-user-tie"></i> Includes Staff
+        </span>
+    </div>
 
-        <!-- Filters -->
-        <div class="tr-filter-bar">
-            <input type="text" id="searchLoans"
-                   placeholder="Search by member or loan number..."
-                   onkeyup="filterLoansTable()">
-            <select id="filterLoanStatus" onchange="filterLoansTable()">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="disbursed">Disbursed</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="rejected">Rejected</option>
-            </select>
-            <select id="filterLoanRole" onchange="filterLoansTable()">
-                <option value="all">All Users</option>
-                <option value="member">Members Only</option>
-                <option value="staff">Staff Only</option>
-            </select>
-        </div>
+    <!-- Filters -->
+    <div class="tr-filter-bar">
+        <input type="text" id="searchLoans"
+               placeholder="Search by member or loan number..."
+               onkeyup="filterLoansTable()">
+        <select id="filterLoanStatus" onchange="filterLoansTable()">
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="disbursed">Disbursed</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+        </select>
+        <select id="filterLoanRole" onchange="filterLoansTable()">
+            <option value="all">All Users</option>
+            <option value="member">Members Only</option>
+            <option value="staff">Staff Only</option>
+        </select>
+    </div>
 
-        <!-- Table (horizontally scrollable) -->
-        <div class="tr-table-outer">
-            <table class="styled-table tr-table-wide" id="loansTable">
-                <thead>
-                    <tr>
-                        <th style="width:44px;">#</th>
-                        <th style="width:130px;">Loan #</th>
-                        <th style="width:150px;">Member</th>
-                        <th style="width:110px; text-align:right;">Amount (UGX)</th>
-                        <th style="width:110px;">Status</th>
-                        <th style="width:110px; text-align:right;">Balance (UGX)</th>
-                        <th style="width:150px;">Interest</th>
-                        <th style="width:180px;">Guarantors</th>
-                        <th style="width:130px;">Date</th>
-                        <th style="width:70px; text-align:center;">Actions</th>
-                    </tr>
-                </thead>
-                 <tbody>
-                    {% for loan in all_loan_applications %}
-                    <tr data-status="{{ loan.status }}" data-role="{{ loan.role or 'member' }}">
-                        <td style="color:var(--tr-dim); text-align:center;">{{ loop.index }}</td>
-                        <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem; font-weight:600;">
-                            {{ loan.loan_number }}
-                        </td>
-                        <td style="font-weight:500; color:var(--tr-text);">
-                            {{ loan.full_name }}
-                        </td>
-                        
-                        <td style="text-align:right; color:var(--tr-green); font-weight:600; white-space:nowrap;">
-                            {{ "{:,.0f}".format(loan.amount) }}
-                        </td>
-                        <td>
-                            <span class="badge 
-                                {% if loan.status == 'pending' %}warning
-                                {% elif loan.status == 'approved' %}info
-                                {% elif loan.status in ['disbursed', 'active'] %}success
-                                {% elif loan.status == 'completed' %}success
-                                {% elif loan.status == 'rejected' %}danger
-                                {% else %}secondary{% endif %}">
-                                {{ loan.status|upper }}
+    <!-- Table -->
+    <div class="tr-table-outer">
+        <table class="styled-table tr-table-wide" id="loansTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;">#</th>
+                    <th style="width:110px;">Loan #</th>
+                    <th style="width:130px;">Member</th>
+                    <th style="width:120px;">Send Money To</th>
+                    <th style="width:110px; text-align:right;">Amount / Balance</th>
+                    <th style="width:95px;">Status</th>
+                    <th style="width:110px;">Interest</th>
+                    <th style="width:170px;">Guarantors</th>
+                    <th style="width:95px;">Date</th>
+                    <th style="width:60px; text-align:center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in all_loan_applications %}
+                <tr data-status="{{ loan.status }}" data-role="{{ loan.role or 'member' }}">
+                    <td style="color:var(--tr-dim); text-align:center;">{{ loop.index }}</td>
+
+                    <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem; font-weight:600;">
+                        {{ loan.loan_number }}
+                    </td>
+
+                    <td style="font-weight:500; color:var(--tr-text);">
+                        {{ loan.full_name }}
+                    </td>
+
+                    <!-- ===== Send Money To ===== -->
+                    <td>
+                        {% if loan.account_number %}
+                            <span class="payout-num"
+                                  onclick='copyPayout({{ loan.account_number|tojson }}, this)'
+                                  title="Click to copy">
+                                {{ loan.account_number }}
+                                <i class="fas fa-copy payout-copy"></i>
                             </span>
-                        </td>
-                        <td style="text-align:right; color:var(--tr-yellow); font-weight:600; white-space:nowrap;">
-                            {% if loan.status in ['disbursed', 'active', 'approved'] %}
-                                {{ "{:,.0f}".format(loan.current_balance or loan.amount) }}
-                            {% elif loan.status == 'completed' %}
-                                <span style="color:var(--tr-green); font-size:0.78rem;">
-                                    <i class="fas fa-check-circle"></i> Paid
-                                </span>
-                            {% else %}
-                                <span style="color:var(--tr-dim);">—</span>
+                        {% elif loan.phone %}
+                            <span class="payout-num"
+                                  onclick='copyPayout({{ loan.phone|tojson }}, this)'
+                                  title="Click to copy">
+                                {{ loan.phone }}
+                                <i class="fas fa-copy payout-copy"></i>
+                            </span>
+                        {% else %}
+                            <span style="color:var(--tr-dim); font-size:0.8rem;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- ===== Amount / Balance (merged) ===== -->
+                    <td style="text-align:right; white-space:nowrap;">
+                        <div style="color:var(--tr-green); font-weight:600; font-size:0.85rem;">
+                            {{ "{:,.0f}".format(loan.amount) }}
+                        </div>
+                        {% if loan.status in ['disbursed', 'active', 'approved'] %}
+                            <div style="color:var(--tr-yellow); font-size:0.7rem; opacity:0.85;">
+                                bal {{ "{:,.0f}".format(loan.current_balance or loan.amount) }}
+                            </div>
+                        {% elif loan.status == 'completed' %}
+                            <div style="color:var(--tr-green); font-size:0.65rem;">
+                                <i class="fas fa-check-circle"></i> paid
+                            </div>
+                        {% else %}
+                            <div style="color:var(--tr-dim); font-size:0.7rem;">—</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- ===== Status ===== -->
+                    <td>
+                        <span class="badge
+                            {% if loan.status == 'pending' %}warning
+                            {% elif loan.status == 'approved' %}info
+                            {% elif loan.status in ['disbursed', 'active'] %}success
+                            {% elif loan.status == 'completed' %}success
+                            {% elif loan.status == 'rejected' %}danger
+                            {% else %}secondary{% endif %}">
+                            {{ loan.status|upper }}
+                        </span>
+                    </td>
+
+                    <!-- ===== Interest (compact) ===== -->
+                    <td style="white-space:nowrap;">
+                        <div style="font-size:0.72rem; line-height:1.35;">
+                            <div>
+                                <span style="color:var(--tr-red);">A: {{ "{:,.0f}".format(loan.total_interest_accrued or 0) }}</span>
+                                <span style="color:var(--tr-green); margin-left:6px;">P: {{ "{:,.0f}".format(loan.interest_paid or 0) }}</span>
+                            </div>
+                            {% if loan.total_interest_accrued and loan.total_interest_accrued > 0 %}
+                            <div style="color:var(--tr-yellow); font-size:0.62rem;">
+                                {{ "%.0f"|format((loan.interest_paid or 0) / loan.total_interest_accrued * 100) }}% cleared
+                            </div>
                             {% endif %}
-                        </td>
-                        <td>
-                            <div class="interest-cell">
-                                <span style="color:var(--tr-red);">
-                                    Accrued: {{ "{:,.0f}".format(loan.total_interest_accrued or 0) }}
-                                </span>
-                                <span style="color:var(--tr-green);">
-                                    Paid: {{ "{:,.0f}".format(loan.interest_paid or 0) }}
-                                </span>
-                                {% if loan.interest_paid and loan.total_interest_accrued and loan.total_interest_accrued > 0 %}
-                                <span style="color:var(--tr-yellow); font-size:0.65rem;">
-                                    {{ "%.1f"|format((loan.interest_paid / loan.total_interest_accrued * 100)) }}% cleared
-                                </span>
+                        </div>
+                    </td>
+
+                    <!-- ===== Guarantors (FULL NAMES BACK) ===== -->
+                    <td>
+                        {% if loan.guarantors %}
+                            <div class="guarantor-list">
+                                {% for guarantor in loan.guarantors[:2] %}
+                                    <span class="guarantor-tag" onclick="viewGuarantorDetails('{{ guarantor.id }}')">
+                                        <i class="fas fa-user"></i>
+                                        <span>{{ guarantor.guarantor_name }}</span>
+                                        {% if guarantor.status|upper == 'Pending' %}
+                                            <span class="g-status pending">⏳</span>
+                                        {% elif guarantor.status|upper in ['Active', 'Accepted'] %}
+                                            <span class="g-status active">✓</span>
+                                        {% endif %}
+                                    </span>
+                                {% endfor %}
+                                {% if loan.guarantors|length > 2 %}
+                                    <span class="guarantor-more">
+                                        +{{ loan.guarantors|length - 2 }} more
+                                    </span>
                                 {% endif %}
                             </div>
-                        </td>
-                       <td>
-                            {% if loan.guarantors %}
-                                <div class="guarantor-list">
-                                    {% for guarantor in loan.guarantors[:2] %}
-                                        <span class="guarantor-tag" onclick="viewGuarantorDetails('{{ guarantor.id }}')">
-                                            <i class="fas fa-user"></i>
-                                            <span>{{ guarantor.guarantor_name }}</span>
-                                            {% if guarantor.status|upper == 'Pending' %}
-                                                <span class="g-status pending">⏳</span>
-                                            {% elif guarantor.status|upper in ['Active', 'Accepted'] %}
-                                                <span class="g-status active">✓</span>
-                                            {% endif %}
-                                        </span>
-                                    {% endfor %}
-                                    {% if loan.guarantors|length > 2 %}
-                                        <span class="guarantor-more">
-                                            +{{ loan.guarantors|length - 2 }} more
-                                        </span>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <span style="
-                                    display:inline-block;
-                                    padding:2px 10px;
-                                    border-radius:20px;
-                                    font-size:0.65rem;
-                                    font-weight:600;
-                                    background:rgba(255,255,255,0.04);
-                                    color:rgba(255,255,255,0.35);
-                                    border:1px solid rgba(255,255,255,0.06);
-                                ">Not Required</span>
-                            {% endif %}
-                        </td>
-                        <td style="color:var(--tr-muted); font-size:0.75rem; white-space:nowrap;">
-                            {% if loan.status == 'pending' %}
-                                {{ loan.application_date[:10] if loan.application_date else '—' }}
-                            {% elif loan.status == 'approved' %}
-                                {{ (loan.approval_date or loan.application_date)[:10] if (loan.approval_date or loan.application_date) else '—' }}
-                            {% elif loan.status in ['disbursed', 'active'] %}
-                                {{ (loan.disbursement_date or loan.application_date)[:10] if (loan.disbursement_date or loan.application_date) else '—' }}
-                            {% elif loan.status == 'completed' %}
-                                {{ (loan.completed_date or loan.application_date)[:10] if (loan.completed_date or loan.application_date) else '—' }}
-                            {% else %}
-                                {{ loan.application_date[:10] if loan.application_date else '—' }}
-                            {% endif %}
-                        </td>
-                        <td style="text-align:center;">
-                            <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" title="Actions">
-                                <i class="fas fa-ellipsis-v"></i>
+                        {% else %}
+                            <span style="
+                                display:inline-block;
+                                padding:2px 10px;
+                                border-radius:20px;
+                                font-size:0.65rem;
+                                font-weight:600;
+                                background:rgba(255,255,255,0.04);
+                                color:rgba(255,255,255,0.35);
+                                border:1px solid rgba(255,255,255,0.06);
+                            ">Not Required</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- ===== Date ===== -->
+                    <td style="color:var(--tr-muted); font-size:0.72rem; white-space:nowrap;">
+                        {% if loan.status == 'pending' %}
+                            {{ loan.application_date[:10] if loan.application_date else '—' }}
+                        {% elif loan.status == 'approved' %}
+                            {{ (loan.approval_date or loan.application_date)[:10] if (loan.approval_date or loan.application_date) else '—' }}
+                        {% elif loan.status in ['disbursed', 'active'] %}
+                            {{ (loan.disbursement_date or loan.application_date)[:10] if (loan.disbursement_date or loan.application_date) else '—' }}
+                        {% elif loan.status == 'completed' %}
+                            {{ (loan.completed_date or loan.application_date)[:10] if (loan.completed_date or loan.application_date) else '—' }}
+                        {% else %}
+                            {{ loan.application_date[:10] if loan.application_date else '—' }}
+                        {% endif %}
+                    </td>
+
+                    <!-- ===== Actions ===== -->
+                    <td style="text-align:center;">
+                        <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" title="Actions">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+
+                        <div class="dropdown-menu" id="dropdown-{{ loan.id }}">
+                            <button onclick="viewLoan('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action view">
+                                <i class="fas fa-eye"></i> View
                             </button>
 
-                            <div class="dropdown-menu" id="dropdown-{{ loan.id }}">
-                                <button onclick="viewLoan('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action view">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
+                            {% if loan.status == 'pending' %}
+                            <button onclick="openApproveModal('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action approve">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button onclick="openRejectModal('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action reject">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                            {% endif %}
 
-                                {% if loan.status == 'pending' %}
-                                <button onclick="openApproveModal('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action approve">
-                                    <i class="fas fa-check"></i> Approve
-                                </button>
-                                <button onclick="openRejectModal('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action reject">
-                                    <i class="fas fa-times"></i> Reject
-                                </button>
-                                {% endif %}
+                            {% if loan.status == 'approved' %}
+                            <button onclick="disburseLoan('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action disburse">
+                                <i class="fas fa-hand-holding-usd"></i> Disburse
+                            </button>
+                            {% endif %}
 
-                                {% if loan.status == 'approved' %}
-                                <button onclick="disburseLoan('{{ loan.id }}'); closeAllDropdowns();" class="dropdown-action disburse">
-                                    <i class="fas fa-hand-holding-usd"></i> Disburse
-                                </button>
-                                {% endif %}
+                            {% if loan.status == 'completed' %}
+                            <span class="dropdown-action done">
+                                <i class="fas fa-check-circle"></i> Done
+                            </span>
+                            {% endif %}
 
-                                {% if loan.status == 'completed' %}
-                                <span class="dropdown-action done">
-                                    <i class="fas fa-check-circle"></i> Done
-                                </span>
-                                {% endif %}
-
-                                {% if loan.status == 'rejected' %}
-                                <span class="dropdown-action failed">
-                                    <i class="fas fa-times-circle"></i> Rejected
-                                </span>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="8" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
-                            <i class="fas fa-file-invoice" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
-                            <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
-                                No Loan Applications
-                            </div>
-                            <p style="font-size:0.82rem; color:var(--tr-muted); margin:0;">
-                                Submitted applications will appear here
-                            </p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                            {% if loan.status == 'rejected' %}
+                            <span class="dropdown-action failed">
+                                <i class="fas fa-times-circle"></i> Rejected
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
+                        <i class="fas fa-file-invoice" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
+                        <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
+                            No Loan Applications
+                        </div>
+                        <p style="font-size:0.82rem; color:var(--tr-muted); margin:0;">
+                            Submitted applications will appear here
+                        </p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
 
 </div>
 
@@ -1792,6 +1826,77 @@
     </div>
 </div>
 
+<style>
+    /* ==================== COMPACT LOAN TABLE ==================== */
+#loansTable {
+    width: 100%;
+    table-layout: auto;
+    font-size: 0.8rem;
+}
+
+#loansTable thead th {
+    padding: 10px 10px;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+#loansTable tbody td {
+    padding: 10px 10px;
+    font-size: 0.82rem;
+    vertical-align: middle;
+}
+
+#loansTable .badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+}
+
+#loansTable .guarantor-tag {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    gap: 4px;
+}
+
+#loansTable .payout-num {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    gap: 5px;
+}
+
+#loansTable .dropdown-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 0.8rem;
+}
+
+/* Compact guarantor pill */
+.g-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.g-pill.ok {
+    background: rgba(74,222,128,0.1);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.2);
+}
+.g-pill.pending {
+    background: rgba(245,197,66,0.1);
+    color: #f5c542;
+    border: 1px solid rgba(245,197,66,0.2);
+}
+.g-pill:hover {
+    transform: scale(1.05);
+    filter: brightness(1.15);
+}
+</style>
 <!-- ============================================================ -->
 <!-- COMPLETE JAVASCRIPT -->
 <!-- ============================================================ -->
@@ -3005,6 +3110,7 @@ function confirmDeleteMember() {
     });
 }
 
+
 // ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
@@ -3041,6 +3147,39 @@ if (typeof viewMember === 'function') {
 } else {
     console.log('❌ viewMember function is NOT loaded!');
 }
+
+function copyPayout(text, el) {
+    if (!text) return;
+    const done = () => {
+        el.classList.add('copied');
+        const icon = el.querySelector('.payout-copy');
+        if (icon) {
+            const original = icon.className;
+            icon.className = 'fas fa-check payout-copy';
+            setTimeout(() => {
+                el.classList.remove('copied');
+                icon.className = original;
+            }, 1200);
+        }
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopyPayout(text, done));
+    } else {
+        fallbackCopyPayout(text, done);
+    }
+}
+function fallbackCopyPayout(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+}
+
+
 </script>
 
 {% endblock %}
