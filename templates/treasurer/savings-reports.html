@@ -198,12 +198,14 @@
                 <tbody id="membersTableBody">
                     {% if members %}
                         {% for member in members %}
+                        {% set kac_val = (member.kac_paid or 0)|float %}
+                        {% set kac_pct = (kac_val / 100000 * 100) if kac_val < 100000 else 100 %}
                         <tr data-member-id="{{ member.id }}" 
                             data-status="{{ member.status }}"
                             data-role="{{ member.role or 'member' }}"
                             data-kai="{{ member.kai_shares or 0 }}"
                             data-ks="{{ member.ks_shares or 0 }}"
-                            data-kac="{{ member.kac_paid or 0 }}"
+                            data-kac="{{ kac_val }}"
                             data-reg="{{ member.registration_fee_paid or 0 }}">
                             <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
                             <td style="padding: 8px 12px; color: #f5c542; font-family: monospace; font-weight: 600;">{{ member.sacco_number }}</td>
@@ -247,13 +249,24 @@
                                 {% endif %}
                             </td>
                             
-                            <!-- KAC -->
-                            <td style="padding: 8px 12px; text-align: center; color: #f5c542; background: rgba(245,197,66,0.03);">
-                                {% if member.kac_paid %}
-                                    <span style="color: #4ade80; font-size: 1.1rem;">✓</span>
-                                    <span style="font-size: 0.55rem; color: rgba(245,197,66,0.4); display: block;">UGX 100,000</span>
+                            <!-- KAC (INSTALLMENTS) -->
+                            <td style="padding: 8px 12px; text-align: center; background: rgba(245,197,66,0.03);">
+                                {% if kac_val >= 100000 %}
+                                    <span style="color: #4ade80; font-weight: 700; font-size: 0.85rem;">✓ 100K</span>
+                                    <span style="font-size: 0.55rem; color: rgba(74,222,128,0.5); display: block;">fully paid</span>
+                                {% elif kac_val > 0 %}
+                                    <span style="color: #f5c542; font-weight: 700; font-size: 0.8rem;">
+                                        {{ (kac_val / 1000)|int }}K / 100K
+                                    </span>
+                                    <div style="margin-top: 4px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;">
+                                        <div style="height: 100%; width: {{ kac_pct }}%; background: linear-gradient(90deg, #f5c542, #eab308); transition: width 0.3s;"></div>
+                                    </div>
+                                    <span style="font-size: 0.55rem; color: rgba(245,197,66,0.4); display: block; margin-top: 2px;">
+                                        remaining {{ "{:,.0f}".format(100000 - kac_val) }}
+                                    </span>
                                 {% else %}
-                                    <span style="color: rgba(255,255,255,0.1);">✗</span>
+                                    <span style="color: rgba(255,255,255,0.15); font-size: 0.75rem;">0K / 100K</span>
+                                    <div style="margin-top: 4px; height: 4px; background: rgba(255,255,255,0.04); border-radius: 4px;"></div>
                                 {% endif %}
                             </td>
                             
@@ -313,6 +326,11 @@
 <!-- ============================================================ -->
 <script>
 // ============================================================
+// KAC TARGET — single source of truth
+// ============================================================
+const KAC_TARGET = 100000;
+
+// ============================================================
 // FILTER BY TYPE (from stat cards)
 // ============================================================
 function filterByType(type) {
@@ -330,7 +348,6 @@ function filterByType(type) {
         roleFilter.value = 'all';
     }
     
-    // Highlight the selected stat card
     document.querySelectorAll('.stat-card-filter').forEach(el => {
         el.style.borderColor = '';
         el.style.background = '';
@@ -372,8 +389,6 @@ function filterTable() {
     const rows = document.querySelectorAll('#membersTableBody tr');
     let visibleCount = 0;
     let kaiCount = 0, ksCount = 0, kacCount = 0, regCount = 0, staffCount = 0;
-    let kaiTotalShares = 0, ksTotalShares = 0;
-    let kaiTotalAmount = 0, ksTotalAmount = 0, kacTotalAmount = 0, regTotalAmount = 0;
     
     rows.forEach(row => {
         if (row.querySelector('td[colspan]')) return;
@@ -383,10 +398,9 @@ function filterTable() {
         const role = row.getAttribute('data-role') || 'member';
         const kaiShares = parseInt(row.getAttribute('data-kai')) || 0;
         const ksShares = parseInt(row.getAttribute('data-ks')) || 0;
-        const kacPaid = parseInt(row.getAttribute('data-kac')) || 0;
+        const kacPaid = parseFloat(row.getAttribute('data-kac')) || 0;
         const regPaid = parseInt(row.getAttribute('data-reg')) || 0;
         
-        // Determine which types the user has
         const hasKAI = kaiShares > 0;
         const hasKS = ksShares > 0;
         const hasKAC = kacPaid > 0;
@@ -395,28 +409,18 @@ function filterTable() {
         
         let show = true;
         
-        // Search filter
-        if (searchTerm && !text.includes(searchTerm)) {
-            show = false;
-        }
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && filterStatus !== 'all' && status !== filterStatus) show = false;
         
-        // Status filter
-        if (show && filterStatus !== 'all' && status !== filterStatus) {
-            show = false;
-        }
-        
-        // Role filter
         if (show && filterRole !== 'all') {
             if (filterRole === 'staff' && !isStaff) show = false;
             if (filterRole === 'member' && isStaff) show = false;
         }
         
-        // Savings type filter
         if (show && filterType !== 'all') {
             if (filterType === 'staff') {
                 if (!isStaff) show = false;
             } else if (filterType === 'multiple') {
-                // Show users with more than one type
                 const typeCount = (hasKAI ? 1 : 0) + (hasKS ? 1 : 0) + (hasKAC ? 1 : 0) + (hasREG ? 1 : 0);
                 if (typeCount < 2) show = false;
             } else if (filterType === 'KAI' && !hasKAI) {
@@ -433,43 +437,23 @@ function filterTable() {
         if (show) {
             row.style.display = '';
             visibleCount++;
-            
-            // Count statistics
             if (isStaff) staffCount++;
-            if (hasKAI) {
-                kaiCount++;
-                kaiTotalShares += kaiShares;
-                kaiTotalAmount += kaiShares * 100000;
-            }
-            if (hasKS) {
-                ksCount++;
-                ksTotalShares += ksShares;
-                ksTotalAmount += ksShares * 10000;
-            }
-            if (hasKAC) {
-                kacCount++;
-                kacTotalAmount += 100000;
-            }
-            if (hasREG) {
-                regCount++;
-                regTotalAmount += 20000;
-            }
+            if (hasKAI) kaiCount++;
+            if (hasKS) ksCount++;
+            if (hasKAC) kacCount++;
+            if (hasREG) regCount++;
         } else {
             row.style.display = 'none';
         }
     });
     
-    // Update counts
     document.getElementById('visibleCount').textContent = visibleCount;
-    
-    // Update footer
     document.getElementById('footerKAI').textContent = kaiCount;
     document.getElementById('footerKS').textContent = ksCount;
     document.getElementById('footerKAC').textContent = kacCount;
     document.getElementById('footerREG').textContent = regCount;
     document.getElementById('footerStaff').textContent = staffCount;
     
-    // Update summary text
     const summaryText = document.getElementById('summaryText');
     if (filterType === 'all' && filterRole === 'all') {
         summaryText.textContent = `Showing all ${visibleCount} users (${visibleCount - staffCount} members, ${staffCount} staff)`;
@@ -501,7 +485,6 @@ function resetFilters() {
     document.getElementById('filterStatus').value = 'all';
     document.getElementById('filterRole').value = 'all';
     
-    // Reset stat card highlights
     document.querySelectorAll('.stat-card-filter').forEach(el => {
         el.style.borderColor = '';
         el.style.background = '';
@@ -521,22 +504,32 @@ function exportFilteredData() {
     }
     
     let csv = [];
-    // Headers
-    csv.push(['SACCO No.', 'Full Name', 'Phone', 'KAI Shares', 'KS Shares', 'KAC Paid', 'Reg Fee Paid', 'Status'].join(','));
+    csv.push(['SACCO No.', 'Full Name', 'Phone', 'KAI Shares', 'KAI Amount', 'KS Shares', 'KS Amount', 'KAC Paid', 'KAC Remaining', 'KAC Status', 'Reg Fee Paid', 'Status'].join(','));
     
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         if (cells.length < 9) return;
         
+        // Parse KAC from data attribute for accuracy
+        const kacPaid = parseFloat(row.getAttribute('data-kac')) || 0;
+        const kacStatus = kacPaid >= KAC_TARGET ? 'Fully Paid'
+                        : kacPaid > 0 ? 'Partial'
+                        : 'Not Started';
+        const kacRemaining = Math.max(0, KAC_TARGET - kacPaid);
+        
         const data = [
-            cells[1].textContent.trim(),                    // SACCO No.
-            cells[2].textContent.trim().replace(/\n/g, ' '), // Full Name
-            cells[3].textContent.trim(),                    // Phone
-            cells[4].textContent.trim().replace(/\n/g, ' '), // KAI
-            cells[5].textContent.trim().replace(/\n/g, ' '), // KS
-            cells[6].textContent.trim().replace(/\n/g, ' '), // KAC
-            cells[7].textContent.trim().replace(/\n/g, ' '), // Reg Fee
-            cells[8].textContent.trim()                     // Status
+            cells[1].textContent.trim(),
+            cells[2].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
+            cells[3].textContent.trim(),
+            cells[4].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
+            cells[4].querySelector('span') ? cells[4].querySelector('span').textContent.replace('UGX ', '').replace(/,/g, '') : '0',
+            cells[5].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
+            cells[5].querySelector('span') ? cells[5].querySelector('span').textContent.replace('UGX ', '').replace(/,/g, '') : '0',
+            kacPaid.toFixed(0),
+            kacRemaining.toFixed(0),
+            kacStatus,
+            cells[7].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
+            cells[8].textContent.trim()
         ];
         csv.push(data.join(','));
     });
@@ -557,7 +550,6 @@ function exportFilteredData() {
 document.addEventListener('DOMContentLoaded', function() {
     filterTable();
     
-    // Check URL params for pre-filtering
     const urlParams = new URLSearchParams(window.location.search);
     const filterParam = urlParams.get('filter');
     if (filterParam) {

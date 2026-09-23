@@ -7,8 +7,6 @@
 
 {% block content %}
 
-
-
 <!-- ============================================
 DASHBOARD PANEL
 ============================================ -->
@@ -23,7 +21,11 @@ DASHBOARD PANEL
             <div class="stat-info">
                 <div class="stat-label">Total Savings</div>
                 <div class="stat-value">
-                    UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+                    {# Savings = KAI + KS only (KAC & Reg excluded) #}
+                    UGX {{ "{:,.0f}".format((kai_amount or 0) + (ks_amount or 0)) }}
+                </div>
+                <div style="font-size: 0.62rem; color: rgba(255,255,255,0.3); margin-top: 2px;">
+                    KAI + KS only
                 </div>
             </div>
         </div>
@@ -111,7 +113,8 @@ DASHBOARD PANEL
                 <i class="fas fa-coins"></i> Total Savings Balance
             </div>
             <div class="balance-amount">
-                UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+                {# Savings = KAI + KS only #}
+                UGX {{ "{:,.0f}".format((kai_amount or 0) + (ks_amount or 0)) }}
             </div>
             <div style="margin-top: 6px; font-size: 0.7rem; color: rgba(255,255,255,0.2);">
                 Total Loans Taken: UGX {{ "{:,.0f}".format(total_loans_taken) if total_loans_taken else '0' }}
@@ -133,7 +136,8 @@ DASHBOARD PANEL
             </div>
             <div class="header-right">
                 <span class="total-pill">
-                    Total: UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+                    {# Savings total = KAI + KS only #}
+                    Savings: UGX {{ "{:,.0f}".format((kai_amount or 0) + (ks_amount or 0)) }}
                 </span>
             </div>
         </div>
@@ -190,39 +194,79 @@ DASHBOARD PANEL
                 </div>
             </div>
 
-            <!-- KAC Row -->
-            <div class="savings-row">
+            <!-- ============================================
+                 KAC Row — Fixed: numeric check, not truthy
+                 Shows partial % until fully paid
+                 ============================================ -->
+            {% set kac_val = (kac_amount or 0)|float %}
+            {% set kac_target = kac_annual_fee or 100000 %}
+            {% set kac_pct = (kac_val / kac_target * 100) if kac_target > 0 else 0 %}
+
+            <div class="savings-row" style="border-left: 3px solid rgba(255, 143, 177, 0.3); margin-left: 6px; padding-left: 12px; opacity: 0.92;">
                 <div class="row-left">
                     <div class="type-badge" style="background: linear-gradient(135deg, #ff8fb1, #cc5577); color: #0a1a2b;">
                         KAC
                     </div>
                     <div class="type-info">
-                        <div class="type-name">Karacel Condolences</div>
-                        <div class="type-meta">
-                            Annual cover • UGX {{ "{:,.0f}".format(kac_annual_fee) }} / year
+                        <div class="type-name">
+                            Karacel Condolences
+                            <span style="font-size: 0.62rem; color: rgba(255,143,177,0.6); margin-left: 6px; font-weight: 400;">
+                                (not savings)
+                            </span>
                         </div>
+                        <div class="type-meta">
+                            Annual cover • Target UGX {{ "{:,.0f}".format(kac_target) }} / year
+                        </div>
+                        {% if kac_val > 0 and kac_val < kac_target %}
+                        <div style="margin-top: 6px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; max-width: 180px;">
+                            <div style="height: 100%; width: {{ kac_pct }}%; background: linear-gradient(90deg, #ff8fb1, #cc5577); transition: width 0.3s;"></div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: rgba(255,143,177,0.5); margin-top: 3px;">
+                            Remaining: UGX {{ "{:,.0f}".format(kac_target - kac_val) }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row-right">
                     <div class="row-amount" style="color: #ff8fb1;">
-                        UGX {{ "{:,.0f}".format(kac_amount) if kac_amount else '0' }}
+                        UGX {{ "{:,.0f}".format(kac_val) }}
+                        {% if kac_val > 0 and kac_val < kac_target %}
+                        <span style="font-size: 0.7rem; color: rgba(255,143,177,0.5); display: block;">
+                            of {{ "{:,.0f}".format(kac_target) }}
+                        </span>
+                        {% endif %}
                     </div>
-                    {% if kac_paid %}
-                    <span class="status-pill status-active"><i class="fas fa-shield-alt"></i> Covered</span>
+
+                    {# ---------- STATUS BADGE ---------- #}
+                    {% if kac_val >= kac_target %}
+                        <span class="status-pill status-active"
+                              style="background: rgba(74,222,128,0.12); color: #4ade80; border-color: rgba(74,222,128,0.3);">
+                            <i class="fas fa-shield-alt"></i> Covered
+                        </span>
+                    {% elif kac_val > 0 %}
+                        <span class="status-pill"
+                              style="background: rgba(245,197,66,0.12); color: #f5c542; border: 1px solid rgba(245,197,66,0.3);">
+                            <i class="fas fa-hourglass-half"></i> {{ kac_pct|round(0, 'floor')|int }}%
+                        </span>
                     {% else %}
-                    <span class="status-pill status-inactive">Not paid</span>
+                        <span class="status-pill status-inactive">Not paid</span>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Registration Row -->
-            <div class="savings-row">
+            <!-- Registration Row — NOT part of savings -->
+            <div class="savings-row" style="border-left: 3px solid rgba(167, 139, 250, 0.3); margin-left: 6px; padding-left: 12px; opacity: 0.92;">
                 <div class="row-left">
                     <div class="type-badge" style="background: linear-gradient(135deg, #a78bfa, #7c5cd6); color: #0a1a2b;">
                         REG
                     </div>
                     <div class="type-info">
-                        <div class="type-name">Registration Fee</div>
+                        <div class="type-name">
+                            Registration Fee
+                            <span style="font-size: 0.62rem; color: rgba(167,139,250,0.6); margin-left: 6px; font-weight: 400;">
+                                (one-time, not savings)
+                            </span>
+                        </div>
                         <div class="type-meta">
                             One-time • UGX {{ "{:,.0f}".format(registration_fee) }}
                         </div>
@@ -233,7 +277,9 @@ DASHBOARD PANEL
                         UGX {{ "{:,.0f}".format(reg_amount) if reg_amount else '0' }}
                     </div>
                     {% if reg_fee_paid %}
-                    <span class="status-pill status-active"><i class="fas fa-check-circle"></i> Paid</span>
+                    <span class="status-pill status-active" style="background: rgba(167,139,250,0.12); color: #a78bfa; border-color: rgba(167,139,250,0.3);">
+                        <i class="fas fa-check-circle"></i> Paid
+                    </span>
                     {% else %}
                     <span class="status-pill status-inactive">Not paid</span>
                     {% endif %}
@@ -243,279 +289,28 @@ DASHBOARD PANEL
         </div>
 
         <div class="savings-breakdown-footer">
-            <span><i class="fas fa-info-circle"></i> Your total savings = KAI + KS + KAC + Registration</span>
+            <span>
+                <i class="fas fa-info-circle"></i>
+                <strong>Savings = KAI + KS.</strong>
+                KAC (condolence cover) and Registration Fee are separate and not counted as savings.
+            </span>
         </div>
     </div>
 
-    <!-- ============================================
-         LOAN REPAYMENT — Simple View
-         ============================================ -->
-    {% set active_loans = loans | selectattr('status', 'in', ['approved', 'disbursed', 'active']) | list %}
-    {% if active_loans %}
-    <div class="savings-breakdown-card" style="margin-top: 22px;">
-        <div class="savings-breakdown-header">
-            <div class="header-left">
-                <i class="fas fa-file-invoice-dollar" style="background: linear-gradient(135deg, #4ade80, #22a35a);"></i>
-                <div>
-                    <h3>Loan Repayment</h3>
-                    <p>Simple breakdown of what you owe</p>
-                </div>
-            </div>
-            <div class="header-right">
-                <span class="total-pill" style="border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.1); color: #4ade80;">
-                    {{ active_loans|length }} Active
-                </span>
-            </div>
-        </div>
-
-        <div class="savings-breakdown-body">
-            {% for loan in active_loans %}
-                {% set principal = loan.current_balance or loan.amount or 0 %}
-                {% set accrued = loan.accrued_interest or 0 %}
-                {% set total_owing = principal + accrued %}
-
-                <!-- Loan header -->
-                <div style="padding: 16px 22px 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <div style="font-family: 'Playfair Display', serif; color: #e0bf75; font-size: 1rem; font-weight: 700;">
-                        <i class="fas fa-file-invoice" style="font-size: 0.85rem; margin-right: 6px; opacity: 0.6;"></i>
-                        {{ loan.loan_number }}
-                    </div>
-                    <div style="font-size: 0.72rem; color: rgba(255,255,255,0.4);">
-                        <i class="fas fa-calendar-alt"></i>
-                        Since {{ loan.disbursed_date or loan.approved_date or loan.application_date }}
-                    </div>
-                </div>
-
-                <!-- Numbers grid -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 12px 22px 18px;">
-                    <div class="repayment-box">
-                        <div class="repayment-label">
-                            <i class="fas fa-hand-holding-usd"></i> Principal
-                        </div>
-                        <div class="repayment-value">
-                            UGX {{ "{:,.0f}".format(principal) }}
-                        </div>
-                    </div>
-
-                    <div class="repayment-box">
-                        <div class="repayment-label" style="color: rgba(245, 197, 66, 0.6);">
-                            <i class="fas fa-percent"></i> Accrued Interest
-                        </div>
-                        <div class="repayment-value" style="color: #f5c542;">
-                            UGX {{ "{:,.0f}".format(accrued) }}
-                        </div>
-                    </div>
-
-                    <div class="repayment-box highlight">
-                        <div class="repayment-label" style="color: rgba(255, 143, 177, 0.7);">
-                            <i class="fas fa-calculator"></i> Total Owing
-                        </div>
-                        <div class="repayment-value" style="color: #ff8fb1; font-size: 1.25rem;">
-                            UGX {{ "{:,.0f}".format(total_owing) }}
-                        </div>
-                    </div>
-
-                    <div class="repayment-box">
-                        <div class="repayment-label" style="color: rgba(0, 224, 255, 0.6);">
-                            <i class="fas fa-chart-line"></i> Monthly Rate
-                        </div>
-                        <div class="repayment-value" style="color: #00e0ff;">
-                            {% if principal >= 10000000 %}1%
-                            {% elif principal >= 5000000 %}2%
-                            {% elif principal >= 1000000 %}3%
-                            {% else %}5%
-                            {% endif %}
-                            <span style="font-size: 0.68rem; color: rgba(255,255,255,0.4); display: block; font-family: 'Inter', sans-serif; font-weight: 400; margin-top: 4px;">
-                                every 30 days
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Payment history mini -->
-                {% set loan_payments = repayments | selectattr('loan_id', 'equalto', loan.id) | list %}
-                {% if loan_payments %}
-                <div style="padding: 14px 22px 18px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-bottom: 10px; letter-spacing: 0.8px; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-history"></i> Recent Payments
-                    </div>
-                    {% for p in loan_payments[:3] %}
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.78rem; color: rgba(255,255,255,0.75); border-bottom: 1px solid rgba(255,255,255,0.03);">
-                        <span style="flex: 1; min-width: 0;">
-                            <i class="fas fa-check-circle" style="color: #4ade80; margin-right: 6px;"></i>
-                            {{ p.payment_date }}
-                        </span>
-                        <span style="flex: 1; text-align: center; font-size: 0.72rem;">
-                            <span style="color: #f5c542;">Int {{ "{:,.0f}".format(p.interest_paid or 0) }}</span>
-                            ·
-                            <span style="color: #4ade80;">Prin {{ "{:,.0f}".format(p.principal_paid or 0) }}</span>
-                        </span>
-                        <span style="font-family: 'Playfair Display', serif; color: #fff; font-weight: 700; text-align: right;">
-                            UGX {{ "{:,.0f}".format(p.amount or 0) }}
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-
-        <div class="savings-breakdown-footer">
-            <span><i class="fas fa-info-circle"></i> Payments are applied to interest first, then to principal. Interest accrues every 30 days on the remaining principal.</span>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Recent Savings Deposits (Dashboard View) -->
-    <div class="history-section">
-        <div class="history-title">
-            <i class="fas fa-history"></i> Recent Savings Deposits
-            <a href="#" onclick="showPanel('savings'); return false;" style="
-                margin-left: auto;
-                font-size: 0.75rem;
-                color: rgba(255,255,255,0.3);
-                text-decoration: none;
-                transition: color 0.3s ease;
-            " onmouseover="this.style.color='#00e0ff'"
-               onmouseout="this.style.color='rgba(255,255,255,0.3)'">
-                View All <i class="fas fa-arrow-right"></i>
-            </a>
-        </div>
-
-        <div class="transaction-list">
-            {% if savings_deposits %}
-                {% for deposit in savings_deposits[:5] %}
-                <div class="transaction-item">
-                    <div class="transaction-left">
-                        <div class="tx-icon">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
-                        <div>
-                            <div class="recipient">
-                                {{ deposit.savings_type if deposit.savings_type else 'Deposit' }} Deposit
-                            </div>
-                            <div class="meta">
-                                <i class="fas fa-calendar-alt"></i> {{ deposit.deposit_date if deposit.deposit_date else 'N/A' }}
-                                {% if deposit.payment_method %}
-                                • <i class="fas fa-credit-card"></i> {{ deposit.payment_method }}
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tx-amount" style="color: #4ade80;">
-                        + UGX {{ "{:,.0f}".format(deposit.amount) if deposit.amount else '0' }}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-history">
-                    <i class="fas fa-piggy-bank"></i>
-                    <p>You haven't made any savings deposits yet.</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Recent Loans -->
-    <div class="history-section" style="margin-top: 16px;">
-        <div class="history-title">
-            <i class="fas fa-hand-holding-usd"></i> Recent Loans
-            <a href="#" onclick="showPanel('loans'); return false;" style="
-                margin-left: auto;
-                font-size: 0.75rem;
-                color: rgba(255,255,255,0.3);
-                text-decoration: none;
-                transition: color 0.3s ease;
-            " onmouseover="this.style.color='#00e0ff'"
-               onmouseout="this.style.color='rgba(255,255,255,0.3)'">
-                View All <i class="fas fa-arrow-right"></i>
-            </a>
-        </div>
-
-        <div class="transaction-list">
-            {% if loans %}
-                {% for loan in loans[:5] %}
-                <div class="transaction-item" style="border-left-color:
-                    {% if loan.status == 'pending' %}#f5c542
-                    {% elif loan.status == 'approved' %}#00e0ff
-                    {% elif loan.status == 'disbursed' %}#4ade80
-                    {% elif loan.status == 'active' %}#4ade80
-                    {% elif loan.status == 'completed' %}#00ff88
-                    {% else %}#ff6b6b{% endif %};">
-                    <div class="transaction-left">
-                        <div class="tx-icon" style="background:
-                            {% if loan.status == 'pending' %}rgba(245,197,66,0.06)
-                            {% elif loan.status == 'approved' %}rgba(0,224,255,0.06)
-                            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.06)
-                            {% elif loan.status == 'active' %}rgba(74,222,128,0.06)
-                            {% elif loan.status == 'completed' %}rgba(0,255,136,0.06)
-                            {% else %}rgba(255,107,107,0.06){% endif %};">
-                            <i class="fas fa-file-invoice"></i>
-                        </div>
-                        <div>
-                            <div class="recipient">{{ loan.loan_number if loan.loan_number else 'N/A' }}</div>
-                            <div class="meta">
-                                <i class="fas fa-calendar-alt"></i> {{ loan.application_date if loan.application_date else 'N/A' }}
-                                • <span style="
-                                    color: {% if loan.status == 'pending' %}#f5c542
-                                    {% elif loan.status == 'approved' %}#00e0ff
-                                    {% elif loan.status == 'disbursed' %}#4ade80
-                                    {% elif loan.status == 'active' %}#4ade80
-                                    {% elif loan.status == 'completed' %}#00ff88
-                                    {% else %}#ff6b6b{% endif %};
-                                ">
-                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                                    {{ loan.status|title if loan.status else 'Unknown' }}
-                                </span>
-                                {% if loan.amount %}
-                                • Amount: UGX {{ "{:,.0f}".format(loan.amount) }}
-                                {% endif %}
-                                {% if loan.status in ['approved', 'disbursed', 'active'] %}
-                                    • <span style="color: {% if loan.remaining_balance > 0 %}#ff6b6b{% else %}#4ade80{% endif %};">
-                                        Balance: UGX {{ "{:,.0f}".format(loan.remaining_balance) }}
-                                    </span>
-                                {% endif %}
-                                {% if loan.status == 'completed' %}
-                                    • <span style="color: #4ade80;">
-                                        <i class="fas fa-check-circle"></i> Fully Paid
-                                    </span>
-                                {% endif %}
-                                {% if loan.status == 'rejected' and loan.rejection_reason %}
-                                <br>
-                                <span style="color: #ff6b6b; font-size: 0.75rem; display: block; margin-top: 4px;">
-                                    <i class="fas fa-info-circle"></i>
-                                    <strong>Reason:</strong> {{ loan.rejection_reason }}
-                                </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tx-amount">
-                        UGX {{ "{:,.0f}".format(loan.amount) if loan.amount else '0' }}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-history">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <p>You haven't applied for any loans yet.</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
 </div>
+
 
 <!-- ============================================
 SAVINGS PANEL
 ============================================ -->
 <div id="savings-panel" class="content-panel" style="display:none;">
    
-
     <div class="history-section">
         <div class="history-title">
             <i class="fas fa-piggy-bank"></i> All Savings Deposits
             <span style="font-size: 0.8rem; margin-left: auto; color: rgba(255,255,255,0.3);">
-                Total: UGX {{ "{:,.0f}".format(total_savings) if total_savings else '0' }}
+                {# Savings total = KAI + KS only #}
+                Total: UGX {{ "{:,.0f}".format((kai_amount or 0) + (ks_amount or 0)) }}
             </span>
         </div>
 
@@ -671,18 +466,15 @@ LOANS PANEL
 <!-- JavaScript to switch panels -->
 <script>
 function showPanel(panelName) {
-    // Hide all panels
     document.querySelectorAll('.content-panel').forEach(panel => {
         panel.style.display = 'none';
     });
 
-    // Show the selected panel
     const panel = document.getElementById(panelName + '-panel');
     if (panel) {
         panel.style.display = 'block';
     }
 
-    // Update active state in sidebar if available
     document.querySelectorAll('.sidebar-nav a').forEach(link => {
         link.classList.remove('active');
     });
@@ -692,9 +484,7 @@ function showPanel(panelName) {
     }
 }
 
-// Function to show loan details modal
 function showLoanDetails(loanId) {
-    // You can implement a modal for loan details here
     alert('Loan details for ID: ' + loanId);
 }
 </script>

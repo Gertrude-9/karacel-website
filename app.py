@@ -1593,6 +1593,10 @@ def treasurer_dashboard():
 # ============================================================
 # TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF - FIXED
 # ============================================================
+# ============================================================
+# TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF
+# KAC SUPPORTS INSTALLMENTS UP TO 100,000
+# ============================================================
 @app.route("/treasurer/savings/deposit", methods=["GET", "POST"])
 def treasurer_savings_deposit():
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
@@ -1639,6 +1643,32 @@ def treasurer_savings_deposit():
             kac_annual_fee = 100000
             registration_fee = 20000
         
+        # ============================================================
+        # KAC VALIDATION — prevent overpayment beyond remaining balance
+        # ============================================================
+        if savings_type == 'KAC':
+            current_row = db.execute(
+                "SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = ?",
+                (user_id,)
+            ).fetchone()
+            current_kac = float(current_row['current_kac'] or 0)
+            remaining = max(0, kac_annual_fee - current_kac)
+
+            if current_kac >= kac_annual_fee:
+                db.close()
+                flash(f'{user["full_name"]} has already fully paid KAC (UGX {kac_annual_fee:,.0f}).', 'warning')
+                return redirect(url_for('treasurer_savings_deposit'))
+
+            if amount > remaining:
+                db.close()
+                flash(
+                    f'KAC payment exceeds remaining balance. '
+                    f'Current: UGX {current_kac:,.0f} / {kac_annual_fee:,.0f} · '
+                    f'Remaining: UGX {remaining:,.0f}',
+                    'warning'
+                )
+                return redirect(url_for('treasurer_savings_deposit'))
+        
         # Calculate shares based on savings type
         shares = 0
         if savings_type == 'KAI':
@@ -1646,9 +1676,9 @@ def treasurer_savings_deposit():
         elif savings_type == 'KS':
             shares = int(amount / ks_share_price) if ks_share_price > 0 else 0
         elif savings_type == 'KAC':
-            shares = 1  # KAC is annual, 1 per year
+            shares = 0  # KAC is installment-based, no shares
         elif savings_type == 'REGISTRATION':
-            shares = 1  # Registration is one-time
+            shares = 0  # Registration is one-time, no shares
         
         cursor = db.cursor()
         
@@ -1662,8 +1692,7 @@ def treasurer_savings_deposit():
         """, (user_id, amount, savings_type, shares, deposit_date, payment_method, receipt_number, notes))
         
         # ============================================================
-        # UPDATE USER'S SAVINGS BALANCE - ONLY FOR KAI, KS, KAC
-        # REGISTRATION does NOT update savings_balance
+        # UPDATE USER'S SAVINGS BALANCE
         # ============================================================
         if savings_type == 'KAI':
             cursor.execute("""
@@ -1672,6 +1701,7 @@ def treasurer_savings_deposit():
                     kai_shares = COALESCE(kai_shares, 0) + ?
                 WHERE id = ?
             """, (amount, shares, user_id))
+
         elif savings_type == 'KS':
             cursor.execute("""
                 UPDATE users 
@@ -1679,17 +1709,45 @@ def treasurer_savings_deposit():
                     ks_shares = COALESCE(ks_shares, 0) + ?
                 WHERE id = ?
             """, (amount, shares, user_id))
+
         elif savings_type == 'KAC':
-            # FIXED: KAC also updates savings_balance
+            # ============================================================
+            # KAC — RUNNING TOTAL (installments up to 100,000)
+            # ============================================================
+            row = db.execute(
+                "SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = ?",
+                (user_id,)
+            ).fetchone()
+            current_kac = float(row['current_kac'] or 0)
+            new_kac = current_kac + amount
+            if new_kac > kac_annual_fee:
+                new_kac = kac_annual_fee
+
+            fully_paid = 1 if new_kac >= kac_annual_fee else 0
+            paid_date_value = deposit_date if fully_paid else None
+
             cursor.execute("""
                 UPDATE users 
                 SET savings_balance = COALESCE(savings_balance, 0) + ?,
-                    kac_paid = 1,
-                    kac_paid_date = ?
+                    kac_paid = ?,
+                    kac_paid_date = COALESCE(?, kac_paid_date)
                 WHERE id = ?
-            """, (amount, deposit_date, user_id))
+            """, (amount, new_kac, paid_date_value, user_id))
+
+            # Clear any pending top-up notifications once fully paid
+            if fully_paid:
+                try:
+                    cursor.execute("""
+                        UPDATE topup_notifications 
+                        SET is_read = 1 
+                        WHERE user_id = ? AND is_read = 0
+                    """, (user_id,))
+                except sqlite3.OperationalError:
+                    # Table doesn't exist yet — ignore
+                    pass
+
         elif savings_type == 'REGISTRATION':
-            # REGISTRATION does NOT update savings_balance - ONLY mark as paid
+            # REGISTRATION does NOT update savings_balance - only marks as paid
             cursor.execute("""
                 UPDATE users 
                 SET registration_fee_paid = 1,
@@ -1700,23 +1758,25 @@ def treasurer_savings_deposit():
         db.commit()
         db.close()
         
-        # Debug - print to console
+        # Debug logging
         print("=" * 60)
         print(f"💰 DEPOSIT RECORDED")
         print(f"👤 User: {user['full_name']} ({user['role']})")
         print(f"📊 Type: {savings_type}")
         print(f"💵 Amount: UGX {amount:,.0f}")
         print(f"📈 Shares: {shares}")
-        if savings_type in ['KAI', 'KS', 'KAC']:
-            print(f"✅ Savings balance updated")
-        else:
-            print(f"ℹ️ Registration fee recorded (no savings balance update)")
+        if savings_type == 'KAC':
+            print(f"🎯 KAC total now: UGX {new_kac:,.0f} / {kac_annual_fee:,.0f}")
+            if fully_paid:
+                print(f"✅ KAC FULLY PAID")
         print("=" * 60)
         
         flash(f'✅ {savings_type} deposit of UGX {amount:,.0f} recorded successfully for {user["full_name"]}!', 'success')
         return redirect(url_for('treasurer_dashboard'))
     
-    # GET request - show form
+    # ============================================================
+    # GET request — show the form
+    # ============================================================
     db = get_db()
     db.row_factory = sqlite3.Row
     
@@ -1768,7 +1828,6 @@ def treasurer_savings_deposit():
         regular_members=regular_members,
         completed_loans=completed_loans
     )
-
 # ============================================================
 # TREASURER - GET GUARANTOR DETAILS
 # ============================================================
@@ -3124,10 +3183,14 @@ def member_dashboard():
             flash("Member not found", "danger")
             return redirect(url_for("login"))
 
+        # ============================================================
+        # TOTAL SAVINGS — KAI + KS only (exclude KAC & Registration)
+        # ============================================================
         total_savings = db.execute("""
             SELECT COALESCE(SUM(amount), 0) as total
             FROM savings_deposits
             WHERE user_id = ?
+              AND savings_type IN ('KAI', 'KS')
         """, (user_id,)).fetchone()['total']
 
         loans_data = db.execute("""
@@ -3242,7 +3305,7 @@ def member_dashboard():
             AND is_read = 0
         """, (user_id,)).fetchone()['count']
 
-                # ============================================================
+        # ============================================================
         # SAVINGS BY TYPE (KAI, KS, KAC, Registration)
         # ============================================================
         settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
@@ -3259,12 +3322,41 @@ def member_dashboard():
 
         kai_shares   = member['kai_shares'] or 0
         ks_shares    = member['ks_shares'] or 0
-        kac_paid     = member['kac_paid'] or 0
         reg_fee_paid = member['registration_fee_paid'] or 0
+
+        # ============================================================
+        # KAC — INSTALLMENT-AWARE
+        # kac_paid holds the running total (0 → kac_annual_fee)
+        # ============================================================
+        try:
+            kac_paid_raw = member['kac_paid']
+        except (IndexError, KeyError):
+            kac_paid_raw = 0
+
+        # Coerce to a float, handle None / bool / string safely
+        if kac_paid_raw is None:
+            kac_paid = 0.0
+        elif isinstance(kac_paid_raw, bool):
+            # Legacy boolean — treat as fully paid or nothing
+            kac_paid = float(kac_annual_fee) if kac_paid_raw else 0.0
+        else:
+            try:
+                kac_paid = float(kac_paid_raw)
+            except (TypeError, ValueError):
+                kac_paid = 0.0
+
+        # Cap at the annual fee
+        if kac_paid > kac_annual_fee:
+            kac_paid = float(kac_annual_fee)
+
+        # The actual amount paid toward KAC (this is what the template shows)
+        kac_amount = kac_paid
+
+        # Booleans for the template
+        kac_fully_paid = (kac_paid >= kac_annual_fee)
 
         kai_amount = kai_shares * kai_share_price
         ks_amount  = ks_shares  * ks_share_price
-        kac_amount = kac_annual_fee if kac_paid else 0
         reg_amount = registration_fee if reg_fee_paid else 0
 
         db.close()
@@ -3314,14 +3406,15 @@ def member_dashboard():
             role_display=role_display,
             role_dashboard_url=role_dashboard_url,
             staff_view=is_staff_view,
-                        # Savings by type
+            # Savings by type
             kai_shares=kai_shares,
             ks_shares=ks_shares,
-            kac_paid=kac_paid,
+            kac_paid=kac_paid,                 # numeric running total
+            kac_fully_paid=kac_fully_paid,     # boolean flag
             reg_fee_paid=reg_fee_paid,
             kai_amount=kai_amount,
             ks_amount=ks_amount,
-            kac_amount=kac_amount,
+            kac_amount=kac_amount,             # actual amount paid (0 → fee)
             reg_amount=reg_amount,
             kai_share_price=kai_share_price,
             ks_share_price=ks_share_price,

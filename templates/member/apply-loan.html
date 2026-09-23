@@ -9,7 +9,8 @@
 
 <style>
 /* ============================================
-   KARACEL LOAN APPLICATION — PROFESSIONAL REDESIGN
+   KARACEL LOAN APPLICATION — MONTHLY CYCLE
+   Interest is flat, added every 30 days on the same principal
    ============================================ */
 
 :root {
@@ -290,6 +291,48 @@
 
 .static-field.green { color: var(--app-green); border-color: rgba(74, 222, 128, 0.15); }
 .static-field.gold  { color: var(--app-gold-bright); border-color: rgba(201, 169, 97, 0.2); }
+
+/* ====== TERM DATES PANEL ====== */
+.term-dates-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 18px;
+    padding: 20px 22px;
+    background: linear-gradient(135deg, rgba(201, 169, 97, 0.06), rgba(201, 169, 97, 0.02));
+    border: 1px solid rgba(201, 169, 97, 0.2);
+    border-radius: var(--radius-md);
+}
+
+.term-date-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.term-date-item .td-label {
+    font-size: 0.68rem;
+    color: var(--app-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.term-date-item .td-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--app-gold-bright);
+    letter-spacing: -0.3px;
+}
+
+.term-date-item .td-sub {
+    font-size: 0.7rem;
+    color: var(--app-text-muted);
+    font-style: italic;
+}
 
 /* ====== TIER PREVIEW ====== */
 .tier-preview {
@@ -969,7 +1012,8 @@
 
 /* ====== RESPONSIVE ====== */
 @media (max-width: 820px) {
-    .form-grid {
+    .form-grid,
+    .term-dates-panel {
         grid-template-columns: 1fr;
     }
 
@@ -1085,7 +1129,7 @@
             <div class="loan-section-header">
                 <div class="loan-section-num">02</div>
                 <h3>Loan Request</h3>
-                <span class="section-hint">Enter amount & purpose</span>
+                <span class="section-hint">Monthly cycle</span>
             </div>
             <div class="loan-section-body">
 
@@ -1101,6 +1145,7 @@
                         </span>
                     </div>
                 </div>
+
 
                 <!-- TIER PREVIEW -->
                 <div class="tier-preview" id="tierPreview">
@@ -1120,26 +1165,7 @@
                     </div>
                 </div>
 
-                <div class="form-grid" style="margin-top: 18px;">
-                    <div class="field">
-                        <label for="loanDuration">
-                            How Soon Do You Plan to Repay?
-                            <span class="optional">(optional)</span>
-                        </label>
-                        <select id="loanDuration" name="loan_duration" onchange="calculateRepayment()">
-                            <option value="1">Within 1 Month</option>
-                            <option value="2">Within 2 Months</option>
-                            <option value="3" selected>Within 3 Months</option>
-                            <option value="4">Within 4 Months</option>
-                            <option value="6">Within 6 Months</option>
-                            <option value="12">Within 1 Year</option>
-                            <option value="24">Longer than 1 Year</option>
-                        </select>
-                        <span class="field-hint">
-                            <i class="fas fa-info-circle"></i> Helps estimate your total. No fixed end date — interest accrues every 30 days.
-                        </span>
-                    </div>
-
+                <div class="form-grid cols-1" style="margin-top: 18px;">
                     <div class="field">
                         <label for="loanPurpose">Purpose of Loan <span class="required">*</span></label>
                         <textarea id="loanPurpose" name="purpose" rows="3"
@@ -1208,19 +1234,19 @@
                         <div class="sb-value gold" id="displayInterestPerMonth">UGX 0</div>
                     </div>
                     <div class="summary-box">
-                        <div class="sb-label"><i class="fas fa-chart-line"></i> Est. Total Interest</div>
+                        <div class="sb-label"><i class="fas fa-chart-line"></i> Total Interest (Cycle 1)</div>
                         <div class="sb-value" id="displayInterest">UGX 0</div>
                     </div>
                     <div class="summary-box highlight" style="grid-column: span 2;">
-                        <div class="sb-label"><i class="fas fa-calculator"></i> Est. Total Due</div>
+                        <div class="sb-label"><i class="fas fa-calculator"></i> Total Due (Cycle 1)</div>
                         <div class="sb-value pink" id="displayTotal" style="font-size: 1.4rem;">UGX 0</div>
                     </div>
                     <div class="summary-box">
-                        <div class="sb-label"><i class="fas fa-clock"></i> Est. Period</div>
-                        <div class="sb-value" id="displaySummaryDuration" style="font-size: 1rem;">3 Months</div>
+                        <div class="sb-label"><i class="fas fa-clock"></i> Cycle</div>
+                        <div class="sb-value" style="font-size: 1rem;">Monthly (30 Days)</div>
                     </div>
                     <div class="summary-box">
-                        <div class="sb-label"><i class="fas fa-calendar-check"></i> Est. Clear Date</div>
+                        <div class="sb-label"><i class="fas fa-calendar-check"></i> Expected Return</div>
                         <div class="sb-value red" id="displayDueDateSummary" style="font-size: 0.92rem;">—</div>
                     </div>
                     <div class="summary-box" style="grid-column: span 4;">
@@ -1229,17 +1255,6 @@
                     </div>
                 </div>
 
-                <div class="summary-note">
-                    <i class="fas fa-info-circle"></i>
-                    <div>
-                        <strong>How interest works:</strong> Interest is added every 30 days as a flat amount — it never compounds.
-                        Payments go to <strong>interest first, then principal</strong>. The rate depends on your current principal balance.
-                        There is no fixed end date — the loan lives until fully cleared.
-                        <span style="display:block; margin-top: 6px; color: var(--app-green);">
-                            Pay early and pay often — every shilling off the principal lowers future interest.
-                        </span>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -1283,20 +1298,6 @@
                     </tbody>
                 </table>
 
-                <div class="summary-note" style="margin-top: 16px;">
-                    <i class="fas fa-lightbulb" style="color: var(--app-yellow);"></i>
-                    <div style="color: var(--app-text-muted); line-height: 1.7;">
-                        <strong style="color: var(--app-gold-bright);">How It Works:</strong>
-                        <ul style="margin: 8px 0 0; padding-left: 18px;">
-                            <li>Interest is added every <strong style="color: var(--app-yellow);">30 days</strong> from the day you receive the loan.</li>
-                            <li>It is <strong style="color: var(--app-yellow);">a flat amount</strong> — never compounds on itself.</li>
-                            <li>The rate always depends on your <strong style="color: var(--app-yellow);">current principal balance</strong>.</li>
-                            <li><strong style="color: var(--app-yellow);">Every payment may change your rate.</strong> Clearing a big chunk can drop you into a lower tier faster.</li>
-                            <li><strong style="color: var(--app-yellow);">Example:</strong> Borrow 5,000,000 (2% tier) → 100,000 interest per 30 days. Pay 4,500,000 → principal drops to 500,000 (5% tier) → interest becomes 25,000 per 30 days.</li>
-                            <li>You can pay <strong style="color: var(--app-yellow);">any amount, any time</strong>. The faster you clear the principal, the faster interest drops.</li>
-                        </ul>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -1432,16 +1433,6 @@
                         I, <strong>{{ member.full_name }}</strong>, hereby apply for a loan from Karacel SACCO.
                         I declare that the information provided in this application is true and correct to the best of my knowledge.
                     </p>
-                    <p>I understand that:</p>
-                    <ul>
-                        <li>Interest is added <strong>every 30 days</strong> from the day I receive the loan.</li>
-                        <li>Interest is <strong>flat</strong> — it never compounds on itself.</li>
-                        <li>The rate depends on my <strong>current principal balance</strong>.</li>
-                        <li>If my principal drops below a tier boundary, <strong>my rate changes automatically</strong>.</li>
-                        <li>Payments are applied to <strong>interest first, then principal</strong>.</li>
-                        <li>I can pay any amount, any time. There is <strong>no fixed end date</strong> — the loan lives until fully paid.</li>
-                        <li>Late payments may result in penalties and action against my savings and guarantors.</li>
-                    </ul>
                 </div>
 
                 <div class="declaration-check">
@@ -1498,8 +1489,12 @@
                 <span id="summaryInterest" style="color:#f5c542; font-weight: 700;"></span>
             </div>
             <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
-                <span style="color: rgba(255,255,255,0.5);">Est. Total Due:</span>
+                <span style="color: rgba(255,255,255,0.5);">Total Due (Cycle 1):</span>
                 <span id="summaryTotal" style="color:#ff6b6b; font-weight: 700;"></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
+                <span style="color: rgba(255,255,255,0.5);">Expected Return:</span>
+                <span id="summaryReturnDate" style="color:#4ade80; font-weight: 700;"></span>
             </div>
             <div style="display:flex; justify-content:space-between; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04);">
                 <span style="color: rgba(255,255,255,0.5);">Send Money To:</span>
@@ -1531,11 +1526,14 @@
 
 <script>
 // ============================================
-// KARACEL LOAN APPLICATION — JavaScript
+// KARACEL LOAN APPLICATION — Monthly Cycle
+// Flat interest added every 30 days on same principal
 // ============================================
 
-const memberSavings = {{ total_savings }};
+const memberSavings = Number("{{ total_savings|default(0) }}") || 0;
 const savingsThreshold = memberSavings * 0.95;
+
+const CYCLE_DAYS = 30;
 
 let selectedGuarantors = { 1: null, 2: null };
 let searchTimeout = { 1: null, 2: null };
@@ -1606,18 +1604,23 @@ function getTierLabel(rate) {
     return 'Under 1M';
 }
 
+// ===== FORMAT DATE =====
+function formatDate(d) {
+    return d.toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+    });
+}
+
 // ===== CALCULATE =====
 function calculateRepayment() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    const months = parseInt(document.getElementById('loanDuration').value) || 3;
     const summaryDiv = document.getElementById('repaymentSummary');
     const tierPreview = document.getElementById('tierPreview');
 
     if (amount >= 10000 && amount <= 10000000) {
         const rate = getTierRate(amount);
-        const perPeriod = amount * (rate / 100);
-        const estInterest = perPeriod * months;
-        const estTotal = amount + estInterest;
+        const perPeriod = amount * (rate / 100);   // flat interest per 30-day cycle
+        const cycle1Total = amount + perPeriod;    // first 30-day cycle total
 
         summaryDiv.style.display = 'block';
         tierPreview.style.display = 'block';
@@ -1627,21 +1630,21 @@ function calculateRepayment() {
         document.getElementById('displayAmount').textContent = 'UGX ' + fmt.format(amount);
         document.getElementById('displayRate').textContent = rate + '%';
         document.getElementById('displayInterestPerMonth').textContent = 'UGX ' + fmt.format(Math.round(perPeriod));
-        document.getElementById('displayInterest').textContent = 'UGX ' + fmt.format(Math.round(estInterest));
-        document.getElementById('displayTotal').textContent = 'UGX ' + fmt.format(Math.round(estTotal));
+        document.getElementById('displayInterest').textContent = 'UGX ' + fmt.format(Math.round(perPeriod));
+        document.getElementById('displayTotal').textContent = 'UGX ' + fmt.format(Math.round(cycle1Total));
 
         document.getElementById('tierPreviewRate').textContent = rate + '%';
         document.getElementById('tierPreviewInterest').textContent = 'UGX ' + fmt.format(Math.round(perPeriod));
         document.getElementById('tierPreviewLabel').textContent = getTierLabel(rate);
 
-        const durationLabels = { 1: '1 Month', 2: '2 Months', 3: '3 Months', 4: '4 Months', 6: '6 Months', 12: '1 Year', 24: '2 Years' };
-        document.getElementById('displaySummaryDuration').textContent = durationLabels[months] || (months + ' Months');
+        // Disbursement & Expected Return dates
+        const today = new Date();
+        const expectedReturn = new Date();
+        expectedReturn.setDate(expectedReturn.getDate() + CYCLE_DAYS);
 
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + (months * 30));
-        document.getElementById('displayDueDateSummary').textContent = dueDate.toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-        });
+        document.getElementById('disbursementDate').textContent = formatDate(today);
+        document.getElementById('expectedReturnDate').textContent = formatDate(expectedReturn);
+        document.getElementById('displayDueDateSummary').textContent = formatDate(expectedReturn);
 
         checkGuarantorRequirement(amount);
     } else {
@@ -1819,7 +1822,6 @@ function submitLoanApplication(e) {
     e.preventDefault();
 
     const loanAmount = parseFloat(document.getElementById('loanAmount').value);
-    const months = parseInt(document.getElementById('loanDuration').value) || 3;
     const sendToType = document.getElementById('sendToType').value;
     const sendToValue = document.getElementById('sendToValue').value.trim();
     const sendToSecondaryValue = document.getElementById('sendToSecondaryValue').value.trim();
@@ -1841,8 +1843,13 @@ function submitLoanApplication(e) {
 
     const rate = getTierRate(loanAmount);
     const perPeriod = loanAmount * (rate / 100);
-    const estInterest = perPeriod * months;
-    const estTotal = loanAmount + estInterest;
+    const cycle1Total = loanAmount + perPeriod;
+
+    // Expected return date = today + 30 days
+    const today = new Date();
+    const returnDate = new Date();
+    returnDate.setDate(returnDate.getDate() + CYCLE_DAYS);
+    const returnDateStr = formatDate(returnDate);
 
     let sendToDisplay = '';
     if (sendToType === 'phone') sendToDisplay = 'Phone: ' + sendToValue;
@@ -1852,16 +1859,16 @@ function submitLoanApplication(e) {
     const formData = {
         loan_amount: loanAmount,
         purpose: purpose,
-        loan_duration: months,
+        cycle_days: CYCLE_DAYS,
+        disbursement_date: today.toISOString(),
+        expected_return_date: returnDate.toISOString(),
         send_to_type: sendToType,
         send_to_value: sendToValue,
         send_to_secondary: sendToSecondaryValue || '',
         send_to_display: sendToDisplay,
         interest_rate: rate,
-        total_interest: Math.round(estInterest),
-        total_repayment: Math.round(estTotal),
-        monthly_interest: Math.round(perPeriod),
-        tenure: months
+        interest_per_cycle: Math.round(perPeriod),
+        cycle1_total: Math.round(cycle1Total)
     };
 
     if (loanAmount > savingsThreshold) {
@@ -1898,7 +1905,8 @@ function submitLoanApplication(e) {
             document.getElementById('summaryPrincipal').textContent = 'UGX ' + loanAmount.toLocaleString();
             document.getElementById('summaryRate').textContent = rate + '%';
             document.getElementById('summaryInterest').textContent = 'UGX ' + Math.round(perPeriod).toLocaleString();
-            document.getElementById('summaryTotal').textContent = 'UGX ' + Math.round(estTotal).toLocaleString();
+            document.getElementById('summaryTotal').textContent = 'UGX ' + Math.round(cycle1Total).toLocaleString();
+            document.getElementById('summaryReturnDate').textContent = returnDateStr;
             document.getElementById('summarySendTo').textContent = sendToDisplay;
 
             if (loanAmount <= savingsThreshold) {
@@ -1941,6 +1949,8 @@ function resetForm() {
     document.getElementById('repaymentSummary').style.display = 'none';
     document.getElementById('tierPreview').style.display = 'none';
     document.getElementById('guarantorNotice').style.display = 'none';
+    document.getElementById('disbursementDate').textContent = '—';
+    document.getElementById('expectedReturnDate').textContent = '—';
     clearGuarantor(1);
     clearGuarantor(2);
 
@@ -1957,16 +1967,17 @@ function showTerms(e) {
     e.preventDefault();
     alert(
         'Terms and Conditions:\n\n' +
-        '1. Interest is added every 30 days from the day you receive the loan.\n' +
-        '2. Interest is FLAT — it never compounds on itself.\n' +
+        '1. Your loan is on a monthly cycle (every 30 days) from the day you receive the money.\n' +
+        '2. Interest is added every 30 days as a FLAT amount — it never compounds.\n' +
         '3. The rate depends on your CURRENT PRINCIPAL balance:\n' +
         '   • Under 1M       → 5% per 30 days\n' +
         '   • 1M – 4.99M     → 3% per 30 days\n' +
         '   • 5M – 9.99M     → 2% per 30 days\n' +
         '   • 10M and above  → 1% per 30 days\n' +
-        '4. Payments are applied to interest first, then principal.\n' +
-        '5. You can pay any amount, any time.\n' +
-        '6. There is no fixed end date — the loan lives until fully paid.\n' +
+        '4. If you do not clear by the Expected Return Date, ANOTHER flat interest\n' +
+        '   is added for the next 30-day cycle (still no compounding).\n' +
+        '5. Payments are applied to interest first, then principal.\n' +
+        '6. You can pay any amount, any time.\n' +
         '7. Late payments may result in penalties and action against savings and guarantors.'
     );
 }

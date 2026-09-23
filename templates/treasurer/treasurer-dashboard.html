@@ -142,6 +142,7 @@
     </div>
 
 </div>
+
 <!-- ========== SAVINGS PANEL ========== -->
 <div id="savings-panel" class="content-panel">
 
@@ -216,7 +217,7 @@
                 </div>
             </div>
 
-            <!-- Current member savings summary (populated via JS) -->
+            <!-- Current member savings summary -->
             <div id="memberSavingsDisplay" class="member-summary">
                 <div class="member-summary-head">
                     <div class="member-summary-title">Current Savings</div>
@@ -233,7 +234,10 @@
                     </div>
                     <div>
                         <span class="type-kac">KAC</span>
-                        <span id="displayKAC" class="member-summary-value">Not paid</span>
+                        <span id="displayKAC" class="member-summary-value">UGX 0 / 100,000</span>
+                        <div id="displayKACBar" style="margin-top:4px; height:4px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
+                            <div id="displayKACFill" style="height:100%; width:0%; background:linear-gradient(90deg,#f5c542,#eab308); transition:width 0.3s;"></div>
+                        </div>
                     </div>
                     <div>
                         <span class="type-reg">REG</span>
@@ -250,7 +254,7 @@
                         <option value="">— Choose a savings type —</option>
                         <option value="KAI">KAI — Investment (UGX 100,000/share)</option>
                         <option value="KS">KS — Savings (UGX 10,000/share)</option>
-                        <option value="KAC">KAC — Condolence (UGX 100,000/year)</option>
+                        <option value="KAC">KAC — Condolence (UGX 100,000/year — installments allowed)</option>
                         <option value="REGISTRATION">Registration Fee (UGX 20,000)</option>
                     </select>
                 </div>
@@ -261,15 +265,15 @@
                 </div>
             </div>
 
-            <!-- Savings type info (populated via JS) -->
+            <!-- Savings type info -->
             <div id="savingsTypeInfo" class="type-info-panel">
                 <div id="savingsTypeDetails"></div>
             </div>
 
-            <!-- Amount validation (populated via JS) -->
+            <!-- Amount validation -->
             <div id="savingsAmountValidation" class="tr-field-hint" style="display:none;"></div>
 
-            <!-- Number of shares (KAI and KS only) -->
+            <!-- Number of shares -->
             <div class="tr-field" id="sharesGroup">
                 <label>Number of Shares</label>
                 <input type="number" id="numberOfShares" placeholder="Auto-calculated from amount" readonly>
@@ -393,6 +397,10 @@
                             <td style="text-align:right; color:var(--tr-muted);">
                                 {% if deposit.savings_type == 'KAI' or deposit.savings_type == 'KS' %}
                                     {% if deposit.shares %}{{ deposit.shares }}{% else %}—{% endif %}
+                                {% elif deposit.savings_type == 'KAC' %}
+                                    <span style="color:var(--tr-yellow); font-size:0.72rem;">
+                                        <i class="fas fa-hand-holding-heart"></i> installment
+                                    </span>
                                 {% else %}
                                     <span style="color:var(--tr-dim);">N/A</span>
                                 {% endif %}
@@ -433,7 +441,6 @@
 <!-- ========== LOAN APPLICATIONS PANEL ========== -->
 <div id="loan_applications-panel" class="content-panel">
 
-    <!-- ========== STATUS STATS ========== -->
     <div class="admin-stats">
         <div class="stat-box">
             <i class="fas fa-clock"></i>
@@ -555,7 +562,6 @@
         </span>
     </div>
 
-    <!-- Filters -->
     <div class="tr-filter-bar">
         <input type="text" id="searchLoans"
                placeholder="Search by member or loan number..."
@@ -576,7 +582,6 @@
         </select>
     </div>
 
-    <!-- Table -->
     <div class="tr-table-outer">
         <table class="styled-table tr-table-wide" id="loansTable">
             <thead>
@@ -606,7 +611,6 @@
                         {{ loan.full_name }}
                     </td>
 
-                    <!-- ===== Send Money To ===== -->
                     <td>
                         {% if loan.account_number %}
                             <span class="payout-num"
@@ -627,7 +631,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- ===== Amount / Balance (merged) ===== -->
                     <td style="text-align:right; white-space:nowrap;">
                         <div style="color:var(--tr-green); font-weight:600; font-size:0.85rem;">
                             {{ "{:,.0f}".format(loan.amount) }}
@@ -645,7 +648,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- ===== Status ===== -->
                     <td>
                         <span class="badge
                             {% if loan.status == 'pending' %}warning
@@ -658,7 +660,6 @@
                         </span>
                     </td>
 
-                    <!-- ===== Interest (compact) ===== -->
                     <td style="white-space:nowrap;">
                         <div style="font-size:0.72rem; line-height:1.35;">
                             <div>
@@ -673,7 +674,6 @@
                         </div>
                     </td>
 
-                    <!-- ===== Guarantors (FULL NAMES BACK) ===== -->
                     <td>
                         {% if loan.guarantors %}
                             <div class="guarantor-list">
@@ -708,7 +708,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- ===== Date ===== -->
                     <td style="color:var(--tr-muted); font-size:0.72rem; white-space:nowrap;">
                         {% if loan.status == 'pending' %}
                             {{ loan.application_date[:10] if loan.application_date else '—' }}
@@ -723,7 +722,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- ===== Actions ===== -->
                     <td style="text-align:center;">
                         <button class="dropdown-btn" onclick="toggleDropdown('{{ loan.id }}')" title="Actions">
                             <i class="fas fa-ellipsis-v"></i>
@@ -786,7 +784,6 @@
 <!-- ========== REPAYMENTS PANEL ========== -->
 <div id="repayments-panel" class="content-panel">
 
-    <!-- Page header -->
     <div class="rp-header">
         <div class="rp-header-icon" style="background: rgba(0, 224, 255, 0.12); border-color: rgba(0, 224, 255, 0.25); color: #00e0ff;">
             <i class="fas fa-undo-alt"></i>
@@ -802,7 +799,6 @@
         </div>
     </div>
 
-    <!-- Enter Repayment card -->
     <div class="action-card">
         <div class="action-title">
             <i class="fas fa-undo-alt"></i> Enter Loan Repayment
@@ -865,7 +861,6 @@
                 </div>
             </div>
 
-            <!-- Loan details -->
             <div id="loanDetails" class="tr-details-panel">
                 <div class="tr-details-head">
                     <div class="tr-details-title">Loan Details</div>
@@ -910,7 +905,6 @@
                 <div id="amountValidation" class="tr-field-hint" style="display:none;"></div>
             </div>
 
-            <!-- Payment allocation -->
             <div class="tr-alloc-panel">
                 <div class="tr-alloc-head">
                     <i class="fas fa-calculator"></i> Payment Allocation
@@ -958,7 +952,6 @@
         </form>
     </div>
 
-    <!-- All Repayments -->
     <div class="action-card">
         <div class="action-title">
             <i class="fas fa-list"></i> All Repayments
@@ -1133,13 +1126,19 @@
                             <td>{{ member.phone or '-' }}</td>
                             <td style="color:#4ade80;">{{ member.kai_shares or 0 }}</td>
                             <td style="color:#00e0ff;">{{ member.ks_shares or 0 }}</td>
+
+                            <!-- ===== KAC: installment progress ===== -->
                             <td style="color:#f5c542;">
-                                {% if member.kac_paid %}
-                                    <span style="color:#4ade80;">✓ Paid</span>
+                                {% set kac = member.kac_paid or 0 %}
+                                {% if kac >= 100000 %}
+                                    <span style="color:#4ade80;">✓ 100K</span>
+                                {% elif kac > 0 %}
+                                    <span style="color:#f5c542;">{{ (kac / 1000)|round(0, 'floor')|int }}K / 100K</span>
                                 {% else %}
-                                    <span style="color:rgba(255,255,255,0.2);">✗ Not Paid</span>
+                                    <span style="color:rgba(255,255,255,0.2);">0 / 100K</span>
                                 {% endif %}
                             </td>
+
                             <td style="color:#ff6b6b;">
                                 {% if member.registration_fee_paid %}
                                     <span style="color:#4ade80;">✓ Paid</span>
@@ -1387,12 +1386,11 @@
             {% endif %}
         </div>
         
-        <!-- Search and Filter for Completed Loans -->
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
                 <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..." 
                        onkeyup="filterCompletedLoans()" 
-                       style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; placeholder-color: rgba(255,255,255,0.3);">
+                       style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
             <div>
                 <select id="filterCompletedDate" onchange="filterCompletedLoans()" 
@@ -1530,7 +1528,7 @@
     </div>
 </div>
 
-<!-- ========== EDIT MEMBER MODAL - FULL REGISTRATION FORM ========== -->
+<!-- ========== EDIT MEMBER MODAL ========== -->
 <div id="editMemberModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
     <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:650px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -1556,7 +1554,6 @@
         <form id="editMemberForm" onsubmit="submitEditMember(event)">
             <input type="hidden" id="editMemberId" name="member_id">
             
-            <!-- Role Display (Staff Only) -->
             <div id="editRoleDisplay" style="display:none; background:rgba(255,255,255,0.03); border-radius:8px; padding:8px 14px; margin-bottom:14px; border-left:3px solid #f5c542;">
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <i class="fas fa-user-tie" style="color:#f5c542;"></i>
@@ -1568,7 +1565,7 @@
                 </div>
             </div>
             
-            <!-- Personal Information Section -->
+            <!-- Personal Information -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-user" style="color:#4ade80;"></i> Personal Information
@@ -1577,7 +1574,7 @@
                 <div class="form-group" style="margin-bottom:12px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Full Name <span style="color:#ff6b6b;">*</span></label>
                     <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name" 
-                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; transition:all 0.2s;">
+                           style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                 </div>
                 
                 <div class="form-group" style="margin-bottom:12px;">
@@ -1624,7 +1621,7 @@
                 </div>
             </div>
             
-            <!-- Next of Kin Section -->
+            <!-- Next of Kin -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-users" style="color:#00e0ff;"></i> Next of Kin
@@ -1650,13 +1647,12 @@
                 </div>
             </div>
             
-            <!-- Savings Types Section -->
+            <!-- Savings & Shares -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-piggy-bank" style="color:#f5c542;"></i> Savings & Shares
                 </div>
                 
-                <!-- KAI Shares -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(74,222,128,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-chart-line"></i> KAI Shares (UGX 100,000 each)
@@ -1665,7 +1661,6 @@
                            style="width:100%; padding:10px 14px; background:rgba(74,222,128,0.03); border:1px solid rgba(74,222,128,0.1); border-radius:8px; color:white;">
                 </div>
                 
-                <!-- KS Shares -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(0,224,255,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-piggy-bank"></i> KS Shares (UGX 10,000 each)
@@ -1674,23 +1669,31 @@
                            style="width:100%; padding:10px 14px; background:rgba(0,224,255,0.03); border:1px solid rgba(0,224,255,0.1); border-radius:8px; color:white;">
                 </div>
                 
-                <!-- KAC Paid -->
+                <!-- KAC INSTALLMENT INPUT -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(245,197,66,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
-                        <i class="fas fa-hand-holding-heart"></i> KAC Paid (UGX 100,000 per year) - No shares
+                        <i class="fas fa-hand-holding-heart"></i> KAC Paid (UGX 100,000/year target — installments allowed)
                     </label>
-                    <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:rgba(245,197,66,0.03); border:1px solid rgba(245,197,66,0.1); border-radius:8px;">
-                        <input type="checkbox" id="editKacPaid" name="kac_paid" style="width:20px; height:20px; accent-color:#f5c542;">
-                        <label for="editKacPaid" style="color:rgba(255,255,255,0.5); font-size:0.85rem; cursor:pointer;">
-                            Member has paid KAC for this year
-                        </label>
+                    <div style="padding:10px 14px; background:rgba(245,197,66,0.03); border:1px solid rgba(245,197,66,0.1); border-radius:8px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="color:rgba(255,255,255,0.4); font-size:0.85rem;">UGX</span>
+                            <input type="number" id="editKacPaid" name="kac_paid" min="0" max="100000" step="1000" value="0"
+                                   style="flex:1; padding:8px 12px; background:rgba(0,0,0,0.25); border:1px solid rgba(245,197,66,0.2); border-radius:6px; color:white; font-size:0.9rem;">
+                            <span style="color:rgba(255,255,255,0.3); font-size:0.75rem;">/ 100,000</span>
+                        </div>
+                        <div style="margin-top:8px; height:6px; background:rgba(255,255,255,0.06); border-radius:6px; overflow:hidden;">
+                            <div id="editKacProgressFill" style="height:100%; width:0%; background:linear-gradient(90deg,#f5c542,#eab308); transition:width 0.3s;"></div>
+                        </div>
+                        <div style="margin-top:6px; display:flex; justify-content:space-between; font-size:0.7rem;">
+                            <span id="editKacStatus" style="color:rgba(255,255,255,0.4);">Not started</span>
+                            <span id="editKacRemaining" style="color:rgba(255,255,255,0.4);">Remaining: UGX 100,000</span>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Registration Fee Paid -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(255,107,107,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
-                        <i class="fas fa-file-invoice"></i> Registration Fee Paid (UGX 20,000) - No shares
+                        <i class="fas fa-file-invoice"></i> Registration Fee Paid (UGX 20,000)
                     </label>
                     <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:rgba(255,107,107,0.03); border:1px solid rgba(255,107,107,0.1); border-radius:8px;">
                         <input type="checkbox" id="editRegFeePaid" name="registration_fee_paid" style="width:20px; height:20px; accent-color:#ff6b6b;">
@@ -1700,7 +1703,6 @@
                     </div>
                 </div>
                 
-                <!-- Status -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Status</label>
                     <select id="editStatus" name="status" class="form-control" 
@@ -1711,7 +1713,6 @@
                     </select>
                 </div>
                 
-                <!-- Registration Date (Read Only) -->
                 <div class="form-group" style="margin-bottom:0;">
                     <label style="color:rgba(255,255,255,0.3); font-size:0.7rem; display:block; margin-bottom:4px;">Registration Date</label>
                     <input type="text" id="editRegistrationDate" class="form-control" readonly 
@@ -1728,11 +1729,7 @@
                     border-radius:8px;
                     cursor:pointer;
                     font-weight:500;
-                    transition:all 0.2s;
-                " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
-                   onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                    Cancel
-                </button>
+                ">Cancel</button>
                 <button type="submit" id="editMemberSubmitBtn" style="
                     padding:10px 24px;
                     background:#f5c542;
@@ -1741,21 +1738,20 @@
                     border-radius:8px;
                     cursor:pointer;
                     font-weight:600;
-                    transition:all 0.2s;
                     display:inline-flex;
                     align-items:center;
                     gap:8px;
-                " onmouseover="this.style.background='#eab308'" 
-                   onmouseout="this.style.background='#f5c542'">
+                ">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
             </div>
         </form>
     </div>
 </div>
+
 <!-- ========== DELETE CONFIRMATION MODAL ========== -->
 <div id="deleteConfirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:450px; width:100%; text-align:center; animation:modalSlideIn 0.3s ease;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:450px; width:100%; text-align:center;">
         <div style="font-size:3rem; color:#ff6b6b; margin-bottom:12px;">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
@@ -1772,12 +1768,7 @@
                 border:1px solid rgba(255,255,255,0.1);
                 border-radius:8px;
                 cursor:pointer;
-                font-weight:500;
-                transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
-               onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                Cancel
-            </button>
+            ">Cancel</button>
             <button class="btn-danger" onclick="confirmDeleteMember()" style="
                 padding:10px 24px;
                 background:#ff6b6b;
@@ -1786,12 +1777,7 @@
                 border-radius:8px;
                 cursor:pointer;
                 font-weight:600;
-                transition:all 0.2s;
-                display:inline-flex;
-                align-items:center;
-                gap:8px;
-            " onmouseover="this.style.background='#ef4444'" 
-               onmouseout="this.style.background='#ff6b6b'">
+            ">
                 <i class="fas fa-trash"></i> Delete Permanently
             </button>
         </div>
@@ -1800,7 +1786,7 @@
 
 <!-- ========== GUARANTOR DETAILS MODAL ========== -->
 <div id="guarantorDetailsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; animation:modalSlideIn 0.3s ease;">
+    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:28px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.04);">
             <h3 style="margin:0; color:#f5c542; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
                 <i class="fas fa-user-shield"></i> Guarantor Details
@@ -1814,63 +1800,50 @@
                 border-radius:50%;
                 cursor:pointer;
                 font-size:1.2rem;
-                transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
-               onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+            ">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div id="guarantorDetailsContent">
-            <!-- Dynamically populated -->
-        </div>
+        <div id="guarantorDetailsContent"></div>
     </div>
 </div>
 
 <style>
-    /* ==================== COMPACT LOAN TABLE ==================== */
 #loansTable {
     width: 100%;
     table-layout: auto;
     font-size: 0.8rem;
 }
-
 #loansTable thead th {
     padding: 10px 10px;
     font-size: 0.68rem;
     white-space: nowrap;
 }
-
 #loansTable tbody td {
     padding: 10px 10px;
     font-size: 0.82rem;
     vertical-align: middle;
 }
-
 #loansTable .badge {
     font-size: 0.65rem;
     padding: 2px 8px;
 }
-
 #loansTable .guarantor-tag {
     font-size: 0.68rem;
     padding: 2px 8px;
     gap: 4px;
 }
-
 #loansTable .payout-num {
     font-size: 0.72rem;
     padding: 3px 8px;
     gap: 5px;
 }
-
 #loansTable .dropdown-btn {
     width: 28px;
     height: 28px;
     padding: 0;
     font-size: 0.8rem;
 }
-
-/* Compact guarantor pill */
 .g-pill {
     display: inline-flex;
     align-items: center;
@@ -1880,7 +1853,6 @@
     font-size: 0.7rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
 }
 .g-pill.ok {
     background: rgba(74,222,128,0.1);
@@ -1892,17 +1864,16 @@
     color: #f5c542;
     border: 1px solid rgba(245,197,66,0.2);
 }
-.g-pill:hover {
-    transform: scale(1.05);
-    filter: brightness(1.15);
-}
 </style>
-<!-- ============================================================ -->
-<!-- COMPLETE JAVASCRIPT -->
-<!-- ============================================================ -->
+
 <script>
 // ============================================================
-// SAVINGS TYPE INFO
+// KAC TARGET — single source of truth
+// ============================================================
+const KAC_TARGET = 100000;
+
+// ============================================================
+// SAVINGS TYPE INFO (with KAC installment logic)
 // ============================================================
 function updateSavingsTypeInfo() {
     const type = document.getElementById('savingsType').value;
@@ -1930,9 +1901,10 @@ function updateSavingsTypeInfo() {
         'KAC': {
             name: 'Karacel Condolence',
             share: 100000,
-            desc: 'Annual condolence contribution. UGX 100,000 per year. NO SHARES.',
+            desc: 'Annual condolence contribution. Target UGX 100,000 per year. Can be paid in installments — any amount up to the remaining balance.',
             color: '#f5c542',
-            hasShares: false
+            hasShares: false,
+            isInstallment: true
         },
         'REGISTRATION': {
             name: 'Registration Fee',
@@ -1957,35 +1929,33 @@ function updateSavingsTypeInfo() {
                 </div>
                 <div style="text-align:right;">
                     <div style="color:${typeInfo[type].color}; font-weight:600; font-size:1rem;">
-                        UGX ${typeInfo[type].share.toLocaleString()} ${typeInfo[type].hasShares ? 'per share' : 'flat fee'}
+                        UGX ${typeInfo[type].share.toLocaleString()} ${typeInfo[type].hasShares ? 'per share' : (typeInfo[type].isInstallment ? 'target' : 'flat fee')}
                     </div>
-                    ${type === 'KAC' ? '<div style="color:rgba(255,255,255,0.2); font-size:0.7rem;">Annual payment - NO shares</div>' : ''}
+                    ${type === 'KAC' ? '<div style="color:rgba(255,255,255,0.2); font-size:0.7rem;">Installments allowed</div>' : ''}
                     ${type === 'REGISTRATION' ? '<div style="color:rgba(255,255,255,0.2); font-size:0.7rem;">One-time payment - NO shares</div>' : ''}
                 </div>
             </div>
         `;
 
-        if (sharesGroup) {
-            sharesGroup.style.display = typeInfo[type].hasShares ? 'block' : 'none';
-        }
+        if (sharesGroup) sharesGroup.style.display = typeInfo[type].hasShares ? 'block' : 'none';
 
         if (amountInput) {
             amountInput.placeholder = `Enter amount (min UGX ${typeInfo[type].share.toLocaleString()})`;
-            amountInput.min = typeInfo[type].share;
+            amountInput.min = typeInfo[type].hasShares ? typeInfo[type].share : 1;
         }
 
         if (amountInput) {
             amountInput.oninput = function() {
                 const amount = parseFloat(this.value) || 0;
                 const sharePrice = typeInfo[type].share;
-                
+                const validation = document.getElementById('savingsAmountValidation');
+
+                // KAI / KS
                 if (typeInfo[type].hasShares && amount > 0 && sharePrice > 0) {
                     const shares = Math.floor(amount / sharePrice);
-                    if (shareInput) {
-                        shareInput.value = shares > 0 ? shares : '';
-                    }
-                    const validation = document.getElementById('savingsAmountValidation');
+                    if (shareInput) shareInput.value = shares > 0 ? shares : '';
                     if (validation) {
+                        validation.style.display = 'block';
                         if (amount % sharePrice !== 0) {
                             validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be a multiple of UGX ${sharePrice.toLocaleString()}</span>`;
                         } else if (shares === 0) {
@@ -1994,22 +1964,43 @@ function updateSavingsTypeInfo() {
                             validation.innerHTML = `<span style="color:#4ade80;">✅ ${shares} share${shares > 1 ? 's' : ''} at UGX ${sharePrice.toLocaleString()} each</span>`;
                         }
                     }
-                } else if (!typeInfo[type].hasShares && amount > 0) {
-                    const validation = document.getElementById('savingsAmountValidation');
+                }
+                // KAC installments
+                else if (type === 'KAC' && amount > 0) {
+                    if (shareInput) shareInput.value = 'N/A';
+                    const currentPaid = getCurrentKacPaid();
+                    const remaining = KAC_TARGET - currentPaid;
+                    const newTotal = currentPaid + amount;
                     if (validation) {
+                        validation.style.display = 'block';
+                        if (currentPaid >= KAC_TARGET) {
+                            validation.innerHTML = `<span style="color:#4ade80;">✅ Already fully paid (UGX 100,000)</span>`;
+                        } else if (amount > remaining) {
+                            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount exceeds remaining (UGX ${remaining.toLocaleString()})</span>`;
+                        } else if (newTotal === KAC_TARGET) {
+                            validation.innerHTML = `<span style="color:#4ade80;">✅ This completes the KAC payment (100,000)</span>`;
+                        } else {
+                            validation.innerHTML = `<span style="color:#f5c542;">⏳ Partial: UGX ${newTotal.toLocaleString()} / 100,000 — remaining UGX ${(KAC_TARGET - newTotal).toLocaleString()}</span>`;
+                        }
+                    }
+                }
+                // REGISTRATION
+                else if (!typeInfo[type].hasShares && amount > 0) {
+                    if (shareInput) shareInput.value = 'N/A';
+                    if (validation) {
+                        validation.style.display = 'block';
                         if (amount === sharePrice) {
                             validation.innerHTML = `<span style="color:#4ade80;">✅ Correct amount for ${typeInfo[type].name}</span>`;
                         } else {
                             validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be exactly UGX ${sharePrice.toLocaleString()}</span>`;
                         }
                     }
-                    if (shareInput) shareInput.value = 'N/A';
                 } else {
                     if (shareInput) shareInput.value = '';
+                    if (validation) validation.style.display = 'none';
                 }
             };
         }
-
     } else {
         infoDiv.style.display = 'none';
         if (amountInput) {
@@ -2023,696 +2014,424 @@ function updateSavingsTypeInfo() {
 }
 
 // ============================================================
-// UPDATE MEMBER SAVINGS DISPLAY
+// Get current selected member's KAC balance
 // ============================================================
-function updateMemberSavings(memberId) {
-    const select = document.getElementById('savingsType');
-    const displayDiv = document.getElementById('memberSavingsDisplay');
-    if (!memberId) {
-        displayDiv.style.display = 'none';
-        return;
-    }
-
-    const option = select.querySelector(`option[value="${memberId}"]`);
-    if (!option) {
-        displayDiv.style.display = 'none';
-        return;
-    }
-
-    const kai = parseInt(option.dataset.kai) || 0;
-    const ks = parseInt(option.dataset.ks) || 0;
-    const kac = parseInt(option.dataset.kac) || 0;
-    const reg = parseInt(option.dataset.reg) || 0;
-
-    document.getElementById('displayKAI').textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
-    document.getElementById('displayKS').textContent = ks + ' shares (UGX ' + (ks * 10000).toLocaleString() + ')';
-    document.getElementById('displayKAC').textContent = kac > 0 ? '✓ Paid (UGX 100,000)' : 'Not paid';
-    document.getElementById('displayREG').textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
-
-    displayDiv.style.display = 'block';
+function getCurrentKacPaid() {
+    const memberSelect = document.querySelector('select[name="user_id"]');
+    if (!memberSelect || !memberSelect.value) return 0;
+    const opt = memberSelect.options[memberSelect.selectedIndex];
+    if (!opt) return 0;
+    return parseFloat(opt.dataset.kac) || 0;
 }
 
 // ============================================================
-// TOGGLE DROPDOWN — Horizontal Layout (class-based)
+// UPDATE MEMBER SAVINGS DISPLAY (with KAC progress)
+// ============================================================
+function updateMemberSavings(memberId) {
+    const select = document.querySelector('select[name="user_id"]');
+    const displayDiv = document.getElementById('memberSavingsDisplay');
+    if (!memberId || !select) {
+        if (displayDiv) displayDiv.style.display = 'none';
+        return;
+    }
+    const option = select.querySelector(`option[value="${memberId}"]`);
+    if (!option) {
+        if (displayDiv) displayDiv.style.display = 'none';
+        return;
+    }
+    const kai = parseInt(option.dataset.kai) || 0;
+    const ks  = parseInt(option.dataset.ks) || 0;
+    const kac = parseFloat(option.dataset.kac) || 0;
+    const reg = parseInt(option.dataset.reg) || 0;
+
+    document.getElementById('displayKAI').textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
+    document.getElementById('displayKS').textContent  = ks  + ' shares (UGX ' + (ks  * 10000).toLocaleString() + ')';
+
+    const kacPct = Math.min(100, (kac / KAC_TARGET) * 100);
+    const kacText = document.getElementById('displayKAC');
+    const kacFill = document.getElementById('displayKACFill');
+    if (kac >= KAC_TARGET) {
+        kacText.textContent = '✓ UGX 100,000 / 100,000';
+        kacText.style.color = '#4ade80';
+    } else if (kac > 0) {
+        kacText.textContent = 'UGX ' + kac.toLocaleString() + ' / 100,000';
+        kacText.style.color = '#f5c542';
+    } else {
+        kacText.textContent = 'UGX 0 / 100,000';
+        kacText.style.color = 'rgba(255,255,255,0.4)';
+    }
+    if (kacFill) kacFill.style.width = kacPct + '%';
+
+    document.getElementById('displayREG').textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
+    displayDiv.style.display = 'block';
+
+    const savingsType = document.getElementById('savingsType');
+    if (savingsType && savingsType.value === 'KAC') {
+        const amountInput = document.getElementById('amountInput');
+        if (amountInput && amountInput.value) amountInput.dispatchEvent(new Event('input'));
+    }
+}
+
+// ============================================================
+// KAC INSTALLMENT PROGRESS (Edit Member Modal)
+// ============================================================
+function updateEditKacProgress() {
+    const input = document.getElementById('editKacPaid');
+    if (!input) return;
+    let paid = parseFloat(input.value) || 0;
+    if (paid < 0) paid = 0;
+    if (paid > KAC_TARGET) { paid = KAC_TARGET; input.value = paid; }
+
+    const pct = (paid / KAC_TARGET) * 100;
+    const fill = document.getElementById('editKacProgressFill');
+    const status = document.getElementById('editKacStatus');
+    const remaining = document.getElementById('editKacRemaining');
+    if (fill) fill.style.width = pct + '%';
+
+    if (paid >= KAC_TARGET) {
+        if (status) { status.textContent = '✓ Fully paid'; status.style.color = '#4ade80'; }
+        if (remaining) { remaining.textContent = 'Remaining: UGX 0'; remaining.style.color = '#4ade80'; }
+    } else if (paid > 0) {
+        if (status) { status.textContent = '⏳ Partial — ' + pct.toFixed(0) + '%'; status.style.color = '#f5c542'; }
+        if (remaining) {
+            remaining.textContent = 'Remaining: UGX ' + (KAC_TARGET - paid).toLocaleString();
+            remaining.style.color = '#f5c542';
+        }
+    } else {
+        if (status) { status.textContent = 'Not started'; status.style.color = 'rgba(255,255,255,0.4)'; }
+        if (remaining) { remaining.textContent = 'Remaining: UGX 100,000'; remaining.style.color = 'rgba(255,255,255,0.4)'; }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const kacInput = document.getElementById('editKacPaid');
+    if (kacInput) {
+        kacInput.addEventListener('input', updateEditKacProgress);
+        updateEditKacProgress();
+    }
+});
+
+// ============================================================
+// DROPDOWN / MODAL / LOAN / MEMBER / REPAYMENT / FILTER / etc.
 // ============================================================
 function toggleDropdown(loanId) {
     const dropdown = document.getElementById('dropdown-' + loanId);
     if (!dropdown) return;
-
-    // Close all other dropdowns
     document.querySelectorAll('.dropdown-menu.open').forEach(menu => {
-        if (menu.id !== 'dropdown-' + loanId) {
-            menu.classList.remove('open');
-        }
+        if (menu.id !== 'dropdown-' + loanId) menu.classList.remove('open');
     });
-
-    // Toggle this dropdown
     if (dropdown.classList.contains('open')) {
         dropdown.classList.remove('open');
         return;
     }
-
-    // Get the button position
     const btn = document.querySelector(`[onclick*="toggleDropdown('${loanId}')"]`);
-    if (!btn) {
-        dropdown.classList.add('open');
-        return;
-    }
-
+    if (!btn) { dropdown.classList.add('open'); return; }
     const rect = btn.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Menu dimensions
+    const vw = window.innerWidth, vh = window.innerHeight;
     const menuWidth = dropdown.scrollWidth || 350;
     const menuHeight = 50;
-
-    // Position: below the button, centered
     let left = rect.left + (rect.width / 2) - (menuWidth / 2);
     let top = rect.bottom + 8;
-
-    // Keep inside viewport horizontally
-    if (left + menuWidth > viewportWidth - 10) {
-        left = viewportWidth - menuWidth - 10;
-    }
-    if (left < 10) {
-        left = 10;
-    }
-
-    // If it would go off the bottom, position above
-    if (top + menuHeight > viewportHeight - 10) {
-        top = rect.top - menuHeight - 8;
-    }
-
-    // Apply position
+    if (left + menuWidth > vw - 10) left = vw - menuWidth - 10;
+    if (left < 10) left = 10;
+    if (top + menuHeight > vh - 10) top = rect.top - menuHeight - 8;
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
     dropdown.classList.add('open');
 }
-
-// ============================================================
-// CLOSE ALL DROPDOWNS
-// ============================================================
 function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown-menu.open').forEach(menu => {
-        menu.classList.remove('open');
-    });
+    document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
 }
-
-
-
-// ============================================================
-// CLOSE DROPDOWNS ON OUTSIDE CLICK
-// ============================================================
-document.addEventListener('click', function(event) {
-    if (!event.target.closest('.dropdown-btn') && !event.target.closest('.dropdown-menu')) {
-        closeAllDropdowns();
-    }
+document.addEventListener('click', e => {
+    if (!e.target.closest('.dropdown-btn') && !e.target.closest('.dropdown-menu')) closeAllDropdowns();
 });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllDropdowns(); });
+window.addEventListener('scroll', closeAllDropdowns);
+window.addEventListener('resize', closeAllDropdowns);
 
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeAllDropdowns();
-    }
-});
+function viewLoan(loanId) { if (loanId) window.location.href = '/treasurer/loan/view/' + loanId; }
+function viewMember(memberId) { if (memberId) window.location.href = '/treasurer/members/view/' + memberId; }
 
-window.addEventListener('scroll', function() {
-    closeAllDropdowns();
-});
-
-window.addEventListener('resize', function() {
-    closeAllDropdowns();
-});
-
-// ============================================================
-// VIEW LOAN
-// ============================================================
-function viewLoan(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    window.location.href = '/treasurer/loan/view/' + loanId;
-}
-
-// ============================================================
-// VIEW MEMBER
-// ============================================================
-function viewMember(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    window.location.href = '/treasurer/members/view/' + memberId;
-}
-
-// ============================================================
-// OPEN APPROVE MODAL
-// ============================================================
-function openApproveModal(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    pendingLoanId = loanId;   // ✅ add this line
-    document.getElementById('approveModal').style.display = 'flex';
-}
-
-function closeApproveModal() {
-    document.getElementById('approveModal').style.display = 'none';
-}
-
+let pendingLoanId = null;
+function openApproveModal(loanId) { if (!loanId) return; pendingLoanId = loanId; document.getElementById('approveModal').style.display = 'flex'; }
+function closeApproveModal() { document.getElementById('approveModal').style.display = 'none'; }
 function confirmApprove() {
-    const loanId = pendingLoanId;
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    fetch('/treasurer/loan/action/' + loanId, {
+    if (!pendingLoanId) return;
+    fetch('/treasurer/loan/action/' + pendingLoanId, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({ action: 'approve' })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            closeApproveModal();
-            alert('✅ ' + data.message);
-            location.reload();
-        } else {
-            alert('❌ Error: ' + (data.message || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        alert('❌ Error: ' + error.message);
-    });
+    }).then(r => r.json()).then(data => {
+        if (data.success) { closeApproveModal(); alert('✅ ' + data.message); location.reload(); }
+        else alert('❌ Error: ' + (data.message || 'Unknown error'));
+    }).catch(err => alert('❌ Error: ' + err.message));
 }
-
-// ============================================================
-// OPEN REJECT MODAL
-// ============================================================
 function openRejectModal(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
+    if (!loanId) return;
     pendingLoanId = loanId;
     document.getElementById('rejectModal').style.display = 'flex';
     document.getElementById('rejectReason').value = '';
-    setTimeout(() => {
-        document.getElementById('rejectReason').focus();
-    }, 100);
+    setTimeout(() => document.getElementById('rejectReason').focus(), 100);
 }
-
 function closeRejectModal() {
     document.getElementById('rejectModal').style.display = 'none';
     pendingLoanId = null;
     document.getElementById('rejectReason').value = '';
 }
-
 function confirmReject() {
-    const loanId = pendingLoanId;
     const reason = document.getElementById('rejectReason').value.trim();
-    
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
-    if (!reason) {
-        alert('❌ Please provide a reason for rejecting this loan.');
-        document.getElementById('rejectReason').focus();
-        return;
-    }
-    
+    if (!pendingLoanId) return;
+    if (!reason) { alert('❌ Please provide a reason.'); return; }
     if (confirm('❌ Reject this loan application?')) {
-        fetch('/treasurer/loan/action/' + loanId, {
+        fetch('/treasurer/loan/action/' + pendingLoanId, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
             body: JSON.stringify({ action: 'reject', reason: reason })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                location.reload();
-            } else {
-                alert('❌ Error: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            alert('❌ Error: ' + error.message);
-        });
+        }).then(r => r.json()).then(data => {
+            if (data.success) { alert('✅ ' + data.message); location.reload(); }
+            else alert('❌ Error: ' + (data.message || 'Unknown error'));
+        }).catch(err => alert('❌ Error: ' + err.message));
     }
 }
-
-// ============================================================
-// DISBURSE LOAN
-// ============================================================
 function disburseLoan(loanId) {
-    if (!loanId) {
-        alert('Error: Loan ID is missing.');
-        return;
-    }
+    if (!loanId) return;
     if (confirm('💰 Disburse this loan to the member?')) {
         fetch('/treasurer/loan/disburse/' + loanId, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                location.reload();
-            } else {
-                alert('❌ Error: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            alert('❌ Error: ' + error.message);
-        });
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        }).then(r => r.json()).then(data => {
+            if (data.success) { alert('✅ ' + data.message); location.reload(); }
+            else alert('❌ Error: ' + (data.message || 'Unknown error'));
+        }).catch(err => alert('❌ Error: ' + err.message));
     }
 }
 
-// ============================================================
-// FILTER FUNCTIONS
-// ============================================================
+// ===== FILTER FUNCTIONS =====
 function filterLoansTable() {
-    const searchTerm = document.getElementById('searchLoans').value.toLowerCase().trim();
-    const statusFilter = document.getElementById('filterLoanStatus').value;
-    const rows = document.querySelectorAll('#loansTable tbody tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
+    const term = document.getElementById('searchLoans').value.toLowerCase().trim();
+    const status = document.getElementById('filterLoanStatus').value;
+    let visible = 0;
+    document.querySelectorAll('#loansTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
         const text = row.textContent.toLowerCase();
-        const status = row.dataset.status || '';
-        const matchesSearch = !searchTerm || text.includes(searchTerm);
-        const matchesStatus = statusFilter === 'all' || status === statusFilter;
-        
-        if (matchesSearch && matchesStatus) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
+        const rowStatus = row.dataset.status || '';
+        const match = (!term || text.includes(term)) && (status === 'all' || rowStatus === status);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
     });
-    const countEl = document.getElementById('loanCount');
-    if (countEl) countEl.textContent = visibleCount;
+    const c = document.getElementById('loanCount');
+    if (c) c.textContent = visible;
 }
-
 function filterSavingsByMember() {
-    const searchInput = document.getElementById('searchSavingsMember');
-    const typeFilter = document.getElementById('filterSavingsType');
-    const methodFilter = document.getElementById('filterSavingsMethod');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const type = typeFilter ? typeFilter.value : 'all';
-    const method = methodFilter ? methodFilter.value : 'all';
-    const table = document.getElementById('savingsTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
+    const term = (document.getElementById('searchSavingsMember')?.value || '').toLowerCase();
+    const type = document.getElementById('filterSavingsType')?.value || 'all';
+    const method = document.getElementById('filterSavingsMethod')?.value || 'all';
+    document.querySelectorAll('#savingsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
-        const memberName = row.getAttribute('data-member-name') || '';
+        const name = row.getAttribute('data-member-name') || '';
         const sacco = row.getAttribute('data-sacco') || '';
         const rowType = row.getAttribute('data-type') || '';
         const rowMethod = row.getAttribute('data-method') || '';
-        const text = (memberName + ' ' + sacco).toLowerCase();
+        const text = (name + ' ' + sacco).toLowerCase();
         let show = true;
-        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (term && !text.includes(term)) show = false;
         if (show && type !== 'all' && rowType !== type) show = false;
         if (show && method !== 'all' && rowMethod !== method) show = false;
         row.style.display = show ? '' : 'none';
     });
 }
-
 function filterRepaymentsByMember() {
-    const searchInput = document.getElementById('searchRepaymentMember');
-    const memberFilter = document.getElementById('filterRepaymentMember');
-    const methodFilter = document.getElementById('filterRepaymentMethod');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const memberId = memberFilter ? memberFilter.value : 'all';
-    const method = methodFilter ? methodFilter.value : 'all';
-    const table = document.getElementById('repaymentsTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
+    const term = (document.getElementById('searchRepaymentMember')?.value || '').toLowerCase();
+    const memberId = document.getElementById('filterRepaymentMember')?.value || 'all';
+    const method = document.getElementById('filterRepaymentMethod')?.value || 'all';
+    document.querySelectorAll('#repaymentsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
-        const memberName = row.getAttribute('data-member-name') || '';
+        const name = row.getAttribute('data-member-name') || '';
         const sacco = row.getAttribute('data-sacco') || '';
-        const rowMemberId = row.getAttribute('data-member-id') || '';
+        const rowId = row.getAttribute('data-member-id') || '';
         const rowMethod = row.getAttribute('data-method') || '';
-        const text = (memberName + ' ' + sacco).toLowerCase();
+        const text = (name + ' ' + sacco).toLowerCase();
         let show = true;
-        if (searchTerm && !text.includes(searchTerm)) show = false;
-        if (show && memberId !== 'all' && rowMemberId !== memberId) show = false;
+        if (term && !text.includes(term)) show = false;
+        if (show && memberId !== 'all' && rowId !== memberId) show = false;
         if (show && method !== 'all' && rowMethod !== method) show = false;
         row.style.display = show ? '' : 'none';
     });
 }
-
 function filterMembersTable() {
-    const searchInput = document.getElementById('searchMembers');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const table = document.getElementById('membersTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
+    const term = (document.getElementById('searchMembers')?.value || '').toLowerCase();
+    document.querySelectorAll('#membersTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
-        const text = row.textContent.toLowerCase();
-        row.style.display = (searchTerm === '' || text.includes(searchTerm)) ? '' : 'none';
+        row.style.display = (!term || row.textContent.toLowerCase().includes(term)) ? '' : 'none';
     });
 }
-
 function filterDeposits() {
-    const searchInput = document.getElementById('searchDeposits');
-    const methodFilter = document.getElementById('filterMethod');
-    const dateFilter = document.getElementById('filterDate');
-    
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const method = methodFilter ? methodFilter.value : 'all';
-    const dateRange = dateFilter ? dateFilter.value : 'all';
-    const table = document.getElementById('depositsTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    let visibleCount = 0;
+    const term = (document.getElementById('searchDeposits')?.value || '').toLowerCase();
+    const method = document.getElementById('filterMethod')?.value || 'all';
+    const dateRange = document.getElementById('filterDate')?.value || 'all';
     const today = new Date();
-    
-    rows.forEach(row => {
+    let visible = 0;
+    document.querySelectorAll('#depositsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
         const text = row.textContent.toLowerCase();
         const cells = row.querySelectorAll('td');
-        const methodCell = cells[6];
-        const dateCell = cells[1];
+        const methodCell = cells[6], dateCell = cells[1];
         let show = true;
-        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (term && !text.includes(term)) show = false;
         if (show && method !== 'all') {
-            const cellMethod = methodCell ? methodCell.textContent.toLowerCase().trim() : '';
-            if (!cellMethod.includes(method.replace('_', ' '))) show = false;
+            const cm = methodCell ? methodCell.textContent.toLowerCase().trim() : '';
+            if (!cm.includes(method.replace('_', ' '))) show = false;
         }
         if (show && dateRange !== 'all' && dateCell) {
-            const dateStr = dateCell.textContent.trim();
-            const rowDate = new Date(dateStr);
-            if (dateRange === 'today' && rowDate.toDateString() !== today.toDateString()) show = false;
-            else if (dateRange === 'week') {
-                const weekAgo = new Date(today);
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                if (rowDate < weekAgo) show = false;
-            } else if (dateRange === 'month') {
-                if (rowDate.getMonth() !== today.getMonth() || rowDate.getFullYear() !== today.getFullYear()) {
-                    show = false;
-                }
-            } else if (dateRange === 'year' && rowDate.getFullYear() !== today.getFullYear()) {
-                show = false;
-            }
+            const d = new Date(dateCell.textContent.trim());
+            if (dateRange === 'today' && d.toDateString() !== today.toDateString()) show = false;
+            else if (dateRange === 'week') { const w = new Date(today); w.setDate(w.getDate() - 7); if (d < w) show = false; }
+            else if (dateRange === 'month' && (d.getMonth() !== today.getMonth() || d.getFullYear() !== today.getFullYear())) show = false;
+            else if (dateRange === 'year' && d.getFullYear() !== today.getFullYear()) show = false;
         }
         row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
+        if (show) visible++;
     });
-    const showingSpan = document.getElementById('showingCount');
-    if (showingSpan) showingSpan.textContent = visibleCount;
+    const s = document.getElementById('showingCount');
+    if (s) s.textContent = visible;
+}
+function filterCompletedLoans() {
+    const term = (document.getElementById('searchCompletedLoans')?.value || '').toLowerCase();
+    document.querySelectorAll('#completedLoansTable tbody tr').forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        row.style.display = (!term || row.textContent.toLowerCase().includes(term)) ? '' : 'none';
+    });
 }
 
-// ============================================================
-// EXPORT DEPOSITS TO CSV
-// ============================================================
+// ===== EXPORT CSV =====
 function exportDepositsCSV() {
     const table = document.getElementById('depositsTable');
     if (!table) return;
     let csv = [];
-    const rows = table.querySelectorAll('tr');
-    rows.forEach(row => {
+    table.querySelectorAll('tr').forEach(row => {
         const cells = row.querySelectorAll('td, th');
-        const rowData = [];
-        cells.forEach(cell => {
-            let text = cell.textContent.trim().replace(/,/g, '');
-            rowData.push(text);
-        });
-        csv.push(rowData.join(','));
+        csv.push(Array.from(cells).map(c => c.textContent.trim().replace(/,/g, '')).join(','));
     });
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `deposits_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
 }
 
-// ============================================================
-// PAGINATION
-// ============================================================
+// ===== PAGINATION =====
 let currentPage = 1;
 const rowsPerPage = 20;
-
 function paginateTable() {
-    const table = document.getElementById('depositsTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    const totalRows = rows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage);
-    
-    rows.forEach((row, index) => {
-        if (row.querySelector('td[colspan]')) {
-            row.style.display = 'none';
-            return;
-        }
+    const rows = document.querySelectorAll('#depositsTable tbody tr');
+    rows.forEach((row, i) => {
+        if (row.querySelector('td[colspan]')) { row.style.display = 'none'; return; }
         const start = (currentPage - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        row.style.display = (index >= start && index < end) ? '' : 'none';
+        row.style.display = (i >= start && i < start + rowsPerPage) ? '' : 'none';
     });
-    const pageEl = document.getElementById('currentPage');
-    if (pageEl) pageEl.textContent = currentPage;
+    const p = document.getElementById('currentPage');
+    if (p) p.textContent = currentPage;
 }
-
-function prevPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        paginateTable();
-    }
-}
-
+function prevPage() { if (currentPage > 1) { currentPage--; paginateTable(); } }
 function nextPage() {
-    const table = document.getElementById('depositsTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    const totalPages = Math.ceil(rows.length / rowsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        paginateTable();
-    }
+    const rows = document.querySelectorAll('#depositsTable tbody tr');
+    if (currentPage < Math.ceil(rows.length / rowsPerPage)) { currentPage++; paginateTable(); }
 }
 
-// ============================================================
-// VIEW GUARANTOR DETAILS
-// ============================================================
-function viewGuarantorDetails(guarantorId) {
-    if (!guarantorId) {
-        alert('Error: Guarantor ID is missing.');
-        return;
-    }
-    console.log('📤 Fetching guarantor details for ID:', guarantorId);
-    
+// ===== GUARANTOR MODAL =====
+function viewGuarantorDetails(id) {
+    if (!id) return;
     const modal = document.getElementById('guarantorDetailsModal');
     const content = document.getElementById('guarantorDetailsContent');
-    if (!modal || !content) {
-        alert('Error: Modal not found.');
-        return;
-    }
     modal.style.display = 'flex';
-    content.innerHTML = `
-        <div style="text-align:center; padding:40px;">
-            <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i>
-            <p style="color:rgba(255,255,255,0.5); margin-top:12px;">Loading guarantor details...</p>
-        </div>
-    `;
-    
-    fetch('/treasurer/guarantor/details/' + guarantorId)
-        .then(response => response.json())
+    content.innerHTML = `<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#f5c542;"></i><p style="color:rgba(255,255,255,0.5);margin-top:12px;">Loading...</p></div>`;
+    fetch('/treasurer/guarantor/details/' + id)
+        .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                renderGuarantorDetails(data);
-            } else {
-                content.innerHTML = `
-                    <div style="text-align:center; padding:40px; color:#ff6b6b;">
-                        <i class="fas fa-exclamation-circle" style="font-size:2rem; display:block; margin-bottom:12px;"></i>
-                        <p>${data.message || 'Error loading guarantor details'}</p>
-                    </div>
-                `;
-            }
+            if (data.success) renderGuarantorDetails(data);
+            else content.innerHTML = `<div style="text-align:center;padding:40px;color:#ff6b6b;">${data.message || 'Error'}</div>`;
         })
-        .catch(error => {
-            content.innerHTML = `
-                <div style="text-align:center; padding:40px; color:#ff6b6b;">
-                    <i class="fas fa-exclamation-circle" style="font-size:2rem; display:block; margin-bottom:12px;"></i>
-                    <p>Error loading guarantor details. Please try again.</p>
-                </div>
-            `;
-        });
+        .catch(() => content.innerHTML = `<div style="text-align:center;padding:40px;color:#ff6b6b;">Error loading details.</div>`);
 }
-
-function closeGuarantorModal() {
-    const modal = document.getElementById('guarantorDetailsModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// ============================================================
-// RENDER GUARANTOR DETAILS
-// ============================================================
+function closeGuarantorModal() { document.getElementById('guarantorDetailsModal').style.display = 'none'; }
 function renderGuarantorDetails(data) {
     const content = document.getElementById('guarantorDetailsContent');
-    const guarantor = data.guarantor;
-    const guaranteedLoans = data.guaranteed_loans || [];
-    
+    const g = data.guarantor;
+    const loans = data.guaranteed_loans || [];
     let html = `
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.04);">
-            <div style="width:56px; height:56px; border-radius:50%; background:rgba(245,197,66,0.1); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#f5c542; flex-shrink:0;">
-                <i class="fas fa-user-shield"></i>
-            </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="width:56px;height:56px;border-radius:50%;background:rgba(245,197,66,0.1);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#f5c542;"><i class="fas fa-user-shield"></i></div>
             <div>
-                <h3 style="margin:0; color:#fff; font-size:1.1rem;">${escapeHtml(guarantor.full_name || 'N/A')}</h3>
-                <p style="margin:4px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.8rem;">
-                    <i class="fas fa-id-card"></i> ${escapeHtml(guarantor.sacco_number || 'N/A')}
-                </p>
-            </div>
-            <div style="margin-left:auto;">
-                <span style="display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.7rem; font-weight:600; 
-                    ${guarantor.status === 'active' ? 'background:rgba(74,222,128,0.12); color:#4ade80;' : 'background:rgba(255,107,107,0.12); color:#ff6b6b;'}">
-                    ${(guarantor.status || 'unknown').toUpperCase()}
-                </span>
+                <h3 style="margin:0;color:#fff;font-size:1.1rem;">${escapeHtml(g.full_name || 'N/A')}</h3>
+                <p style="margin:4px 0 0;color:rgba(255,255,255,0.3);font-size:0.8rem;"><i class="fas fa-id-card"></i> ${escapeHtml(g.sacco_number || 'N/A')}</p>
             </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Phone</div>
-                <div style="color:#fff; font-size:0.9rem; margin-top:2px;">
-                    <i class="fas fa-phone" style="color:rgba(255,255,255,0.2); width:16px;"></i>
-                    ${escapeHtml(guarantor.phone || 'Not provided')}
-                </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div style="background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;">
+                <div style="color:rgba(255,255,255,0.3);font-size:0.65rem;text-transform:uppercase;">Phone</div>
+                <div style="color:#fff;font-size:0.9rem;margin-top:2px;"><i class="fas fa-phone" style="color:rgba(255,255,255,0.2);width:16px;"></i> ${escapeHtml(g.phone || 'Not provided')}</div>
             </div>
-            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Email</div>
-                <div style="color:#fff; font-size:0.9rem; margin-top:2px;">
-                    <i class="fas fa-envelope" style="color:rgba(255,255,255,0.2); width:16px;"></i>
-                    ${escapeHtml(guarantor.email || 'Not provided')}
-                </div>
+            <div style="background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;">
+                <div style="color:rgba(255,255,255,0.3);font-size:0.65rem;text-transform:uppercase;">Email</div>
+                <div style="color:#fff;font-size:0.9rem;margin-top:2px;"><i class="fas fa-envelope" style="color:rgba(255,255,255,0.2);width:16px;"></i> ${escapeHtml(g.email || 'Not provided')}</div>
             </div>
-            <div style="background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px; grid-column: span 2;">
-                <div style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">Savings Balance</div>
-                <div style="color:#4ade80; font-size:1.1rem; font-weight:600; margin-top:2px;">
-                    <i class="fas fa-coins" style="color:rgba(255,255,255,0.2); width:16px;"></i>
-                    UGX ${Number(guarantor.savings_balance || 0).toLocaleString()}
-                </div>
+            <div style="background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;grid-column:span 2;">
+                <div style="color:rgba(255,255,255,0.3);font-size:0.65rem;text-transform:uppercase;">Savings Balance</div>
+                <div style="color:#4ade80;font-size:1.1rem;font-weight:600;margin-top:2px;"><i class="fas fa-coins" style="color:rgba(255,255,255,0.2);width:16px;"></i> UGX ${Number(g.savings_balance || 0).toLocaleString()}</div>
             </div>
         </div>
-        <div style="border-top:1px solid rgba(255,255,255,0.04); padding-top:16px; margin-top:4px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <h4 style="margin:0; color:rgba(255,255,255,0.7); font-size:0.9rem;">
-                    <i class="fas fa-hand-holding-usd" style="color:#f5c542;"></i>
-                    Loans Guaranteed (${guaranteedLoans.length})
-                </h4>
-            </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.04);padding-top:16px;">
+            <h4 style="margin:0 0 12px;color:rgba(255,255,255,0.7);font-size:0.9rem;"><i class="fas fa-hand-holding-usd" style="color:#f5c542;"></i> Loans Guaranteed (${loans.length})</h4>
     `;
-    
-    if (guaranteedLoans.length > 0) {
-        html += `<div style="max-height:300px; overflow-y:auto; padding-right:4px;">`;
-        for (const loan of guaranteedLoans) {
-            html += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.02); border-radius:8px; margin-bottom:6px; border-left:3px solid ${loan.status === 'active' ? '#4ade80' : '#f5c542'};">
-                    <div>
-                        <div style="color:#f5c542; font-family:monospace; font-size:0.8rem; font-weight:600;">${escapeHtml(loan.loan_number)}</div>
-                        <div style="font-size:0.7rem; color:rgba(255,255,255,0.4);">${escapeHtml(loan.member_name)}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="color:#4ade80; font-weight:600; font-size:0.85rem;">UGX ${Number(loan.amount || 0).toLocaleString()}</div>
-                        <span style="font-size:0.6rem; color:${loan.status === 'active' ? '#4ade80' : '#f5c542'}; font-weight:600; text-transform:uppercase;">${(loan.status || 'unknown').toUpperCase()}</span>
-                    </div>
+    if (loans.length > 0) {
+        html += '<div style="max-height:300px;overflow-y:auto;">';
+        loans.forEach(l => {
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:6px;border-left:3px solid ${l.status === 'active' ? '#4ade80' : '#f5c542'};">
+                <div>
+                    <div style="color:#f5c542;font-family:monospace;font-size:0.8rem;font-weight:600;">${escapeHtml(l.loan_number)}</div>
+                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);">${escapeHtml(l.member_name)}</div>
                 </div>
-            `;
-        }
-        html += `</div>`;
+                <div style="text-align:right;">
+                    <div style="color:#4ade80;font-weight:600;font-size:0.85rem;">UGX ${Number(l.amount || 0).toLocaleString()}</div>
+                    <span style="font-size:0.6rem;color:${l.status === 'active' ? '#4ade80' : '#f5c542'};font-weight:600;text-transform:uppercase;">${(l.status || 'unknown').toUpperCase()}</span>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
     } else {
-        html += `
-            <div style="text-align:center; padding:30px 20px; color:rgba(255,255,255,0.2);">
-                <i class="fas fa-handshake" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.2;"></i>
-                <p style="margin:0;">This guarantor has not guaranteed any loans yet.</p>
-            </div>
-        `;
+        html += `<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.2);"><i class="fas fa-handshake" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.2;"></i><p style="margin:0;">No loans guaranteed yet.</p></div>`;
     }
-    
-    html += `
-        </div>
-        <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04); display:flex; gap:12px; justify-content:flex-end;">
-            <button onclick="closeGuarantorModal()" style="padding:10px 24px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; font-weight:500;">
-                <i class="fas fa-times"></i> Close
-            </button>
-            <button onclick="closeGuarantorModal()" style="padding:10px 24px; background:#f5c542; color:#0a0a14; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                <i class="fas fa-check"></i> Done
-            </button>
-        </div>
-    `;
+    html += `</div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:12px;justify-content:flex-end;">
+            <button onclick="closeGuarantorModal()" style="padding:10px 24px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;"><i class="fas fa-times"></i> Close</button>
+        </div>`;
     content.innerHTML = html;
 }
-
-// ============================================================
-// ESCAPE HTML (Prevent XSS)
-// ============================================================
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return String(unsafe)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
-// ============================================================
-// CLOSE MODALS ON ESCAPE
-// ============================================================
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeApproveModal();
-        closeRejectModal();
-        closeGuarantorModal();
-        closeEditModal();
-        closeDeleteModal();
-        closeAllDropdowns();
-    }
+// Close modals on Esc / outside click
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeApproveModal(); closeRejectModal(); closeGuarantorModal(); closeEditModal(); closeDeleteModal(); closeAllDropdowns(); }
+});
+document.addEventListener('click', e => {
+    ['approveModal','rejectModal','guarantorDetailsModal','editMemberModal','deleteConfirmModal'].forEach(id => {
+        const m = document.getElementById(id);
+        if (m && e.target === m) {
+            if (id === 'approveModal') closeApproveModal();
+            else if (id === 'rejectModal') closeRejectModal();
+            else if (id === 'guarantorDetailsModal') closeGuarantorModal();
+            else if (id === 'editMemberModal') closeEditModal();
+            else if (id === 'deleteConfirmModal') closeDeleteModal();
+        }
+    });
 });
 
-// ============================================================
-// CLOSE MODALS ON OUTSIDE CLICK
-// ============================================================
-document.addEventListener('click', function(event) {
-    const approveModal = document.getElementById('approveModal');
-    if (approveModal && event.target === approveModal) closeApproveModal();
-    const rejectModal = document.getElementById('rejectModal');
-    if (rejectModal && event.target === rejectModal) closeRejectModal();
-    const guarantorModal = document.getElementById('guarantorDetailsModal');
-    if (guarantorModal && event.target === guarantorModal) closeGuarantorModal();
-    const editModal = document.getElementById('editMemberModal');
-    if (editModal && event.target === editModal) closeEditModal();
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    if (deleteModal && event.target === deleteModal) closeDeleteModal();
-});
-
-// ============================================================
-// REPAYMENT FORM FUNCTIONS
-// ============================================================
+// ===== REPAYMENT FORM =====
 const loanSelect = document.getElementById('loanSelect');
 const memberSearch = document.getElementById('memberSearch');
 const noLoansMessage = document.getElementById('noLoansMessage');
@@ -2723,450 +2442,228 @@ let currentLoanData = {};
 
 function filterMembers() {
     if (!memberSearch) return;
-    const searchTerm = memberSearch.value.toLowerCase().trim();
-    let hasVisibleOptions = false;
-    allOptions.forEach(option => {
-        if (option.value === '') {
-            option.style.display = '';
-            return;
-        }
-        const memberData = option.getAttribute('data-member') || '';
-        const searchableText = memberData + ' ' + option.textContent.toLowerCase();
-        if (searchTerm === '' || searchableText.includes(searchTerm)) {
-            option.style.display = '';
-            hasVisibleOptions = true;
-        } else {
-            option.style.display = 'none';
-        }
+    const term = memberSearch.value.toLowerCase().trim();
+    let hasVisible = false;
+    allOptions.forEach(o => {
+        if (o.value === '') { o.style.display = ''; return; }
+        const data = o.getAttribute('data-member') || '';
+        if (term === '' || (data + ' ' + o.textContent.toLowerCase()).includes(term)) { o.style.display = ''; hasVisible = true; }
+        else o.style.display = 'none';
     });
-    if (noLoansMessage) {
-        noLoansMessage.style.display = (searchTerm !== '' && !hasVisibleOptions) ? 'block' : 'none';
-    }
-    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-    if (selectedOption && selectedOption.value !== '' && selectedOption.style.display === 'none') {
-        loanSelect.value = '';
-        if (loanDetails) loanDetails.style.display = 'none';
-    }
-    if (loanSelect.value) {
-        updateLoanDetails();
-    }
+    if (noLoansMessage) noLoansMessage.style.display = (term !== '' && !hasVisible) ? 'block' : 'none';
+    const sel = loanSelect.options[loanSelect.selectedIndex];
+    if (sel && sel.value !== '' && sel.style.display === 'none') { loanSelect.value = ''; if (loanDetails) loanDetails.style.display = 'none'; }
+    if (loanSelect.value) updateLoanDetails();
 }
-
 function clearSearch() {
     if (!memberSearch) return;
     memberSearch.value = '';
-    allOptions.forEach(option => {
-        option.style.display = '';
-    });
+    allOptions.forEach(o => o.style.display = '');
     if (noLoansMessage) noLoansMessage.style.display = 'none';
     filterMembers();
 }
-
 function updateLoanDetails() {
     if (!loanDetails) return;
-    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-    if (!selectedOption || !selectedOption.value) {
-        loanDetails.style.display = 'none';
-        return;
-    }
-    const balance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
-    const totalAmount = parseFloat(selectedOption.getAttribute('data-total')) || 0;
-    const interest = parseFloat(selectedOption.getAttribute('data-interest')) || 0;
-    const principalPaid = parseFloat(selectedOption.getAttribute('data-principal')) || 0;
-    currentLoanData = {
-        balance: balance,
-        total: totalAmount,
-        interest: interest,
-        principalPaid: principalPaid
-    };
-    const text = selectedOption.textContent;
+    const sel = loanSelect.options[loanSelect.selectedIndex];
+    if (!sel || !sel.value) { loanDetails.style.display = 'none'; return; }
+    const balance = parseFloat(sel.getAttribute('data-balance')) || 0;
+    const total = parseFloat(sel.getAttribute('data-total')) || 0;
+    const interest = parseFloat(sel.getAttribute('data-interest')) || 0;
+    const principalPaid = parseFloat(sel.getAttribute('data-principal')) || 0;
+    currentLoanData = { balance, total, interest, principalPaid };
+    const text = sel.textContent;
     const parts = text.split(' - ');
-    let memberName = '';
-    if (parts.length > 1) {
-        memberName = parts[1].split(' (Balance:')[0].trim();
-    }
+    const memberName = parts.length > 1 ? parts[1].split(' (Balance:')[0].trim() : '';
     const loanNumber = parts[0].trim();
     const overdueMatch = text.match(/(\d+) days overdue/);
     const daysOverdue = overdueMatch ? overdueMatch[1] : 0;
-    
-    const detailMember = document.getElementById('detailMember');
-    const detailLoanNumber = document.getElementById('detailLoanNumber');
-    const detailOriginal = document.getElementById('detailOriginal');
-    const detailInterest = document.getElementById('detailInterest');
-    const detailPrincipalPaid = document.getElementById('detailPrincipalPaid');
-    const detailBalance = document.getElementById('detailBalance');
-    const detailOverdue = document.getElementById('detailOverdue');
-    
-    if (detailMember) detailMember.textContent = memberName;
-    if (detailLoanNumber) detailLoanNumber.textContent = loanNumber;
-    if (detailOriginal) detailOriginal.textContent = 'UGX ' + totalAmount.toLocaleString();
-    if (detailInterest) detailInterest.textContent = 'UGX ' + interest.toLocaleString();
-    if (detailPrincipalPaid) detailPrincipalPaid.textContent = 'UGX ' + principalPaid.toLocaleString();
-    if (detailBalance) detailBalance.textContent = 'UGX ' + balance.toLocaleString();
-    if (detailOverdue) {
-        if (daysOverdue > 0) {
-            detailOverdue.innerHTML = '<span style="color:#ff6b6b;">🔴 ' + daysOverdue + ' days overdue</span>';
-        } else {
-            detailOverdue.innerHTML = '<span style="color:#4ade80;">✅ On time</span>';
-        }
-    }
-    loanDetails.style.display = 'block';
-    if (amountInput) {
-        amountInput.value = '';
-        document.getElementById('amountValidation').innerHTML = '';
-        updateAllocation(0);
-    }
-}
 
+    document.getElementById('detailMember').textContent = memberName;
+    document.getElementById('detailLoanNumber').textContent = loanNumber;
+    document.getElementById('detailOriginal').textContent = 'UGX ' + total.toLocaleString();
+    document.getElementById('detailInterest').textContent = 'UGX ' + interest.toLocaleString();
+    document.getElementById('detailPrincipalPaid').textContent = 'UGX ' + principalPaid.toLocaleString();
+    document.getElementById('detailBalance').textContent = 'UGX ' + balance.toLocaleString();
+    document.getElementById('detailOverdue').innerHTML = daysOverdue > 0
+        ? '<span style="color:#ff6b6b;">🔴 ' + daysOverdue + ' days overdue</span>'
+        : '<span style="color:#4ade80;">✅ On time</span>';
+    loanDetails.style.display = 'block';
+    if (amountInput) { amountInput.value = ''; document.getElementById('amountValidation').innerHTML = ''; updateAllocation(0); }
+}
 function validateAmount() {
     const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
     updateAllocation(amount);
 }
-
 function updateAllocation(amount) {
     const balance = currentLoanData.balance || 0;
     const interest = currentLoanData.interest || 0;
-    let interestPaid = 0;
-    let principalPaid = 0;
+    let interestPaid = 0, principalPaid = 0;
     if (amount > 0) {
         if (amount >= interest) {
             interestPaid = interest;
-            principalPaid = amount - interest;
-            const remainingBalance = balance - amount;
-            if (principalPaid > balance) {
-                principalPaid = balance;
-            }
-        } else {
-            interestPaid = amount;
-            principalPaid = 0;
-        }
+            principalPaid = Math.min(amount - interest, balance);
+        } else interestPaid = amount;
     }
-    const remainingBalance = balance - amount;
-    const finalRemaining = remainingBalance < 0 ? 0 : remainingBalance;
-    
-    const allocationInterest = document.getElementById('allocationInterest');
-    const allocationPrincipal = document.getElementById('allocationPrincipal');
-    const allocationRemaining = document.getElementById('allocationRemaining');
-    if (allocationInterest) allocationInterest.textContent = 'UGX ' + interestPaid.toLocaleString();
-    if (allocationPrincipal) allocationPrincipal.textContent = 'UGX ' + principalPaid.toLocaleString();
-    if (allocationRemaining) allocationRemaining.textContent = 'UGX ' + finalRemaining.toLocaleString();
-    
-    const validationEl = document.getElementById('amountValidation');
-    if (validationEl) {
-        if (amount > balance && balance > 0) {
-            validationEl.innerHTML = '<span style="color:#ff6b6b;">⚠️ Amount exceeds current balance.</span>';
-        } else if (amount === 0) {
-            validationEl.innerHTML = '';
-        } else {
-            validationEl.innerHTML = '<span style="color:#4ade80;">✅ Valid payment amount</span>';
-        }
+    const finalRemaining = Math.max(0, balance - amount);
+    document.getElementById('allocationInterest').textContent = 'UGX ' + interestPaid.toLocaleString();
+    document.getElementById('allocationPrincipal').textContent = 'UGX ' + principalPaid.toLocaleString();
+    document.getElementById('allocationRemaining').textContent = 'UGX ' + finalRemaining.toLocaleString();
+    const v = document.getElementById('amountValidation');
+    if (v) {
+        if (amount > balance && balance > 0) v.innerHTML = '<span style="color:#ff6b6b;">⚠️ Amount exceeds current balance.</span>';
+        else if (amount === 0) v.innerHTML = '';
+        else v.innerHTML = '<span style="color:#4ade80;">✅ Valid payment amount</span>';
     }
 }
 
-// ============================================================
-// EDIT MEMBER - FULL DATA LOAD (All Registration Fields)
-// ============================================================
+// ===== EDIT MEMBER =====
 function editMember(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    console.log('📝 Editing member:', memberId);
-    
+    if (!memberId) return;
     const modal = document.getElementById('editMemberModal');
-    if (!modal) {
-        alert('Error: Edit modal not found.');
-        return;
-    }
     modal.style.display = 'flex';
     document.getElementById('editMemberId').value = memberId;
-    
-    const submitBtn = document.getElementById('editMemberSubmitBtn');
-    if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        submitBtn.disabled = true;
-    }
-    
+    const btn = document.getElementById('editMemberSubmitBtn');
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...'; btn.disabled = true; }
+
     fetch('/treasurer/member/view/' + memberId)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('HTTP error! Status: ' + response.status);
-            }
-            return response.json();
-        })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
             if (data.success) {
-                const member = data.member;
-                console.log('📋 Member data loaded:', member);
-                
-                // ============================================================
-                // PERSONAL INFORMATION
-                // ============================================================
-                document.getElementById('editFullName').value = member.full_name || '';
-                document.getElementById('editSaccoNumber').value = member.sacco_number || '';
-                document.getElementById('editPhone').value = member.phone || '';
-                document.getElementById('editEmail').value = member.email || '';
-                document.getElementById('editGender').value = member.gender || '';
-                document.getElementById('editDob').value = member.dob || '';
-                document.getElementById('editAddress').value = member.address || '';
-                document.getElementById('editStatus').value = member.status || 'active';
-                
-                // ============================================================
-                // NEXT OF KIN
-                // ============================================================
-                document.getElementById('editNextOfKin').value = member.next_of_kin_name || '';
-                document.getElementById('editNextOfKinPhone').value = member.next_of_kin_phone || '';
-                document.getElementById('editRelationship').value = member.relationship || '';
-                
-                // ============================================================
-                // SAVINGS & SHARES
-                // ============================================================
-                document.getElementById('editKaiShares').value = member.kai_shares || 0;
-                document.getElementById('editKsShares').value = member.ks_shares || 0;
-                document.getElementById('editKacPaid').checked = member.kac_paid || false;
-                document.getElementById('editRegFeePaid').checked = member.registration_fee_paid || false;
-                
-                // ============================================================
-                // REGISTRATION DATE (Read Only)
-                // ============================================================
-                document.getElementById('editRegistrationDate').value = member.registration_date || '';
-                
-                // ============================================================
-                // ROLE DISPLAY (Staff Only)
-                // ============================================================
+                const m = data.member;
+                document.getElementById('editFullName').value = m.full_name || '';
+                document.getElementById('editSaccoNumber').value = m.sacco_number || '';
+                document.getElementById('editPhone').value = m.phone || '';
+                document.getElementById('editEmail').value = m.email || '';
+                document.getElementById('editGender').value = m.gender || '';
+                document.getElementById('editDob').value = m.dob || '';
+                document.getElementById('editAddress').value = m.address || '';
+                document.getElementById('editStatus').value = m.status || 'active';
+                document.getElementById('editNextOfKin').value = m.next_of_kin_name || '';
+                document.getElementById('editNextOfKinPhone').value = m.next_of_kin_phone || '';
+                document.getElementById('editRelationship').value = m.relationship || '';
+                document.getElementById('editKaiShares').value = m.kai_shares || 0;
+                document.getElementById('editKsShares').value = m.ks_shares || 0;
+                // KAC is a number now
+                document.getElementById('editKacPaid').value = parseFloat(m.kac_paid) || 0;
+                updateEditKacProgress();
+                document.getElementById('editRegFeePaid').checked = !!m.registration_fee_paid;
+                document.getElementById('editRegistrationDate').value = m.registration_date || '';
+
                 const roleDisplay = document.getElementById('editRoleDisplay');
                 const roleText = document.getElementById('editRoleText');
-                if (member.role && member.role !== 'member') {
+                if (m.role && m.role !== 'member') {
                     roleDisplay.style.display = 'block';
-                    const roleColors = {
-                        'admin': '#ff6b6b',
-                        'chairperson': '#f5c542',
-                        'treasurer': '#4ade80',
-                        'secretary': '#00e0ff',
-                        'publicity': '#a78bfa'
-                    };
-                    const color = roleColors[member.role] || '#f5c542';
-                    roleText.textContent = member.role.toUpperCase();
-                    roleText.style.color = color;
-                    roleText.style.background = color + '22';
-                    roleText.style.padding = '2px 12px';
-                    roleText.style.borderRadius = '10px';
-                } else {
-                    roleDisplay.style.display = 'none';
-                }
-                
-                // Show success
-                console.log('✅ Edit form populated successfully');
-                
+                    const colors = { admin: '#ff6b6b', chairperson: '#f5c542', treasurer: '#4ade80', secretary: '#00e0ff', publicity: '#a78bfa' };
+                    const c = colors[m.role] || '#f5c542';
+                    roleText.textContent = m.role.toUpperCase();
+                    roleText.style.color = c;
+                    roleText.style.background = c + '22';
+                } else roleDisplay.style.display = 'none';
             } else {
-                alert('❌ Error: ' + (data.message || 'Could not load member data'));
+                alert('❌ ' + (data.message || 'Could not load member'));
                 closeEditModal();
             }
         })
-        .catch(error => {
-            console.error('❌ Error:', error);
-            alert('❌ Error loading member data: ' + error.message);
-            closeEditModal();
-        })
-        .finally(() => {
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-                submitBtn.disabled = false;
-            }
-        });
+        .catch(err => { alert('❌ Error: ' + err.message); closeEditModal(); })
+        .finally(() => { if (btn) { btn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; btn.disabled = false; } });
 }
-
 function closeEditModal() {
-    const modal = document.getElementById('editMemberModal');
-    if (modal) modal.style.display = 'none';
-    const form = document.getElementById('editMemberForm');
-    if (form) form.reset();
+    const m = document.getElementById('editMemberModal');
+    if (m) m.style.display = 'none';
+    const f = document.getElementById('editMemberForm');
+    if (f) f.reset();
 }
-
-// ============================================================
-// SUBMIT EDIT - Save All Fields
-// ============================================================
-function submitEditMember(event) {
-    event.preventDefault();
+function submitEditMember(e) {
+    e.preventDefault();
     const form = document.getElementById('editMemberForm');
-    const formData = new FormData(form);
+    const fd = new FormData(form);
     const userId = document.getElementById('editMemberId').value;
-    
-    // Validate required fields
-    const fullName = formData.get('full_name').trim();
-    const saccoNumber = formData.get('sacco_number').trim().toUpperCase();
-    const phone = formData.get('phone').trim();
-    
-    if (!fullName || !saccoNumber || !phone) {
-        alert('Please fill in all required fields (Full Name, SACCO Number, Phone).');
-        return;
-    }
-    
-    const submitBtn = document.getElementById('editMemberSubmitBtn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    submitBtn.disabled = true;
-    
-    // Collect ALL form data
+    const fullName = (fd.get('full_name') || '').trim();
+    const sacco = (fd.get('sacco_number') || '').trim().toUpperCase();
+    const phone = (fd.get('phone') || '').trim();
+    if (!fullName || !sacco || !phone) { alert('Please fill in all required fields.'); return; }
+
+    const btn = document.getElementById('editMemberSubmitBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+
     const data = {
-        full_name: fullName,
-        sacco_number: saccoNumber,
-        phone: phone,
-        email: formData.get('email') || '',
-        gender: formData.get('gender') || '',
-        dob: formData.get('dob') || '',
-        address: formData.get('address') || '',
-        next_of_kin_name: formData.get('next_of_kin_name') || '',
-        next_of_kin_phone: formData.get('next_of_kin_phone') || '',
-        relationship: formData.get('relationship') || '',
-        status: formData.get('status') || 'active',
-        kai_shares: parseInt(formData.get('kai_shares')) || 0,
-        ks_shares: parseInt(formData.get('ks_shares')) || 0,
-        kac_paid: formData.get('kac_paid') ? 1 : 0,
-        registration_fee_paid: formData.get('registration_fee_paid') ? 1 : 0
+        full_name: fullName, sacco_number: sacco, phone,
+        email: fd.get('email') || '',
+        gender: fd.get('gender') || '',
+        dob: fd.get('dob') || '',
+        address: fd.get('address') || '',
+        next_of_kin_name: fd.get('next_of_kin_name') || '',
+        next_of_kin_phone: fd.get('next_of_kin_phone') || '',
+        relationship: fd.get('relationship') || '',
+        status: fd.get('status') || 'active',
+        kai_shares: parseInt(fd.get('kai_shares')) || 0,
+        ks_shares: parseInt(fd.get('ks_shares')) || 0,
+        kac_paid: Math.min(KAC_TARGET, Math.max(0, parseFloat(fd.get('kac_paid')) || 0)),
+        registration_fee_paid: fd.get('registration_fee_paid') ? 1 : 0
     };
-    
-    console.log('📤 Saving data:', data);
-    
+
     fetch('/treasurer/member/update/' + userId, {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            alert('✅ User updated successfully!');
-            closeEditModal();
-            location.reload();
-        } else {
-            alert('❌ Error: ' + (result.message || 'Could not update user'));
-        }
-    })
-    .catch(error => {
-        console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
+    }).then(r => r.json()).then(res => {
+        if (res.success) { alert('✅ Updated successfully!'); closeEditModal(); location.reload(); }
+        else alert('❌ ' + (res.message || 'Update failed'));
+    }).catch(err => alert('❌ ' + err.message))
+    .finally(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
-
-function deleteMember(memberId, memberName) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    document.getElementById('deleteMessage').textContent = 
-        `Are you sure you want to delete member "${memberName}"? This action cannot be undone.`;
-    document.getElementById('deleteMemberId').value = memberId;
+function deleteMember(id, name) {
+    if (!id) return;
+    document.getElementById('deleteMessage').textContent = `Are you sure you want to delete "${name}"? This cannot be undone.`;
+    document.getElementById('deleteMemberId').value = id;
     document.getElementById('deleteConfirmModal').style.display = 'flex';
 }
-
 function closeDeleteModal() {
     document.getElementById('deleteConfirmModal').style.display = 'none';
     document.getElementById('deleteMemberId').value = '';
 }
-
 function confirmDeleteMember() {
-    const memberId = document.getElementById('deleteMemberId').value;
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    if (!confirm('⚠️ Are you absolutely sure you want to delete this member permanently?')) {
-        return;
-    }
-    
+    const id = document.getElementById('deleteMemberId').value;
+    if (!id || !confirm('⚠️ Permanently delete this member?')) return;
     const btn = document.querySelector('#deleteConfirmModal .btn-danger');
-    const originalText = btn.innerHTML;
+    const orig = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
     btn.disabled = true;
-    
-    fetch('/treasurer/member/delete/' + memberId, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('✅ ' + data.message);
-            closeDeleteModal();
-            location.reload();
-        } else {
-            alert('❌ Error: ' + (data.message || 'Could not delete member'));
-        }
-    })
-    .catch(error => {
-        alert('❌ Error: ' + error.message);
-    })
-    .finally(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    });
+    fetch('/treasurer/member/delete/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } })
+        .then(r => r.json()).then(res => {
+            if (res.success) { alert('✅ ' + res.message); closeDeleteModal(); location.reload(); }
+            else alert('❌ ' + (res.message || 'Delete failed'));
+        }).catch(err => alert('❌ ' + err.message))
+        .finally(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
-
-// ============================================================
-// INITIALIZE ON PAGE LOAD
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ Treasurer Dashboard initialized');
-    console.log('✅ viewMember function is available');
-    console.log('🔗 View Member URL pattern: /treasurer/members/view/[id]');
-    
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
     paginateTable();
-    
     const urlParams = new URLSearchParams(window.location.search);
     const loanId = urlParams.get('loan_id');
-    if (loanId && loanSelect) {
-        loanSelect.value = loanId;
-        updateLoanDetails();
-    }
-    if (amountInput) {
-        amountInput.addEventListener('input', validateAmount);
-    }
-    
-    // Check for edit parameter
-    const editMemberId = urlParams.get('edit');
-    if (editMemberId) {
-        setTimeout(function() {
-            editMember(editMemberId);
-        }, 500);
-    }
+    if (loanId && loanSelect) { loanSelect.value = loanId; updateLoanDetails(); }
+    if (amountInput) amountInput.addEventListener('input', validateAmount);
+    const editId = urlParams.get('edit');
+    if (editId) setTimeout(() => editMember(editId), 500);
 });
 
-console.log('🔍 Testing viewMember function...');
-console.log('typeof viewMember:', typeof viewMember);
-if (typeof viewMember === 'function') {
-    console.log('✅ viewMember function is loaded correctly!');
-} else {
-    console.log('❌ viewMember function is NOT loaded!');
-}
-
+// ===== COPY PAYOUT =====
 function copyPayout(text, el) {
     if (!text) return;
     const done = () => {
         el.classList.add('copied');
         const icon = el.querySelector('.payout-copy');
         if (icon) {
-            const original = icon.className;
+            const orig = icon.className;
             icon.className = 'fas fa-check payout-copy';
-            setTimeout(() => {
-                el.classList.remove('copied');
-                icon.className = original;
-            }, 1200);
+            setTimeout(() => { el.classList.remove('copied'); icon.className = orig; }, 1200);
         }
     };
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopyPayout(text, done));
-    } else {
-        fallbackCopyPayout(text, done);
-    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopyPayout(text, done));
+    else fallbackCopyPayout(text, done);
 }
 function fallbackCopyPayout(text, done) {
     const ta = document.createElement('textarea');
@@ -3178,8 +2675,6 @@ function fallbackCopyPayout(text, done) {
     try { document.execCommand('copy'); done(); } catch (e) {}
     document.body.removeChild(ta);
 }
-
-
 </script>
 
 {% endblock %}
