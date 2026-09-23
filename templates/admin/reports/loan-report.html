@@ -1,12 +1,11 @@
 {% extends "admin/reports/report-base.html" %}
 
 {% block title %}Loan Report - Karacel SACCO{% endblock %}
-
 {% block report_title %}Loan Portfolio Report{% endblock %}
 
 {% block content %}
 
-<!-- Summary Cards -->
+<!-- Top summary -->
 <div class="summary-grid">
     <div class="summary-card">
         <span class="icon">📊</span>
@@ -15,63 +14,171 @@
     </div>
     <div class="summary-card">
         <span class="icon">💰</span>
-        <div class="number green">UGX {{ "{:,.0f}".format(total_amount) }}</div>
-        <div class="label">Total Loan Amount</div>
+        <div class="number green">{{ "{:,.0f}".format(total_amount) }}</div>
+        <div class="label">Total Loan Amount (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">💳</span>
-        <div class="number blue">UGX {{ "{:,.0f}".format(total_balance) }}</div>
-        <div class="label">Outstanding Balance</div>
+        <div class="number blue">{{ "{:,.0f}".format(total_balance) }}</div>
+        <div class="label">Outstanding Balance (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">✅</span>
+        <div class="number pink">{{ "{:,.0f}".format(total_repaid) }}</div>
+        <div class="label">Total Repaid (UGX)</div>
+    </div>
+</div>
+
+<!-- Breakdown: status counts -->
+<div class="summary-grid" style="margin-top:-8px;">
+    <div class="summary-card">
+        <span class="icon">⏳</span>
+        <div class="number gold">{{ pending_count }}</div>
+        <div class="label">Pending</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">✔️</span>
+        <div class="number blue">{{ approved_count }}</div>
+        <div class="label">Approved</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🏃</span>
+        <div class="number green">{{ disbursed_count }}</div>
+        <div class="label">Disbursed</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">⚡</span>
+        <div class="number green">{{ active_count }}</div>
+        <div class="label">Active</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🏁</span>
+        <div class="number purple">{{ completed_count }}</div>
+        <div class="label">Completed</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">❌</span>
+        <div class="number pink">{{ rejected_count }}</div>
+        <div class="label">Rejected</div>
+    </div>
+</div>
+
+<!-- Interest summary -->
+<div class="summary-grid" style="margin-top:-8px;">
+    <div class="summary-card">
+        <span class="icon">📈</span>
+        <div class="number gold">{{ "{:,.0f}".format(total_interest_accrued) }}</div>
+        <div class="label">Interest Accrued (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💵</span>
+        <div class="number green">{{ "{:,.0f}".format(total_interest_paid) }}</div>
+        <div class="label">Interest Paid (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🔔</span>
+        <div class="number pink">{{ "{:,.0f}".format(total_interest_outstanding) }}</div>
+        <div class="label">Interest Outstanding (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📋</span>
+        <div class="number blue">{{ "{:,.0f}".format(total_app_fees) }}</div>
+        <div class="label">Loan App Fees (UGX)</div>
     </div>
 </div>
 
 <!-- Loan Table -->
 <div class="section-title">
     <i class="fas fa-list"></i> All Loans
-    <span class="count">({{ total_loans }} loans)</span>
+    <span class="count">({{ total_loans }} loans: {{ member_loan_count }} members + {{ staff_loan_count }} staff)</span>
 </div>
 
 <div class="table-wrapper">
     <table>
         <thead>
             <tr>
+                <th>#</th>
                 <th><i class="fas fa-hashtag"></i> Loan #</th>
-                <th><i class="fas fa-user"></i> Member</th>
+                <th><i class="fas fa-user"></i> Borrower</th>
                 <th><i class="fas fa-id-card"></i> SACCO No.</th>
+                <th><i class="fas fa-user-tag"></i> Role</th>
                 <th class="text-right"><i class="fas fa-coins"></i> Amount (UGX)</th>
                 <th><i class="fas fa-circle"></i> Status</th>
                 <th class="text-right"><i class="fas fa-balance-scale"></i> Balance (UGX)</th>
+                <th class="text-right"><i class="fas fa-percent"></i> Interest Accrued</th>
+                <th class="text-right"><i class="fas fa-check-circle"></i> Interest Paid</th>
                 <th class="text-center"><i class="fas fa-money-bill-wave"></i> Payments</th>
-                <th><i class="fas fa-calendar-alt"></i> Date</th>
+                <th><i class="fas fa-calendar-alt"></i> Applied</th>
             </tr>
         </thead>
         <tbody>
-            {% for loan in loans %}
-            <tr>
-                <td class="mono">{{ loan.loan_number }}</td>
-                <td><strong>{{ loan.full_name }}</strong></td>
-                <td>{{ loan.sacco_number }}</td>
-                <td class="amount text-right">{{ "{:,.0f}".format(loan.amount) }}</td>
-                <td>
-                    <span class="badge {{ loan.status|lower }}">
-                        {{ loan.status|upper }}
-                    </span>
-                </td>
-                <td class="amount gold text-right">{{ "{:,.0f}".format(loan.current_balance or 0) }}</td>
-                <td class="text-center">{{ loan.payment_count or 0 }}</td>
-                <td>{{ loan.application_date }}</td>
-            </tr>
-            {% endfor %}
+            {% if loans %}
+                {% for loan in loans %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="mono">{{ loan.loan_number or '-' }}</td>
+                    <td><strong>{{ loan.full_name or '-' }}</strong></td>
+                    <td class="mono">{{ loan.sacco_number or '-' }}</td>
+                    <td>
+                        {% if loan.role and loan.role != 'member' %}
+                            <span style="color:#a855f7; font-weight:600; font-size:0.7rem;">
+                                {{ loan.role|title }}
+                            </span>
+                        {% else %}
+                            <span style="color:#888; font-size:0.7rem;">Member</span>
+                        {% endif %}
+                    </td>
+                    <td class="amount text-right">{{ "{:,.0f}".format(loan.amount or 0) }}</td>
+                    <td>
+                        {% set st = (loan.status or 'pending')|lower %}
+                        <span class="badge {{ st }}">
+                            {{ st|upper }}
+                        </span>
+                    </td>
+                    <td class="amount gold text-right">
+                        {{ "{:,.0f}".format(loan.current_balance or loan.amount or 0) }}
+                    </td>
+                    <td class="amount text-right">
+                        {{ "{:,.0f}".format(loan.total_interest_accrued or 0) }}
+                    </td>
+                    <td class="amount text-right" style="color:#4ade80;">
+                        {{ "{:,.0f}".format(loan.interest_paid or 0) }}
+                    </td>
+                    <td class="text-center">{{ loan.payment_count or 0 }}</td>
+                    <td>{{ loan.application_date or '-' }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="12" class="text-center" style="padding:40px; color:#999;">
+                        <i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                        No loans found for this period.
+                    </td>
+                </tr>
+            {% endif %}
         </tbody>
+        {% if loans %}
         <tfoot>
             <tr>
-                <td colspan="8" class="text-right">
+                <td colspan="5" class="text-right">Totals</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(total_amount) }}</td>
+                <td></td>
+                <td class="amount gold text-right">{{ "{:,.0f}".format(total_balance) }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(total_interest_accrued) }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(total_interest_paid) }}</td>
+                <td class="text-center">{{ total_payments }}</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="12" class="text-right" style="font-size:0.75rem; color:#666;">
                     Total Loans: <strong>{{ total_loans }}</strong> &nbsp;|&nbsp;
-                    Total Amount: <strong style="color:#4ade80;">UGX {{ "{:,.0f}".format(total_amount) }}</strong> &nbsp;|&nbsp;
-                    Total Balance: <strong style="color:#f5c542;">UGX {{ "{:,.0f}".format(total_balance) }}</strong>
+                    Members: <strong style="color:#4ade80;">{{ member_loan_count }}</strong> &nbsp;|&nbsp;
+                    Staff: <strong style="color:#a855f7;">{{ staff_loan_count }}</strong> &nbsp;|&nbsp;
+                    Total Repaid: <strong style="color:#00e0ff;">UGX {{ "{:,.0f}".format(total_repaid) }}</strong>
                 </td>
             </tr>
         </tfoot>
+        {% endif %}
     </table>
 </div>
 

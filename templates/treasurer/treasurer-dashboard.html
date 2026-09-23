@@ -185,10 +185,12 @@
                     {% if staff_members %}
                     <optgroup label="👔 Staff Members">
                         {% for member in staff_members %}
+                        {# Coerce kac_paid: treat 1/True as fully paid (100,000), else numeric value #}
+                        {% set kp = member.kac_paid or 0 %}
                         <option value="{{ member.id }}"
                                 data-kai="{{ member.kai_shares or 0 }}"
                                 data-ks="{{ member.ks_shares or 0 }}"
-                                data-kac="{{ member.kac_paid or 0 }}"
+                                data-kac="{% if kp == 1 or kp == True %}100000{% else %}{{ kp|int }}{% endif %}"
                                 data-reg="{{ member.registration_fee_paid or 0 }}"
                                 data-role="{{ member.role }}">
                             {{ member.full_name }} ({{ member.sacco_number }}) — {{ member.role|title }}
@@ -200,10 +202,12 @@
                     {% if regular_members %}
                     <optgroup label="👤 Members">
                         {% for member in regular_members %}
+                        {# Coerce kac_paid: treat 1/True as fully paid (100,000), else numeric value #}
+                        {% set kp = member.kac_paid or 0 %}
                         <option value="{{ member.id }}"
                                 data-kai="{{ member.kai_shares or 0 }}"
                                 data-ks="{{ member.ks_shares or 0 }}"
-                                data-kac="{{ member.kac_paid or 0 }}"
+                                data-kac="{% if kp == 1 or kp == True %}100000{% else %}{{ kp|int }}{% endif %}"
                                 data-reg="{{ member.registration_fee_paid or 0 }}"
                                 data-role="{{ member.role }}">
                             {{ member.full_name }} ({{ member.sacco_number }})
@@ -2016,12 +2020,16 @@ function updateSavingsTypeInfo() {
 // ============================================================
 // Get current selected member's KAC balance
 // ============================================================
+const KAC_TARGET = 100000;
+
 function getCurrentKacPaid() {
     const memberSelect = document.querySelector('select[name="user_id"]');
     if (!memberSelect || !memberSelect.value) return 0;
     const opt = memberSelect.options[memberSelect.selectedIndex];
     if (!opt) return 0;
-    return parseFloat(opt.dataset.kac) || 0;
+    const raw = parseInt(opt.dataset.kac, 10) || 0;
+    // Clamp between 0 and the target
+    return Math.max(0, Math.min(KAC_TARGET, raw));
 }
 
 // ============================================================

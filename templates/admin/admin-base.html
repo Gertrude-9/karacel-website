@@ -219,6 +219,131 @@
     });
 
     // ============================================================
+// REPORTS PANEL
+// ============================================================
+let currentReport = 'members';
+let currentReportData = null;
+
+const REPORT_TITLES = {
+    members: 'Member Report',
+    savings: 'Savings Report',
+    loans: 'Loan Portfolio',
+    repayments: 'Repayments Report',
+    interest: 'Interest Report',
+    kac: 'KAC Condolence Report'
+};
+
+function selectReport(type) {
+    currentReport = type;
+
+    // Highlight the active button
+    document.querySelectorAll('.report-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-report') === type);
+    });
+
+    document.getElementById('reportTitle').textContent = REPORT_TITLES[type] || 'Report';
+    loadReport();
+}
+
+function onRangeChange() {
+    const val = document.getElementById('reportRange').value;
+    document.getElementById('customRangeWrap').style.display =
+        (val === 'custom') ? 'flex' : 'none';
+    if (val !== 'custom') loadReport();
+}
+
+function loadReport() {
+    const reportType = currentReport;
+    const range = document.getElementById('reportRange').value;
+    const start = document.getElementById('reportStart').value;
+    const end = document.getElementById('reportEnd').value;
+
+    if (range === 'custom' && (!start || !end)) {
+        alert('Please select both start and end dates.');
+        return;
+    }
+
+    // Show loading, hide table & empty
+    document.getElementById('reportLoading').style.display = 'block';
+    document.getElementById('reportEmpty').style.display = 'none';
+    document.getElementById('reportTableWrap').style.display = 'none';
+    document.getElementById('reportRowCount').textContent = '';
+
+    const url = `/admin/reports/data/${reportType}?range=${range}&start=${start}&end=${end}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('reportLoading').style.display = 'none';
+
+            if (!data.success) {
+                document.getElementById('reportEmpty').style.display = 'block';
+                document.getElementById('reportEmpty').innerHTML =
+                    `<i class="fas fa-exclamation-circle" style="font-size:2rem; color:#ff6b6b; display:block; margin-bottom:12px;"></i>
+                     <p style="margin:0;">${data.message || 'Error loading report.'}</p>`;
+                return;
+            }
+
+            currentReportData = data;
+
+            document.getElementById('reportMeta').textContent =
+                `· ${data.range_start} → ${data.range_end}`;
+            document.getElementById('reportRowCount').textContent =
+                `${data.total_rows} row${data.total_rows === 1 ? '' : 's'}`;
+
+            if (!data.rows || data.rows.length === 0) {
+                document.getElementById('reportEmpty').style.display = 'block';
+                document.getElementById('reportEmpty').innerHTML =
+                    `<i class="fas fa-inbox" style="font-size:2.5rem; opacity:0.15; display:block; margin-bottom:12px;"></i>
+                     <p style="margin:0; font-size:0.85rem;">No data for this report in the selected range.</p>`;
+                return;
+            }
+
+            // Build the table
+            const thead = document.getElementById('reportTableHead');
+            const tbody = document.getElementById('reportTableBody');
+
+            thead.innerHTML = '<tr>' +
+                data.columns.map(c => `<th>${c}</th>`).join('') +
+                '</tr>';
+
+            tbody.innerHTML = data.rows.map(row =>
+                '<tr>' +
+                data.columns.map(c => {
+                    const v = row[c];
+                    return `<td>${v !== null && v !== undefined ? v : '-'}</td>`;
+                }).join('') +
+                '</tr>'
+            ).join('');
+
+            document.getElementById('reportTableWrap').style.display = 'block';
+        })
+        .catch(err => {
+            document.getElementById('reportLoading').style.display = 'none';
+            document.getElementById('reportEmpty').style.display = 'block';
+            document.getElementById('reportEmpty').innerHTML =
+                `<i class="fas fa-exclamation-circle" style="font-size:2rem; color:#ff6b6b; display:block; margin-bottom:12px;"></i>
+                 <p style="margin:0;">Error: ${err.message}</p>`;
+        });
+}
+
+function printReport() {
+    if (!currentReportData || !currentReportData.rows || currentReportData.rows.length === 0) {
+        alert('Generate a report first.');
+        return;
+    }
+    window.print();
+}
+
+function exportReport() {
+    const range = document.getElementById('reportRange').value;
+    const start = document.getElementById('reportStart').value;
+    const end = document.getElementById('reportEnd').value;
+    window.location.href =
+        `/admin/reports/export/${currentReport}?range=${range}&start=${start}&end=${end}`;
+}
+
+    // ============================================================
     // DELETE USER FUNCTIONS (Keep these in base template)
     // ============================================================
     function closeDeleteUserModal() {

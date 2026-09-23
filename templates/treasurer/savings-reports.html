@@ -25,7 +25,7 @@
 
     <!-- Statistics Cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px;">
-        <!-- All Users (Members + Staff) -->
+        <!-- All Users -->
         <div class="stat-card-filter" onclick="filterByType('all')" 
              style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px 18px; cursor: pointer; transition: all 0.3s;"
              onmouseover="this.style.background='rgba(255,255,255,0.04)'" 
@@ -198,14 +198,25 @@
                 <tbody id="membersTableBody">
                     {% if members %}
                         {% for member in members %}
-                        {% set kac_val = (member.kac_paid or 0)|float %}
+                        {# ============================================================
+                           KAC VALUE — coerce boolean/1 to 100,000, else numeric
+                           ============================================================ #}
+                        {% set kp_raw = member.kac_paid %}
+                        {% if kp_raw == 1 or kp_raw == True %}
+                            {% set kac_val = 100000 %}
+                        {% else %}
+                            {% set kac_val = (kp_raw or 0)|float %}
+                        {% endif %}
+                        {% if kac_val > 100000 %}{% set kac_val = 100000 %}{% endif %}
                         {% set kac_pct = (kac_val / 100000 * 100) if kac_val < 100000 else 100 %}
+                        {% set kac_int = kac_val|int %}
+
                         <tr data-member-id="{{ member.id }}" 
                             data-status="{{ member.status }}"
                             data-role="{{ member.role or 'member' }}"
                             data-kai="{{ member.kai_shares or 0 }}"
                             data-ks="{{ member.ks_shares or 0 }}"
-                            data-kac="{{ kac_val }}"
+                            data-kac="{{ kac_int }}"
                             data-reg="{{ member.registration_fee_paid or 0 }}">
                             <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
                             <td style="padding: 8px 12px; color: #f5c542; font-family: monospace; font-weight: 600;">{{ member.sacco_number }}</td>
@@ -326,12 +337,12 @@
 <!-- ============================================================ -->
 <script>
 // ============================================================
-// KAC TARGET — single source of truth
+// KAC TARGET
 // ============================================================
 const KAC_TARGET = 100000;
 
 // ============================================================
-// FILTER BY TYPE (from stat cards)
+// FILTER BY TYPE
 // ============================================================
 function filterByType(type) {
     const filterSelect = document.getElementById('filterSavingsType');
@@ -378,7 +389,7 @@ function filterByType(type) {
 }
 
 // ============================================================
-// FILTER TABLE
+// FILTER TABLE — parses data-kac as integer (no 99999 drift)
 // ============================================================
 function filterTable() {
     const searchTerm = document.getElementById('searchMember').value.toLowerCase().trim();
@@ -396,10 +407,10 @@ function filterTable() {
         const text = row.textContent.toLowerCase();
         const status = row.getAttribute('data-status') || '';
         const role = row.getAttribute('data-role') || 'member';
-        const kaiShares = parseInt(row.getAttribute('data-kai')) || 0;
-        const ksShares = parseInt(row.getAttribute('data-ks')) || 0;
-        const kacPaid = parseFloat(row.getAttribute('data-kac')) || 0;
-        const regPaid = parseInt(row.getAttribute('data-reg')) || 0;
+        const kaiShares = parseInt(row.getAttribute('data-kai'), 10) || 0;
+        const ksShares = parseInt(row.getAttribute('data-ks'), 10) || 0;
+        const kacPaid = Math.max(0, Math.min(KAC_TARGET, parseInt(row.getAttribute('data-kac'), 10) || 0));
+        const regPaid = parseInt(row.getAttribute('data-reg'), 10) || 0;
         
         const hasKAI = kaiShares > 0;
         const hasKS = ksShares > 0;
@@ -510,8 +521,7 @@ function exportFilteredData() {
         const cells = row.querySelectorAll('td');
         if (cells.length < 9) return;
         
-        // Parse KAC from data attribute for accuracy
-        const kacPaid = parseFloat(row.getAttribute('data-kac')) || 0;
+        const kacPaid = Math.max(0, Math.min(KAC_TARGET, parseInt(row.getAttribute('data-kac'), 10) || 0));
         const kacStatus = kacPaid >= KAC_TARGET ? 'Fully Paid'
                         : kacPaid > 0 ? 'Partial'
                         : 'Not Started';
@@ -525,8 +535,8 @@ function exportFilteredData() {
             cells[4].querySelector('span') ? cells[4].querySelector('span').textContent.replace('UGX ', '').replace(/,/g, '') : '0',
             cells[5].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
             cells[5].querySelector('span') ? cells[5].querySelector('span').textContent.replace('UGX ', '').replace(/,/g, '') : '0',
-            kacPaid.toFixed(0),
-            kacRemaining.toFixed(0),
+            kacPaid.toString(),
+            kacRemaining.toString(),
             kacStatus,
             cells[7].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
             cells[8].textContent.trim()

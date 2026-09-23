@@ -1,46 +1,124 @@
 {% extends "admin/reports/report-base.html" %}
 
 {% block title %}Financial Report - Karacel SACCO{% endblock %}
-
 {% block report_title %}Financial Summary Report{% endblock %}
 
 {% block content %}
 
-<!-- Summary Cards -->
+<!-- ============================================================
+     TOP SUMMARY — MEMBERS, SAVINGS, LOANS
+     ============================================================ -->
 <div class="summary-grid">
     <div class="summary-card">
         <span class="icon">👥</span>
-        <div class="number gold">{{ total_members }}</div>
-        <div class="label">Total Members</div>
+        <div class="number gold">{{ total_users }}</div>
+        <div class="label">Total Users</div>
+        <div style="font-size:0.65rem; color:#999; margin-top:4px;">
+            {{ member_count }} members · {{ staff_count }} staff
+        </div>
     </div>
     <div class="summary-card">
         <span class="icon">💰</span>
-        <div class="number green">UGX {{ "{:,.0f}".format(total_savings) }}</div>
-        <div class="label">Total Savings</div>
+        <div class="number green">{{ "{:,.0f}".format(total_savings) }}</div>
+        <div class="label">Total Savings (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">📊</span>
-        <div class="number blue">UGX {{ "{:,.0f}".format(total_loan_amount) }}</div>
-        <div class="label">Total Loan Portfolio</div>
+        <div class="number blue">{{ "{:,.0f}".format(total_loan_amount) }}</div>
+        <div class="label">Loan Portfolio (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">💳</span>
-        <div class="number purple">UGX {{ "{:,.0f}".format(total_disbursed) }}</div>
-        <div class="label">Total Disbursed</div>
+        <div class="number purple">{{ "{:,.0f}".format(total_disbursed) }}</div>
+        <div class="label">Total Disbursed (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">🔄</span>
-        <div class="number pink">UGX {{ "{:,.0f}".format(total_repayments) }}</div>
-        <div class="label">Total Repayments</div>
+        <div class="number pink">{{ "{:,.0f}".format(total_repayments) }}</div>
+        <div class="label">Total Repayments (UGX)</div>
     </div>
     <div class="summary-card">
-        <span class="icon">✅</span>
-        <div class="number gold">{{ completed_loans }}</div>
+        <span class="icon">🏁</span>
+        <div class="number green">{{ completed_loans }}</div>
         <div class="label">Completed Loans</div>
     </div>
 </div>
 
-<!-- Loan Status Breakdown -->
+<!-- ============================================================
+     SAVINGS BREAKDOWN BY TYPE
+     ============================================================ -->
+<div class="section-title">
+    <i class="fas fa-layer-group"></i> Savings by Type
+</div>
+
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">📈</span>
+        <div class="number gold">{{ "{:,.0f}".format(kai_total) }}</div>
+        <div class="label">KAI (Investment)</div>
+        <div style="font-size:0.65rem; color:#999; margin-top:4px;">
+            {{ kai_members }} member{{ 's' if kai_members != 1 else '' }} · {{ kai_shares }} shares
+        </div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💵</span>
+        <div class="number blue">{{ "{:,.0f}".format(ks_total) }}</div>
+        <div class="label">KS (Savings)</div>
+        <div style="font-size:0.65rem; color:#999; margin-top:4px;">
+            {{ ks_members }} member{{ 's' if ks_members != 1 else '' }} · {{ ks_shares }} shares
+        </div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🤝</span>
+        <div class="number pink">{{ "{:,.0f}".format(kac_total) }}</div>
+        <div class="label">KAC (Condolence)</div>
+        <div style="font-size:0.65rem; color:#999; margin-top:4px;">
+            {{ kac_members }} member{{ 's' if kac_members != 1 else '' }} contributing
+        </div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📝</span>
+        <div class="number purple">{{ "{:,.0f}".format(reg_total) }}</div>
+        <div class="label">Registration Fees</div>
+        <div style="font-size:0.65rem; color:#999; margin-top:4px;">
+            {{ reg_members }} member{{ 's' if reg_members != 1 else '' }} paid
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     INTEREST SUMMARY
+     ============================================================ -->
+<div class="section-title">
+    <i class="fas fa-percent"></i> Interest Summary
+</div>
+
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="icon">📊</span>
+        <div class="number gold">{{ "{:,.0f}".format(total_interest_accrued) }}</div>
+        <div class="label">Interest Accrued (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">✅</span>
+        <div class="number green">{{ "{:,.0f}".format(total_interest_paid) }}</div>
+        <div class="label">Interest Paid (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🔔</span>
+        <div class="number pink">{{ "{:,.0f}".format(total_interest_outstanding) }}</div>
+        <div class="label">Interest Outstanding (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📋</span>
+        <div class="number blue">{{ "{:,.0f}".format(total_app_fees) }}</div>
+        <div class="label">Loan App Fees (UGX)</div>
+    </div>
+</div>
+
+<!-- ============================================================
+     LOAN STATUS BREAKDOWN
+     ============================================================ -->
 <div class="section-title">
     <i class="fas fa-chart-pie"></i> Loan Status Breakdown
 </div>
@@ -51,6 +129,7 @@
             <tr>
                 <th><i class="fas fa-tag"></i> Status</th>
                 <th class="text-center"><i class="fas fa-hashtag"></i> Count</th>
+                <th class="text-right"><i class="fas fa-coins"></i> Total Amount (UGX)</th>
                 <th class="text-right"><i class="fas fa-percent"></i> Percentage</th>
             </tr>
         </thead>
@@ -58,42 +137,57 @@
             <tr>
                 <td><span class="badge pending">Pending</span></td>
                 <td class="text-center">{{ pending_loans }}</td>
-                <td class="text-right">{{ "%.1f"|format((pending_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(pending_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_pending) }}%</td>
             </tr>
             <tr>
                 <td><span class="badge approved">Approved</span></td>
                 <td class="text-center">{{ approved_loans }}</td>
-                <td class="text-right">{{ "%.1f"|format((approved_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(approved_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_approved) }}%</td>
             </tr>
             <tr>
                 <td><span class="badge disbursed">Disbursed</span></td>
                 <td class="text-center">{{ disbursed_loans }}</td>
-                <td class="text-right">{{ "%.1f"|format((disbursed_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(disbursed_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_disbursed) }}%</td>
+            </tr>
+            <tr>
+                <td><span class="badge active">Active</span></td>
+                <td class="text-center">{{ active_loans }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(active_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_active) }}%</td>
             </tr>
             <tr>
                 <td><span class="badge completed">Completed</span></td>
                 <td class="text-center">{{ completed_loans }}</td>
-                <td class="text-right">{{ "%.1f"|format((completed_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(completed_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_completed) }}%</td>
             </tr>
             <tr>
                 <td><span class="badge rejected">Rejected</span></td>
                 <td class="text-center">{{ rejected_loans }}</td>
-                <td class="text-right">{{ "%.1f"|format((rejected_loans / total_loans * 100) if total_loans > 0 else 0) }}%</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(rejected_amount) }}</td>
+                <td class="text-right">{{ "%.1f"|format(pct_rejected) }}%</td>
             </tr>
         </tbody>
         <tfoot>
             <tr>
                 <td><strong>Total</strong></td>
                 <td class="text-center"><strong>{{ total_loans }}</strong></td>
+                <td class="amount text-right"><strong>{{ "{:,.0f}".format(total_loan_amount) }}</strong></td>
                 <td class="text-right"><strong>100%</strong></td>
             </tr>
         </tfoot>
     </table>
 </div>
 
-<!-- Staff Summary -->
+<!-- ============================================================
+     STAFF SUMMARY
+     ============================================================ -->
 <div class="section-title">
     <i class="fas fa-users-cog"></i> Staff Summary
+    <span class="count">({{ staff_count }} staff total)</span>
 </div>
 
 <div class="table-wrapper">
@@ -102,26 +196,38 @@
             <tr>
                 <th><i class="fas fa-user-tag"></i> Role</th>
                 <th class="text-center"><i class="fas fa-hashtag"></i> Count</th>
+                <th class="text-right"><i class="fas fa-coins"></i> Total Savings (UGX)</th>
             </tr>
         </thead>
         <tbody>
             <tr>
+                <td><span class="badge danger">Admin / Chairperson</span></td>
+                <td class="text-center">{{ staff_counts.admin }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(staff_savings.admin) }}</td>
+            </tr>
+            <tr>
                 <td><span class="badge active">Treasurer</span></td>
                 <td class="text-center">{{ staff_counts.treasurer }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(staff_savings.treasurer) }}</td>
             </tr>
             <tr>
                 <td><span class="badge info">Secretary</span></td>
                 <td class="text-center">{{ staff_counts.secretary }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(staff_savings.secretary) }}</td>
             </tr>
             <tr>
                 <td><span class="badge warning">Publicity</span></td>
                 <td class="text-center">{{ staff_counts.publicity }}</td>
-            </tr>
-            <tr>
-                <td><span class="badge danger">Admin/Chairperson</span></td>
-                <td class="text-center">{{ staff_counts.admin }}</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(staff_savings.publicity) }}</td>
             </tr>
         </tbody>
+        <tfoot>
+            <tr>
+                <td><strong>Total Staff</strong></td>
+                <td class="text-center"><strong>{{ staff_count }}</strong></td>
+                <td class="amount text-right"><strong>{{ "{:,.0f}".format(staff_savings.total) }}</strong></td>
+            </tr>
+        </tfoot>
     </table>
 </div>
 

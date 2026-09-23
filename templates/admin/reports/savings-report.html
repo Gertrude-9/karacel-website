@@ -1,22 +1,21 @@
 {% extends "admin/reports/report-base.html" %}
 
 {% block title %}Savings Report - Karacel SACCO{% endblock %}
-
 {% block report_title %}Savings Report{% endblock %}
 
 {% block content %}
 
-<!-- Summary Cards -->
+<!-- Top summary -->
 <div class="summary-grid">
     <div class="summary-card">
         <span class="icon">👥</span>
-        <div class="number gold">{{ member_savings|length }}</div>
+        <div class="number gold">{{ total_savers }}</div>
         <div class="label">Total Savers</div>
     </div>
     <div class="summary-card">
         <span class="icon">💰</span>
-        <div class="number green">UGX {{ "{:,.0f}".format(total_savings) }}</div>
-        <div class="label">Total Savings Balance</div>
+        <div class="number green">{{ "{:,.0f}".format(total_savings) }}</div>
+        <div class="label">Total Savings Balance (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">📊</span>
@@ -25,21 +24,41 @@
     </div>
     <div class="summary-card">
         <span class="icon">🏆</span>
-        <div class="number purple">
-            {% if member_savings %}
-                {{ member_savings[0].full_name }}
-            {% else %}
-                N/A
-            {% endif %}
+        <div class="number purple" style="font-size:1.1rem; line-height:1.3;">
+            {{ top_saver_name or 'N/A' }}
         </div>
         <div class="label">Top Saver</div>
     </div>
 </div>
 
-<!-- Member Savings Summary -->
+<!-- Breakdown: types -->
+<div class="summary-grid" style="margin-top:-8px;">
+    <div class="summary-card">
+        <span class="icon">📈</span>
+        <div class="number gold">{{ "{:,.0f}".format(kai_total) }}</div>
+        <div class="label">KAI Total (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">💵</span>
+        <div class="number blue">{{ "{:,.0f}".format(ks_total) }}</div>
+        <div class="label">KS Total (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">🤝</span>
+        <div class="number pink">{{ "{:,.0f}".format(kac_total) }}</div>
+        <div class="label">KAC Total (UGX)</div>
+    </div>
+    <div class="summary-card">
+        <span class="icon">📝</span>
+        <div class="number purple">{{ "{:,.0f}".format(reg_total) }}</div>
+        <div class="label">Registration Total (UGX)</div>
+    </div>
+</div>
+
+<!-- Member + Staff Savings Summary -->
 <div class="section-title">
-    <i class="fas fa-piggy-bank"></i> Member Savings Summary
-    <span class="count">({{ member_savings|length }} savers)</span>
+    <i class="fas fa-piggy-bank"></i> Savings Summary
+    <span class="count">({{ total_savers }} savers: {{ member_count }} members + {{ staff_count }} staff)</span>
 </div>
 
 <div class="table-wrapper">
@@ -48,38 +67,93 @@
             <tr>
                 <th>#</th>
                 <th><i class="fas fa-id-card"></i> SACCO No.</th>
-                <th><i class="fas fa-user"></i> Member Name</th>
+                <th><i class="fas fa-user"></i> Name</th>
+                <th><i class="fas fa-user-tag"></i> Role</th>
+                <th class="text-center"><i class="fas fa-chart-line"></i> KAI</th>
+                <th class="text-center"><i class="fas fa-piggy-bank"></i> KS</th>
+                <th class="text-center"><i class="fas fa-hand-holding-heart"></i> KAC</th>
+                <th class="text-center"><i class="fas fa-file-invoice"></i> Reg</th>
                 <th class="text-right"><i class="fas fa-coins"></i> Balance (UGX)</th>
                 <th class="text-center"><i class="fas fa-list"></i> Deposits</th>
                 <th class="text-right"><i class="fas fa-money-bill-wave"></i> Total Deposited (UGX)</th>
             </tr>
         </thead>
         <tbody>
-            {% for member in member_savings %}
-            <tr {% if loop.index == 1 %}style="background: #fff8e1;"{% endif %}>
-                <td>
-                    {% if loop.index == 1 %}🥇
-                    {% elif loop.index == 2 %}🥈
-                    {% elif loop.index == 3 %}🥉
-                    {% else %}{{ loop.index }}{% endif %}
-                </td>
-                <td class="mono">{{ member.sacco_number }}</td>
-                <td><strong>{{ member.full_name }}</strong></td>
-                <td class="amount text-right">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
-                <td class="text-center">{{ member.deposit_count or 0 }}</td>
-                <td class="amount blue text-right">{{ "{:,.0f}".format(member.total_deposited or 0) }}</td>
-            </tr>
-            {% endfor %}
+            {% if member_savings %}
+                {% for member in member_savings %}
+                <tr {% if loop.index <= 3 and member.savings_balance and member.savings_balance > 0 %}style="background: #fff8e1;"{% endif %}>
+                    <td>
+                        {% if loop.index == 1 and member.savings_balance > 0 %}🥇
+                        {% elif loop.index == 2 and member.savings_balance > 0 %}🥈
+                        {% elif loop.index == 3 and member.savings_balance > 0 %}🥉
+                        {% else %}{{ loop.index }}{% endif %}
+                    </td>
+                    <td class="mono">{{ member.sacco_number or '-' }}</td>
+                    <td><strong>{{ member.full_name or '-' }}</strong></td>
+                    <td>
+                        {% if member.role and member.role != 'member' %}
+                            <span style="color:#a855f7; font-weight:600; font-size:0.7rem;">
+                                {{ member.role|title }}
+                            </span>
+                        {% else %}
+                            <span style="color:#888; font-size:0.7rem;">Member</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ member.kai_shares or 0 }}</td>
+                    <td class="text-center">{{ member.ks_shares or 0 }}</td>
+                    <td class="text-center">
+                        {% set kac = member.kac_paid or 0 %}
+                        {% if kac >= 100000 %}
+                            <span style="color:#4ade80; font-weight:600;">✓</span>
+                        {% elif kac > 0 %}
+                            <span style="color:#f5c542; font-weight:600;">{{ (kac / 1000)|int }}K</span>
+                        {% else %}
+                            <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if member.registration_fee_paid %}
+                            <span style="color:#4ade80;">✓</span>
+                        {% else %}
+                            <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="amount text-right">
+                        {{ "{:,.0f}".format(member.savings_balance or 0) }}
+                    </td>
+                    <td class="text-center">{{ member.deposit_count or 0 }}</td>
+                    <td class="amount blue text-right">
+                        {{ "{:,.0f}".format(member.total_deposited or 0) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="11" class="text-center" style="padding:40px; color:#999;">
+                        <i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                        No savings records found for this period.
+                    </td>
+                </tr>
+            {% endif %}
         </tbody>
+        {% if member_savings %}
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">
-                    Total Savers: <strong>{{ member_savings|length }}</strong> &nbsp;|&nbsp;
-                    Total Savings: <strong style="color:#4ade80;">UGX {{ "{:,.0f}".format(total_savings) }}</strong> &nbsp;|&nbsp;
+                <td colspan="8" class="text-right">Totals</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(total_savings) }}</td>
+                <td class="text-center">{{ total_deposits }}</td>
+                <td class="amount blue text-right">{{ "{:,.0f}".format(total_deposited) }}</td>
+            </tr>
+            <tr>
+                <td colspan="11" class="text-right" style="font-size:0.75rem; color:#666;">
+                    Total Savers: <strong>{{ total_savers }}</strong> &nbsp;|&nbsp;
+                    Regular Members: <strong style="color:#4ade80;">{{ member_count }}</strong> &nbsp;|&nbsp;
+                    Staff: <strong style="color:#a855f7;">{{ staff_count }}</strong> &nbsp;|&nbsp;
                     Total Deposits: <strong style="color:#00e0ff;">{{ total_deposits }}</strong>
                 </td>
             </tr>
         </tfoot>
+        {% endif %}
     </table>
 </div>
 

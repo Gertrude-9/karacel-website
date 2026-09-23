@@ -1,0 +1,380 @@
+{% extends "treasurer/treasurer-base.html" %}
+
+{% block title %}Karacel SACCO | Enter Loan Repayment{% endblock %}
+
+{% block content %}
+
+<!-- App Bar -->
+<div class="app-bar">
+    <div class="app-bar-left">
+        <h2 id="appBarTitle"><i class="fas fa-undo-alt"></i> Enter Loan Repayment</h2>
+        <span id="appBarSubtitle">Record payments against active loans — interest clears first, then principal</span>
+    </div>
+    <div class="app-bar-right">
+        <div class="admin-profile">
+            <i class="fas fa-user-circle"></i>
+            <span>{{ session.full_name }}</span>
+        </div>
+    </div>
+</div>
+
+<div style="padding: 20px 24px 40px; max-width: 1000px; margin: 0 auto;">
+
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <a href="{{ url_for('treasurer_dashboard') }}"
+           style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6);
+                  text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px;
+                  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
+            <i class="fas fa-hand-holding-usd"></i> Loan Repayment
+        </span>
+        <span style="margin-left:auto; font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.1);
+                     padding:4px 14px; border-radius:20px; border:1px solid rgba(74,222,128,0.15);">
+            <i class="fas fa-list"></i> {{ active_loans_list|length }} active loan{{ 's' if active_loans_list|length != 1 else '' }}
+        </span>
+    </div>
+
+    <div class="action-card">
+        <div class="action-title">
+            <i class="fas fa-undo-alt"></i> Enter Loan Repayment
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="padding:16px 22px 0;">
+                    {% for category, message in messages %}
+                        <div style="padding:12px 16px; border-radius:8px; font-size:0.85rem; margin-bottom:10px;
+                            {% if category == 'success' %}background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); color:#4ade80;
+                            {% elif category == 'danger' %}background:rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.2); color:#ff6b6b;
+                            {% elif category == 'info' %}background:rgba(0,224,255,0.08); border:1px solid rgba(0,224,255,0.2); color:#00e0ff;
+                            {% else %}background:rgba(245,197,66,0.08); border:1px solid rgba(245,197,66,0.2); color:#f5c542;{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if not active_loans_list %}
+            <!-- Empty state — no loans to repay -->
+            <div style="text-align:center; padding:60px 20px;">
+                <i class="fas fa-check-circle" style="font-size:3rem; color:#4ade80; opacity:0.4; display:block; margin-bottom:14px;"></i>
+                <div style="font-family:'Playfair Display', serif; font-size:1.1rem; color:var(--tr-text); margin-bottom:6px;">
+                    No active loans to repay
+                </div>
+                <p style="font-size:0.85rem; color:var(--tr-muted); margin:0;">
+                    Once a loan is approved or disbursed, it will appear here for repayment.
+                </p>
+                <a href="{{ url_for('treasurer_dashboard') }}"
+                   style="display:inline-flex; align-items:center; gap:8px; margin-top:20px; padding:10px 22px;
+                          background:linear-gradient(135deg,#c9a961,#e0bf75); color:#0a1420; border-radius:100px;
+                          text-decoration:none; font-weight:700; font-size:0.85rem;">
+                    <i class="fas fa-arrow-left"></i> Go to Dashboard
+                </a>
+            </div>
+        {% else %}
+        <form method="POST" action="{{ url_for('treasurer_enter_repayment') }}" class="tr-form" id="repaymentForm">
+
+            <!-- SEARCH — filters the auto-populated dropdown -->
+            <div class="tr-field">
+                <label>Search Member or Loan Number</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="memberSearch" class="tr-input"
+                           placeholder="Type name, SACCO no., or loan number..."
+                           onkeyup="filterMembers()" autocomplete="off">
+                    <button type="button" class="tr-btn-icon" onclick="clearSearch()" title="Clear">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="tr-field-hint">
+                    <i class="fas fa-info-circle"></i> Filters the list of active loans below
+                </div>
+            </div>
+
+            <!-- AUTO-POPULATED LOAN DROPDOWN -->
+            <div class="tr-field">
+                <label>Select Loan to Repay <span class="req">*</span></label>
+                <select name="loan_id" id="loanSelect" required onchange="updateLoanDetails()">
+                    <option value="">— Choose from {{ active_loans_list|length }} active loan{{ 's' if active_loans_list|length != 1 else '' }} —</option>
+                    {% for loan in active_loans_list %}
+                    <option value="{{ loan.id }}"
+                            data-member="{{ (loan.full_name or '')|lower }} {{ (loan.sacco_number or '')|lower }} {{ (loan.phone or '')|lower }} {{ (loan.loan_number or '')|lower }}"
+                            data-loan-number="{{ loan.loan_number }}"
+                            data-member-name="{{ loan.full_name }}"
+                            data-balance="{{ loan.current_balance or loan.amount or 0 }}"
+                            data-total="{{ loan.amount or 0 }}"
+                            data-interest="{{ loan.total_interest_accrued or 0 }}"
+                            data-principal="{{ loan.principal_paid or 0 }}"
+                            data-overdue="{{ loan.days_overdue|default(0) }}"
+                            data-role="{{ loan.role or 'member' }}">
+                        {{ loan.loan_number }} — {{ loan.full_name }}{% if loan.sacco_number %} ({{ loan.sacco_number }}){% endif %}
+                        {% if loan.role and loan.role != 'member' %} · {{ loan.role|title }}{% endif %}
+                        · Balance: UGX {{ "{:,.0f}".format(loan.current_balance or loan.amount or 0) }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div id="noLoansMessage" class="tr-field-hint" style="display:none; color:var(--tr-yellow);">
+                    <i class="fas fa-info-circle"></i> No loans match your search
+                </div>
+            </div>
+
+            <!-- LOAN DETAILS PANEL -->
+            <div id="loanDetails" class="tr-details-panel" style="display:none;">
+                <div class="tr-details-head">
+                    <div class="tr-details-title">Loan Details</div>
+                    <div id="detailRole" class="role-pill member">Member</div>
+                </div>
+                <div class="tr-details-grid">
+                    <div>
+                        <div class="tr-detail-label">Member</div>
+                        <div id="detailMember" class="tr-detail-value"></div>
+                    </div>
+                    <div>
+                        <div class="tr-detail-label">Loan Number</div>
+                        <div id="detailLoanNumber" class="tr-detail-value gold"></div>
+                    </div>
+                    <div>
+                        <div class="tr-detail-label">Original Amount</div>
+                        <div id="detailOriginal" class="tr-detail-value"></div>
+                    </div>
+                    <div>
+                        <div class="tr-detail-label">Interest Accrued</div>
+                        <div id="detailInterest" class="tr-detail-value red"></div>
+                    </div>
+                    <div>
+                        <div class="tr-detail-label">Principal Paid</div>
+                        <div id="detailPrincipalPaid" class="tr-detail-value green"></div>
+                    </div>
+                    <div>
+                        <div class="tr-detail-label">Current Balance</div>
+                        <div id="detailBalance" class="tr-detail-value gold" style="font-size:1.1rem;"></div>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <div class="tr-detail-label">Overdue Status</div>
+                        <div id="detailOverdue" class="tr-detail-value"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AMOUNT -->
+            <div class="tr-field">
+                <label>Amount Paid (UGX) <span class="req">*</span></label>
+                <input type="number" step="0.01" name="amount" id="amountPaid" required
+                       placeholder="Enter amount" min="1" oninput="validateAmount()">
+                <div id="amountValidation" class="tr-field-hint" style="display:none;"></div>
+            </div>
+
+            <!-- ALLOCATION -->
+            <div class="tr-alloc-panel">
+                <div class="tr-alloc-head">
+                    <i class="fas fa-calculator"></i> Payment Allocation
+                </div>
+                <div class="tr-alloc-row">
+                    <span class="k"><i class="fas fa-circle" style="color:var(--tr-red);"></i> Interest</span>
+                    <span id="allocationInterest" class="v red">UGX 0</span>
+                </div>
+                <div class="tr-alloc-row">
+                    <span class="k"><i class="fas fa-circle" style="color:var(--tr-green);"></i> Principal</span>
+                    <span id="allocationPrincipal" class="v green">UGX 0</span>
+                </div>
+                <div class="tr-alloc-row total">
+                    <span class="k">Remaining Balance</span>
+                    <span id="allocationRemaining" class="v gold">UGX 0</span>
+                </div>
+            </div>
+
+            <!-- PAYMENT METHOD + REF -->
+            <div class="tr-form-row">
+                <div class="tr-field">
+                    <label>Payment Method</label>
+                    <select name="payment_method">
+                        <option value="cash">💵 Cash</option>
+                        <option value="bank_transfer">🏦 Bank Transfer</option>
+                        <option value="mobile_money">📱 Mobile Money</option>
+                        <option value="cheque">📄 Cheque</option>
+                    </select>
+                </div>
+                <div class="tr-field">
+                    <label>Transaction Reference</label>
+                    <input type="text" name="transaction_ref" placeholder="Optional">
+                </div>
+            </div>
+
+            <!-- NOTES -->
+            <div class="tr-field">
+                <label>Notes</label>
+                <textarea name="notes" placeholder="Optional notes..."></textarea>
+            </div>
+
+            <!-- SUBMIT -->
+            <div class="tr-field" style="margin-bottom:0;">
+                <button type="submit" class="tr-btn tr-btn-primary">
+                    <i class="fas fa-check"></i> Record Repayment
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+const loanSelect = document.getElementById('loanSelect');
+const memberSearch = document.getElementById('memberSearch');
+const noLoansMessage = document.getElementById('noLoansMessage');
+const loanDetails = document.getElementById('loanDetails');
+const amountInput = document.getElementById('amountPaid');
+const allOptions = Array.from(loanSelect ? loanSelect.options : []);
+let currentLoanData = {};
+
+// ============================================================
+// FILTER LOAN DROPDOWN (auto-populated list of active loans)
+// ============================================================
+function filterMembers() {
+    if (!memberSearch || !loanSelect) return;
+    const term = memberSearch.value.toLowerCase().trim();
+    let hasVisible = false;
+
+    allOptions.forEach(o => {
+        if (o.value === '') { o.style.display = ''; return; }
+        const data = o.getAttribute('data-member') || '';
+        if (term === '' || data.includes(term)) {
+            o.style.display = '';
+            hasVisible = true;
+        } else {
+            o.style.display = 'none';
+        }
+    });
+
+    if (noLoansMessage) {
+        noLoansMessage.style.display = (term !== '' && !hasVisible) ? 'block' : 'none';
+    }
+
+    // If current selection is hidden, reset it
+    const sel = loanSelect.options[loanSelect.selectedIndex];
+    if (sel && sel.value !== '' && sel.style.display === 'none') {
+        loanSelect.value = '';
+        if (loanDetails) loanDetails.style.display = 'none';
+    }
+}
+
+function clearSearch() {
+    if (!memberSearch) return;
+    memberSearch.value = '';
+    allOptions.forEach(o => o.style.display = '');
+    if (noLoansMessage) noLoansMessage.style.display = 'none';
+    filterMembers();
+}
+
+// ============================================================
+// UPDATE LOAN DETAILS PANEL
+// ============================================================
+function updateLoanDetails() {
+    if (!loanDetails) return;
+    const sel = loanSelect.options[loanSelect.selectedIndex];
+    if (!sel || !sel.value) {
+        loanDetails.style.display = 'none';
+        return;
+    }
+
+    const balance = parseFloat(sel.getAttribute('data-balance')) || 0;
+    const total = parseFloat(sel.getAttribute('data-total')) || 0;
+    const interest = parseFloat(sel.getAttribute('data-interest')) || 0;
+    const principalPaid = parseFloat(sel.getAttribute('data-principal')) || 0;
+    const overdue = parseInt(sel.getAttribute('data-overdue')) || 0;
+
+    currentLoanData = { balance, total, interest, principalPaid };
+
+    const memberName = sel.getAttribute('data-member-name') || '';
+    const loanNumber = sel.getAttribute('data-loan-number') || '';
+    const role = (sel.getAttribute('data-role') || 'member').toLowerCase();
+
+    document.getElementById('detailMember').textContent = memberName;
+    document.getElementById('detailLoanNumber').textContent = loanNumber;
+    document.getElementById('detailOriginal').textContent = 'UGX ' + total.toLocaleString();
+    document.getElementById('detailInterest').textContent = 'UGX ' + interest.toLocaleString();
+    document.getElementById('detailPrincipalPaid').textContent = 'UGX ' + principalPaid.toLocaleString();
+    document.getElementById('detailBalance').textContent = 'UGX ' + balance.toLocaleString();
+    document.getElementById('detailOverdue').innerHTML = overdue > 0
+        ? '<span style="color:#ff6b6b;">🔴 ' + overdue + ' days overdue</span>'
+        : '<span style="color:#4ade80;">✅ On time</span>';
+
+    // Role pill
+    const rolePill = document.getElementById('detailRole');
+    if (role && role !== 'member') {
+        rolePill.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        rolePill.className = 'role-pill staff';
+    } else {
+        rolePill.textContent = 'Member';
+        rolePill.className = 'role-pill member';
+    }
+
+    loanDetails.style.display = 'block';
+
+    if (amountInput) {
+        amountInput.value = '';
+        document.getElementById('amountValidation').innerHTML = '';
+        updateAllocation(0);
+    }
+}
+
+// ============================================================
+// VALIDATE + ALLOCATION
+// ============================================================
+function validateAmount() {
+    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+    updateAllocation(amount);
+}
+
+function updateAllocation(amount) {
+    const balance = currentLoanData.balance || 0;
+    const interest = currentLoanData.interest || 0;
+    let interestPaid = 0, principalPaid = 0;
+
+    if (amount > 0) {
+        if (amount >= interest) {
+            interestPaid = interest;
+            principalPaid = Math.min(amount - interest, balance);
+        } else {
+            interestPaid = amount;
+        }
+    }
+
+    const finalRemaining = Math.max(0, balance - amount);
+
+    document.getElementById('allocationInterest').textContent = 'UGX ' + interestPaid.toLocaleString();
+    document.getElementById('allocationPrincipal').textContent = 'UGX ' + principalPaid.toLocaleString();
+    document.getElementById('allocationRemaining').textContent = 'UGX ' + finalRemaining.toLocaleString();
+
+    const v = document.getElementById('amountValidation');
+    if (v) {
+        if (amount > balance && balance > 0) {
+            v.innerHTML = '<span style="color:#ff6b6b;">⚠️ Amount exceeds current balance.</span>';
+            v.style.display = 'block';
+        } else if (amount === 0) {
+            v.innerHTML = '';
+            v.style.display = 'none';
+        } else {
+            v.innerHTML = '<span style="color:#4ade80;">✅ Valid payment amount</span>';
+            v.style.display = 'block';
+        }
+    }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const loanId = urlParams.get('loan_id');
+    if (loanId && loanSelect) {
+        loanSelect.value = loanId;
+        updateLoanDetails();
+    }
+    if (amountInput) amountInput.addEventListener('input', validateAmount);
+});
+</script>
+
+{% endblock %}

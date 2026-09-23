@@ -418,137 +418,353 @@
     </div>
 
     <!-- ========== REPORTS PANEL ========== -->
-    <div id="reports-panel" class="content-panel">
-        <div class="action-card">
-            <div class="action-title">
-                <i class="fas fa-chart-bar"></i> Generate Reports
-                <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:400; margin-left:8px;">
-                    Real-time data from the system
-                </span>
-            </div>
-            
-            <!-- Report Stats Summary -->
-            <div class="admin-stats" style="margin-bottom:16px;">
-                <div class="stat-box">
-                    <i class="fas fa-users"></i>
-                    <h3>{{ total_members }}</h3>
-                    <p>Total Members</p>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-coins"></i>
-                    <h3>UGX {{ "{:,.0f}".format(total_savings) }}</h3>
-                    <p>Total Savings</p>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <h3>{{ active_loans }}</h3>
-                    <p>Active Loans</p>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-check-double"></i>
-                    <h3>{{ completed_loans }}</h3>
-                    <p>Completed Loans</p>
-                </div>
-            </div>
-            
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px; margin-top:16px;">
-                <!-- Member Report -->
-                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
-                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
-                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
-                     onclick="generateReport('members')">
-                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(0,224,255,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#00e0ff;">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Member Report</h4>
-                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">All member details</p>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
-                        <span><i class="fas fa-user"></i> {{ total_members }} members</span>
-                        <span><i class="fas fa-calendar-alt"></i> 
-                            {% if now is defined %}
-                                Updated: {{ now.strftime('%d %b %Y') }}
-                            {% else %}
-                                Updated: {{ today if today is defined else 'N/A' }}
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
+<div id="reports-panel" class="content-panel">
 
-                <!-- Financial Summary -->
-                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
-                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
-                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
-                     onclick="generateReport('financial')">
-                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(74,222,128,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#4ade80;">
-                            <i class="fas fa-coins"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Financial Summary</h4>
-                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">Overall financial health</p>
-                        </div>
+    <!-- Header -->
+    <div class="action-card" style="margin-bottom:16px;">
+        <div class="action-title" style="display:flex; align-items:center; gap:14px;">
+            <div style="width:44px; height:44px; border-radius:12px; background:rgba(245,197,66,0.1); display:flex; align-items:center; justify-content:center; color:#f5c542; font-size:1.1rem; flex-shrink:0;">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#fff;">Reports Center</h3>
+                <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.35); font-size:0.75rem; font-weight:400;">
+                    Pick a report, choose a date range, and generate
+                </p>
+            </div>
+            <span style="font-size:0.68rem; color:#4ade80; background:rgba(74,222,128,0.1); padding:5px 12px; border-radius:20px; border:1px solid rgba(74,222,128,0.2); white-space:nowrap;">
+                <i class="fas fa-circle" style="font-size:0.4rem; vertical-align:middle;"></i> Live
+            </span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="action-card">
+        <div class="action-title" style="margin-bottom:16px;">
+            <i class="fas fa-sliders-h"></i> Filters
+        </div>
+
+        <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
+
+            <!-- Date range preset -->
+            <div style="flex:1; min-width:180px;">
+                <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">
+                    <i class="fas fa-calendar-alt" style="color:#f5c542;"></i> Date Range
+                </label>
+                <select id="reportRange" onchange="onRangeChange()"
+                        style="width:100%; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.88rem;">
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month" selected>This Month</option>
+                    <option value="quarter">This Quarter</option>
+                    <option value="year">This Year</option>
+                    <option value="all">All Time</option>
+                    <option value="custom">Custom Range…</option>
+                </select>
+            </div>
+
+            <!-- Custom range -->
+            <div id="customRangeWrap" style="display:none; gap:12px; flex:2; min-width:260px;">
+                <div style="flex:1;">
+                    <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">From</label>
+                    <input type="date" id="reportStart"
+                           style="width:100%; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.88rem;">
+                </div>
+                <div style="flex:1;">
+                    <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">To</label>
+                    <input type="date" id="reportEnd"
+                           style="width:100%; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.88rem;">
+                </div>
+            </div>
+
+            <!-- Reset -->
+            <button type="button" onclick="resetReportFilters()"
+                    style="padding:11px 20px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.65); border:1px solid rgba(255,255,255,0.08); border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+
+        <!-- Quick range pills -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:0.7rem; color:rgba(255,255,255,0.35); align-self:center; margin-right:4px;">
+                Quick:
+            </span>
+            <button type="button" class="quick-range-btn" data-range="today" onclick="setQuickRange('today')">Today</button>
+            <button type="button" class="quick-range-btn" data-range="week" onclick="setQuickRange('week')">This Week</button>
+            <button type="button" class="quick-range-btn active" data-range="month" onclick="setQuickRange('month')">This Month</button>
+            <button type="button" class="quick-range-btn" data-range="quarter" onclick="setQuickRange('quarter')">This Quarter</button>
+            <button type="button" class="quick-range-btn" data-range="year" onclick="setQuickRange('year')">This Year</button>
+            <button type="button" class="quick-range-btn" data-range="all" onclick="setQuickRange('all')">All Time</button>
+        </div>
+    </div>
+
+    <!-- Report type buttons -->
+    <div class="action-card" style="margin-top:16px;">
+        <div class="action-title" style="margin-bottom:16px;">
+            <i class="fas fa-file-alt"></i> Choose Report
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+
+            <!-- Member Report -->
+            <button type="button" class="report-type-btn active" data-report="members" onclick="selectReport('members')">
+                <div class="rt-icon" style="color:#00e0ff;">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="rt-body">
+                    <div class="rt-title">Member Report</div>
+                    <div class="rt-desc">All members &amp; staff with roles, savings, and loans</div>
+                    <div class="rt-meta">
+                        <span><i class="fas fa-user"></i> {{ total_members }}</span>
+                        <span><i class="fas fa-user-tie"></i> Includes staff</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                </div>
+                <div class="rt-check">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </button>
+
+            <!-- Financial Summary -->
+            <button type="button" class="report-type-btn" data-report="financial" onclick="selectReport('financial')">
+                <div class="rt-icon" style="color:#4ade80;">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="rt-body">
+                    <div class="rt-title">Financial Summary</div>
+                    <div class="rt-desc">SACCO financial health and loan status breakdown</div>
+                    <div class="rt-meta">
                         <span><i class="fas fa-piggy-bank"></i> UGX {{ "{:,.0f}".format(total_savings) }}</span>
                         <span><i class="fas fa-hand-holding-usd"></i> {{ active_loans + completed_loans }} loans</span>
                     </div>
                 </div>
+                <div class="rt-check">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </button>
 
-                <!-- Loan Portfolio -->
-                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
-                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
-                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
-                     onclick="generateReport('loans')">
-                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(245,197,66,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#f5c542;">
-                            <i class="fas fa-hand-holding-usd"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Loan Portfolio</h4>
-                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">All loan data</p>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+            <!-- Loan Portfolio -->
+            <button type="button" class="report-type-btn" data-report="loans" onclick="selectReport('loans')">
+                <div class="rt-icon" style="color:#f5c542;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <div class="rt-body">
+                    <div class="rt-title">Loan Portfolio</div>
+                    <div class="rt-desc">Every loan with balances, interest, and payment progress</div>
+                    <div class="rt-meta">
                         <span><i class="fas fa-clock"></i> {{ pending_loans }} pending</span>
                         <span><i class="fas fa-check-circle"></i> {{ completed_loans }} completed</span>
                     </div>
                 </div>
+                <div class="rt-check">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </button>
 
-                <!-- Savings Report -->
-                <div class="report-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; transition:all 0.3s ease; cursor:pointer;" 
-                     onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(245,197,66,0.2)'" 
-                     onmouseout="this.style.background='rgba(255,255,255,0.02)'; this.style.borderColor='rgba(255,255,255,0.06)'"
-                     onclick="generateReport('savings')">
-                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:rgba(255,107,107,0.08); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#ff6b6b;">
-                            <i class="fas fa-piggy-bank"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin:0; color:#fff; font-size:0.95rem;">Savings Report</h4>
-                            <p style="margin:2px 0 0 0; color:rgba(255,255,255,0.3); font-size:0.7rem;">Member savings data</p>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; color:rgba(255,255,255,0.2); font-size:0.7rem; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+            <!-- Savings Report -->
+            <button type="button" class="report-type-btn" data-report="savings" onclick="selectReport('savings')">
+                <div class="rt-icon" style="color:#ff6b6b;">
+                    <i class="fas fa-piggy-bank"></i>
+                </div>
+                <div class="rt-body">
+                    <div class="rt-title">Savings Report</div>
+                    <div class="rt-desc">Deposits and balances by member and savings type</div>
+                    <div class="rt-meta">
                         <span><i class="fas fa-users"></i> {{ total_members }} savers</span>
                         <span><i class="fas fa-coins"></i> UGX {{ "{:,.0f}".format(total_savings) }}</span>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Report Generation Status -->
-            <div style="margin-top:16px; padding:12px 16px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04);">
-                <div style="display:flex; align-items:center; gap:12px; color:rgba(255,255,255,0.3); font-size:0.75rem;">
-                    <i class="fas fa-info-circle" style="color:#f5c542;"></i>
-                    <span>Click any report card to generate and download a detailed report in PDF format.</span>
+                <div class="rt-check">
+                    <i class="fas fa-check-circle"></i>
                 </div>
-            </div>
+            </button>
+
+        </div>
+
+        <!-- Generate button -->
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.04);">
+            <button type="button" onclick="generateSelectedReport()"
+                    style="padding:12px 32px; background:linear-gradient(135deg,#f5c542,#eab308); color:#0a0a14; border:none; border-radius:10px; font-weight:700; font-size:0.9rem; cursor:pointer; display:inline-flex; align-items:center; gap:10px; box-shadow:0 4px 14px rgba(245,197,66,0.25); transition:all 0.2s ease;"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 22px rgba(245,197,66,0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(245,197,66,0.25)'">
+                <i class="fas fa-file-export"></i> Generate Report
+            </button>
+            <span style="align-self:center; font-size:0.75rem; color:rgba(255,255,255,0.35);">
+                Opens in a new tab — ready to print or save as PDF.
+            </span>
         </div>
     </div>
 
+</div>
+
+<style>
+/* ============================================================
+   REPORT TYPE BUTTONS (tile-style)
+   ============================================================ */
+.report-type-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.report-type-btn::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.25s ease;
+}
+
+.report-type-btn:hover {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(245, 197, 66, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.report-type-btn.active {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.1), rgba(245, 197, 66, 0.02));
+    border-color: rgba(245, 197, 66, 0.5);
+    box-shadow: 0 0 0 1px rgba(245, 197, 66, 0.15), 0 8px 24px rgba(245, 197, 66, 0.1);
+}
+
+.report-type-btn.active::before {
+    background: linear-gradient(180deg, #f5c542, #eab308);
+}
+
+.report-type-btn .rt-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: transform 0.25s ease;
+}
+
+.report-type-btn:hover .rt-icon {
+    transform: scale(1.06);
+}
+
+.report-type-btn.active .rt-icon {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 197, 66, 0.3);
+}
+
+.report-type-btn .rt-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-type-btn .rt-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.1px;
+}
+
+.report-type-btn.active .rt-title {
+    color: #f5c542;
+}
+
+.report-type-btn .rt-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+
+.report-type-btn .rt-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.3);
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.report-type-btn .rt-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.report-type-btn .rt-meta i {
+    color: rgba(245, 197, 66, 0.5);
+    font-size: 0.65rem;
+}
+
+.report-type-btn .rt-check {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.08);
+    font-size: 1.1rem;
+    transition: all 0.25s ease;
+    align-self: center;
+}
+
+.report-type-btn.active .rt-check {
+    color: #f5c542;
+}
+
+/* Quick-range pills */
+.quick-range-btn {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-range-btn:hover {
+    background: rgba(245, 197, 66, 0.08);
+    border-color: rgba(245, 197, 66, 0.3);
+    color: #f5c542;
+}
+
+.quick-range-btn.active {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.15), rgba(245, 197, 66, 0.05));
+    border-color: rgba(245, 197, 66, 0.5);
+    color: #f5c542;
+    box-shadow: 0 2px 8px rgba(245, 197, 66, 0.15);
+}
+
+/* Custom range wrapper */
+#customRangeWrap {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    #customRangeWrap {
+        flex-direction: column;
+        min-width: 100% !important;
+    }
+}
+</style>
     <!-- ========== USERS PANEL ========== -->
     <div id="users-panel" class="content-panel">
         <div class="action-card">
@@ -1270,6 +1486,67 @@ function generateReport(type) {
             card.style.pointerEvents = 'auto';
         });
     }, 3000);
+}
+
+// ============================================================
+// REPORTS PANEL — Filters + Report selection
+// ============================================================
+let currentReport = 'members';
+
+// ---- Select report type ----
+function selectReport(type) {
+    currentReport = type;
+    document.querySelectorAll('.report-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-report') === type);
+    });
+}
+
+// ---- Show/hide custom date range ----
+function onRangeChange() {
+    const val = document.getElementById('reportRange').value;
+    const wrap = document.getElementById('customRangeWrap');
+    wrap.style.display = (val === 'custom') ? 'flex' : 'none';
+
+    document.querySelectorAll('.quick-range-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-range') === val);
+    });
+}
+
+// ---- Quick range pills ----
+function setQuickRange(range) {
+    document.getElementById('reportRange').value = range;
+    onRangeChange();
+}
+
+// ---- Reset filters ----
+function resetReportFilters() {
+    document.getElementById('reportRange').value = 'month';
+    document.getElementById('reportStart').value = '';
+    document.getElementById('reportEnd').value = '';
+    selectReport('members');
+    onRangeChange();
+}
+
+// ---- Generate the currently-selected report ----
+function generateSelectedReport() {
+    const type  = currentReport;
+    const range = document.getElementById('reportRange').value;
+    const start = document.getElementById('reportStart').value;
+    const end   = document.getElementById('reportEnd').value;
+
+    if (range === 'custom' && (!start || !end)) {
+        alert('Please select both a start and end date.');
+        return;
+    }
+
+    const params = new URLSearchParams({ range, start: start || '', end: end || '' });
+    window.open(`/admin/reports/generate/${type}?${params.toString()}`, '_blank');
+}
+
+// ---- Legacy wrapper — anything calling generateReport('members') still works ----
+function generateReport(type) {
+    if (type) selectReport(type);
+    generateSelectedReport();
 }
 
 // ============================================================

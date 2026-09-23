@@ -1,7 +1,6 @@
 {% extends "admin/reports/report-base.html" %}
 
 {% block title %}Member Report - Karacel SACCO{% endblock %}
-
 {% block report_title %}Member Report{% endblock %}
 
 {% block content %}
@@ -11,29 +10,49 @@
     <div class="summary-card">
         <span class="icon">👥</span>
         <div class="number gold">{{ total_members }}</div>
-        <div class="label">Total Members</div>
+        <div class="label">Total Members &amp; Staff</div>
     </div>
     <div class="summary-card">
         <span class="icon">✅</span>
-        <div class="number green">{{ members|selectattr('status', 'equalto', 'active')|list|length }}</div>
-        <div class="label">Active Members</div>
+        <div class="number green">{{ active_count }}</div>
+        <div class="label">Active</div>
     </div>
     <div class="summary-card">
         <span class="icon">💰</span>
-        <div class="number blue">{{ "{:,.0f}".format(members|sum(attribute='savings_balance')) }}</div>
+        <div class="number blue">{{ "{:,.0f}".format(total_savings) }}</div>
         <div class="label">Total Savings (UGX)</div>
     </div>
     <div class="summary-card">
         <span class="icon">📊</span>
-        <div class="number purple">{{ members|selectattr('active_loans', '>', 0)|list|length }}</div>
+        <div class="number purple">{{ members_with_loans }}</div>
         <div class="label">Members with Loans</div>
+    </div>
+</div>
+
+<!-- Section breakdown: Members vs Staff -->
+<div class="summary-grid" style="margin-top:-8px;">
+    <div class="summary-card">
+        <div class="number" style="color:#4ade80;">{{ member_count }}</div>
+        <div class="label">Regular Members</div>
+    </div>
+    <div class="summary-card">
+        <div class="number" style="color:#a855f7;">{{ staff_count }}</div>
+        <div class="label">Staff Members</div>
+    </div>
+    <div class="summary-card">
+        <div class="number" style="color:#00e0ff;">{{ kai_total }}</div>
+        <div class="label">KAI Shares</div>
+    </div>
+    <div class="summary-card">
+        <div class="number" style="color:#f5c542;">{{ ks_total }}</div>
+        <div class="label">KS Shares</div>
     </div>
 </div>
 
 <!-- Member Table -->
 <div class="section-title">
-    <i class="fas fa-users"></i> Member Details
-    <span class="count">({{ total_members }} members)</span>
+    <i class="fas fa-users"></i> All Members &amp; Staff
+    <span class="count">({{ total_members }} records)</span>
 </div>
 
 <div class="table-wrapper">
@@ -43,40 +62,93 @@
                 <th>#</th>
                 <th><i class="fas fa-id-card"></i> SACCO No.</th>
                 <th><i class="fas fa-user"></i> Full Name</th>
+                <th><i class="fas fa-user-tag"></i> Role</th>
                 <th><i class="fas fa-phone"></i> Phone</th>
                 <th><i class="fas fa-envelope"></i> Email</th>
                 <th><i class="fas fa-coins"></i> Savings (UGX)</th>
+                <th><i class="fas fa-chart-line"></i> KAI</th>
+                <th><i class="fas fa-piggy-bank"></i> KS</th>
                 <th><i class="fas fa-hand-holding-usd"></i> Active Loans</th>
                 <th><i class="fas fa-circle"></i> Status</th>
             </tr>
         </thead>
         <tbody>
-            {% for member in members %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td class="mono">{{ member.sacco_number }}</td>
-                <td><strong>{{ member.full_name }}</strong></td>
-                <td>{{ member.phone or '-' }}</td>
-                <td>{{ member.email or '-' }}</td>
-                <td class="amount">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
-                <td class="text-center">{{ member.active_loans or 0 }}</td>
-                <td>
-                    <span class="badge {{ member.status|lower or 'active' }}">
-                        {{ (member.status|upper) if member.status else 'ACTIVE' }}
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
+            {% if members %}
+                {% for member in members %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="mono">{{ member.sacco_number or '-' }}</td>
+                    <td>
+                        <strong>{{ member.full_name or '-' }}</strong>
+                        {% if member.role and member.role != 'member' %}
+                        <span style="
+                            display:inline-block;
+                            padding:1px 8px;
+                            margin-left:6px;
+                            border-radius:10px;
+                            font-size:0.55rem;
+                            font-weight:700;
+                            text-transform:uppercase;
+                            background:#1a1a2e;
+                            color:#f5c542;
+                        ">{{ member.role }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if member.role and member.role != 'member' %}
+                            <span style="color:#a855f7; font-weight:600; font-size:0.7rem;">
+                                {{ member.role|title }}
+                            </span>
+                        {% else %}
+                            <span style="color:#888; font-size:0.7rem;">Member</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ member.phone or '-' }}</td>
+                    <td>{{ member.email or '-' }}</td>
+                    <td class="amount text-right">
+                        {{ "{:,.0f}".format(member.savings_balance or 0) }}
+                    </td>
+                    <td class="text-center">{{ member.kai_shares or 0 }}</td>
+                    <td class="text-center">{{ member.ks_shares or 0 }}</td>
+                    <td class="text-center">{{ member.active_loans or 0 }}</td>
+                    <td>
+                        {% set st = (member.status or 'active')|lower %}
+                        <span class="badge {{ st }}">
+                            {{ st|upper }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="11" class="text-center" style="padding:40px; color:#999;">
+                        <i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                        No members or staff found.
+                    </td>
+                </tr>
+            {% endif %}
         </tbody>
+        {% if members %}
         <tfoot>
             <tr>
-                <td colspan="8" class="text-right">
-                    Total Members: <strong>{{ total_members }}</strong> &nbsp;|&nbsp;
-                    Active: <strong style="color:#4ade80;">{{ members|selectattr('status', 'equalto', 'active')|list|length }}</strong> &nbsp;|&nbsp;
-                    Inactive: <strong style="color:#ff6b6b;">{{ members|selectattr('status', 'equalto', 'inactive')|list|length }}</strong>
+                <td colspan="6" class="text-right">Totals</td>
+                <td class="amount text-right">{{ "{:,.0f}".format(total_savings) }}</td>
+                <td class="text-center">{{ kai_total }}</td>
+                <td class="text-center">{{ ks_total }}</td>
+                <td class="text-center">{{ members_with_loans }}</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="11" class="text-right" style="font-size:0.75rem; color:#666;">
+                    Total Records: <strong>{{ total_members }}</strong> &nbsp;|&nbsp;
+                    Regular Members: <strong style="color:#4ade80;">{{ member_count }}</strong> &nbsp;|&nbsp;
+                    Staff: <strong style="color:#a855f7;">{{ staff_count }}</strong> &nbsp;|&nbsp;
+                    Active: <strong style="color:#4ade80;">{{ active_count }}</strong> &nbsp;|&nbsp;
+                    Inactive: <strong style="color:#ff6b6b;">{{ inactive_count }}</strong>
                 </td>
             </tr>
         </tfoot>
+        {% endif %}
     </table>
 </div>
 

@@ -11,6 +11,97 @@
     /* Dropdown Animation */
 /* Modal Slide In Animation */
 
+/* Report type buttons */
+.report-type-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.report-type-btn i {
+    color: rgba(245, 197, 66, 0.6);
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+}
+
+.report-type-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(245, 197, 66, 0.25);
+    color: #fff;
+}
+
+.report-type-btn:hover i {
+    color: #f5c542;
+}
+
+.report-type-btn.active {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.15), rgba(245, 197, 66, 0.04));
+    border-color: rgba(245, 197, 66, 0.5);
+    color: #f5c542;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(245, 197, 66, 0.1);
+}
+
+.report-type-btn.active i {
+    color: #f5c542;
+}
+
+/* Report table */
+#reportTable thead th {
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+#reportTable tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78rem;
+}
+
+#reportTable tbody tr:hover {
+    background: rgba(245, 197, 66, 0.03);
+}
+
+/* Print styles */
+@media print {
+    body * { visibility: hidden !important; }
+    #reportTableWrap, #reportTableWrap * { visibility: visible !important; }
+    #reportTableWrap {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    #reportTable thead th,
+    #reportTable tbody td {
+        color: #000 !important;
+        background: #fff !important;
+        border-color: #ccc !important;
+    }
+    #reportTable thead th {
+        background: #f0f0f0 !important;
+        font-weight: bold !important;
+    }
+}
 /* ============================================================
    STAFF MEMBER PORTAL NAV ITEM
    ============================================================ */

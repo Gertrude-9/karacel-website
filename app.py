@@ -2387,54 +2387,42 @@ def treasurer_record_payment():
 
 # ============================================================
 # TREASURER - ENTER REPAYMENT
+# GET  → redirect to dashboard (the repayments panel is inside it)
+# POST → save the repayment, then redirect back to dashboard
 # ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         flash('Access denied. Only treasurer can enter repayments.', 'danger')
         return redirect("/login")
-    
+
+    # ============================================================
+    # GET — the dashboard already contains the repayments panel.
+    # Send the user there with a hash to auto-open that panel.
+    # ============================================================
     if request.method == "GET":
-        db = get_db()
-        db.row_factory = sqlite3.Row
-        
-        active_loans = db.execute("""
-            SELECT 
-                l.*,
-                u.full_name,
-                u.sacco_number,
-                u.phone
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.status IN ('approved', 'disbursed', 'active')
-            ORDER BY l.application_date DESC
-        """).fetchall()
-        
-        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-        
-        db.close()
-        
-        return render_template(
-            "treasurer/enter-repayment.html", 
-            active_loans=active_loans,
-            completed_loans=completed_loans
-        )
-    
-    # POST - Process repayment
+        return redirect(url_for('treasurer_dashboard') + '#repayments')
+
+    # ============================================================
+    # POST — process repayment
+    # ============================================================
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
-        loan_id = int(request.form.get('loan_id'))
-        amount = float(request.form.get('amount', 0))
+        loan_id = int(request.form.get('loan_id') or 0)
+        amount = float(request.form.get('amount', 0) or 0)
         payment_method = request.form.get('payment_method', 'cash')
         transaction_ref = request.form.get('transaction_ref', '')
         notes = request.form.get('notes', '')
-        
+
+        # Round to whole shillings to avoid 49999.9999 drift
+        amount = int(round(amount))
+
         if amount <= 0:
             flash('Amount must be greater than 0', 'danger')
-            return redirect(url_for('treasurer_enter_repayment'))
-        
+            return redirect(url_for('treasurer_dashboard') + '#repayments')
+
         loan = db.execute("""
             SELECT 
                 l.*, 
@@ -2445,48 +2433,45 @@ def treasurer_enter_repayment():
             JOIN users u ON l.user_id = u.id
             WHERE l.id = ?
         """, (loan_id,)).fetchone()
-        
+
         if not loan:
             flash('Loan not found', 'danger')
-            return redirect(url_for('treasurer_enter_repayment'))
-        
+            return redirect(url_for('treasurer_dashboard') + '#repayments')
+
         if loan['status'] not in ['approved', 'disbursed', 'active']:
             flash(f'Cannot make payment on loan with status: {loan["status"]}', 'danger')
-            return redirect(url_for('treasurer_enter_repayment'))
-        
-        if loan['status'] == 'completed':
-            flash('Loan is already fully paid', 'danger')
-            return redirect(url_for('treasurer_enter_repayment'))
-        
-        current_balance = float(loan['current_balance'] if loan['current_balance'] is not None else loan['amount'] or 0)
-        
+            return redirect(url_for('treasurer_dashboard') + '#repayments')
+
+        # Integer-safe current balance
+        raw_balance = loan['current_balance'] if loan['current_balance'] is not None else loan['amount']
+        current_balance = int(round(float(raw_balance or 0)))
+
         if amount > current_balance:
-            flash(f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})', 'danger')
-            return redirect(url_for('treasurer_enter_repayment'))
-        
-        # Calculate interest and principal
-        interest_paid = 0
-        principal_paid = 0
-        
-        total_interest = float(loan['total_interest_accrued'] or 0)
-        interest_paid_so_far = float(loan['interest_paid'] if loan['interest_paid'] is not None else 0)
+            flash(
+                f'Payment amount (UGX {amount:,.0f}) exceeds current balance '
+                f'(UGX {current_balance:,.0f})',
+                'danger'
+            )
+            return redirect(url_for('treasurer_dashboard') + '#repayments')
+
+        # ----- Interest-first allocation, integer-safe -----
+        total_interest = int(round(float(loan['total_interest_accrued'] or 0)))
+        interest_paid_so_far = int(round(float(loan['interest_paid'] or 0)))
         interest_remaining = max(0, total_interest - interest_paid_so_far)
-        
+
         if amount >= interest_remaining:
             interest_paid = interest_remaining
             principal_paid = amount - interest_remaining
         else:
             interest_paid = amount
             principal_paid = 0
-        
-        new_balance = current_balance - amount
-        if new_balance < 0:
-            new_balance = 0
-        
+
+        new_balance = max(0, current_balance - amount)
+
         db.execute("BEGIN TRANSACTION")
-        
+
         current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+
         db.execute("""
             INSERT INTO repayments (
                 loan_id, user_id, amount, interest_paid, principal_paid,
@@ -2495,21 +2480,22 @@ def treasurer_enter_repayment():
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed')
         """, (
-            loan_id, 
-            loan['member_id'], 
-            amount, 
-            interest_paid, 
+            loan_id,
+            loan['member_id'],
+            amount,
+            interest_paid,
             principal_paid,
             new_balance,
-            current_datetime, 
-            payment_method, 
+            current_datetime,
+            payment_method,
             transaction_ref,
             notes
         ))
-        
+
+        # Treat tiny leftovers as complete (avoid perpetual 1-shilling balances)
         COMPLETION_THRESHOLD = 50
         is_completed = new_balance <= COMPLETION_THRESHOLD
-        
+
         if is_completed:
             db.execute("""
                 UPDATE loans 
@@ -2555,15 +2541,14 @@ def treasurer_enter_repayment():
             flash(f'✅ Payment of UGX {amount:,.0f} recorded successfully!', 'success')
             flash(f'📊 Interest paid: UGX {interest_paid:,.0f} | Principal paid: UGX {principal_paid:,.0f}', 'info')
             flash(f'💰 Remaining balance: UGX {new_balance:,.0f}', 'info')
-        
-        return redirect(url_for('treasurer_dashboard'))
-        
+
+        return redirect(url_for('treasurer_dashboard') + '#repayments')
+
     except Exception as e:
         db.rollback()
         db.close()
         flash(f'Error: {str(e)}', 'danger')
-        return redirect(url_for('treasurer_enter_repayment'))
-
+        return redirect(url_for('treasurer_dashboard') + '#repayments')
 
 # ============================================================
 # TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT) - INCLUDES STAFF
@@ -4383,233 +4368,547 @@ def admin_view_user(user_id):
 # ============================================================
 # ADMIN - GENERATE REPORTS
 # ============================================================
+from datetime import datetime, timedelta
+
+def resolve_range():
+    """Return (start_date, end_date) as 'YYYY-MM-DD' strings based on query params."""
+    range_key = request.args.get('range', 'month')
+    start = request.args.get('start')
+    end = request.args.get('end')
+    today = datetime.now().date()
+
+    if range_key == 'today':
+        return today.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    if range_key == 'week':
+        return (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    if range_key == 'month':
+        return today.replace(day=1).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    if range_key == 'quarter':
+        q_start_month = ((today.month - 1) // 3) * 3 + 1
+        return today.replace(month=q_start_month, day=1).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    if range_key == 'year':
+        return today.replace(month=1, day=1).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    if range_key == 'custom' and start and end:
+        return start, end
+    return today.replace(day=1).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+
+
+def _to_int(v):
+    """Coerce any value to a clean integer."""
+    try:
+        return int(round(float(v or 0)))
+    except (ValueError, TypeError):
+        return 0
+
+
 @app.route("/admin/reports/generate/<string:report_type>")
 def generate_report(report_type):
-    if session.get("role") not in ["admin", "chairperson", "treasurer"]:
+    if session.get("role") not in ["admin", "chairperson", "treasurer", "secretary"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
+    start, end = resolve_range()
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
+        # ============================================================
+        # LOAD SETTINGS
+        # ============================================================
+        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings:
+            s = dict(settings)
+            kai_share_price  = int(s.get('kai_share_price', 100000) or 100000)
+            ks_share_price   = int(s.get('ks_share_price', 10000) or 10000)
+            kac_annual_fee   = int(s.get('kac_annual_fee', 100000) or 100000)
+            registration_fee = int(s.get('registration_fee', 20000) or 20000)
+        else:
+            kai_share_price = 100000
+            ks_share_price = 10000
+            kac_annual_fee = 100000
+            registration_fee = 20000
+
+        # ============================================================
+        # MEMBERS REPORT
+        # ============================================================
         if report_type == 'members':
-            # Get all members with their details
-            members = db.execute("""
+            members_raw = db.execute("""
                 SELECT 
-                    id, full_name, sacco_number, phone, email,
-                    savings_balance, status, registration_date,
-                    next_of_kin_name, next_of_kin_phone, gender, dob, address,
-                    COALESCE(kai_shares, 0) as kai_shares,
-                    COALESCE(ks_shares, 0) as ks_shares,
-                    COALESCE(kac_paid, 0) as kac_paid,
-                    COALESCE(registration_fee_paid, 0) as registration_fee_paid
+                    id, full_name, sacco_number, phone, email, role, status,
+                    COALESCE(savings_balance, 0) AS savings_balance,
+                    COALESCE(kai_shares, 0) AS kai_shares,
+                    COALESCE(ks_shares, 0) AS ks_shares,
+                    COALESCE(kac_paid, 0) AS kac_paid,
+                    COALESCE(registration_fee_paid, 0) AS registration_fee_paid,
+                    registration_date, gender, dob, address,
+                    next_of_kin_name, next_of_kin_phone, relationship
                 FROM users 
-                WHERE LOWER(role) = 'member'
-                ORDER BY full_name
+                WHERE LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+                ORDER BY 
+                    CASE 
+                        WHEN LOWER(role) = 'member' THEN 1
+                        WHEN LOWER(role) = 'admin' THEN 2
+                        WHEN LOWER(role) = 'chairperson' THEN 3
+                        WHEN LOWER(role) = 'treasurer' THEN 4
+                        WHEN LOWER(role) = 'secretary' THEN 5
+                        WHEN LOWER(role) = 'publicity' THEN 6
+                    END,
+                    full_name ASC
             """).fetchall()
-            
+
             members_list = []
-            for member in members:
-                member_dict = dict(member)
-                loan_count = db.execute("""
+            member_count = staff_count = active_count = inactive_count = 0
+            members_with_loans = 0
+            total_savings = 0
+            kai_total = ks_total = 0
+
+            for m in members_raw:
+                md = dict(m)
+
+                # KAC boolean → numeric coercion
+                kac_val = md.get('kac_paid') or 0
+                try:
+                    kac_val = float(kac_val)
+                except (ValueError, TypeError):
+                    kac_val = 0
+                if kac_val == 1:
+                    kac_val = kac_annual_fee
+                md['kac_paid'] = min(int(kac_val), kac_annual_fee)
+
+                # Active loans count
+                md['active_loans'] = db.execute("""
                     SELECT COUNT(*) FROM loans 
-                    WHERE user_id = ? AND status IN ('disbursed', 'active')
-                """, (member_dict['id'],)).fetchone()[0]
-                member_dict['active_loans'] = loan_count
-                members_list.append(member_dict)
-            
+                    WHERE user_id = ? AND status IN ('approved','disbursed','active')
+                """, (md['id'],)).fetchone()[0] or 0
+
+                # Counters
+                role = (md.get('role') or 'member').lower()
+                status = (md.get('status') or 'active').lower()
+                if role == 'member':
+                    member_count += 1
+                else:
+                    staff_count += 1
+                if status == 'active':
+                    active_count += 1
+                else:
+                    inactive_count += 1
+                if md['active_loans'] > 0:
+                    members_with_loans += 1
+
+                total_savings += _to_int(md.get('savings_balance'))
+                kai_total += int(md.get('kai_shares') or 0)
+                ks_total += int(md.get('ks_shares') or 0)
+
+                members_list.append(md)
+
             db.close()
-            
             return render_template(
                 "admin/reports/member-report.html",
                 members=members_list,
                 total_members=len(members_list),
+                member_count=member_count,
+                staff_count=staff_count,
+                active_count=active_count,
+                inactive_count=inactive_count,
+                members_with_loans=members_with_loans,
+                total_savings=total_savings,
+                kai_total=kai_total,
+                ks_total=ks_total,
+                range_start=start,
+                range_end=end,
                 generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 now=datetime.now(),
                 session=session
             )
-            
+
+        # ============================================================
+        # FINANCIAL REPORT
+        # ============================================================
         elif report_type == 'financial':
-            # Financial summary data
-            total_members = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
-            total_savings = db.execute("SELECT COALESCE(SUM(savings_balance), 0) FROM users WHERE LOWER(role) = 'member'").fetchone()[0]
-            
-            total_loans = db.execute("SELECT COUNT(*) FROM loans").fetchone()[0]
-            pending_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
-            approved_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'approved'").fetchone()[0]
-            disbursed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'disbursed'").fetchone()[0]
-            active_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')").fetchone()[0]
-            completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-            rejected_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
-            
-            total_loan_amount = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans").fetchone()[0]
-            total_disbursed = db.execute("SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status IN ('disbursed', 'active', 'completed')").fetchone()[0]
-            total_repayments = db.execute("SELECT COALESCE(SUM(amount), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
-            total_interest = db.execute("SELECT COALESCE(SUM(interest_paid), 0) FROM repayments WHERE status = 'completed'").fetchone()[0]
-            
-            # Savings by type
-            kai_total = 0
-            ks_total = 0
-            kac_total = 0
-            reg_total = 0
-            all_members = db.execute("SELECT * FROM users WHERE LOWER(role) = 'member'").fetchall()
-            for member in all_members:
-                member_dict = dict(member)
-                if member_dict.get('kai_shares'):
-                    kai_total += member_dict['kai_shares'] * 100000
-                if member_dict.get('ks_shares'):
-                    ks_total += member_dict['ks_shares'] * 10000
-                if member_dict.get('kac_paid'):
-                    kac_total += 100000
-                if member_dict.get('registration_fee_paid'):
-                    reg_total += 20000
-            
-            # Get staff counts
-            staff_counts = {
-                'treasurer': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
-                'secretary': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
-                'publicity': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
-                'admin': db.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
-            }
-            
+            # User counts
+            total_users = db.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE status = 'active'
+                AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+            """).fetchone()[0] or 0
+
+            member_count = db.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE status = 'active' AND LOWER(role) = 'member'
+            """).fetchone()[0] or 0
+
+            staff_count = total_users - member_count
+
+            # Savings breakdown by type
+            kai_total = ks_total = kac_total = reg_total = 0
+            kai_shares = ks_shares = 0
+            kai_members = ks_members = kac_members = reg_members = 0
+            total_savings = 0
+
+            all_users = db.execute("""
+                SELECT kai_shares, ks_shares, kac_paid, registration_fee_paid, savings_balance
+                FROM users
+                WHERE status = 'active'
+                AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+            """).fetchall()
+
+            for u in all_users:
+                ud = dict(u)
+                total_savings += _to_int(ud.get('savings_balance'))
+
+                kai_sh = int(ud.get('kai_shares') or 0)
+                if kai_sh > 0:
+                    kai_shares  += kai_sh
+                    kai_total   += kai_sh * kai_share_price
+                    kai_members += 1
+
+                ks_sh = int(ud.get('ks_shares') or 0)
+                if ks_sh > 0:
+                    ks_shares  += ks_sh
+                    ks_total   += ks_sh * ks_share_price
+                    ks_members += 1
+
+                kac_val = ud.get('kac_paid') or 0
+                try:
+                    kac_val = float(kac_val)
+                except (ValueError, TypeError):
+                    kac_val = 0
+                if kac_val == 1:
+                    kac_val = kac_annual_fee
+                kac_val = min(kac_val, kac_annual_fee)
+                if kac_val > 0:
+                    kac_total += int(kac_val)
+                    kac_members += 1
+
+                if ud.get('registration_fee_paid'):
+                    reg_total += registration_fee
+                    reg_members += 1
+
+            # Loan status breakdown
+            raw_loans = db.execute("""
+                SELECT status, amount, current_balance
+                FROM loans
+                WHERE application_date >= ? AND application_date <= ?
+            """, (start, end)).fetchall()
+
+            def bucket(statuses):
+                c = a = 0
+                for l in raw_loans:
+                    ld = dict(l)
+                    if (ld.get('status') or '').lower() in statuses:
+                        c += 1
+                        a += _to_int(ld.get('amount'))
+                return c, a
+
+            pending_loans,    pending_amount    = bucket(['pending'])
+            approved_loans,   approved_amount   = bucket(['approved'])
+            disbursed_loans,  disbursed_amount  = bucket(['disbursed'])
+            active_loans,     active_amount     = bucket(['active'])
+            completed_loans,  completed_amount  = bucket(['completed'])
+            rejected_loans,   rejected_amount   = bucket(['rejected'])
+
+            total_loans = len(raw_loans)
+            total_loan_amount = sum(_to_int(dict(l).get('amount')) for l in raw_loans) or 0
+
+            def pct(n):
+                return round((n / total_loans * 100), 1) if total_loans > 0 else 0.0
+
+            # Money aggregates
+            total_disbursed = _to_int(db.execute("""
+                SELECT COALESCE(SUM(amount),0) FROM loans
+                WHERE status IN ('disbursed','active','completed')
+            """).fetchone()[0])
+
+            total_repayments = _to_int(db.execute("""
+                SELECT COALESCE(SUM(amount),0) FROM repayments
+                WHERE status = 'completed'
+            """).fetchone()[0])
+
+            total_interest_accrued = _to_int(db.execute("""
+                SELECT COALESCE(SUM(total_interest_accrued),0) FROM loans
+            """).fetchone()[0])
+
+            total_interest_paid = _to_int(db.execute("""
+                SELECT COALESCE(SUM(interest_paid),0) FROM loans
+            """).fetchone()[0])
+
+            total_interest_outstanding = max(0, total_interest_accrued - total_interest_paid)
+
+            total_app_fees = _to_int(db.execute("""
+                SELECT COALESCE(SUM(application_fee),0) FROM loans
+                WHERE application_date >= ? AND application_date <= ?
+            """, (start, end)).fetchone()[0])
+
+            # Staff breakdown
+            staff_rows = db.execute("""
+                SELECT role, COALESCE(savings_balance, 0) AS balance
+                FROM users
+                WHERE status = 'active'
+                AND LOWER(role) IN ('admin','chairperson','treasurer','secretary','publicity')
+            """).fetchall()
+
+            staff_counts = {'admin': 0, 'treasurer': 0, 'secretary': 0, 'publicity': 0}
+            staff_savings = {'admin': 0, 'treasurer': 0, 'secretary': 0, 'publicity': 0, 'total': 0}
+
+            for s_row in staff_rows:
+                sd = dict(s_row)
+                role = (sd.get('role') or '').lower()
+                balance = _to_int(sd.get('balance'))
+
+                if role in ('admin', 'chairperson'):
+                    staff_counts['admin'] += 1
+                    staff_savings['admin'] += balance
+                elif role == 'treasurer':
+                    staff_counts['treasurer'] += 1
+                    staff_savings['treasurer'] += balance
+                elif role == 'secretary':
+                    staff_counts['secretary'] += 1
+                    staff_savings['secretary'] += balance
+                elif role == 'publicity':
+                    staff_counts['publicity'] += 1
+                    staff_savings['publicity'] += balance
+
+                staff_savings['total'] += balance
+
             db.close()
-            
-            # Debug - print to console
-            print("=" * 60)
-            print("📊 GENERATING FINANCIAL REPORT")
-            print(f"📊 Total Members: {total_members}")
-            print(f"📊 Total Savings: {total_savings}")
-            print(f"📊 Template: admin/reports/financial-report.html")
-            print("=" * 60)
-            
+
             return render_template(
                 "admin/reports/financial-report.html",
-                total_members=total_members,
+                total_users=total_users,
+                member_count=member_count,
+                staff_count=staff_count,
                 total_savings=total_savings,
+                kai_total=kai_total, kai_shares=kai_shares, kai_members=kai_members,
+                ks_total=ks_total,   ks_shares=ks_shares,   ks_members=ks_members,
+                kac_total=kac_total, kac_members=kac_members,
+                reg_total=reg_total, reg_members=reg_members,
                 total_loans=total_loans,
-                pending_loans=pending_loans,
-                approved_loans=approved_loans,
-                disbursed_loans=disbursed_loans,
-                active_loans=active_loans,
-                completed_loans=completed_loans,
-                rejected_loans=rejected_loans,
                 total_loan_amount=total_loan_amount,
                 total_disbursed=total_disbursed,
                 total_repayments=total_repayments,
-                total_interest=total_interest,
-                kai_total=kai_total,
-                ks_total=ks_total,
-                kac_total=kac_total,
-                reg_total=reg_total,
+                pending_loans=pending_loans,     pending_amount=pending_amount,     pct_pending=pct(pending_loans),
+                approved_loans=approved_loans,   approved_amount=approved_amount,   pct_approved=pct(approved_loans),
+                disbursed_loans=disbursed_loans, disbursed_amount=disbursed_amount, pct_disbursed=pct(disbursed_loans),
+                active_loans=active_loans,       active_amount=active_amount,       pct_active=pct(active_loans),
+                completed_loans=completed_loans, completed_amount=completed_amount, pct_completed=pct(completed_loans),
+                rejected_loans=rejected_loans,   rejected_amount=rejected_amount,   pct_rejected=pct(rejected_loans),
+                total_interest_accrued=total_interest_accrued,
+                total_interest_paid=total_interest_paid,
+                total_interest_outstanding=total_interest_outstanding,
+                total_app_fees=total_app_fees,
                 staff_counts=staff_counts,
+                staff_savings=staff_savings,
+                range_start=start,
+                range_end=end,
                 generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 now=datetime.now(),
                 session=session
             )
-            
+
+        # ============================================================
+        # LOAN REPORT
+        # ============================================================
         elif report_type == 'loans':
-            # FIXED: Proper SQL syntax for subqueries
-            loans = db.execute("""
-                SELECT 
-                    l.*,
-                    u.full_name,
-                    u.sacco_number,
-                    u.phone,
-                    u.email,
-                    COALESCE(
-                        (SELECT COUNT(*) FROM repayments 
-                         WHERE loan_id = l.id AND status = 'completed'), 0
-                    ) as payment_count,
-                    COALESCE(
-                        (SELECT SUM(amount) FROM repayments 
-                         WHERE loan_id = l.id AND status = 'completed'), 0
-                    ) as total_paid
+            raw_loans = db.execute("""
+                SELECT
+                    l.id, l.loan_number, l.amount, l.current_balance, l.status,
+                    l.application_date, l.approved_date, l.disbursed_date, l.completed_date,
+                    l.total_interest_accrued, l.interest_paid, l.application_fee,
+                    u.id AS user_id, u.full_name, u.sacco_number, u.role,
+                    COALESCE((
+                        SELECT COUNT(*) FROM repayments r
+                        WHERE r.loan_id = l.id AND r.status = 'completed'
+                    ), 0) AS payment_count,
+                    COALESCE((
+                        SELECT SUM(r.amount) FROM repayments r
+                        WHERE r.loan_id = l.id AND r.status = 'completed'
+                    ), 0) AS total_paid
                 FROM loans l
                 JOIN users u ON l.user_id = u.id
+                WHERE l.application_date >= ? AND l.application_date <= ?
                 ORDER BY l.application_date DESC
-            """).fetchall()
-            
-            loans_list = [dict(loan) for loan in loans]
+            """, (start, end)).fetchall()
+
+            loans_list = []
+            total_amount = total_balance = total_repaid = 0
+            total_interest_accrued = total_interest_paid = total_app_fees = total_payments = 0
+            pending_count = approved_count = disbursed_count = active_count = 0
+            completed_count = rejected_count = 0
+            member_loan_count = staff_loan_count = 0
+
+            for r in raw_loans:
+                d = dict(r)
+                d['amount']                 = _to_int(d.get('amount'))
+                d['current_balance']        = _to_int(d.get('current_balance')) or d['amount']
+                d['total_interest_accrued'] = _to_int(d.get('total_interest_accrued'))
+                d['interest_paid']          = _to_int(d.get('interest_paid'))
+                d['application_fee']        = _to_int(d.get('application_fee'))
+                d['payment_count']          = int(d.get('payment_count') or 0)
+                d['total_paid']             = _to_int(d.get('total_paid'))
+
+                total_amount           += d['amount']
+                total_balance          += d['current_balance']
+                total_repaid           += d['total_paid']
+                total_interest_accrued += d['total_interest_accrued']
+                total_interest_paid    += d['interest_paid']
+                total_app_fees         += d['application_fee']
+                total_payments         += d['payment_count']
+
+                st = (d.get('status') or 'pending').lower()
+                if st == 'pending':     pending_count += 1
+                elif st == 'approved':  approved_count += 1
+                elif st == 'disbursed': disbursed_count += 1
+                elif st == 'active':    active_count += 1
+                elif st == 'completed': completed_count += 1
+                elif st == 'rejected':  rejected_count += 1
+
+                role = (d.get('role') or 'member').lower()
+                if role == 'member':
+                    member_loan_count += 1
+                else:
+                    staff_loan_count += 1
+
+                loans_list.append(d)
+
             total_loans = len(loans_list)
-            total_amount = sum(l.get('amount', 0) for l in loans_list) if loans_list else 0
-            total_balance = sum(l.get('current_balance', 0) for l in loans_list) if loans_list else 0
-            
+            total_interest_outstanding = max(0, total_interest_accrued - total_interest_paid)
+
             db.close()
-            
             return render_template(
                 "admin/reports/loan-report.html",
                 loans=loans_list,
                 total_loans=total_loans,
                 total_amount=total_amount,
                 total_balance=total_balance,
+                total_repaid=total_repaid,
+                total_payments=total_payments,
+                total_interest_accrued=total_interest_accrued,
+                total_interest_paid=total_interest_paid,
+                total_interest_outstanding=total_interest_outstanding,
+                total_app_fees=total_app_fees,
+                pending_count=pending_count,
+                approved_count=approved_count,
+                disbursed_count=disbursed_count,
+                active_count=active_count,
+                completed_count=completed_count,
+                rejected_count=rejected_count,
+                member_loan_count=member_loan_count,
+                staff_loan_count=staff_loan_count,
+                range_start=start,
+                range_end=end,
                 generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 now=datetime.now(),
                 session=session
             )
-            
+
+        # ============================================================
+        # SAVINGS REPORT
+        # ============================================================
         elif report_type == 'savings':
-            # Get all savings deposits with member details
-            savings = db.execute("""
-                SELECT 
-                    sd.*,
-                    u.full_name,
-                    u.sacco_number,
-                    u.phone,
-                    u.email
-                FROM savings_deposits sd
-                JOIN users u ON sd.user_id = u.id
-                ORDER BY sd.deposit_date DESC
-            """).fetchall()
-            
-            member_savings = db.execute("""
-                SELECT 
-                    u.id,
-                    u.full_name,
-                    u.sacco_number,
-                    u.savings_balance,
-                    u.kai_shares,
-                    u.ks_shares,
-                    u.kac_paid,
-                    u.registration_fee_paid,
-                    COUNT(sd.id) as deposit_count,
-                    COALESCE(SUM(sd.amount), 0) as total_deposited
+            rows = db.execute("""
+                SELECT
+                    u.id, u.full_name, u.sacco_number, u.role, u.status,
+                    COALESCE(u.savings_balance, 0) AS savings_balance,
+                    COALESCE(u.kai_shares, 0) AS kai_shares,
+                    COALESCE(u.ks_shares, 0) AS ks_shares,
+                    COALESCE(u.kac_paid, 0) AS kac_paid,
+                    COALESCE(u.registration_fee_paid, 0) AS registration_fee_paid,
+                    COALESCE((
+                        SELECT COUNT(*) FROM savings_deposits sd
+                        WHERE sd.user_id = u.id
+                        AND sd.deposit_date >= ?
+                        AND sd.deposit_date <= ?
+                    ), 0) AS deposit_count,
+                    COALESCE((
+                        SELECT SUM(sd.amount) FROM savings_deposits sd
+                        WHERE sd.user_id = u.id
+                        AND sd.deposit_date >= ?
+                        AND sd.deposit_date <= ?
+                    ), 0) AS total_deposited
                 FROM users u
-                LEFT JOIN savings_deposits sd ON u.id = sd.user_id
-                WHERE LOWER(u.role) = 'member'
-                GROUP BY u.id
-                ORDER BY u.savings_balance DESC
-            """).fetchall()
-            
-            savings_list = [dict(s) for s in savings]
-            member_savings_list = [dict(m) for m in member_savings]
-            total_savings_amount = sum(m.get('savings_balance', 0) for m in member_savings_list) if member_savings_list else 0
-            
+                WHERE LOWER(u.role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+                AND u.status = 'active'
+                ORDER BY u.savings_balance DESC, u.full_name ASC
+            """, (start, end, start, end)).fetchall()
+
+            member_savings_list = []
+            member_count = staff_count = 0
+            total_savings = total_deposited = 0
+            kai_total = ks_total = kac_total = reg_total = 0
+
+            for r in rows:
+                d = dict(r)
+                kac_val = d.get('kac_paid') or 0
+                try:
+                    kac_val = float(kac_val)
+                except (ValueError, TypeError):
+                    kac_val = 0
+                if kac_val == 1:
+                    kac_val = kac_annual_fee
+                d['kac_paid'] = min(int(kac_val), kac_annual_fee)
+
+                role = (d.get('role') or 'member').lower()
+                if role == 'member':
+                    member_count += 1
+                else:
+                    staff_count += 1
+
+                total_savings   += _to_int(d.get('savings_balance'))
+                total_deposited += _to_int(d.get('total_deposited'))
+
+                kai_total += int(d.get('kai_shares') or 0) * kai_share_price
+                ks_total  += int(d.get('ks_shares')  or 0) * ks_share_price
+                kac_total += d['kac_paid']
+                if d.get('registration_fee_paid'):
+                    reg_total += registration_fee
+
+                member_savings_list.append(d)
+
+            total_deposits = db.execute("""
+                SELECT COUNT(*) FROM savings_deposits
+                WHERE deposit_date >= ? AND deposit_date <= ?
+            """, (start, end)).fetchone()[0] or 0
+
+            top_saver_name = member_savings_list[0]['full_name'] if member_savings_list else 'N/A'
+
             db.close()
-            
             return render_template(
                 "admin/reports/savings-report.html",
-                savings=savings_list,
                 member_savings=member_savings_list,
-                total_savings=total_savings_amount,
-                total_deposits=len(savings_list),
+                total_savers=len(member_savings_list),
+                total_savings=total_savings,
+                total_deposited=total_deposited,
+                total_deposits=total_deposits,
+                member_count=member_count,
+                staff_count=staff_count,
+                top_saver_name=top_saver_name,
+                kai_total=kai_total,
+                ks_total=ks_total,
+                kac_total=kac_total,
+                reg_total=reg_total,
+                range_start=start,
+                range_end=end,
                 generated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 now=datetime.now(),
                 session=session
             )
-            
+
         else:
+            db.close()
             flash('Invalid report type', 'danger')
             return redirect(url_for('admin_dashboard'))
-            
+
     except Exception as e:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
         print(f"❌ Error generating report: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error generating report: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
-
+    
 # ============================================================
 # OTHER DASHBOARDS
 # ============================================================
