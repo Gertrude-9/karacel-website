@@ -489,7 +489,7 @@ def create_database():
             INSERT INTO users (
                 full_name, gender, dob, sacco_number,
                 email, phone, address,
-                password, role, status,
+                generate_password_hash(plain_password), role, status,
                 savings_balance,
                 next_of_kin_name, relationship, next_of_kin_phone
             )
@@ -502,7 +502,7 @@ def create_database():
             "admin@sacco.com",
             "0700000000",
             "Head Office",
-            "admin123",
+            generate_password_hash("admin123"),
             "admin",
             "active",
             0,
@@ -736,7 +736,7 @@ def login():
         finally:
             conn.close()
 
-        if user and user["password"] == password:      # ← plain-text comparison
+        if user and check_password_hash(user["password"], password):
             session.update({
                 "user_id":      user["id"],
                 "sacco_number": user["sacco_number"],
@@ -2658,7 +2658,7 @@ def treasurer_add_members():
                 INSERT INTO users (
                     full_name, gender, dob, sacco_number,
                     email, phone, address,
-                    password, role, status,
+                    generate_password_hash(plain_password), role, status,
                     savings_balance,
                     next_of_kin_name, relationship, next_of_kin_phone,
                     kai_shares, ks_shares, kac_paid, registration_fee_paid
@@ -4198,7 +4198,7 @@ def admin_register_user():
         cursor = db.cursor()
         cursor.execute("""
             INSERT INTO users (
-                full_name, email, phone, sacco_number, password, role, status, registration_date
+                full_name, email, phone, sacco_number, generate_password_hash(plain_password), role, status, registration_date
             ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
         """, (full_name, email, phone, sacco_number, password, role, datetime.now().strftime('%Y-%m-%d')))
         
@@ -4251,91 +4251,164 @@ def admin_delete_user(user_id):
 
 
 @app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
-def admin_reset_password(user_id):
-
-    # Check authorization
-    if session.get("role") not in ["admin", "chairperson"]:
-        return jsonify({
-            "success": False,
-            "message": "Access denied"
-        }), 403
-
-    db = get_db()
+def reset_user_password(user_id):
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
 
     try:
-        # Find user
-        user = db.execute(
-            """
-            SELECT id, username, name
-            FROM users
-            WHERE id = ?
-            """,
-            (user_id,)
-        ).fetchone()
+        data = request.get_json(silent=True) or {}
 
+        # ✅ Accept either key
+        new_password = (data.get("password") or data.get("new_password") or "").strip()
+
+        if not new_password:
+            return jsonify({"success": False, "message": "Password is required."}), 400
+        if len(new_password) < 6:
+            return jsonify({"success": False, "message": "Password must be at least 6 characters."}), 400
+
+        conn = get_db()
+        user = conn.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,)).fetchone()
         if not user:
-            return jsonify({
-                "success": False,
-                "message": "User not found"
-            }), 404
+            conn.close()
+            return jsonify({"success": False, "message": "User not found."}), 404
 
-        # Get JSON request body
-        data = request.get_json(silent=True)
+        hashed = generate_password_hash(new_password)
+        conn.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, user_id))
+        conn.commit()
+        conn.close()
 
-        if not isinstance(data, dict):
-            return jsonify({
-                "success": False,
-                "message": "Invalid request"
-            }), 400
+        return jsonify({"success": True, "message": f"Password updated for {user['full_name']}."})
 
-        # Get password
-        new_password = data.get("password")
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
-        if not isinstance(new_password, str) or not new_password:
-            return jsonify({
-                "success": False,
-                "message": "Password is required"
-            }), 400
+@app.route("/admin/settings/get")
+def get_settings():
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
 
-        # Server-side password validation
-        if len(new_password) < 8:
-            return jsonify({
-                "success": False,
-                "message": "Password must be at least 8 characters long"
-            }), 400
+    try:
+        conn = get_db()
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        conn.close()
 
-        # Hash password before storing it
-        hashed_password = generate_password_hash(new_password)
+        if row:
+            return jsonify({"success": True, "settings": dict(row)})
 
-        # Update password
-        db.execute(
-            """
-            UPDATE users
-            SET password = ?
-            WHERE id = ?
-            """,
-            (hashed_password, user_id)
-        )
+        # Fallback defaults
+        return jsonify({
+            "success": True,
+            "settings": {
+                "sacco_name": "Karacel Association",
+                "registration_number": "SACCO/REG/2024/001",
+                "savings_interest_rate": 6.5,
+                "loan_interest_rate": 12,
+                "penalty_rate": 5,
+                "max_loan_amount": "10,000,000",
+                "min_loan_amount": "10,000",
+                "max_tenure": 24,
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": str(e)}), 500
 
-        db.commit()
+@app.route("/admin/settings/update", methods=["POST"])
+def update_settings():
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        # Coerce types safely
+        def as_float(key, default=0.0):
+            try: return float(data.get(key, default))
+            except (TypeError, ValueError): return default
+
+        def as_int(key, default=0):
+            try: return int(data.get(key, default))
+            except (TypeError, ValueError): return default
+
+        def as_text(key, default=""):
+            v = data.get(key, default)
+            return str(v).strip() if v is not None else default
+
+        payload = {
+            "sacco_name":            as_text("sacco_name", "Karacel Association"),
+            "registration_number":   as_text("registration_number"),
+            "savings_interest_rate": as_float("savings_interest_rate", 6.5),
+            "loan_interest_rate":    as_float("loan_interest_rate", 12.0),
+            "penalty_rate":          as_float("penalty_rate", 5.0),
+            "max_loan_amount":       as_text("max_loan_amount", "10000000"),
+            "min_loan_amount":       as_text("min_loan_amount", "10000"),
+            "max_tenure":            as_int("max_tenure", 24),
+        }
+
+        conn = get_db()
+        conn.row_factory = sqlite3.Row
+
+        # Check if a row exists
+        row = conn.execute("SELECT id FROM system_settings LIMIT 1").fetchone()
+
+        if row:
+            conn.execute("""
+                UPDATE system_settings SET
+                    sacco_name = ?,
+                    registration_number = ?,
+                    savings_interest_rate = ?,
+                    loan_interest_rate = ?,
+                    penalty_rate = ?,
+                    max_loan_amount = ?,
+                    min_loan_amount = ?,
+                    max_tenure = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                payload["sacco_name"],
+                payload["registration_number"],
+                payload["savings_interest_rate"],
+                payload["loan_interest_rate"],
+                payload["penalty_rate"],
+                payload["max_loan_amount"],
+                payload["min_loan_amount"],
+                payload["max_tenure"],
+                row["id"]
+            ))
+        else:
+            conn.execute("""
+                INSERT INTO system_settings (
+                    sacco_name, registration_number,
+                    savings_interest_rate, loan_interest_rate, penalty_rate,
+                    max_loan_amount, min_loan_amount, max_tenure
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                payload["sacco_name"],
+                payload["registration_number"],
+                payload["savings_interest_rate"],
+                payload["loan_interest_rate"],
+                payload["penalty_rate"],
+                payload["max_loan_amount"],
+                payload["min_loan_amount"],
+                payload["max_tenure"]
+            ))
+
+        conn.commit()
+        conn.close()
 
         return jsonify({
             "success": True,
-            "message": "Password changed successfully"
-        }), 200
+            "message": "Settings saved successfully.",
+            "settings": payload
+        })
 
     except Exception as e:
-        db.rollback()
-
-        print("Password reset error:", e)
-
-        return jsonify({
-            "success": False,
-            "message": "Failed to reset password"
-        }), 500
-
-    finally:
-        db.close()
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 # ============================================================
 # ADMIN - VIEW USER (JSON)

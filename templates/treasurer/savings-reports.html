@@ -2,21 +2,10 @@
 
 {% block title %}Karacel SACCO | User Savings Reports{% endblock %}
 
-{% block content %}
+{% block page_title %}Savings Reports{% endblock %}
+{% block page_subtitle %}Generate and download savings reports{% endblock %}
 
-<!-- App Bar -->
-<div class="app-bar">
-    <div class="app-bar-left">
-        <h2 id="appBarTitle"><i class="fas fa-chart-pie"></i> User Savings Reports</h2>
-        <span id="appBarSubtitle">View and filter users by savings type (includes staff)</span>
-    </div>
-    <div class="app-bar-right">
-        <div class="admin-profile">
-            <i class="fas fa-user-circle"></i>
-            <span>{{ session.full_name }}</span>
-        </div>
-    </div>
-</div>
+{% block content %}
 
 <!-- ============================================================ -->
 <!-- SAVINGS TYPE FILTER & STATISTICS -->

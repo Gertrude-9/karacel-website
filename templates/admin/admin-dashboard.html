@@ -6,135 +6,9 @@
 
 <!-- Main Content -->
 <main class="admin-main-content">
-    <!-- App Bar -->
-    <div class="app-bar">
-        <div class="app-bar-left">
-            <h2 id="appBarTitle"><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
-            <span id="appBarSubtitle">Karacel SACCO Administration Panel</span>
-        </div>
-        <div class="app-bar-right">
-            <div class="admin-profile">
-                <i class="fas fa-user-circle"></i>
-                <span>{{ session.full_name }}</span>
-            </div>
-        </div>
-    </div>
     
-    <!-- ========== DASHBOARD PANEL ========== -->
-    <div id="dashboard-panel" class="content-panel active">
-        <div class="admin-stats">
-            <div class="stat-box">
-                <i class="fas fa-users"></i>
-                <h3>{{ total_members }}</h3>
-                <p>Total Members</p>
-            </div>
-            <div class="stat-box">
-                <i class="fas fa-piggy-bank"></i>
-                <h3>UGX {{ "{:,.0f}".format(total_savings) }}</h3>
-                <p>Total Savings</p>
-            </div>
-            <div class="stat-box" style="border-color: rgba(245,197,66,0.15); background: rgba(245,197,66,0.03);">
-                <i class="fas fa-file-invoice" style="color: #f5c542;"></i>
-                <h3 style="color: #f5c542;">{{ total_loans }}</h3>
-                <p style="color: rgba(245,197,66,0.5);">Total Loans</p>
-            </div>
-
-            <div class="stat-box">
-                <i class="fas fa-hand-holding-usd"></i>
-                <h3>{{ active_loans }}</h3>
-                <p>Active Loans</p>
-            </div>
-            <div class="stat-box">
-                <i class="fas fa-clock"></i>
-                <h3>{{ pending_loans }}</h3>
-                <p>Pending Loans</p>
-            </div>
-            <div class="stat-box">
-                <i class="fas fa-check-double"></i>
-                <h3>{{ completed_loans }}</h3>
-                <p>Completed Loans</p>
-            </div>
-            <div class="stat-box">
-                <i class="fas fa-times-circle"></i>
-                <h3>{{ rejected_loans }}</h3>
-                <p>Rejected Loans</p>
-            </div>
-        </div>
-      
-
-        <!-- Recent Activities -->
-        <div class="action-card" style="margin-top: 16px;">
-            <div class="action-title">
-                <i class="fas fa-history"></i> Recent Activities
-            </div>
-            <div class="table-wrapper">
-                <table class="styled-table">
-                    <thead>
-                        <tr>
-                            <th>Date & Time</th>
-                            <th>Member</th>
-                            <th>Activity</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if recent_activities %}
-                            {% for activity in recent_activities %}
-                            <tr>
-                                <td>
-                                    <span style="font-size:0.7rem; color:rgba(255,255,255,0.4);">
-                                        {% if activity.created_at %}
-                                            {{ activity.created_at|replace(' ', '<br>')|safe }}
-                                        {% elif activity.deposit_date %}
-                                            {{ activity.deposit_date }}
-                                        {% elif activity.date %}
-                                            {{ activity.date }}
-                                        {% else %}
-                                            {{ activity.payment_date or 'N/A' }}
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span style="font-weight:500;">{{ activity.full_name }}</span>
-                                    <br>
-                                    <span style="font-size:0.6rem; color:rgba(255,255,255,0.2);">{{ activity.sacco_number or '' }}</span>
-                                </td>
-                                <td>
-                                    {% if activity.type == 'deposit' %}
-                                        <span style="color: #4ade80; font-size:0.7rem;">
-                                            <i class="fas fa-piggy-bank"></i> Savings Deposit
-                                        </span>
-                                    {% elif activity.type == 'repayment' %}
-                                        <span style="color: #00e0ff; font-size:0.7rem;">
-                                            <i class="fas fa-hand-holding-usd"></i> Loan Repayment
-                                        </span>
-                                    {% elif activity.type == 'loan' %}
-                                        <span style="color: #f5c542; font-size:0.7rem;">
-                                            <i class="fas fa-file-invoice"></i> Loan Application
-                                        </span>
-                                    {% else %}
-                                        <span style="font-size:0.7rem;">{{ activity.type|title }}</span>
-                                    {% endif %}
-                                </td>
-                                <td style="color: #4ade80; font-weight:600; font-size:0.85rem;">
-                                    UGX {{ "{:,.0f}".format(activity.amount) }}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="4" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
-                                    <i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.15;"></i>
-                                    No recent activities
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
+   
+    
     <!-- ========== MEMBERS PANEL ========== -->
     <div id="members-panel" class="content-panel">
         <div class="action-card">
@@ -599,171 +473,7 @@
 </div>
 
 <style>
-/* ============================================================
-   REPORT TYPE BUTTONS (tile-style)
-   ============================================================ */
-.report-type-btn {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 18px 20px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-    cursor: pointer;
-    text-align: left;
-    font-family: 'Inter', sans-serif;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
 
-.report-type-btn::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: transparent;
-    transition: background 0.25s ease;
-}
-
-.report-type-btn:hover {
-    background: rgba(255, 255, 255, 0.045);
-    border-color: rgba(245, 197, 66, 0.25);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-}
-
-.report-type-btn.active {
-    background: linear-gradient(135deg, rgba(245, 197, 66, 0.1), rgba(245, 197, 66, 0.02));
-    border-color: rgba(245, 197, 66, 0.5);
-    box-shadow: 0 0 0 1px rgba(245, 197, 66, 0.15), 0 8px 24px rgba(245, 197, 66, 0.1);
-}
-
-.report-type-btn.active::before {
-    background: linear-gradient(180deg, #f5c542, #eab308);
-}
-
-.report-type-btn .rt-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.15rem;
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: transform 0.25s ease;
-}
-
-.report-type-btn:hover .rt-icon {
-    transform: scale(1.06);
-}
-
-.report-type-btn.active .rt-icon {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(245, 197, 66, 0.3);
-}
-
-.report-type-btn .rt-body {
-    flex: 1;
-    min-width: 0;
-}
-
-.report-type-btn .rt-title {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 4px;
-    letter-spacing: -0.1px;
-}
-
-.report-type-btn.active .rt-title {
-    color: #f5c542;
-}
-
-.report-type-btn .rt-desc {
-    font-size: 0.72rem;
-    color: rgba(255, 255, 255, 0.4);
-    line-height: 1.45;
-    margin-bottom: 10px;
-}
-
-.report-type-btn .rt-meta {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.3);
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.report-type-btn .rt-meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.report-type-btn .rt-meta i {
-    color: rgba(245, 197, 66, 0.5);
-    font-size: 0.65rem;
-}
-
-.report-type-btn .rt-check {
-    flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.08);
-    font-size: 1.1rem;
-    transition: all 0.25s ease;
-    align-self: center;
-}
-
-.report-type-btn.active .rt-check {
-    color: #f5c542;
-}
-
-/* Quick-range pills */
-.quick-range-btn {
-    padding: 6px 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 20px;
-    color: rgba(255, 255, 255, 0.55);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.quick-range-btn:hover {
-    background: rgba(245, 197, 66, 0.08);
-    border-color: rgba(245, 197, 66, 0.3);
-    color: #f5c542;
-}
-
-.quick-range-btn.active {
-    background: linear-gradient(135deg, rgba(245, 197, 66, 0.15), rgba(245, 197, 66, 0.05));
-    border-color: rgba(245, 197, 66, 0.5);
-    color: #f5c542;
-    box-shadow: 0 2px 8px rgba(245, 197, 66, 0.15);
-}
-
-/* Custom range wrapper */
-#customRangeWrap {
-    display: flex;
-}
-
-@media (max-width: 768px) {
-    #customRangeWrap {
-        flex-direction: column;
-        min-width: 100% !important;
-    }
-}
 </style>
     <!-- ========== USERS PANEL ========== -->
     <div id="users-panel" class="content-panel">
@@ -924,32 +634,84 @@
         </div>
     </div>
 
-    <!-- ========== RESET PASSWORD MODAL ========== -->
-    <div id="resetPasswordModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
-        <div style="background: linear-gradient(145deg, #1e1e32, #151525); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 36px; max-width: 440px; width: 100%; text-align:center; animation: modalSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 25px 80px rgba(0,0,0,0.6); position: relative;">
-            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f5c542, #00e0ff, #f5c542); background-size: 200% 100%; animation: gradientMove 3s ease-in-out infinite; border-radius: 20px 20px 0 0;"></div>
-            <div style="width:72px; height:72px; border-radius:50%; background:rgba(245,197,66,0.1); border:2px solid rgba(245,197,66,0.15); display:flex; align-items:center; justify-content:center; margin: 8px auto 16px; font-size:2rem; color:#f5c542;">
-                <i class="fas fa-key"></i>
-            </div>
-            <h3 style="color:#fff; margin-bottom:8px; font-size:1.3rem; font-weight:700;">Reset Password</h3>
-            <p id="resetPasswordMessage" style="color:rgba(255,255,255,0.5); margin-bottom:16px; font-size:0.9rem; line-height:1.6;">Are you sure you want to reset the password for this user?</p>
-            <div style="margin-bottom:20px; padding:12px 16px; background:rgba(245,197,66,0.05); border-radius:10px; border-left:3px solid #f5c542;">
-                <p style="color:rgba(255,255,255,0.25); font-size:0.75rem; margin:0; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-info-circle" style="color:#f5c542;"></i>
-                    A new temporary password will be generated and displayed after confirmation.
-                </p>
-            </div>
-            <input type="hidden" id="resetUserId">
-            <div style="display:flex; gap:12px; justify-content:center;">
-                <button onclick="closeResetPasswordModal()" style="padding:10px 28px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; cursor:pointer; font-weight:500; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-                <button onclick="confirmResetPassword()" style="padding:10px 28px; background:linear-gradient(135deg, #f5c542, #eab308); color:#0a0a14; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(245,197,66,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(245,197,66,0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245,197,66,0.2)'">
-                    <i class="fas fa-sync-alt"></i> Reset Password
+   <!-- ========== RESET PASSWORD MODAL (manual entry) ========== -->
+<div id="resetPasswordModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+    <div style="background: linear-gradient(145deg, #1e1e32, #151525); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 32px; max-width: 480px; width: 100%; animation: modalSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 25px 80px rgba(0,0,0,0.6); position: relative;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f5c542, #00e0ff, #f5c542); background-size: 200% 100%; animation: gradientMove 3s ease-in-out infinite; border-radius: 20px 20px 0 0;"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-top:8px;">
+            <h3 style="margin:0; color:#f5c542; font-size:1.2rem; display:flex; align-items:center; gap:12px;">
+                <span style="width:40px; height:40px; border-radius:50%; background:rgba(245,197,66,0.1); display:flex; align-items:center; justify-content:center; border:1px solid rgba(245,197,66,0.15);">
+                    <i class="fas fa-key" style="font-size:1rem;"></i>
+                </span>
+                Reset Password
+            </h3>
+            <button onclick="closeResetPasswordModal()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); width:38px; height:38px; border-radius:50%; cursor:pointer; font-size:1.2rem; transition:all 0.3s ease; display:flex; align-items:center; justify-content:center;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='rgba(255,255,255,0.4)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <p id="resetPasswordMessage" style="color:rgba(255,255,255,0.5); margin-bottom:18px; font-size:0.88rem; line-height:1.6;">
+            Set a new password for this user.
+        </p>
+
+        <input type="hidden" id="resetUserId">
+
+        <!-- New password field -->
+        <div style="margin-bottom:14px;">
+            <label style="color:rgba(255,255,255,0.4); font-size:0.78rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">
+                New Password <span style="color:#ff6b6b;">*</span>
+            </label>
+            <div style="position:relative;">
+                <input type="password" id="resetNewPassword" placeholder="Enter new password (min 6 chars)" minlength="6" required
+                       style="width:100%; padding:12px 44px 12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none;"
+                       onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'"
+                       onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                <button type="button" onclick="toggleResetPw('resetNewPassword', this)"
+                        style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:0.9rem; padding:6px;">
+                    <i class="fas fa-eye"></i>
                 </button>
             </div>
         </div>
+
+        <!-- Confirm password field -->
+        <div style="margin-bottom:16px;">
+            <label style="color:rgba(255,255,255,0.4); font-size:0.78rem; display:block; margin-bottom:6px; font-weight:500; letter-spacing:0.3px;">
+                Confirm Password <span style="color:#ff6b6b;">*</span>
+            </label>
+            <div style="position:relative;">
+                <input type="password" id="resetConfirmPassword" placeholder="Re-enter new password" minlength="6" required
+                       style="width:100%; padding:12px 44px 12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:white; font-size:0.9rem; transition:all 0.3s ease; outline:none;"
+                       onfocus="this.style.borderColor='#f5c542'; this.style.background='rgba(255,255,255,0.06)'"
+                       onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='rgba(255,255,255,0.04)'">
+                <button type="button" onclick="toggleResetPw('resetConfirmPassword', this)"
+                        style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:0.9rem; padding:6px;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Inline error area -->
+        <div id="resetPasswordError" style="display:none; margin-bottom:14px; padding:10px 14px; background:rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.2); border-radius:8px; color:#ff6b6b; font-size:0.78rem;"></div>
+
+        <div style="display:flex; gap:12px; justify-content:flex-end; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
+            <button type="button" onclick="closeResetPasswordModal()"
+                    style="padding:10px 24px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; cursor:pointer; font-weight:500; font-size:0.85rem; transition:all 0.3s ease;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='#fff'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.6)'">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmResetPassword()" id="resetPasswordSubmitBtn"
+                    style="padding:10px 28px; background:linear-gradient(135deg, #f5c542, #eab308); color:#0a0a14; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(245,197,66,0.2);"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(245,197,66,0.35)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245,197,66,0.2)'">
+                <i class="fas fa-save"></i> Save Password
+            </button>
+        </div>
     </div>
+</div>
 
     <!-- ========== DELETE CONFIRMATION MODAL ========== -->
     <div id="deleteUserModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
@@ -1083,41 +845,69 @@
 // ============================================================
 // PANEL NAVIGATION
 // ============================================================
-function showPanel(panelName) {
+// ============================================================
+// PANEL NAVIGATION
+// ============================================================
+// Panel history stack — remembers the order panels were visited
+let panelHistory = [];
+let currentPanel = 'members';
+
+function showPanel(panelName, opts) {
+    opts = opts || {};
+    const fromBack = opts.fromBack === true;
+
+    // Remember the panel we're leaving (unless we're coming back to it)
+    if (!fromBack && currentPanel && currentPanel !== panelName) {
+        panelHistory.push(currentPanel);
+    }
+
     document.querySelectorAll(".content-panel").forEach(panel => {
         panel.classList.remove("active");
     });
     const selectedPanel = document.getElementById(panelName + "-panel");
-    if (selectedPanel) {
-        selectedPanel.classList.add("active");
-    }
+    if (selectedPanel) selectedPanel.classList.add("active");
+
     document.querySelectorAll(".admin-nav-item").forEach(link => {
         link.classList.remove("active");
     });
     const selectedLink = document.querySelector(`.admin-nav-item[data-panel="${panelName}"]`);
-    if (selectedLink) {
-        selectedLink.classList.add("active");
-    }
-    const title = document.getElementById("appBarTitle");
-    const subtitle = document.getElementById("appBarSubtitle");
+    if (selectedLink) selectedLink.classList.add("active");
+
     const titles = {
-        dashboard: { icon: 'fa-tachometer-alt', title: 'Dashboard', subtitle: 'Karacel SACCO Administration Panel' },
-        members: { icon: 'fa-users', title: 'Members', subtitle: 'View all SACCO member records' },
-        loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications', subtitle: 'Review and process loan requests' },
-        users: { icon: 'fa-users-cog', title: 'Staff Users', subtitle: 'Manage staff users and permissions' },
-        reports: { icon: 'fa-chart-bar', title: 'Reports', subtitle: 'Generate and download reports' },
-        settings: { icon: 'fa-cog', title: 'Settings', subtitle: 'System configuration and preferences' }
+        members:           { icon: 'fa-users',        title: 'Members' },
+        loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications' },
+        users:             { icon: 'fa-users-cog',    title: 'Staff Users' },
+        reports:           { icon: 'fa-chart-bar',    title: 'Reports' },
+        settings:          { icon: 'fa-cog',          title: 'Settings' }
     };
+
     const info = titles[panelName];
-    if (info && title) {
-        title.innerHTML = `<i class="fas ${info.icon}"></i> ${info.title}`;
+    const topbarTitleText = document.getElementById('topbarTitleText');
+    const topbarTitleIcon = document.querySelector('#topbarTitle i');
+    if (info) {
+        if (topbarTitleIcon) topbarTitleIcon.className = `fas ${info.icon}`;
+        if (topbarTitleText) topbarTitleText.textContent = info.title;
     }
-    if (info && subtitle) {
-        subtitle.textContent = info.subtitle;
-    }
+
+    currentPanel = panelName;
     window.location.hash = panelName;
 }
 
+function adminGoBack() {
+    // If we have panels stacked, go back to the previous one
+    if (panelHistory.length > 0) {
+        const previousPanel = panelHistory.pop();
+        showPanel(previousPanel, { fromBack: true });
+        return;
+    }
+
+    // No panel history — fall back to real browser back
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.location.href = "{{ url_for('treasurer_dashboard') }}";
+    }
+}
 // ============================================================
 // VIEW MEMBER
 // ============================================================
@@ -1312,6 +1102,7 @@ function saveSettings(event) {
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     btn.disabled = true;
+
     const data = {
         sacco_name: document.getElementById('saccoName').value.trim(),
         registration_number: document.getElementById('registrationNumber').value.trim(),
@@ -1322,31 +1113,69 @@ function saveSettings(event) {
         min_loan_amount: document.getElementById('minLoanAmount').value.replace(/,/g, ''),
         max_tenure: parseInt(document.getElementById('maxTenure').value) || 24
     };
+
     fetch('/admin/settings/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',   // ← keeps session cookie
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
+    .then(async response => {
+        // Read as text first — lets us see what came back even if it's HTML
+        const rawText = await response.text();
+        let parsed = null;
+        try { parsed = JSON.parse(rawText); } catch (e) { /* not JSON */ }
+
+        // Not OK status — surface the real problem
+        if (!response.ok) {
+            // Print the raw response to console so you can see it
+            console.error('❌ Settings update failed');
+            console.error('Status:', response.status);
+            console.error('Response body (first 500 chars):', rawText.substring(0, 500));
+
+            // Detect redirect-to-login
+            if (rawText.toLowerCase().includes('<!doctype') || rawText.toLowerCase().includes('<html')) {
+                throw new Error(
+                    `Server returned HTML instead of JSON (HTTP ${response.status}). ` +
+                    `Check the Flask terminal — the route probably crashed or redirected. ` +
+                    `Open DevTools → Network → this request → Response tab to see what was returned.`
+                );
+            }
+
+            throw new Error(parsed?.message || rawText || `HTTP ${response.status}`);
+        }
+
+        if (!parsed) {
+            throw new Error('Server did not return JSON. Raw response: ' + rawText.substring(0, 200));
+        }
+
+        return parsed;
+    })
     .then(result => {
         if (result.success) {
             showSettingsMessage('✅ Settings saved successfully!', 'success');
-            document.getElementById('settingsStatus').innerHTML = '<i class="fas fa-check-circle"></i> Settings updated successfully';
+            document.getElementById('settingsStatus').innerHTML =
+                '<i class="fas fa-check-circle"></i> Settings updated successfully';
             document.getElementById('settingsStatus').style.color = '#4ade80';
         } else {
-            showSettingsMessage('❌ Error: ' + result.message, 'error');
+            showSettingsMessage('❌ Error: ' + (result.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
-        showSettingsMessage('❌ Error: ' + error.message, 'error');
+        console.error('❌ Save error:', error);
+        showSettingsMessage('❌ ' + error.message, 'error');
     })
     .finally(() => {
         btn.innerHTML = originalText;
         btn.disabled = false;
         setTimeout(() => {
             const msg = document.getElementById('settingsMessage');
-            msg.style.display = 'none';
-        }, 5000);
+            if (msg) msg.style.display = 'none';
+        }, 8000);
     });
 }
 
@@ -1660,38 +1489,81 @@ function submitEditUser(event) {
 }
 
 // ============================================================
-// RESET PASSWORD FUNCTIONS
+// RESET PASSWORD FUNCTIONS — MANUAL ENTRY
 // ============================================================
 function resetUserPassword(userId, userName) {
     if (!userId) {
         alert('Error: User ID is missing.');
         return;
     }
-    document.getElementById('resetPasswordMessage').textContent = 
-        'Are you sure you want to reset the password for "' + userName + '"?';
+    document.getElementById('resetPasswordMessage').innerHTML =
+        'Set a new password for <strong style="color:#f5c542;">' + userName + '</strong>.';
     document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetNewPassword').value = '';
+    document.getElementById('resetConfirmPassword').value = '';
+    document.getElementById('resetPasswordError').style.display = 'none';
     document.getElementById('resetPasswordModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('resetNewPassword').focus(), 100);
 }
 
 function closeResetPasswordModal() {
     document.getElementById('resetPasswordModal').style.display = 'none';
     document.getElementById('resetUserId').value = '';
+    document.getElementById('resetNewPassword').value = '';
+    document.getElementById('resetConfirmPassword').value = '';
+    document.getElementById('resetPasswordError').style.display = 'none';
+}
+
+function toggleResetPw(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function showResetError(msg) {
+    const el = document.getElementById('resetPasswordError');
+    el.textContent = msg;
+    el.style.display = 'block';
 }
 
 function confirmResetPassword() {
     const userId = document.getElementById('resetUserId').value;
+    const newPw  = document.getElementById('resetNewPassword').value;
+    const confirmPw = document.getElementById('resetConfirmPassword').value;
+    const errorEl = document.getElementById('resetPasswordError');
+
+    errorEl.style.display = 'none';
+
     if (!userId) {
-        alert('Error: User ID is missing.');
+        showResetError('User ID is missing.');
         return;
     }
-    const btn = document.querySelector('#resetPasswordModal button:last-child');
-    if (!btn) return;
+    if (!newPw || newPw.length < 6) {
+        showResetError('Password must be at least 6 characters.');
+        return;
+    }
+    if (newPw !== confirmPw) {
+        showResetError('Passwords do not match.');
+        return;
+    }
+
+    const btn = document.getElementById('resetPasswordSubmitBtn');
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     btn.disabled = true;
+
     fetch('/admin/users/reset-password/' + userId, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ new_password: newPw })
     })
     .then(response => {
         if (!response.ok) throw new Error('HTTP error! Status: ' + response.status);
@@ -1699,15 +1571,15 @@ function confirmResetPassword() {
     })
     .then(data => {
         if (data.success) {
-            alert('✅ Password reset successfully!\n\nNew Password: ' + data.new_password + '\n\nPlease share this with the user.');
+            alert('✅ Password updated successfully for this user.');
             closeResetPasswordModal();
         } else {
-            alert('❌ Error: ' + (data.message || 'Could not reset password'));
+            showResetError(data.message || 'Could not reset password.');
         }
     })
     .catch(error => {
         console.error('❌ Error:', error);
-        alert('❌ Error: ' + error.message);
+        showResetError('Error: ' + error.message);
     })
     .finally(() => {
         btn.innerHTML = originalText;
@@ -1813,10 +1685,12 @@ document.addEventListener('click', function(event) {
 // ============================================================
 document.addEventListener("DOMContentLoaded", function () {
     const hash = window.location.hash.replace("#", "");
-    const validPanels = ['dashboard', 'members', 'loan_applications', 'users', 'reports', 'settings'];
-    if (hash && validPanels.includes(hash)) {
-        showPanel(hash);
-    }
+    const validPanels = ['members', 'loan_applications', 'users', 'reports', 'settings'];
+
+    // ✅ Default to Members on first load
+    const initialPanel = (hash && validPanels.includes(hash)) ? hash : 'members';
+    showPanel(initialPanel);
+
     document.querySelectorAll(".admin-nav-item").forEach(link => {
         link.addEventListener("click", function (e) {
             const panelName = this.getAttribute("data-panel");
@@ -1828,7 +1702,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     loadSettings();
 });
-
 console.log('✅ Admin Dashboard JavaScript loaded successfully');
 </script>
 

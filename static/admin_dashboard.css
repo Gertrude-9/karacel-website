@@ -102,6 +102,172 @@
         font-weight: bold !important;
     }
 }
+
+/* ============================================================
+   REPORT TYPE BUTTONS (tile-style)
+   ============================================================ */
+.report-type-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.report-type-btn::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.25s ease;
+}
+
+.report-type-btn:hover {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(245, 197, 66, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.report-type-btn.active {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.1), rgba(245, 197, 66, 0.02));
+    border-color: rgba(245, 197, 66, 0.5);
+    box-shadow: 0 0 0 1px rgba(245, 197, 66, 0.15), 0 8px 24px rgba(245, 197, 66, 0.1);
+}
+
+.report-type-btn.active::before {
+    background: linear-gradient(180deg, #f5c542, #eab308);
+}
+
+.report-type-btn .rt-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: transform 0.25s ease;
+}
+
+.report-type-btn:hover .rt-icon {
+    transform: scale(1.06);
+}
+
+.report-type-btn.active .rt-icon {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 197, 66, 0.3);
+}
+
+.report-type-btn .rt-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-type-btn .rt-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.1px;
+}
+
+.report-type-btn.active .rt-title {
+    color: #f5c542;
+}
+
+.report-type-btn .rt-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+
+.report-type-btn .rt-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.3);
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.report-type-btn .rt-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.report-type-btn .rt-meta i {
+    color: rgba(245, 197, 66, 0.5);
+    font-size: 0.65rem;
+}
+
+.report-type-btn .rt-check {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.08);
+    font-size: 1.1rem;
+    transition: all 0.25s ease;
+    align-self: center;
+}
+
+.report-type-btn.active .rt-check {
+    color: #f5c542;
+}
+
+/* Quick-range pills */
+.quick-range-btn {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-range-btn:hover {
+    background: rgba(245, 197, 66, 0.08);
+    border-color: rgba(245, 197, 66, 0.3);
+    color: #f5c542;
+}
+
+.quick-range-btn.active {
+    background: linear-gradient(135deg, rgba(245, 197, 66, 0.15), rgba(245, 197, 66, 0.05));
+    border-color: rgba(245, 197, 66, 0.5);
+    color: #f5c542;
+    box-shadow: 0 2px 8px rgba(245, 197, 66, 0.15);
+}
+
+/* Custom range wrapper */
+#customRangeWrap {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    #customRangeWrap {
+        flex-direction: column;
+        min-width: 100% !important;
+    }
+}
 /* ============================================================
    STAFF MEMBER PORTAL NAV ITEM
    ============================================================ */

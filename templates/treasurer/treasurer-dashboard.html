@@ -4,19 +4,7 @@
 
 {% block content %}
 
-<!-- App Bar -->
-<div class="app-bar">
-    <div class="app-bar-left">
-        <h2 id="appBarTitle"><i class="fas fa-tachometer-alt"></i> Treasurer Dashboard</h2>
-        <span id="appBarSubtitle">Karacel SACCO Financial Management</span>
-    </div>
-    <div class="app-bar-right">
-        <div class="admin-profile">
-            <i class="fas fa-user-circle"></i>
-            <span>{{ session.full_name }}</span>
-        </div>
-    </div>
-</div>
+
 
 <!-- ========== DASHBOARD PANEL ========== -->
 <div id="dashboard-panel" class="content-panel active">
@@ -1062,14 +1050,6 @@
 
 <!-- ========== MEMBERS PANEL ========== -->
 <div id="members-panel" class="content-panel">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back
-        </a>
-        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-users"></i> Members
-        </span>
-    </div>
 
     <div class="action-card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
@@ -1188,14 +1168,6 @@
 
 <!-- ========== DEPOSITS PANEL ========== -->
 <div id="deposits-panel" class="content-panel">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back
-        </a>
-        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-history"></i> Deposits History
-        </span>
-    </div>
 
     <div class="action-card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
@@ -1365,17 +1337,6 @@
 
 <!-- ========== COMPLETED LOANS PANEL ========== -->
 <div id="completed-panel" class="content-panel" style="display:none;">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 0 4px;">
-        <a href="#" onclick="showPanel('dashboard'); return false;" style="display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
-        <span style="color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-            <i class="fas fa-check-circle"></i> Completed Loans
-        </span>
-        <span style="margin-left: auto; color: #4ade80; font-size: 0.9rem; background: rgba(74,222,128,0.1); padding: 4px 16px; border-radius: 20px; border: 1px solid rgba(74,222,128,0.15);">
-            <i class="fas fa-check-circle"></i> Total: {{ completed_loans }}
-        </span>
-    </div>
 
     <div class="action-card">
         <div class="action-title">
@@ -1385,7 +1346,7 @@
             </span>
             {% if completed_loans_list %}
             <span style="margin-left: auto; font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.1); padding:2px 12px; border-radius:12px;">
-                {{ completed_loans_list|length }} records
+                {{ completed_loans_list|length }} Loans
             </span>
             {% endif %}
         </div>
@@ -1812,65 +1773,96 @@
     </div>
 </div>
 
-<style>
-#loansTable {
-    width: 100%;
-    table-layout: auto;
-    font-size: 0.8rem;
-}
-#loansTable thead th {
-    padding: 10px 10px;
-    font-size: 0.68rem;
-    white-space: nowrap;
-}
-#loansTable tbody td {
-    padding: 10px 10px;
-    font-size: 0.82rem;
-    vertical-align: middle;
-}
-#loansTable .badge {
-    font-size: 0.65rem;
-    padding: 2px 8px;
-}
-#loansTable .guarantor-tag {
-    font-size: 0.68rem;
-    padding: 2px 8px;
-    gap: 4px;
-}
-#loansTable .payout-num {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    gap: 5px;
-}
-#loansTable .dropdown-btn {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    font-size: 0.8rem;
-}
-.g-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 9px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-.g-pill.ok {
-    background: rgba(74,222,128,0.1);
-    color: #4ade80;
-    border: 1px solid rgba(74,222,128,0.2);
-}
-.g-pill.pending {
-    background: rgba(245,197,66,0.1);
-    color: #f5c542;
-    border: 1px solid rgba(245,197,66,0.2);
-}
-</style>
 
 <script>
+// ============================================================
+// PANEL HISTORY — tracks panel switches so Back can undo them
+// ============================================================
+
+
+// ============================================================
+// PANEL NAVIGATION — only runs on pages that contain panels
+// ============================================================
+function showPanel(panelName, opts) {
+    // Safety: don't run on non-dashboard pages
+    const hasPanels = document.querySelector('.content-panel');
+    if (!hasPanels) {
+        console.warn('showPanel() called on a page with no panels. Ignoring.');
+        return;
+    }
+
+    opts = opts || {};
+    const fromBack = opts.fromBack === true;
+
+    // Record the panel we're leaving (unless we're popping back to it)
+    if (!fromBack && treasurerCurrentPanel && treasurerCurrentPanel !== panelName) {
+        treasurerPanelHistory.push(treasurerCurrentPanel);
+    }
+
+    // Hide all panels
+    document.querySelectorAll(".content-panel").forEach(panel => {
+        panel.classList.remove("active");
+        panel.style.display = 'none';
+    });
+
+    // Hide legacy panels not carrying the content-panel class
+    document.querySelectorAll("[id$='-panel']").forEach(panel => {
+        if (!panel.classList.contains("content-panel")) {
+            panel.style.display = 'none';
+        }
+    });
+
+    // Show selected panel
+    const selectedPanel = document.getElementById(panelName + "-panel");
+    if (selectedPanel) {
+        selectedPanel.classList.add("active");
+        selectedPanel.style.display = 'block';
+    }
+
+    // Update nav items
+    document.querySelectorAll(".admin-nav-item").forEach(link => {
+        link.classList.remove("active");
+    });
+
+    const selectedLink = document.querySelector(
+        `.admin-nav-item[data-panel="${panelName}"]`
+    );
+    if (selectedLink) {
+        selectedLink.classList.add("active");
+    }
+
+    // Topbar title + subtitle map
+    const titles = {
+        'dashboard':         { title: 'Dashboard',              subtitle: 'Karacel SACCO Financial Management' },
+        'savings':           { title: 'Record Savings Deposit', subtitle: 'Record and manage member savings deposits' },
+        'loan_applications': { title: 'Loan Management',        subtitle: 'Review and manage loan applications' },
+        'repayments':        { title: 'Loan Repayments',        subtitle: 'Record and manage loan repayments' },
+        'members':           { title: 'Member Management',      subtitle: 'Manage SACCO members' },
+        'deposits':          { title: 'Deposits History',       subtitle: 'View all deposits history' },
+        'completed':         { title: 'Completed Loans',        subtitle: 'View all completed loans' },
+        'savings_reports':   { title: 'Savings Reports',        subtitle: 'Generate savings reports' },
+        'chat':              { title: 'Chat Center',            subtitle: 'Chat with members and staff' }
+    };
+
+    const info = titles[panelName];
+    if (info) {
+        const titleText = document.getElementById('topbarTitleText');
+        const subtitle  = document.getElementById('topbarSubtitle');
+        if (titleText) titleText.textContent = info.title;
+        if (subtitle)  subtitle.textContent  = info.subtitle;
+    }
+
+    // Remember where we are
+    treasurerCurrentPanel = panelName;
+
+    // Close sidebar on mobile
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('adminSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+    }
+}
 // ============================================================
 // KAC TARGET — single source of truth
 // ============================================================
@@ -2020,7 +2012,6 @@ function updateSavingsTypeInfo() {
 // ============================================================
 // Get current selected member's KAC balance
 // ============================================================
-const KAC_TARGET = 100000;
 
 function getCurrentKacPaid() {
     const memberSelect = document.querySelector('select[name="user_id"]');
