@@ -4156,59 +4156,131 @@ def admin_manage_users():
         flash(f'Error loading users: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
     
+
+from werkzeug.security import generate_password_hash
+
+# ============================================================
 # ============================================================
 # ADMIN - REGISTER USER
 # ============================================================
 @app.route("/admin/users/register", methods=["GET", "POST"])
 def admin_register_user():
+
+    # Check authorization
     if session.get("role") not in ["admin", "chairperson"]:
-        flash('Access denied. Only Admin or Chairperson can register users.', 'danger')
-        return redirect("/login")
-    
-    if request.method == "POST":
-        full_name = request.form.get('full_name')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        role = request.form.get('role')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        if not full_name or not email or not role:
-            flash('All fields are required', 'danger')
-            return render_template("admin/register-user.html")
-        
-        if password != confirm_password:
-            flash('Passwords do not match', 'danger')
-            return render_template("admin/register-user.html")
-        
-        if len(password) < 6:
-            flash('Password must be at least 6 characters', 'danger')
-            return render_template("admin/register-user.html")
-        
-        sacco_number = f"STAFF-{datetime.now().strftime('%Y%m')}-{role[:3].upper()}{int(datetime.now().timestamp()) % 1000}"
-        
-        db = get_db()
-        
-        existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        flash(
+            "Access denied. Only Admin or Chairperson can register users.",
+            "danger"
+        )
+        return redirect(url_for("login"))
+
+    # --------------------------------------------------------
+    # GET REQUEST
+    # --------------------------------------------------------
+    if request.method == "GET":
+        return render_template("admin/register-user.html")
+
+    # --------------------------------------------------------
+    # POST REQUEST
+    # --------------------------------------------------------
+
+    full_name = request.form.get("full_name", "").strip()
+    email = request.form.get("email", "").strip()
+    phone = request.form.get("phone", "").strip()
+    role = request.form.get("role", "").strip()
+
+    password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
+
+    # Check required fields
+    if not full_name or not email or not role or not password:
+        flash("All fields are required.", "danger")
+        return render_template("admin/register-user.html")
+
+    # Check password confirmation
+    if password != confirm_password:
+        flash("Passwords do not match.", "danger")
+        return render_template("admin/register-user.html")
+
+    # Check password length
+    if len(password) < 6:
+        flash("Password must be at least 6 characters.", "danger")
+        return render_template("admin/register-user.html")
+
+    db = get_db()
+
+    try:
+        # Check duplicate email
+        existing = db.execute(
+            "SELECT id FROM users WHERE email = ?",
+            (email,)
+        ).fetchone()
+
         if existing:
-            flash('Email already registered', 'danger')
-            db.close()
+            flash("Email already registered.", "danger")
             return render_template("admin/register-user.html")
-        
-        cursor = db.cursor()
-        cursor.execute("""
+
+        # Generate SACCO number
+        sacco_number = (
+            f"STAFF-{datetime.now().strftime('%Y%m')}-"
+            f"{role[:3].upper()}"
+            f"{int(datetime.now().timestamp()) % 1000}"
+        )
+
+        # IMPORTANT:
+        # Hash the password BEFORE putting it into SQLite
+        hashed_password = generate_password_hash(password)
+
+        # Insert user
+        db.execute("""
             INSERT INTO users (
-                full_name, email, phone, sacco_number, generate_password_hash(plain_password), role, status, registration_date
-            ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
-        """, (full_name, email, phone, sacco_number, password, role, datetime.now().strftime('%Y-%m-%d')))
-        
+                full_name,
+                email,
+                phone,
+                sacco_number,
+                password,
+                role,
+                status,
+                registration_date
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
+        """, (
+            full_name,
+            email,
+            phone,
+            sacco_number,
+            hashed_password,
+            role,
+            datetime.now().strftime("%Y-%m-%d")
+        ))
+
         db.commit()
+
+        flash(
+            f"User {full_name} registered successfully as {role}! "
+            f"SACCO Number: {sacco_number}",
+            "success"
+        )
+
+        return redirect(url_for("admin_manage_users"))
+
+    except Exception as e:
+        db.rollback()
+
+        print("ERROR REGISTERING USER:", e)
+
+        flash(
+            "An error occurred while registering the user.",
+            "danger"
+        )
+
+        return render_template("admin/register-user.html")
+
+    finally:
         db.close()
-        
-        flash(f'User {full_name} registered successfully as {role}!', 'success')
-        return redirect(url_for('admin_manage_users'))
-    
-    return render_template("admin/register-user.html")
+
+
+
 
 # ============================================================
 # ADMIN - DELETE USER

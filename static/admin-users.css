@@ -1,6 +1,489 @@
 /* ============================================
    ADMIN - USER MANAGEMENT STYLES
    ============================================ */
+    /* ============================================================
+       REGISTER PAGE — refined design
+       ============================================================ */
+
+    /* ---- animations ---- */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    @keyframes floatOrb {
+        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+        50%      { transform: translate(30px, -20px) scale(1.15); opacity: 0.7; }
+    }
+
+    /* ---- page wrapper ---- */
+    .register-page {
+        padding: 28px 32px 56px;
+        max-width: 780px;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    /* ---- main card ---- */
+    .register-card {
+        position: relative;
+        background: linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.015) 55%, rgba(255,255,255,0.03) 100%);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        padding: 44px 44px 36px;
+        animation: fadeInUp 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        overflow: hidden;
+        box-shadow:
+            0 20px 60px -25px rgba(0, 0, 0, 0.6),
+            0 0 0 1px rgba(255, 255, 255, 0.015) inset;
+    }
+
+    /* top shimmer accent */
+    .register-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f5c542, #4ade80, #00e0ff, #f5c542);
+        background-size: 300% 100%;
+        animation: shimmer 5s ease-in-out infinite;
+        border-radius: 24px 24px 0 0;
+    }
+
+    /* soft decorative glow */
+    .register-card::after {
+        content: '';
+        position: absolute;
+        top: -40%; right: -30%;
+        width: 60%; height: 80%;
+        background: radial-gradient(circle, rgba(245,197,66,0.06), transparent 65%);
+        pointer-events: none;
+        animation: floatOrb 14s ease-in-out infinite;
+    }
+
+    /* ---- section heading inside card ---- */
+    .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 32px 0 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .section-heading:first-of-type {
+        margin-top: 0;
+    }
+
+    .section-heading .num {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(245,197,66,0.15), rgba(245,197,66,0.03));
+        border: 1px solid rgba(245,197,66,0.25);
+        color: #f5c542;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .section-heading h3 {
+        margin: 0;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.55);
+    }
+
+    .section-heading .hint {
+        margin-left: auto;
+        font-size: 0.7rem;
+        color: rgba(255,255,255,0.28);
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0.3px;
+    }
+
+    /* ---- form group ---- */
+    .form-group-modern {
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .form-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(255,255,255,0.55);
+        font-size: 0.74rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 8px;
+        transition: color 0.3s ease;
+    }
+
+    .form-label i {
+        color: rgba(255,255,255,0.25);
+        font-size: 0.8rem;
+        transition: color 0.3s ease;
+    }
+
+    .form-group-modern:focus-within .form-label {
+        color: rgba(245,197,66,0.9);
+    }
+
+    .form-group-modern:focus-within .form-label i {
+        color: #f5c542;
+    }
+
+    .form-label .required {
+        color: #ff6b6b;
+        margin-left: 1px;
+    }
+
+    /* ---- inputs ---- */
+    .form-input {
+        width: 100%;
+        padding: 13px 16px;
+        background: rgba(255,255,255,0.035);
+        border: 1.5px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        outline: none;
+        letter-spacing: 0.1px;
+    }
+
+    .form-input:hover {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    .form-input:focus {
+        border-color: rgba(245,197,66,0.6);
+        background: rgba(255,255,255,0.06);
+        box-shadow: 0 0 0 4px rgba(245,197,66,0.08), 0 4px 12px -4px rgba(245,197,66,0.15);
+    }
+
+    .form-input::placeholder {
+        color: rgba(255,255,255,0.22);
+        font-weight: 400;
+    }
+
+    /* ---- select ---- */
+    .form-select {
+        width: 100%;
+        padding: 13px 42px 13px 16px;
+        background: rgba(255,255,255,0.035);
+        border: 1.5px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(245,197,66,0.6)' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+    }
+
+    .form-select:hover {
+        background-color: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    .form-select:focus {
+        border-color: rgba(245,197,66,0.6);
+        box-shadow: 0 0 0 4px rgba(245,197,66,0.08);
+    }
+
+    .form-select option {
+        background: #1a1a2e;
+        color: #fff;
+        padding: 10px;
+    }
+
+    /* ---- role description ---- */
+    .role-description {
+        margin-top: 10px;
+        padding: 14px 18px;
+        background: rgba(255,255,255,0.025);
+        border-radius: 10px;
+        border-left: 3px solid rgba(255,255,255,0.08);
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.4);
+        transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        line-height: 1.5;
+    }
+
+    .role-description.active {
+        background: linear-gradient(90deg, rgba(245,197,66,0.06), rgba(245,197,66,0.01));
+        border-left-color: #f5c542;
+        color: rgba(255,255,255,0.75);
+    }
+
+    .role-description .icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    /* ---- password wrapper ---- */
+    .password-wrapper {
+        position: relative;
+    }
+
+    .password-wrapper .form-input {
+        padding-right: 48px;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.35);
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.25s ease;
+        border-radius: 8px;
+    }
+
+    .password-toggle:hover {
+        color: #f5c542;
+        background: rgba(245,197,66,0.08);
+        border-color: rgba(245,197,66,0.2);
+    }
+
+    /* ---- strength bar ---- */
+    .strength-bar {
+        margin-top: 10px;
+        height: 4px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .strength-bar-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 4px;
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.5s ease;
+        box-shadow: 0 0 10px currentColor;
+    }
+
+    .strength-text {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.72rem;
+        transition: color 0.3s ease;
+        min-height: 18px;
+        letter-spacing: 0.2px;
+    }
+
+    /* ---- match message ---- */
+    .match-message {
+        margin-top: 8px;
+        font-size: 0.75rem;
+        min-height: 20px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.3s ease;
+    }
+
+    /* ---- buttons ---- */
+    .btn-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        flex-wrap: wrap;
+    }
+
+    .btn-register {
+        flex: 1;
+        min-width: 200px;
+        padding: 14px 26px;
+        font-size: 0.92rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #f5c542 0%, #eab308 100%);
+        color: #0a0a14;
+        box-shadow:
+            0 6px 22px -6px rgba(245,197,66,0.45),
+            0 1px 0 rgba(255,255,255,0.2) inset;
+        position: relative;
+        overflow: hidden;
+        letter-spacing: 0.2px;
+    }
+
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 12px 32px -8px rgba(245,197,66,0.55),
+            0 1px 0 rgba(255,255,255,0.25) inset;
+    }
+
+    .btn-register:active {
+        transform: translateY(0);
+    }
+
+    .btn-register::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+        transition: left 0.7s ease;
+    }
+
+    .btn-register:hover::after {
+        left: 100%;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        min-width: 140px;
+        padding: 14px 24px;
+        font-size: 0.92rem;
+        font-weight: 600;
+        border: 1.5px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.03);
+        color: rgba(255,255,255,0.65);
+        text-decoration: none;
+    }
+
+    .btn-cancel:hover {
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+        border-color: rgba(255,255,255,0.15);
+        transform: translateY(-2px);
+    }
+
+    /* ---- note box ---- */
+    .note-box {
+        margin-top: 28px;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, rgba(245,197,66,0.06), rgba(245,197,66,0.015));
+        border-radius: 12px;
+        border-left: 3px solid #f5c542;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        color: rgba(255,255,255,0.5);
+        font-size: 0.82rem;
+        line-height: 1.55;
+    }
+
+    .note-box .icon {
+        color: #f5c542;
+        font-size: 1rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(245,197,66,0.1);
+        border-radius: 8px;
+    }
+
+    .note-box strong {
+        color: rgba(255,255,255,0.75);
+        font-weight: 600;
+    }
+
+    /* ---- flash messages ---- */
+    .flash-message {
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: fadeInUp 0.4s ease;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid transparent;
+    }
+
+    .flash-message.success {
+        background: rgba(74,222,128,0.08);
+        border-color: rgba(74,222,128,0.2);
+        color: #4ade80;
+    }
+
+    .flash-message.error {
+        background: rgba(255,107,107,0.08);
+        border-color: rgba(255,107,107,0.2);
+        color: #ff6b6b;
+    }
+
+    .flash-message.info {
+        background: rgba(245,197,66,0.08);
+        border-color: rgba(245,197,66,0.2);
+        color: #f5c542;
+    }
+
+    /* ---- app bar tweak ---- */
+    .register-app-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+
+    /* ---- responsive ---- */
+    @media (max-width: 640px) {
+        .register-page { padding: 20px 16px 40px; }
+        .register-card { padding: 28px 22px 24px; border-radius: 20px; }
+        .btn-register, .btn-cancel { flex: 1 1 100%; min-width: 0; }
+        .section-heading { margin: 24px 0 16px; }
+    }
 
 /* ============================================
    FORM STYLES (Register & Edit User)
