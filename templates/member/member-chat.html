@@ -492,7 +492,7 @@
     // ============================================================
     // STATE
     // ============================================================
-    const CURRENT_USER_ID = {{ session.user_id }};
+    const CURRENT_USER_ID = Number("{{ session.user_id }}");
     let STAFF = [];
     let currentStaffId = null;
     let pollTimer = null;

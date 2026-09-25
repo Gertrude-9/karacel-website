@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='publicity.css') }}">
 
-
     {% block extra_css %}{% endblock %}
+
+    
 </head>
 <body>
 
@@ -57,46 +58,99 @@
 <!-- ==================== MAIN ==================== -->
 <div class="publicity-main-content">
 
-    <!-- ==================== BACK BUTTON BAR ==================== -->
-    <div class="page-top-bar">
-        <a href="javascript:void(0)" class="back-btn" onclick="goBack()">
+    <!-- ==================== TOP APP NAV BAR ==================== -->
+    <nav class="pub-topbar">
+
+        <!-- Back button -->
+        <button type="button" class="pub-back-btn" onclick="goBack()" title="Go back">
             <i class="fas fa-arrow-left"></i>
             <span>Back</span>
-        </a>
-        <span class="breadcrumb-text">
-            {% block breadcrumb %}Publicity{% endblock %}
-        </span>
-    </div>
+        </button>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-list">
-                {% for category, message in messages %}
-                    <div class="flash {{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }}">
-                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
-                        <span>{{ message }}</span>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+        <div class="pub-topbar-divider"></div>
+
+        <!-- Page title + subtitle -->
+        <div class="pub-topbar-title-block">
+            <h1 class="pub-topbar-title" id="pubTopbarTitle">
+                {% block page_title %}Dashboard{% endblock %}
+            </h1>
+            <span class="pub-topbar-subtitle" id="pubTopbarSubtitle">
+                {% block page_subtitle %}Publicity &amp; Communications{% endblock %}
+            </span>
+        </div>
+
+        <!-- Right-side actions -->
+        <div class="pub-topbar-actions">
+
+            <a href="#" class="pub-topbar-icon-btn" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <span class="pub-badge-dot"></span>
+            </a>
+
+            <a href="{{ url_for('publicity_chat') }}" class="pub-topbar-icon-btn" title="Chat Center">
+                <i class="fas fa-comments"></i>
+            </a>
+
+            <a href="#" class="pub-topbar-profile" title="{{ session.full_name }} — {{ session.role }}">
+                <div class="pub-topbar-avatar">
+                    {{ (session.full_name or 'P')[0] | upper }}
+                </div>
+                <div class="pub-topbar-user-info">
+                    <span class="pub-topbar-user-name">{{ session.full_name }}</span>
+                    <span class="pub-topbar-user-role">{{ session.role }}</span>
+                </div>
+            </a>
+        </div>
+    </nav>
 
     <!-- ==================== PAGE CONTENT ==================== -->
-    {% block content %}{% endblock %}
+    <div class="publicity-page-body">
 
-</div>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-list">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }}">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </div><!-- /.publicity-page-body -->
+
+</div><!-- /.publicity-main-content -->
 
 <script>
-    /**
-     * Smart Back button:
-     * - If there's browser history, go back one page
-     * - Otherwise, redirect to the publicity dashboard
-     */
+    // ============================================================
+    // BACK BUTTON — skip login/root, fall back to dashboard
+    // ============================================================
     function goBack() {
-        if (window.history.length > 1 && document.referrer) {
-            window.history.back();
-        } else {
+        const blockedPaths = ['/login', '/logout', '/', ''];
+
+        const ref = document.referrer || '';
+        if (!ref) {
+            window.location.href = "/publicity/dashboard";
+            return;
+        }
+
+        try {
+            const refPath = new URL(ref).pathname;
+            const isBlocked = blockedPaths.some(p => refPath === p)
+                           || refPath.startsWith('/login')
+                           || refPath.startsWith('/logout');
+
+            if (isBlocked || refPath === window.location.pathname) {
+                window.location.href = "/publicity/dashboard";
+            } else {
+                window.history.back();
+            }
+        } catch (e) {
             window.location.href = "/publicity/dashboard";
         }
     }

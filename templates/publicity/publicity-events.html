@@ -1,25 +1,10 @@
 {% extends "publicity/publicity-base.html" %}
 
 {% block title %}Events{% endblock %}
+{% block page_title %}Events{% endblock %}
+{% block page_subtitle %}Schedule and manage SACCO events{% endblock %}
 
 {% block content %}
-<div class="publicity-events">
-    <!-- Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:30px; background:linear-gradient(135deg, rgba(0,224,255,0.05), rgba(245,197,66,0.02)); border-radius:16px; padding:20px 28px; border:1px solid rgba(255,255,255,0.04);">
-        <div>
-            <h1 style="font-size:1.6rem; font-weight:600; margin:0; display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-calendar-alt" style="color:#00e0ff;"></i> 
-                Events
-            </h1>
-            <p style="color:rgba(255,255,255,0.3); margin:4px 0 0; font-size:0.85rem;">
-                <i class="fas fa-info-circle"></i> Create and manage SACCO events. Members will be notified.
-            </p>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px; background:rgba(0,224,255,0.08); padding:6px 16px; border-radius:30px; border:1px solid rgba(0,224,255,0.08);">
-            <i class="fas fa-calendar-check" style="color:#00e0ff; font-size:0.9rem;"></i>
-            <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">{{ events|length }} events</span>
-        </div>
-    </div>
 
     <!-- Create Event -->
     <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px; margin-bottom:24px;">

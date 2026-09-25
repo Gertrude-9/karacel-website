@@ -30,13 +30,17 @@ DASHBOARD PANEL
             </div>
         </div>
 
-        <div class="stat-card" style="border-left: 3px solid {% if active_loans_balance > 0 %}#ff6b6b{% else %}#4ade80{% endif %};">
+        <div class="stat-card"{% if active_loans_balance > 0 %} style="border-left: 3px solid #ff6b6b;"{% else %} style="border-left: 3px solid #4ade80;"{% endif %}>
             <div class="stat-icon">
                 <i class="fas fa-balance-scale"></i>
             </div>
             <div class="stat-info">
                 <div class="stat-label">Loan Balance</div>
-                <div class="stat-value" style="color: {% if active_loans_balance > 0 %}#ff6b6b{% else %}#4ade80{% endif %};">
+                {% if active_loans_balance > 0 %}
+                <div class="stat-value" style="color: #ff6b6b;">
+                {% else %}
+                <div class="stat-value" style="color: #4ade80;">
+                {% endif %}
                     UGX {{ "{:,.0f}".format(active_loans_balance) if active_loans_balance else '0' }}
                 </div>
                 {% if active_loans_balance == 0 %}
@@ -194,12 +198,15 @@ DASHBOARD PANEL
                 </div>
             </div>
 
-            <!-- ============================================
-                 KAC Row — Fixed: numeric check, not truthy
-                 Shows partial % until fully paid
-                 ============================================ -->
-            {% set kac_val = (kac_amount or 0)|float %}
-            {% set kac_target = kac_annual_fee or 100000 %}
+           {# ============================================
+            KAC Row — rounded to nearest thousand
+            to strip 1-shilling float drift (70001 → 70000)
+            ============================================ #}
+            {% set kac_raw = (kac_amount or 0)|float %}
+            {% set kac_val = ((kac_raw / 1000)|round(0, 'floor') * 1000)|int %}
+            {% set kac_target = (kac_annual_fee or 100000)|int %}
+            {% if kac_val > kac_target %}{% set kac_val = kac_target %}{% endif %}
+            {% set kac_remaining = kac_target - kac_val %}
             {% set kac_pct = (kac_val / kac_target * 100) if kac_target > 0 else 0 %}
 
             <div class="savings-row" style="border-left: 3px solid rgba(255, 143, 177, 0.3); margin-left: 6px; padding-left: 12px; opacity: 0.92;">
@@ -219,10 +226,10 @@ DASHBOARD PANEL
                         </div>
                         {% if kac_val > 0 and kac_val < kac_target %}
                         <div style="margin-top: 6px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; max-width: 180px;">
-                            <div style="height: 100%; width: {{ kac_pct }}%; background: linear-gradient(90deg, #ff8fb1, #cc5577); transition: width 0.3s;"></div>
+                            <progress value="{{ kac_val }}" max="{{ kac_target }}" aria-label="KAC payment progress" style="width: 100%; height: 100%; accent-color: #cc5577;"></progress>
                         </div>
                         <div style="font-size: 0.6rem; color: rgba(255,143,177,0.5); margin-top: 3px;">
-                            Remaining: UGX {{ "{:,.0f}".format(kac_target - kac_val) }}
+                            Remaining: UGX {{ "{:,.0f}".format(kac_remaining) }}
                         </div>
                         {% endif %}
                     </div>
@@ -240,12 +247,12 @@ DASHBOARD PANEL
                     {# ---------- STATUS BADGE ---------- #}
                     {% if kac_val >= kac_target %}
                         <span class="status-pill status-active"
-                              style="background: rgba(74,222,128,0.12); color: #4ade80; border-color: rgba(74,222,128,0.3);">
+                            style="background: rgba(74,222,128,0.12); color: #4ade80; border-color: rgba(74,222,128,0.3);">
                             <i class="fas fa-shield-alt"></i> Covered
                         </span>
                     {% elif kac_val > 0 %}
                         <span class="status-pill"
-                              style="background: rgba(245,197,66,0.12); color: #f5c542; border: 1px solid rgba(245,197,66,0.3);">
+                            style="background: rgba(245,197,66,0.12); color: #f5c542; border: 1px solid rgba(245,197,66,0.3);">
                             <i class="fas fa-hourglass-half"></i> {{ kac_pct|round(0, 'floor')|int }}%
                         </span>
                     {% else %}
@@ -392,35 +399,16 @@ LOANS PANEL
         <div class="transaction-list" style="max-height: 600px; overflow-y: auto;">
             {% if loans %}
                 {% for loan in loans %}
-                <div class="transaction-item" style="border-left-color:
-                    {% if loan.status == 'pending' %}#f5c542
-                    {% elif loan.status == 'approved' %}#00e0ff
-                    {% elif loan.status == 'disbursed' %}#4ade80
-                    {% elif loan.status == 'active' %}#4ade80
-                    {% elif loan.status == 'completed' %}#00ff88
-                    {% else %}#ff6b6b{% endif %};">
+                <div class="transaction-item"{% if loan.status == 'pending' %} style="border-left-color: #f5c542;"{% elif loan.status == 'approved' %} style="border-left-color: #00e0ff;"{% elif loan.status in ['disbursed', 'active'] %} style="border-left-color: #4ade80;"{% elif loan.status == 'completed' %} style="border-left-color: #00ff88;"{% else %} style="border-left-color: #ff6b6b;"{% endif %}>
                     <div class="transaction-left">
-                        <div class="tx-icon" style="background:
-                            {% if loan.status == 'pending' %}rgba(245,197,66,0.06)
-                            {% elif loan.status == 'approved' %}rgba(0,224,255,0.06)
-                            {% elif loan.status == 'disbursed' %}rgba(74,222,128,0.06)
-                            {% elif loan.status == 'active' %}rgba(74,222,128,0.06)
-                            {% elif loan.status == 'completed' %}rgba(0,255,136,0.06)
-                            {% else %}rgba(255,107,107,0.06){% endif %};">
+                        <div class="tx-icon"{% if loan.status == 'pending' %} style="background: rgba(245,197,66,0.06);"{% elif loan.status == 'approved' %} style="background: rgba(0,224,255,0.06);"{% elif loan.status in ['disbursed', 'active'] %} style="background: rgba(74,222,128,0.06);"{% elif loan.status == 'completed' %} style="background: rgba(0,255,136,0.06);"{% else %} style="background: rgba(255,107,107,0.06);"{% endif %}>
                             <i class="fas fa-file-invoice"></i>
                         </div>
                         <div>
                             <div class="recipient">{{ loan.loan_number if loan.loan_number else 'N/A' }}</div>
                             <div class="meta">
                                 <i class="fas fa-calendar-alt"></i> {{ loan.application_date if loan.application_date else 'N/A' }}
-                                • <span style="
-                                    color: {% if loan.status == 'pending' %}#f5c542
-                                    {% elif loan.status == 'approved' %}#00e0ff
-                                    {% elif loan.status == 'disbursed' %}#4ade80
-                                    {% elif loan.status == 'active' %}#4ade80
-                                    {% elif loan.status == 'completed' %}#00ff88
-                                    {% else %}#ff6b6b{% endif %};
-                                ">
+                                • <span{% if loan.status == 'pending' %} style="color: #f5c542;"{% elif loan.status == 'approved' %} style="color: #00e0ff;"{% elif loan.status in ['disbursed', 'active'] %} style="color: #4ade80;"{% elif loan.status == 'completed' %} style="color: #00ff88;"{% else %} style="color: #ff6b6b;"{% endif %}>
                                     <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
                                     {{ loan.status|title if loan.status else 'Unknown' }}
                                 </span>
@@ -428,7 +416,7 @@ LOANS PANEL
                                 • Amount: UGX {{ "{:,.0f}".format(loan.amount) }}
                                 {% endif %}
                                 {% if loan.status in ['approved', 'disbursed', 'active'] %}
-                                    • <span style="color: {% if loan.remaining_balance > 0 %}#ff6b6b{% else %}#4ade80{% endif %};">
+                                    • <span{% if loan.remaining_balance > 0 %} style="color: #ff6b6b;"{% else %} style="color: #4ade80;"{% endif %}>
                                         Balance: UGX {{ "{:,.0f}".format(loan.remaining_balance) }}
                                     </span>
                                 {% endif %}

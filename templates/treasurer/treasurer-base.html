@@ -13,6 +13,7 @@
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="{{ url_for('static', filename='treasurer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <!-- Page-specific styles block -->
     {% block extra_styles %}{% endblock %}
@@ -39,40 +40,47 @@
         </div>
 
         <div class="admin-sidebar-nav">
-            <a href="#" class="admin-nav-item active" data-panel="dashboard" onclick="showPanel('dashboard')">
+            <a href="{{ url_for('treasurer_dashboard') }}"
+               class="admin-nav-item {% if request.endpoint == 'treasurer_dashboard' and not request.args.get('panel') %}active{% endif %}">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="savings" onclick="showPanel('savings')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=savings"
+               class="admin-nav-item {% if request.args.get('panel') == 'savings' %}active{% endif %}">
                 <i class="fas fa-piggy-bank"></i>
                 <span>Deposit Savings</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="loan_applications" onclick="showPanel('loan_applications')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=loan_applications"
+               class="admin-nav-item {% if request.args.get('panel') == 'loan_applications' %}active{% endif %}">
                 <i class="fas fa-file-invoice"></i>
                 <span>Loan Applications</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="repayments" onclick="showPanel('repayments')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=repayments"
+               class="admin-nav-item {% if request.args.get('panel') == 'repayments' %}active{% endif %}">
                 <i class="fas fa-undo-alt"></i>
                 <span>Deposit Repayments</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="members" onclick="showPanel('members')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=members"
+               class="admin-nav-item {% if request.args.get('panel') == 'members' %}active{% endif %}">
                 <i class="fas fa-users"></i>
                 <span>Members</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="deposits" onclick="showPanel('deposits')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=deposits"
+               class="admin-nav-item {% if request.args.get('panel') == 'deposits' %}active{% endif %}">
                 <i class="fas fa-history"></i>
                 <span>Deposits History</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="completed" onclick="showPanel('completed')">
+            <a href="{{ url_for('treasurer_dashboard') }}?panel=completed"
+               class="admin-nav-item {% if request.args.get('panel') == 'completed' %}active{% endif %}">
                 <i class="fas fa-check-circle"></i>
                 <span>Completed Loans</span>
-                {% if completed_loans > 0 %}
+                {% if completed_loans and completed_loans > 0 %}
                 <span style="margin-left: auto; background: #4ade80; color: #0a0a14; padding: 0 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 700; min-width: 20px; text-align: center;">
                     {{ completed_loans }}
                 </span>
@@ -80,12 +88,13 @@
             </a>
 
             <a href="{{ url_for('treasurer_savings_reports') }}"
-            class="admin-nav-item {% if request.endpoint == 'treasurer_savings_reports' %}active{% endif %}">
+               class="admin-nav-item {% if request.endpoint == 'treasurer_savings_reports' %}active{% endif %}">
                 <i class="fas fa-chart-pie"></i>
                 <span>Savings Reports</span>
             </a>
 
-            <a href="{{ url_for('chat_api.treasurer_chat') }}" class="admin-nav-item">
+            <a href="{{ url_for('chat_api.treasurer_chat') }}"
+               class="admin-nav-item {% if 'chat' in (request.endpoint or '') %}active{% endif %}">
                 <i class="fas fa-comments"></i>
                 <span>Chat Center</span>
             </a>
@@ -134,18 +143,12 @@
 
             <div class="topbar-divider"></div>
 
-
-            <div class="topbar-divider"></div>
-
-            <!-- Page title + subtitle -->
+            <!-- Page title + subtitle — populated by child templates via Jinja blocks -->
             <div class="topbar-title-block">
                 <h1 class="topbar-title" id="topbarTitle">
-                    <i class="fas fa-tachometer-alt"></i>
                     <span id="topbarTitleText">{% block page_title %}Dashboard{% endblock %}</span>
                 </h1>
-                <span class="topbar-subtitle" id="topbarSubtitle">
-                    {% block page_subtitle %}Karacel SACCO Financial Management{% endblock %}
-                </span>
+                <span class="topbar-subtitle" id="topbarSubtitle">{% block page_subtitle %}Karacel SACCO Financial Management{% endblock %}</span>
             </div>
 
             <!-- Right side actions -->
@@ -187,41 +190,40 @@
 
 </div><!-- /.admin-wrapper -->
 
-<style>
- 
-</style>
-
 <!-- ============================================
 JAVASCRIPT - Core Navigation
 ============================================ -->
 <script>
-   
+    // ============================================================
+    // STATE
+    // ============================================================
     let treasurerPanelHistory = [];
-let treasurerCurrentPanel = 'dashboard';
+    let treasurerCurrentPanel = 'dashboard';
 
-// ============================================================
-// TOPBAR BACK BUTTON
-//   1. If we're on the dashboard AND we've switched panels → previous panel
-//   2. Otherwise → browser back (previous page)
-//   3. No history at all → treasurer dashboard
-// ============================================================
-function adminGoBack() {
-    const hasPanels = document.querySelector('.content-panel');
+    // ============================================================
+    // TOPBAR BACK BUTTON
+    //   1. On the dashboard with panel history → previous panel
+    //   2. Otherwise → browser back
+    //   3. No history → treasurer dashboard
+    // ============================================================
+    function adminGoBack() {
+        const hasPanels = document.querySelector('.content-panel');
 
-    // Panel stack only applies when we're actually inside the dashboard
-    if (hasPanels && treasurerPanelHistory.length > 0) {
-        const previousPanel = treasurerPanelHistory.pop();
-        showPanel(previousPanel, { fromBack: true });
-        return;
+        if (hasPanels && treasurerPanelHistory.length > 0) {
+            const previousPanel = treasurerPanelHistory.pop();
+            if (typeof showPanel === 'function') {
+                showPanel(previousPanel, { fromBack: true });
+                return;
+            }
+        }
+
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = "{{ url_for('treasurer_dashboard') }}";
+        }
     }
 
-    // Real page → real browser back
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        window.location.href = "{{ url_for('treasurer_dashboard') }}";
-    }
-}
     // ============================================================
     // TOGGLE SIDEBAR (Mobile)
     // ============================================================
@@ -232,7 +234,33 @@ function adminGoBack() {
         overlay.classList.toggle('active');
     }
 
- 
+    // ============================================================
+// FORCE CORRECT TOPBAR TITLE BASED ON PAGE TITLE
+// ============================================================
+document.addEventListener('DOMContentLoaded', function () {
+    // Read the page's own title tag (set by the child template)
+    // and use it to overwrite the topbar title if the topbar
+    // is still showing the default "Dashboard"
+    const pageTitle = document.title.replace('Karacel SACCO | ', '').replace('Karacel SACCO', '').trim();
+    const titleEl = document.getElementById('topbarTitleText');
+    const subtitleEl = document.getElementById('topbarSubtitle');
+
+    if (titleEl && pageTitle && titleEl.textContent.trim() === 'Dashboard' && pageTitle !== 'Dashboard') {
+        titleEl.textContent = pageTitle;
+    }
+
+    // Extra safety: if the URL contains "chat", force "Chat Center"
+    if (window.location.pathname.includes('/chat') || window.location.pathname.includes('chat')) {
+        if (titleEl) titleEl.textContent = 'Chat Center';
+        if (subtitleEl) subtitleEl.textContent = 'Communicate with SACCO members in real time';
+    }
+
+    // If the URL contains "add-member" or "register", force the right title
+    if (window.location.pathname.includes('add-member') || window.location.pathname.includes('register')) {
+        if (titleEl) titleEl.textContent = 'Register New Member';
+        if (subtitleEl) subtitleEl.textContent = 'Add a new member to the SACCO system';
+    }
+});
 </script>
 
 <!-- Page-specific JavaScript block -->

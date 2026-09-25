@@ -54,8 +54,8 @@
 
       <div class="hero-visual">
         <div class="hero-image-wrapper">
-          <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&auto=format&fit=crop&q=80" alt="Community savings and support">
-        </div>
+          <img src="{{ url_for('static', filename='images/karacel image.jpg') }}" alt="Karacel SACCO community">
+      </div>
 
         <div class="hero-stats">
           <div class="stat-item">
@@ -98,7 +98,7 @@
         <!-- Savings Card -->
         <div class="service-card">
           <div class="service-image-wrapper">
-            <img class="service-image" src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&auto=format&fit=crop&q=80" alt="Savings">
+            <img class="service-image" src="{{ url_for('static', filename='images/savings.jpg') }}"  alt="Savings">
             <div class="service-number">01</div>
           </div>
           <div class="service-content">
@@ -112,7 +112,7 @@
         <!-- Credit Card -->
         <div class="service-card">
           <div class="service-image-wrapper">
-            <img class="service-image" src="https://images.unsplash.com/photo-1589758438368-0ad531db3366?w=600&auto=format&fit=crop&q=80" alt="Credit">
+            <img class="service-image" src="{{ url_for('static', filename='images/atm.jpg') }}" alt="Credit">
             <div class="service-number">02</div>
           </div>
           <div class="service-content">
@@ -126,7 +126,7 @@
         <!-- Condolence & Welfare Card -->
         <div class="service-card">
           <div class="service-image-wrapper">
-            <img class="service-image" src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=600&auto=format&fit=crop&q=80" alt="Welfare">
+            <img class="service-image" src="{{ url_for('static', filename='images/support.jpg') }}"  alt="Welfare">
             <div class="service-number">03</div>
           </div>
           <div class="service-content">
@@ -155,7 +155,7 @@
 
       <div class="about-visual">
         <div class="about-image">
-          <img src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&auto=format&fit=crop&q=80" alt="Karacel community support">
+            <img src="{{ url_for('static', filename='images/karacel community.jpg') }}" alt="Karacel SACCO community">
           <div class="about-image-tag">
             <i class="fas fa-hand-holding-heart"></i>
             Community first

@@ -1,25 +1,11 @@
 {% extends "publicity/publicity-base.html" %}
 
 {% block title %}Announcements{% endblock %}
+{% block page_title %}Announcements{% endblock %}
+{% block page_subtitle %}Post and manage SACCO announcements{% endblock %}
 
 {% block content %}
-<div class="publicity-announcements">
-    <!-- Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:30px; background:linear-gradient(135deg, rgba(245,197,66,0.05), rgba(0,224,255,0.02)); border-radius:16px; padding:20px 28px; border:1px solid rgba(255,255,255,0.04);">
-        <div>
-            <h1 style="font-size:1.6rem; font-weight:600; margin:0; display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-bullhorn" style="color:#f5c542;"></i> 
-                Announcements
-            </h1>
-            <p style="color:rgba(255,255,255,0.3); margin:4px 0 0; font-size:0.85rem;">
-                <i class="fas fa-info-circle"></i> Create and manage announcements for all members
-            </p>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px; background:rgba(245,197,66,0.08); padding:6px 16px; border-radius:30px; border:1px solid rgba(245,197,66,0.08);">
-            <i class="fas fa-users" style="color:#f5c542; font-size:0.9rem;"></i>
-            <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">{{ total_members|default(0) }} members</span>
-        </div>
-    </div>
+
 
     <!-- Create Announcement -->
     <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:16px; padding:24px 28px; margin-bottom:24px;">

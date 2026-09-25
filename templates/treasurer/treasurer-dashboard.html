@@ -4,8 +4,6 @@
 
 {% block content %}
 
-
-
 <!-- ========== DASHBOARD PANEL ========== -->
 <div id="dashboard-panel" class="content-panel active">
 
@@ -173,13 +171,11 @@
                     {% if staff_members %}
                     <optgroup label="👔 Staff Members">
                         {% for member in staff_members %}
-                        {# Coerce kac_paid: treat 1/True as fully paid (100,000), else numeric value #}
-                        {% set kp = member.kac_paid or 0 %}
                         <option value="{{ member.id }}"
-                                data-kai="{{ member.kai_shares or 0 }}"
-                                data-ks="{{ member.ks_shares or 0 }}"
-                                data-kac="{% if kp == 1 or kp == True %}100000{% else %}{{ kp|int }}{% endif %}"
-                                data-reg="{{ member.registration_fee_paid or 0 }}"
+                                data-kai="{{ (member.kai_shares or 0) | int }}"
+                                data-ks="{{ (member.ks_shares or 0) | int }}"
+                                data-kac="{{ (member.kac_paid or 0) | int }}"
+                                data-reg="{{ (member.registration_fee_paid or 0) | int }}"
                                 data-role="{{ member.role }}">
                             {{ member.full_name }} ({{ member.sacco_number }}) — {{ member.role|title }}
                         </option>
@@ -190,13 +186,11 @@
                     {% if regular_members %}
                     <optgroup label="👤 Members">
                         {% for member in regular_members %}
-                        {# Coerce kac_paid: treat 1/True as fully paid (100,000), else numeric value #}
-                        {% set kp = member.kac_paid or 0 %}
                         <option value="{{ member.id }}"
-                                data-kai="{{ member.kai_shares or 0 }}"
-                                data-ks="{{ member.ks_shares or 0 }}"
-                                data-kac="{% if kp == 1 or kp == True %}100000{% else %}{{ kp|int }}{% endif %}"
-                                data-reg="{{ member.registration_fee_paid or 0 }}"
+                                data-kai="{{ (member.kai_shares or 0) | int }}"
+                                data-ks="{{ (member.ks_shares or 0) | int }}"
+                                data-kac="{{ (member.kac_paid or 0) | int }}"
+                                data-reg="{{ (member.registration_fee_paid or 0) | int }}"
                                 data-role="{{ member.role }}">
                             {{ member.full_name }} ({{ member.sacco_number }})
                         </option>
@@ -252,8 +246,8 @@
                 </div>
                 <div class="tr-field">
                     <label>Amount (UGX) <span class="req">*</span></label>
-                    <input type="number" step="0.01" name="amount" id="amountInput" required
-                           placeholder="Enter amount" oninput="validateAmount()">
+                    <input type="number" step="1" name="amount" id="amountInput" required
+                           placeholder="Enter amount" oninput="validateSavingsAmount()">
                 </div>
             </div>
 
@@ -369,7 +363,7 @@
 
                             <td style="color:var(--tr-dim);">{{ loop.index }}</td>
                             <td><strong>{{ deposit.full_name }}</strong></td>
-                            
+
                             <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
                                 {{ deposit.sacco_number }}
                             </td>
@@ -800,11 +794,7 @@
             {% if messages %}
                 <div style="padding:16px 22px 0;">
                     {% for category, message in messages %}
-                        <div style="padding:12px 16px; border-radius:8px; font-size:0.85rem; margin-bottom:10px;
-                            {% if category == 'success' %}background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); color:#4ade80;
-                            {% elif category == 'danger' %}background:rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.2); color:#ff6b6b;
-                            {% elif category == 'info' %}background:rgba(0,224,255,0.08); border:1px solid rgba(0,224,255,0.2); color:#00e0ff;
-                            {% else %}background:rgba(245,197,66,0.08); border:1px solid rgba(245,197,66,0.2); color:#f5c542;{% endif %}">
+                        <div class="flash-message flash-{{ category }}" style="padding:12px 16px; border-radius:8px; font-size:0.85rem; margin-bottom:10px;">
                             {{ message }}
                         </div>
                     {% endfor %}
@@ -892,7 +882,7 @@
 
             <div class="tr-field">
                 <label>Amount Paid (UGX) <span class="req">*</span></label>
-                <input type="number" step="0.01" name="amount" id="amountPaid" required
+                <input type="number" step="1" name="amount" id="amountPaid" required
                        placeholder="Enter amount" min="1" oninput="validateAmount()">
                 <div id="amountValidation" class="tr-field-hint" style="display:none;"></div>
             </div>
@@ -1004,7 +994,7 @@
                             data-role="{{ repayment.role or 'member' }}">
                             <td style="color:var(--tr-dim);">{{ loop.index }}</td>
                             <td><strong>{{ repayment.full_name }}</strong></td>
-                            
+
                             <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
                                 {{ repayment.sacco_number }}
                             </td>
@@ -1057,8 +1047,8 @@
                 <i class="fas fa-users"></i> Member Management
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <input type="text" id="searchMembers" placeholder="Search members..." 
-                       onkeyup="filterMembersTable()" 
+                <input type="text" id="searchMembers" placeholder="Search members..."
+                       onkeyup="filterMembersTable()"
                        style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white; width:200px;">
                 <a href="{{ url_for('treasurer_add_members') }}" class="btn-primary">
                     <i class="fas fa-user-plus"></i> Register New Member
@@ -1113,7 +1103,7 @@
 
                             <!-- ===== KAC: installment progress ===== -->
                             <td style="color:#f5c542;">
-                                {% set kac = member.kac_paid or 0 %}
+                                {% set kac = (member.kac_paid or 0) | int %}
                                 {% if kac >= 100000 %}
                                     <span style="color:#4ade80;">✓ 100K</span>
                                 {% elif kac > 0 %}
@@ -1153,7 +1143,7 @@
                     {% else %}
                         <tr>
                             <td colspan="10" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
-                                No members registered yet. 
+                                No members registered yet.
                                 <a href="{{ url_for('treasurer_add_members') }}" style="color: #f5c542; text-decoration: none;">
                                     <i class="fas fa-user-plus"></i> Register one now
                                 </a>
@@ -1212,12 +1202,12 @@
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
-                <input type="text" id="searchDeposits" placeholder="Search by member or SACCO number..." 
-                       onkeyup="filterDeposits()" 
+                <input type="text" id="searchDeposits" placeholder="Search by member or SACCO number..."
+                       onkeyup="filterDeposits()"
                        style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
             <div>
-                <select id="filterMethod" onchange="filterDeposits()" 
+                <select id="filterMethod" onchange="filterDeposits()"
                         style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     <option value="all">All Methods</option>
                     <option value="cash">Cash</option>
@@ -1228,7 +1218,7 @@
                 </select>
             </div>
             <div>
-                <select id="filterDate" onchange="filterDeposits()" 
+                <select id="filterDate" onchange="filterDeposits()"
                         style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     <option value="all">All Time</option>
                     <option value="today">Today</option>
@@ -1263,20 +1253,21 @@
                             <td><strong>{{ deposit.full_name }}</strong></td>
                             <td style="color:#f5c542; font-family:monospace;">{{ deposit.sacco_number }}</td>
                             <td>
-                                <span style="
-                                    {% if deposit.savings_type == 'KAI' %}color:#4ade80;
-                                    {% elif deposit.savings_type == 'KS' %}color:#00e0ff;
-                                    {% elif deposit.savings_type == 'KAC' %}color:#f5c542;
-                                    {% elif deposit.savings_type == 'REGISTRATION' %}color:#ff6b6b;
-                                    {% else %}color:rgba(255,255,255,0.3);{% endif %}
-                                    font-weight:600; font-size:0.7rem;
-                                ">
-                                    {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type or 'KAI' }}{% endif %}
-                                </span>
+                                {% if deposit.savings_type == 'KAI' %}
+                                    <span style="color:#4ade80; font-weight:600; font-size:0.7rem;">KAI</span>
+                                {% elif deposit.savings_type == 'KS' %}
+                                    <span style="color:#00e0ff; font-weight:600; font-size:0.7rem;">KS</span>
+                                {% elif deposit.savings_type == 'KAC' %}
+                                    <span style="color:#f5c542; font-weight:600; font-size:0.7rem;">KAC</span>
+                                {% elif deposit.savings_type == 'REGISTRATION' %}
+                                    <span style="color:#ff6b6b; font-weight:600; font-size:0.7rem;">REG</span>
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.3); font-weight:600; font-size:0.7rem;">{{ deposit.savings_type or 'KAI' }}</span>
+                                {% endif %}
                             </td>
                             <td style="color:#4ade80; font-weight:600;">{{ "{:,.0f}".format(deposit.amount) }}</td>
                             <td>
-                                <span class="badge 
+                                <span class="badge
                                     {% if deposit.payment_method == 'cash' %}success
                                     {% elif deposit.payment_method == 'bank_transfer' %}info
                                     {% elif deposit.payment_method == 'mobile_money' %}warning
@@ -1350,15 +1341,15 @@
             </span>
             {% endif %}
         </div>
-        
+
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
             <div style="flex:1; min-width:200px;">
-                <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..." 
-                       onkeyup="filterCompletedLoans()" 
+                <input type="text" id="searchCompletedLoans" placeholder="Search by member or loan number..."
+                       onkeyup="filterCompletedLoans()"
                        style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
             </div>
             <div>
-                <select id="filterCompletedDate" onchange="filterCompletedLoans()" 
+                <select id="filterCompletedDate" onchange="filterCompletedLoans()"
                         style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     <option value="all">All Time</option>
                     <option value="today">Today</option>
@@ -1426,7 +1417,7 @@
                         <td colspan="8" style="padding:12px 16px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; color:rgba(255,255,255,0.3); font-size:0.8rem;">
                                 <span>
-                                    <i class="fas fa-check-circle" style="color:#4ade80;"></i> 
+                                    <i class="fas fa-check-circle" style="color:#4ade80;"></i>
                                     Total Completed: <strong style="color:#4ade80;">{{ completed_loans_list|length if completed_loans_list else 0 }}</strong>
                                 </span>
                                 <span>
@@ -1480,7 +1471,7 @@
         <div style="margin-bottom:16px;">
             <p style="color:rgba(255,255,255,0.5); font-size:0.9rem;">Are you sure you want to approve this loan application?</p>
             <p style="color:rgba(255,255,255,0.3); font-size:0.85rem; margin-top:8px;">
-                <i class="fas fa-info-circle"></i> 
+                <i class="fas fa-info-circle"></i>
                 <span id="approveLoanInfo">This will mark the loan as approved and it will be reviewed by the Chairman.</span>
             </p>
         </div>
@@ -1510,15 +1501,15 @@
                 cursor:pointer;
                 font-size:1.2rem;
                 transition:all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
+            " onmouseover="this.style.background='rgba(255,255,255,0.08)'"
                onmouseout="this.style.background='rgba(255,255,255,0.04)'">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
+
         <form id="editMemberForm" onsubmit="submitEditMember(event)">
             <input type="hidden" id="editMemberId" name="member_id">
-            
+
             <div id="editRoleDisplay" style="display:none; background:rgba(255,255,255,0.03); border-radius:8px; padding:8px 14px; margin-bottom:14px; border-left:3px solid #f5c542;">
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <i class="fas fa-user-tie" style="color:#f5c542;"></i>
@@ -1529,42 +1520,42 @@
                     </span>
                 </div>
             </div>
-            
+
             <!-- Personal Information -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-user" style="color:#4ade80;"></i> Personal Information
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:12px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Full Name <span style="color:#ff6b6b;">*</span></label>
-                    <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name" 
+                    <input type="text" id="editFullName" name="full_name" required class="form-control" placeholder="Enter full name"
                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:12px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">SACCO Number <span style="color:#ff6b6b;">*</span></label>
-                    <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001" 
+                    <input type="text" id="editSaccoNumber" name="sacco_number" required class="form-control" placeholder="e.g. SACCO001"
                            style="text-transform:uppercase; width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                 </div>
-                
+
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Phone <span style="color:#ff6b6b;">*</span></label>
-                        <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number" 
+                        <input type="tel" id="editPhone" name="phone" required class="form-control" placeholder="Enter phone number"
                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     </div>
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Email</label>
-                        <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address" 
+                        <input type="email" id="editEmail" name="email" class="form-control" placeholder="Enter email address"
                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     </div>
                 </div>
-                
+
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Gender</label>
-                        <select id="editGender" name="gender" class="form-control" 
+                        <select id="editGender" name="gender" class="form-control"
                                 style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                             <option value="">Select Gender</option>
                             <option value="Male">Male</option>
@@ -1574,66 +1565,66 @@
                     </div>
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Date of Birth</label>
-                        <input type="date" id="editDob" name="dob" class="form-control" 
+                        <input type="date" id="editDob" name="dob" class="form-control"
                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     </div>
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:12px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Address</label>
-                    <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address" 
+                    <input type="text" id="editAddress" name="address" class="form-control" placeholder="Enter address"
                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                 </div>
             </div>
-            
+
             <!-- Next of Kin -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-users" style="color:#00e0ff;"></i> Next of Kin
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:12px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Next of Kin Name</label>
-                    <input type="text" id="editNextOfKin" name="next_of_kin_name" class="form-control" placeholder="Enter next of kin name" 
+                    <input type="text" id="editNextOfKin" name="next_of_kin_name" class="form-control" placeholder="Enter next of kin name"
                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                 </div>
-                
+
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Next of Kin Phone</label>
-                        <input type="tel" id="editNextOfKinPhone" name="next_of_kin_phone" class="form-control" placeholder="Enter phone number" 
+                        <input type="tel" id="editNextOfKinPhone" name="next_of_kin_phone" class="form-control" placeholder="Enter phone number"
                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     </div>
                     <div class="form-group" style="margin-bottom:12px;">
                         <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Relationship</label>
-                        <input type="text" id="editRelationship" name="relationship" class="form-control" placeholder="e.g. Spouse, Brother" 
+                        <input type="text" id="editRelationship" name="relationship" class="form-control" placeholder="e.g. Spouse, Brother"
                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                     </div>
                 </div>
             </div>
-            
+
             <!-- Savings & Shares -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-piggy-bank" style="color:#f5c542;"></i> Savings & Shares
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(74,222,128,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-chart-line"></i> KAI Shares (UGX 100,000 each)
                     </label>
-                    <input type="number" id="editKaiShares" name="kai_shares" class="form-control" placeholder="Number of KAI shares" 
+                    <input type="number" id="editKaiShares" name="kai_shares" min="0" step="1" class="form-control" placeholder="Number of KAI shares"
                            style="width:100%; padding:10px 14px; background:rgba(74,222,128,0.03); border:1px solid rgba(74,222,128,0.1); border-radius:8px; color:white;">
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(0,224,255,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-piggy-bank"></i> KS Shares (UGX 10,000 each)
                     </label>
-                    <input type="number" id="editKsShares" name="ks_shares" class="form-control" placeholder="Number of KS shares" 
+                    <input type="number" id="editKsShares" name="ks_shares" min="0" step="1" class="form-control" placeholder="Number of KS shares"
                            style="width:100%; padding:10px 14px; background:rgba(0,224,255,0.03); border:1px solid rgba(0,224,255,0.1); border-radius:8px; color:white;">
                 </div>
-                
+
                 <!-- KAC INSTALLMENT INPUT -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(245,197,66,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
@@ -1655,7 +1646,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(255,107,107,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-file-invoice"></i> Registration Fee Paid (UGX 20,000)
@@ -1667,24 +1658,24 @@
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(255,255,255,0.4); font-size:0.8rem; display:block; margin-bottom:4px;">Status</label>
-                    <select id="editStatus" name="status" class="form-control" 
+                    <select id="editStatus" name="status" class="form-control"
                             style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                         <option value="suspended">Suspended</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom:0;">
                     <label style="color:rgba(255,255,255,0.3); font-size:0.7rem; display:block; margin-bottom:4px;">Registration Date</label>
-                    <input type="text" id="editRegistrationDate" class="form-control" readonly 
+                    <input type="text" id="editRegistrationDate" class="form-control" readonly
                            style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:8px; color:rgba(255,255,255,0.3); cursor:not-allowed;">
                 </div>
             </div>
-            
+
             <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end; padding-top:16px; border-top:1px solid rgba(255,255,255,0.04);">
                 <button type="button" onclick="closeEditModal()" style="
                     padding:10px 24px;
@@ -1776,15 +1767,24 @@
 
 <script>
 // ============================================================
-// PANEL HISTORY — tracks panel switches so Back can undo them
+// PANEL HISTORY — fallback if base template didn't declare them
 // ============================================================
-
+if (typeof window.treasurerPanelHistory === 'undefined') {
+    window.treasurerPanelHistory = [];
+}
+if (typeof window.treasurerCurrentPanel === 'undefined') {
+    window.treasurerCurrentPanel = 'dashboard';
+}
 
 // ============================================================
-// PANEL NAVIGATION — only runs on pages that contain panels
+// KAC TARGET — single source of truth (integer)
+// ============================================================
+const KAC_TARGET = 100000;
+
+// ============================================================
+// PANEL NAVIGATION
 // ============================================================
 function showPanel(panelName, opts) {
-    // Safety: don't run on non-dashboard pages
     const hasPanels = document.querySelector('.content-panel');
     if (!hasPanels) {
         console.warn('showPanel() called on a page with no panels. Ignoring.');
@@ -1794,44 +1794,36 @@ function showPanel(panelName, opts) {
     opts = opts || {};
     const fromBack = opts.fromBack === true;
 
-    // Record the panel we're leaving (unless we're popping back to it)
-    if (!fromBack && treasurerCurrentPanel && treasurerCurrentPanel !== panelName) {
-        treasurerPanelHistory.push(treasurerCurrentPanel);
+    if (!fromBack && window.treasurerCurrentPanel && window.treasurerCurrentPanel !== panelName) {
+        window.treasurerPanelHistory.push(window.treasurerCurrentPanel);
     }
 
-    // Hide all panels
     document.querySelectorAll(".content-panel").forEach(panel => {
         panel.classList.remove("active");
         panel.style.display = 'none';
     });
 
-    // Hide legacy panels not carrying the content-panel class
     document.querySelectorAll("[id$='-panel']").forEach(panel => {
         if (!panel.classList.contains("content-panel")) {
             panel.style.display = 'none';
         }
     });
 
-    // Show selected panel
     const selectedPanel = document.getElementById(panelName + "-panel");
     if (selectedPanel) {
         selectedPanel.classList.add("active");
         selectedPanel.style.display = 'block';
     }
 
-    // Update nav items
     document.querySelectorAll(".admin-nav-item").forEach(link => {
         link.classList.remove("active");
     });
 
-    const selectedLink = document.querySelector(
-        `.admin-nav-item[data-panel="${panelName}"]`
-    );
+    const selectedLink = document.querySelector(`.admin-nav-item[data-panel="${panelName}"]`);
     if (selectedLink) {
         selectedLink.classList.add("active");
     }
 
-    // Topbar title + subtitle map
     const titles = {
         'dashboard':         { title: 'Dashboard',              subtitle: 'Karacel SACCO Financial Management' },
         'savings':           { title: 'Record Savings Deposit', subtitle: 'Record and manage member savings deposits' },
@@ -1852,27 +1844,23 @@ function showPanel(panelName, opts) {
         if (subtitle)  subtitle.textContent  = info.subtitle;
     }
 
-    // Remember where we are
-    treasurerCurrentPanel = panelName;
+    window.treasurerCurrentPanel = panelName;
 
-    // Close sidebar on mobile
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('adminSidebar');
         const overlay = document.getElementById('sidebarOverlay');
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('active');
     }
 }
-// ============================================================
-// KAC TARGET — single source of truth
-// ============================================================
-const KAC_TARGET = 100000;
 
 // ============================================================
-// SAVINGS TYPE INFO (with KAC installment logic)
+// SAVINGS TYPE INFO
 // ============================================================
 function updateSavingsTypeInfo() {
-    const type = document.getElementById('savingsType').value;
+    const typeEl = document.getElementById('savingsType');
+    if (!typeEl) return;
+    const type = typeEl.value;
     const infoDiv = document.getElementById('savingsTypeInfo');
     const detailsDiv = document.getElementById('savingsTypeDetails');
     const shareInput = document.getElementById('numberOfShares');
@@ -1938,71 +1926,13 @@ function updateSavingsTypeInfo() {
         if (amountInput) {
             amountInput.placeholder = `Enter amount (min UGX ${typeInfo[type].share.toLocaleString()})`;
             amountInput.min = typeInfo[type].hasShares ? typeInfo[type].share : 1;
-        }
-
-        if (amountInput) {
-            amountInput.oninput = function() {
-                const amount = parseFloat(this.value) || 0;
-                const sharePrice = typeInfo[type].share;
-                const validation = document.getElementById('savingsAmountValidation');
-
-                // KAI / KS
-                if (typeInfo[type].hasShares && amount > 0 && sharePrice > 0) {
-                    const shares = Math.floor(amount / sharePrice);
-                    if (shareInput) shareInput.value = shares > 0 ? shares : '';
-                    if (validation) {
-                        validation.style.display = 'block';
-                        if (amount % sharePrice !== 0) {
-                            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be a multiple of UGX ${sharePrice.toLocaleString()}</span>`;
-                        } else if (shares === 0) {
-                            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount must be at least UGX ${sharePrice.toLocaleString()}</span>`;
-                        } else {
-                            validation.innerHTML = `<span style="color:#4ade80;">✅ ${shares} share${shares > 1 ? 's' : ''} at UGX ${sharePrice.toLocaleString()} each</span>`;
-                        }
-                    }
-                }
-                // KAC installments
-                else if (type === 'KAC' && amount > 0) {
-                    if (shareInput) shareInput.value = 'N/A';
-                    const currentPaid = getCurrentKacPaid();
-                    const remaining = KAC_TARGET - currentPaid;
-                    const newTotal = currentPaid + amount;
-                    if (validation) {
-                        validation.style.display = 'block';
-                        if (currentPaid >= KAC_TARGET) {
-                            validation.innerHTML = `<span style="color:#4ade80;">✅ Already fully paid (UGX 100,000)</span>`;
-                        } else if (amount > remaining) {
-                            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount exceeds remaining (UGX ${remaining.toLocaleString()})</span>`;
-                        } else if (newTotal === KAC_TARGET) {
-                            validation.innerHTML = `<span style="color:#4ade80;">✅ This completes the KAC payment (100,000)</span>`;
-                        } else {
-                            validation.innerHTML = `<span style="color:#f5c542;">⏳ Partial: UGX ${newTotal.toLocaleString()} / 100,000 — remaining UGX ${(KAC_TARGET - newTotal).toLocaleString()}</span>`;
-                        }
-                    }
-                }
-                // REGISTRATION
-                else if (!typeInfo[type].hasShares && amount > 0) {
-                    if (shareInput) shareInput.value = 'N/A';
-                    if (validation) {
-                        validation.style.display = 'block';
-                        if (amount === sharePrice) {
-                            validation.innerHTML = `<span style="color:#4ade80;">✅ Correct amount for ${typeInfo[type].name}</span>`;
-                        } else {
-                            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be exactly UGX ${sharePrice.toLocaleString()}</span>`;
-                        }
-                    }
-                } else {
-                    if (shareInput) shareInput.value = '';
-                    if (validation) validation.style.display = 'none';
-                }
-            };
+            amountInput.step = 1;
         }
     } else {
         infoDiv.style.display = 'none';
         if (amountInput) {
             amountInput.placeholder = 'Enter amount';
             amountInput.min = 0;
-            amountInput.oninput = function() {};
         }
         if (shareInput) shareInput.value = '';
         if (sharesGroup) sharesGroup.style.display = 'block';
@@ -2010,21 +1940,82 @@ function updateSavingsTypeInfo() {
 }
 
 // ============================================================
-// Get current selected member's KAC balance
+// VALIDATE SAVINGS AMOUNT (integer math, called on input)
 // ============================================================
+function validateSavingsAmount() {
+    const amountInput = document.getElementById('amountInput');
+    const savingsType = document.getElementById('savingsType');
+    const shareInput = document.getElementById('numberOfShares');
+    const validation = document.getElementById('savingsAmountValidation');
+    if (!amountInput || !savingsType || !validation) return;
 
+    const type = savingsType.value;
+    const amount = parseInt(amountInput.value, 10) || 0;
+
+    const sharePrices = { 'KAI': 100000, 'KS': 10000, 'KAC': 100000, 'REGISTRATION': 20000 };
+    const sharePrice = sharePrices[type];
+
+    if (!type) {
+        validation.style.display = 'none';
+        return;
+    }
+
+    if (type === 'KAI' || type === 'KS') {
+        if (amount <= 0) { validation.style.display = 'none'; return; }
+        const shares = Math.floor(amount / sharePrice);
+        if (shareInput) shareInput.value = shares > 0 ? shares : '';
+        validation.style.display = 'block';
+        if (amount % sharePrice !== 0) {
+            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be a multiple of UGX ${sharePrice.toLocaleString()}</span>`;
+        } else if (shares === 0) {
+            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount must be at least UGX ${sharePrice.toLocaleString()}</span>`;
+        } else {
+            validation.innerHTML = `<span style="color:#4ade80;">✅ ${shares} share${shares > 1 ? 's' : ''} at UGX ${sharePrice.toLocaleString()} each</span>`;
+        }
+    }
+    else if (type === 'KAC') {
+        if (shareInput) shareInput.value = 'N/A';
+        if (amount <= 0) { validation.style.display = 'none'; return; }
+        const currentPaid = Math.round(getCurrentKacPaid());
+        const remaining = KAC_TARGET - currentPaid;
+        const newTotal = currentPaid + amount;
+        validation.style.display = 'block';
+        if (currentPaid >= KAC_TARGET) {
+            validation.innerHTML = `<span style="color:#4ade80;">✅ Already fully paid (UGX 100,000)</span>`;
+        } else if (amount > remaining) {
+            validation.innerHTML = `<span style="color:#ff6b6b;">⚠️ Amount exceeds remaining (UGX ${remaining.toLocaleString()})</span>`;
+        } else if (newTotal === KAC_TARGET) {
+            validation.innerHTML = `<span style="color:#4ade80;">✅ This completes the KAC payment (100,000)</span>`;
+        } else {
+            validation.innerHTML = `<span style="color:#f5c542;">⏳ Partial: UGX ${newTotal.toLocaleString()} / 100,000 — remaining UGX ${(KAC_TARGET - newTotal).toLocaleString()}</span>`;
+        }
+    }
+    else if (type === 'REGISTRATION') {
+        if (shareInput) shareInput.value = 'N/A';
+        if (amount <= 0) { validation.style.display = 'none'; return; }
+        validation.style.display = 'block';
+        if (amount === sharePrice) {
+            validation.innerHTML = `<span style="color:#4ade80;">✅ Correct amount for Registration Fee</span>`;
+        } else {
+            validation.innerHTML = `<span style="color:#f5c542;">⚠️ Amount should be exactly UGX ${sharePrice.toLocaleString()}</span>`;
+        }
+    }
+}
+
+// ============================================================
+// Get current selected member's KAC balance (integer)
+// ============================================================
 function getCurrentKacPaid() {
     const memberSelect = document.querySelector('select[name="user_id"]');
     if (!memberSelect || !memberSelect.value) return 0;
     const opt = memberSelect.options[memberSelect.selectedIndex];
     if (!opt) return 0;
     const raw = parseInt(opt.dataset.kac, 10) || 0;
-    // Clamp between 0 and the target
     return Math.max(0, Math.min(KAC_TARGET, raw));
 }
 
 // ============================================================
-// UPDATE MEMBER SAVINGS DISPLAY (with KAC progress)
+// UPDATE MEMBER SAVINGS DISPLAY
 // ============================================================
 function updateMemberSavings(memberId) {
     const select = document.querySelector('select[name="user_id"]');
@@ -2038,10 +2029,10 @@ function updateMemberSavings(memberId) {
         if (displayDiv) displayDiv.style.display = 'none';
         return;
     }
-    const kai = parseInt(option.dataset.kai) || 0;
-    const ks  = parseInt(option.dataset.ks) || 0;
-    const kac = parseFloat(option.dataset.kac) || 0;
-    const reg = parseInt(option.dataset.reg) || 0;
+    const kai = parseInt(option.dataset.kai, 10) || 0;
+    const ks  = parseInt(option.dataset.ks, 10) || 0;
+    const kac = parseInt(option.dataset.kac, 10) || 0;
+    const reg = parseInt(option.dataset.reg, 10) || 0;
 
     document.getElementById('displayKAI').textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
     document.getElementById('displayKS').textContent  = ks  + ' shares (UGX ' + (ks  * 10000).toLocaleString() + ')';
@@ -2077,7 +2068,7 @@ function updateMemberSavings(memberId) {
 function updateEditKacProgress() {
     const input = document.getElementById('editKacPaid');
     if (!input) return;
-    let paid = parseFloat(input.value) || 0;
+    let paid = parseInt(input.value, 10) || 0;
     if (paid < 0) paid = 0;
     if (paid > KAC_TARGET) { paid = KAC_TARGET; input.value = paid; }
 
@@ -2111,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================================
-// DROPDOWN / MODAL / LOAN / MEMBER / REPAYMENT / FILTER / etc.
+// DROPDOWN
 // ============================================================
 function toggleDropdown(loanId) {
     const dropdown = document.getElementById('dropdown-' + loanId);
@@ -2148,12 +2139,23 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllDrop
 window.addEventListener('scroll', closeAllDropdowns);
 window.addEventListener('resize', closeAllDropdowns);
 
+// ============================================================
+// VIEW / LOAN ACTIONS
+// ============================================================
 function viewLoan(loanId) { if (loanId) window.location.href = '/treasurer/loan/view/' + loanId; }
 function viewMember(memberId) { if (memberId) window.location.href = '/treasurer/members/view/' + memberId; }
 
 let pendingLoanId = null;
-function openApproveModal(loanId) { if (!loanId) return; pendingLoanId = loanId; document.getElementById('approveModal').style.display = 'flex'; }
-function closeApproveModal() { document.getElementById('approveModal').style.display = 'none'; }
+function openApproveModal(loanId) {
+    if (!loanId) return;
+    pendingLoanId = loanId;
+    const m = document.getElementById('approveModal');
+    if (m) m.style.display = 'flex';
+}
+function closeApproveModal() {
+    const m = document.getElementById('approveModal');
+    if (m) m.style.display = 'none';
+}
 function confirmApprove() {
     if (!pendingLoanId) return;
     fetch('/treasurer/loan/action/' + pendingLoanId, {
@@ -2168,17 +2170,21 @@ function confirmApprove() {
 function openRejectModal(loanId) {
     if (!loanId) return;
     pendingLoanId = loanId;
-    document.getElementById('rejectModal').style.display = 'flex';
-    document.getElementById('rejectReason').value = '';
-    setTimeout(() => document.getElementById('rejectReason').focus(), 100);
+    const m = document.getElementById('rejectModal');
+    if (m) m.style.display = 'flex';
+    const r = document.getElementById('rejectReason');
+    if (r) { r.value = ''; setTimeout(() => r.focus(), 100); }
 }
 function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
+    const m = document.getElementById('rejectModal');
+    if (m) m.style.display = 'none';
     pendingLoanId = null;
-    document.getElementById('rejectReason').value = '';
+    const r = document.getElementById('rejectReason');
+    if (r) r.value = '';
 }
 function confirmReject() {
-    const reason = document.getElementById('rejectReason').value.trim();
+    const reasonEl = document.getElementById('rejectReason');
+    const reason = reasonEl ? reasonEl.value.trim() : '';
     if (!pendingLoanId) return;
     if (!reason) { alert('❌ Please provide a reason.'); return; }
     if (confirm('❌ Reject this loan application?')) {
@@ -2205,16 +2211,26 @@ function disburseLoan(loanId) {
     }
 }
 
-// ===== FILTER FUNCTIONS =====
+// ============================================================
+// FILTERS
+// ============================================================
 function filterLoansTable() {
-    const term = document.getElementById('searchLoans').value.toLowerCase().trim();
-    const status = document.getElementById('filterLoanStatus').value;
+    const searchEl = document.getElementById('searchLoans');
+    const statusEl = document.getElementById('filterLoanStatus');
+    const roleEl   = document.getElementById('filterLoanRole');
+    if (!searchEl || !statusEl) return;
+    const term = searchEl.value.toLowerCase().trim();
+    const status = statusEl.value;
+    const roleFilter = roleEl ? roleEl.value : 'all';
     let visible = 0;
     document.querySelectorAll('#loansTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
         const text = row.textContent.toLowerCase();
         const rowStatus = row.dataset.status || '';
-        const match = (!term || text.includes(term)) && (status === 'all' || rowStatus === status);
+        const rowRole = row.dataset.role || 'member';
+        let match = (!term || text.includes(term)) && (status === 'all' || rowStatus === status);
+        if (match && roleFilter === 'staff' && rowRole === 'member') match = false;
+        if (match && roleFilter === 'member' && rowRole !== 'member') match = false;
         row.style.display = match ? '' : 'none';
         if (match) visible++;
     });
@@ -2225,17 +2241,21 @@ function filterSavingsByMember() {
     const term = (document.getElementById('searchSavingsMember')?.value || '').toLowerCase();
     const type = document.getElementById('filterSavingsType')?.value || 'all';
     const method = document.getElementById('filterSavingsMethod')?.value || 'all';
+    const role = document.getElementById('filterSavingsRole')?.value || 'all';
     document.querySelectorAll('#savingsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
         const name = row.getAttribute('data-member-name') || '';
         const sacco = row.getAttribute('data-sacco') || '';
         const rowType = row.getAttribute('data-type') || '';
         const rowMethod = row.getAttribute('data-method') || '';
+        const rowRole = row.getAttribute('data-role') || 'member';
         const text = (name + ' ' + sacco).toLowerCase();
         let show = true;
         if (term && !text.includes(term)) show = false;
         if (show && type !== 'all' && rowType !== type) show = false;
         if (show && method !== 'all' && rowMethod !== method) show = false;
+        if (show && role === 'staff' && rowRole === 'member') show = false;
+        if (show && role === 'member' && rowRole !== 'member') show = false;
         row.style.display = show ? '' : 'none';
     });
 }
@@ -2243,17 +2263,21 @@ function filterRepaymentsByMember() {
     const term = (document.getElementById('searchRepaymentMember')?.value || '').toLowerCase();
     const memberId = document.getElementById('filterRepaymentMember')?.value || 'all';
     const method = document.getElementById('filterRepaymentMethod')?.value || 'all';
+    const role = document.getElementById('filterRepaymentRole')?.value || 'all';
     document.querySelectorAll('#repaymentsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
         const name = row.getAttribute('data-member-name') || '';
         const sacco = row.getAttribute('data-sacco') || '';
         const rowId = row.getAttribute('data-member-id') || '';
         const rowMethod = row.getAttribute('data-method') || '';
+        const rowRole = row.getAttribute('data-role') || 'member';
         const text = (name + ' ' + sacco).toLowerCase();
         let show = true;
         if (term && !text.includes(term)) show = false;
         if (show && memberId !== 'all' && rowId !== memberId) show = false;
         if (show && method !== 'all' && rowMethod !== method) show = false;
+        if (show && role === 'staff' && rowRole === 'member') show = false;
+        if (show && role === 'member' && rowRole !== 'member') show = false;
         row.style.display = show ? '' : 'none';
     });
 }
@@ -2302,7 +2326,9 @@ function filterCompletedLoans() {
     });
 }
 
-// ===== EXPORT CSV =====
+// ============================================================
+// EXPORT CSV
+// ============================================================
 function exportDepositsCSV() {
     const table = document.getElementById('depositsTable');
     if (!table) return;
@@ -2320,7 +2346,9 @@ function exportDepositsCSV() {
     URL.revokeObjectURL(url);
 }
 
-// ===== PAGINATION =====
+// ============================================================
+// PAGINATION
+// ============================================================
 let currentPage = 1;
 const rowsPerPage = 20;
 function paginateTable() {
@@ -2339,11 +2367,14 @@ function nextPage() {
     if (currentPage < Math.ceil(rows.length / rowsPerPage)) { currentPage++; paginateTable(); }
 }
 
-// ===== GUARANTOR MODAL =====
+// ============================================================
+// GUARANTOR MODAL
+// ============================================================
 function viewGuarantorDetails(id) {
     if (!id) return;
     const modal = document.getElementById('guarantorDetailsModal');
     const content = document.getElementById('guarantorDetailsContent');
+    if (!modal || !content) return;
     modal.style.display = 'flex';
     content.innerHTML = `<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#f5c542;"></i><p style="color:rgba(255,255,255,0.5);margin-top:12px;">Loading...</p></div>`;
     fetch('/treasurer/guarantor/details/' + id)
@@ -2354,9 +2385,13 @@ function viewGuarantorDetails(id) {
         })
         .catch(() => content.innerHTML = `<div style="text-align:center;padding:40px;color:#ff6b6b;">Error loading details.</div>`);
 }
-function closeGuarantorModal() { document.getElementById('guarantorDetailsModal').style.display = 'none'; }
+function closeGuarantorModal() {
+    const m = document.getElementById('guarantorDetailsModal');
+    if (m) m.style.display = 'none';
+}
 function renderGuarantorDetails(data) {
     const content = document.getElementById('guarantorDetailsContent');
+    if (!content) return;
     const g = data.guarantor;
     const loans = data.guaranteed_loans || [];
     let html = `
@@ -2413,34 +2448,19 @@ function escapeHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
-// Close modals on Esc / outside click
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeApproveModal(); closeRejectModal(); closeGuarantorModal(); closeEditModal(); closeDeleteModal(); closeAllDropdowns(); }
-});
-document.addEventListener('click', e => {
-    ['approveModal','rejectModal','guarantorDetailsModal','editMemberModal','deleteConfirmModal'].forEach(id => {
-        const m = document.getElementById(id);
-        if (m && e.target === m) {
-            if (id === 'approveModal') closeApproveModal();
-            else if (id === 'rejectModal') closeRejectModal();
-            else if (id === 'guarantorDetailsModal') closeGuarantorModal();
-            else if (id === 'editMemberModal') closeEditModal();
-            else if (id === 'deleteConfirmModal') closeDeleteModal();
-        }
-    });
-});
-
-// ===== REPAYMENT FORM =====
+// ============================================================
+// REPAYMENT FORM
+// ============================================================
 const loanSelect = document.getElementById('loanSelect');
 const memberSearch = document.getElementById('memberSearch');
 const noLoansMessage = document.getElementById('noLoansMessage');
 const loanDetails = document.getElementById('loanDetails');
-const amountInput = document.getElementById('amountPaid');
+const amountPaidInput = document.getElementById('amountPaid');
 const allOptions = Array.from(loanSelect ? loanSelect.options : []);
 let currentLoanData = {};
 
 function filterMembers() {
-    if (!memberSearch) return;
+    if (!memberSearch || !loanSelect) return;
     const term = memberSearch.value.toLowerCase().trim();
     let hasVisible = false;
     allOptions.forEach(o => {
@@ -2462,7 +2482,7 @@ function clearSearch() {
     filterMembers();
 }
 function updateLoanDetails() {
-    if (!loanDetails) return;
+    if (!loanDetails || !loanSelect) return;
     const sel = loanSelect.options[loanSelect.selectedIndex];
     if (!sel || !sel.value) { loanDetails.style.display = 'none'; return; }
     const balance = parseFloat(sel.getAttribute('data-balance')) || 0;
@@ -2487,10 +2507,15 @@ function updateLoanDetails() {
         ? '<span style="color:#ff6b6b;">🔴 ' + daysOverdue + ' days overdue</span>'
         : '<span style="color:#4ade80;">✅ On time</span>';
     loanDetails.style.display = 'block';
-    if (amountInput) { amountInput.value = ''; document.getElementById('amountValidation').innerHTML = ''; updateAllocation(0); }
+    if (amountPaidInput) {
+        amountPaidInput.value = '';
+        const v = document.getElementById('amountValidation');
+        if (v) v.innerHTML = '';
+        updateAllocation(0);
+    }
 }
 function validateAmount() {
-    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+    const amount = parseFloat(amountPaidInput ? amountPaidInput.value : 0) || 0;
     updateAllocation(amount);
 }
 function updateAllocation(amount) {
@@ -2515,10 +2540,13 @@ function updateAllocation(amount) {
     }
 }
 
-// ===== EDIT MEMBER =====
+// ============================================================
+// EDIT MEMBER
+// ============================================================
 function editMember(memberId) {
     if (!memberId) return;
     const modal = document.getElementById('editMemberModal');
+    if (!modal) return;
     modal.style.display = 'flex';
     document.getElementById('editMemberId').value = memberId;
     const btn = document.getElementById('editMemberSubmitBtn');
@@ -2540,10 +2568,9 @@ function editMember(memberId) {
                 document.getElementById('editNextOfKin').value = m.next_of_kin_name || '';
                 document.getElementById('editNextOfKinPhone').value = m.next_of_kin_phone || '';
                 document.getElementById('editRelationship').value = m.relationship || '';
-                document.getElementById('editKaiShares').value = m.kai_shares || 0;
-                document.getElementById('editKsShares').value = m.ks_shares || 0;
-                // KAC is a number now
-                document.getElementById('editKacPaid').value = parseFloat(m.kac_paid) || 0;
+                document.getElementById('editKaiShares').value = parseInt(m.kai_shares, 10) || 0;
+                document.getElementById('editKsShares').value = parseInt(m.ks_shares, 10) || 0;
+                document.getElementById('editKacPaid').value = parseInt(m.kac_paid, 10) || 0;
                 updateEditKacProgress();
                 document.getElementById('editRegFeePaid').checked = !!m.registration_fee_paid;
                 document.getElementById('editRegistrationDate').value = m.registration_date || '';
@@ -2597,9 +2624,9 @@ function submitEditMember(e) {
         next_of_kin_phone: fd.get('next_of_kin_phone') || '',
         relationship: fd.get('relationship') || '',
         status: fd.get('status') || 'active',
-        kai_shares: parseInt(fd.get('kai_shares')) || 0,
-        ks_shares: parseInt(fd.get('ks_shares')) || 0,
-        kac_paid: Math.min(KAC_TARGET, Math.max(0, parseFloat(fd.get('kac_paid')) || 0)),
+        kai_shares: parseInt(fd.get('kai_shares'), 10) || 0,
+        ks_shares: parseInt(fd.get('ks_shares'), 10) || 0,
+        kac_paid: Math.min(KAC_TARGET, Math.max(0, parseInt(fd.get('kac_paid'), 10) || 0)),
         registration_fee_paid: fd.get('registration_fee_paid') ? 1 : 0
     };
 
@@ -2620,7 +2647,8 @@ function deleteMember(id, name) {
     document.getElementById('deleteConfirmModal').style.display = 'flex';
 }
 function closeDeleteModal() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
+    const m = document.getElementById('deleteConfirmModal');
+    if (m) m.style.display = 'none';
     document.getElementById('deleteMemberId').value = '';
 }
 function confirmDeleteMember() {
@@ -2638,18 +2666,33 @@ function confirmDeleteMember() {
         .finally(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
-// ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-    paginateTable();
-    const urlParams = new URLSearchParams(window.location.search);
-    const loanId = urlParams.get('loan_id');
-    if (loanId && loanSelect) { loanSelect.value = loanId; updateLoanDetails(); }
-    if (amountInput) amountInput.addEventListener('input', validateAmount);
-    const editId = urlParams.get('edit');
-    if (editId) setTimeout(() => editMember(editId), 500);
+// Close modals on Esc / outside click
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeApproveModal();
+        closeRejectModal();
+        closeGuarantorModal();
+        if (typeof closeEditModal === 'function') closeEditModal();
+        if (typeof closeDeleteModal === 'function') closeDeleteModal();
+        closeAllDropdowns();
+    }
+});
+document.addEventListener('click', e => {
+    ['approveModal','rejectModal','guarantorDetailsModal','editMemberModal','deleteConfirmModal'].forEach(id => {
+        const m = document.getElementById(id);
+        if (m && e.target === m) {
+            if (id === 'approveModal') closeApproveModal();
+            else if (id === 'rejectModal') closeRejectModal();
+            else if (id === 'guarantorDetailsModal') closeGuarantorModal();
+            else if (id === 'editMemberModal') closeEditModal();
+            else if (id === 'deleteConfirmModal') closeDeleteModal();
+        }
+    });
 });
 
-// ===== COPY PAYOUT =====
+// ============================================================
+// COPY PAYOUT
+// ============================================================
 function copyPayout(text, el) {
     if (!text) return;
     const done = () => {
@@ -2674,6 +2717,27 @@ function fallbackCopyPayout(text, done) {
     try { document.execCommand('copy'); done(); } catch (e) {}
     document.body.removeChild(ta);
 }
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    paginateTable();
+    const urlParams = new URLSearchParams(window.location.search);
+    const loanId = urlParams.get('loan_id');
+    if (loanId && loanSelect) { loanSelect.value = loanId; updateLoanDetails(); }
+    if (amountPaidInput) amountPaidInput.addEventListener('input', validateAmount);
+    const editId = urlParams.get('edit');
+    if (editId) setTimeout(() => editMember(editId), 500);
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const panel = urlParams.get('panel') || 'dashboard';
+    if (typeof showPanel === 'function') {
+        showPanel(panel, { fromBack: true });
+    }
+});
 </script>
 
 {% endblock %}

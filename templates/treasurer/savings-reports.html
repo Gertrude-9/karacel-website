@@ -212,6 +212,8 @@
                             <td style="padding: 8px 12px; font-weight: 500; color: rgba(255,255,255,0.9);">
                                 {{ member.full_name }}
                                 {% if member.role and member.role != 'member' %}
+                                {% if member.role == 'admin' %}{% set role_badge_bg = '#ff6b6b' %}{% elif member.role == 'chairperson' %}{% set role_badge_bg = '#f5c542' %}{% elif member.role == 'treasurer' %}{% set role_badge_bg = '#4ade80' %}{% elif member.role == 'secretary' %}{% set role_badge_bg = '#00e0ff' %}{% elif member.role == 'publicity' %}{% set role_badge_bg = '#a78bfa' %}{% else %}{% set role_badge_bg = 'transparent' %}{% endif %}
+                                {% set role_badge_color = '#fff' if member.role in ['admin', 'chairperson'] else '#0a0a14' %}
                                 <span style="
                                     display: inline-block;
                                     padding: 1px 8px;
@@ -220,8 +222,8 @@
                                     font-weight: 700;
                                     text-transform: uppercase;
                                     margin-left: 6px;
-                                    background: {% if member.role == 'admin' %}#ff6b6b{% elif member.role == 'chairperson' %}#f5c542{% elif member.role == 'treasurer' %}#4ade80{% elif member.role == 'secretary' %}#00e0ff{% elif member.role == 'publicity' %}#a78bfa{% endif %};
-                                    color: {% if member.role == 'admin' or member.role == 'chairperson' %}#fff{% else %}#0a0a14{% endif %};
+                                    background: var(--role-badge-bg);
+                                    color: var(--role-badge-color);
                                 ">
                                     {{ member.role|title }}
                                 </span>
@@ -259,7 +261,7 @@
                                         {{ (kac_val / 1000)|int }}K / 100K
                                     </span>
                                     <div style="margin-top: 4px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;">
-                                        <div style="height: 100%; width: {{ kac_pct }}%; background: linear-gradient(90deg, #f5c542, #eab308); transition: width 0.3s;"></div>
+                                        <div data-width="{{ kac_pct|default(0)|int }}%" style="height: 100%; width: attr(data-width percentage); background: linear-gradient(90deg, #f5c542, #eab308); transition: width 0.3s;"></div>
                                     </div>
                                     <span style="font-size: 0.55rem; color: rgba(245,197,66,0.4); display: block; margin-top: 2px;">
                                         remaining {{ "{:,.0f}".format(100000 - kac_val) }}

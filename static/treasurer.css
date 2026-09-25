@@ -2632,3 +2632,549 @@ select.form-control {
     color: #f5c542;
     border: 1px solid rgba(245,197,66,0.2);
 }
+
+/* ============================================================
+   REGISTER MEMBER PAGE
+   ============================================================ */
+
+.register-page {
+    padding: 24px 32px 48px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+/* ---------- App bar ---------- */
+.register-page .app-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding: 0 4px;
+}
+
+.register-page .app-bar-left h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--tr-text, #e8e2d4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+}
+
+.register-page .app-bar-left h2 i {
+    color: var(--tr-yellow, #f5c542);
+    font-size: 1.25rem;
+}
+
+.register-page .app-bar-left span {
+    display: block;
+    color: rgba(255,255,255,0.45);
+    font-size: 0.82rem;
+    padding-left: 34px;
+}
+
+.register-page .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
+}
+
+.register-page .btn-secondary:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(245,197,66,0.3);
+    color: #f5c542;
+}
+
+/* ---------- Flash messages ---------- */
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 18px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+    animation: flashFadeUp 0.4s ease;
+}
+
+@keyframes flashFadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.flash-message.flash-success {
+    background: rgba(74,222,128,0.08);
+    border-color: rgba(74,222,128,0.2);
+    color: #4ade80;
+}
+
+.flash-message.flash-danger,
+.flash-message.flash-error {
+    background: rgba(255,107,107,0.08);
+    border-color: rgba(255,107,107,0.2);
+    color: #ff6b6b;
+}
+
+.flash-message.flash-warning {
+    background: rgba(245,197,66,0.08);
+    border-color: rgba(245,197,66,0.2);
+    color: #f5c542;
+}
+
+.flash-message.flash-info {
+    background: rgba(0,224,255,0.08);
+    border-color: rgba(0,224,255,0.2);
+    color: #00e0ff;
+}
+
+/* ---------- Registration card ---------- */
+.registration-card {
+    position: relative;
+    background: linear-gradient(160deg,
+        rgba(20, 40, 60, 0.65),
+        rgba(10, 26, 43, 0.85));
+    border: 1px solid rgba(201, 169, 97, 0.2);
+    border-radius: 24px;
+    padding: 40px 44px 36px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow:
+        0 30px 60px -25px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(201, 169, 97, 0.04) inset;
+    overflow: hidden;
+}
+
+.registration-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        transparent, #c9a961, #e0bf75, #c9a961, transparent);
+    background-size: 200% 100%;
+    animation: goldShimmer 5s ease-in-out infinite;
+    border-radius: 24px 24px 0 0;
+}
+
+@keyframes goldShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+}
+
+.registration-card::after {
+    content: "";
+    position: absolute;
+    width: 260px; height: 260px;
+    right: -120px; top: -120px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(201, 169, 97, 0.14), transparent 70%);
+    pointer-events: none;
+}
+
+/* ---------- Form section ---------- */
+.form-section {
+    position: relative;
+    z-index: 2;
+    padding-bottom: 28px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid rgba(201, 169, 97, 0.1);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 20px;
+}
+
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f5c542;
+    letter-spacing: -0.2px;
+}
+
+.form-section-title i {
+    width: 34px; height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(245,197,66,0.18), rgba(245,197,66,0.05));
+    border: 1px solid rgba(245,197,66,0.25);
+    color: #f5c542;
+    font-size: 0.85rem;
+}
+
+/* ---------- Grid ---------- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px 22px;
+}
+
+.form-grid .full-width {
+    grid-column: 1 / -1;
+}
+
+/* ---------- Field ---------- */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+}
+
+.form-group label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.5);
+    transition: color 0.25s ease;
+}
+
+.form-group:focus-within label {
+    color: #f5c542;
+}
+
+.form-group label .req {
+    color: #ff6b6b;
+    margin-left: 2px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(6, 19, 34, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 11px;
+    color: #e8e2d4;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.22);
+}
+
+.form-group input:hover,
+.form-group select:hover {
+    background: rgba(6, 19, 34, 0.7);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    background: rgba(6, 19, 34, 0.85);
+    border-color: rgba(245, 197, 66, 0.55);
+    box-shadow: 0 0 0 4px rgba(245, 197, 66, 0.08),
+                0 4px 12px -4px rgba(245, 197, 66, 0.2);
+    transform: translateY(-1px);
+}
+
+.form-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f5c542' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.form-group select option {
+    background: #0a1a2b;
+    color: #e8e2d4;
+    padding: 8px;
+}
+
+.form-group .hint {
+    display: block;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.28);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+/* ---------- Fee box ---------- */
+.fee-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg,
+        rgba(255, 107, 107, 0.06),
+        rgba(255, 107, 107, 0.02));
+    border: 1px solid rgba(255, 107, 107, 0.18);
+    border-radius: 14px;
+    flex-wrap: wrap;
+    position: relative;
+    overflow: hidden;
+}
+
+.fee-box::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #ff6b6b, #cc4444);
+}
+
+.fee-box-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.fee-box-icon {
+    color: #ff6b6b;
+    font-size: 1.2rem;
+}
+
+.fee-box-label {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.fee-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.fee-toggle:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 107, 107, 0.3);
+}
+
+.fee-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #ff6b6b;
+    cursor: pointer;
+}
+
+.fee-toggle span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.fee-toggle:has(input:checked) {
+    background: rgba(74, 222, 128, 0.1);
+    border-color: rgba(74, 222, 128, 0.35);
+}
+
+.fee-toggle:has(input:checked) span {
+    color: #4ade80;
+}
+
+.fee-box-hint {
+    flex-basis: 100%;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.3);
+    padding-top: 6px;
+    border-top: 1px dashed rgba(255, 107, 107, 0.15);
+    margin-top: 4px;
+}
+
+/* ---------- Terms list ---------- */
+.terms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.term-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.term-check:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(245, 197, 66, 0.2);
+}
+
+.term-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin-top: 2px;
+    accent-color: #f5c542;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.term-check label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.55;
+    cursor: pointer;
+}
+
+.term-check label a {
+    color: #f5c542;
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(245, 197, 66, 0.4);
+    transition: all 0.2s ease;
+}
+
+.term-check label a:hover {
+    color: #eab308;
+    border-bottom-color: #f5c542;
+}
+
+.term-check:has(input:checked) {
+    background: rgba(74, 222, 128, 0.05);
+    border-color: rgba(74, 222, 128, 0.2);
+}
+
+/* ---------- Submit button ---------- */
+.btn-register {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #f5c542, #eab308);
+    background-size: 200% 100%;
+    border: none;
+    border-radius: 14px;
+    color: #0a1a2b;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+        0 12px 28px -8px rgba(245, 197, 66, 0.45),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-register i {
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-register:hover {
+    background-position: 100% 0;
+    transform: translateY(-2px);
+    box-shadow:
+        0 20px 40px -10px rgba(245, 197, 66, 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.35) inset;
+}
+
+.btn-register:hover i {
+    transform: scale(1.15);
+}
+
+.btn-register:active {
+    transform: translateY(0);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+    .register-page {
+        padding: 18px 16px 36px;
+    }
+
+    .registration-card {
+        padding: 26px 22px 24px;
+        border-radius: 20px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .form-grid .full-width {
+        grid-column: 1;
+    }
+
+    .register-page .app-bar-left h2 {
+        font-size: 1.22rem;
+    }
+
+    .register-page .app-bar-left span {
+        font-size: 0.75rem;
+        padding-left: 0;
+    }
+
+    .fee-box-left {
+        min-width: 0;
+    }
+
+    .fee-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .registration-card {
+        padding: 22px 18px;
+        border-radius: 18px;
+    }
+
+    .form-section-title {
+        font-size: 0.95rem;
+    }
+
+    .form-section-title i {
+        width: 30px;
+        height: 30px;
+        font-size: 0.78rem;
+    }
+
+    .btn-register {
+        padding: 14px 20px;
+        font-size: 0.95rem;
+    }
+}
