@@ -14,7 +14,7 @@ from io import BytesIO
 
 
 app = Flask(__name__)
-app.secret_key = "karacel_secret_key"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 
 # Configuration for file uploads
 app.config['UPLOAD_FOLDER'] = 'uploads'
