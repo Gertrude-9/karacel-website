@@ -620,10 +620,9 @@ def create_database():
         cursor.execute("""
             INSERT INTO users (
                 full_name, gender, dob, sacco_number,
-                email, phone, address,
-                generate_password_hash(plain_password), role, status,
-                savings_balance,
-                next_of_kin_name, relationship, next_of_kin_phone
+                email, phone, address, password, role, status,
+                savings_balance, next_of_kin_name, relationship,
+                next_of_kin_phone
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
