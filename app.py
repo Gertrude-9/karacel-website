@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request, redirect, session, flash, url_for
+from flask import Flask, jsonify, render_template, request, redirect, session, flash, url_for, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
@@ -11,7 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
-from flask import send_file
+
 
 app = Flask(__name__)
 app.secret_key = "karacel_secret_key"
@@ -20,7 +20,6 @@ app.secret_key = "karacel_secret_key"
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-# Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'receipts'), exist_ok=True)
 
@@ -30,6 +29,139 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+# ============================================================
+# ARCHIVE TABLES — created automatically on startup
+# ============================================================
+def ensure_archive_tables():
+    """Creates archive tables if they don't exist yet. Safe to run every boot."""
+    conn = sqlite3.connect("sacco.db")
+    cur = conn.cursor()
+
+    cur.executescript("""
+    CREATE TABLE IF NOT EXISTS archived_years (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year_label TEXT NOT NULL UNIQUE,
+        started_at TEXT NOT NULL,
+        closed_at TEXT NOT NULL,
+        closed_by INTEGER,
+        notes TEXT,
+        total_members INTEGER DEFAULT 0,
+        total_staff_kept INTEGER DEFAULT 0,
+        total_kai_shares INTEGER DEFAULT 0,
+        total_ks_shares INTEGER DEFAULT 0,
+        total_savings REAL DEFAULT 0,
+        total_kac_collected REAL DEFAULT 0,
+        total_registration_fees REAL DEFAULT 0,
+        total_loans_disbursed REAL DEFAULT 0,
+        total_loans_repaid REAL DEFAULT 0,
+        total_interest_collected REAL DEFAULT 0,
+        total_outstanding_loans REAL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS archived_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archive_id INTEGER NOT NULL,
+        original_user_id INTEGER NOT NULL,
+        sacco_number TEXT,
+        full_name TEXT,
+        email TEXT,
+        phone TEXT,
+        role TEXT,
+        gender TEXT,
+        dob TEXT,
+        address TEXT,
+        next_of_kin_name TEXT,
+        next_of_kin_phone TEXT,
+        relationship TEXT,
+        kai_shares INTEGER DEFAULT 0,
+        ks_shares INTEGER DEFAULT 0,
+        kac_paid REAL DEFAULT 0,
+        registration_fee_paid INTEGER DEFAULT 0,
+        savings_balance REAL DEFAULT 0,
+        total_loans_taken REAL DEFAULT 0,
+        total_loans_repaid REAL DEFAULT 0,
+        outstanding_balance REAL DEFAULT 0,
+        interest_paid REAL DEFAULT 0,
+        status TEXT,
+        registration_date TEXT,
+        archived_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS archived_savings_deposits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archive_id INTEGER NOT NULL,
+        original_deposit_id INTEGER,
+        user_id INTEGER,
+        sacco_number TEXT,
+        full_name TEXT,
+        savings_type TEXT,
+        amount REAL,
+        shares INTEGER,
+        deposit_date TEXT,
+        payment_method TEXT,
+        receipt_number TEXT,
+        notes TEXT,
+        created_at TEXT,
+        archived_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS archived_loans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archive_id INTEGER NOT NULL,
+        original_loan_id INTEGER,
+        user_id INTEGER,
+        sacco_number TEXT,
+        full_name TEXT,
+        loan_number TEXT,
+        amount REAL,
+        status TEXT,
+        application_date TEXT,
+        approval_date TEXT,
+        disbursement_date TEXT,
+        completed_date TEXT,
+        total_interest_accrued REAL,
+        interest_paid REAL,
+        principal_paid REAL,
+        current_balance REAL,
+        rejection_reason TEXT,
+        archived_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS archived_repayments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archive_id INTEGER NOT NULL,
+        original_repayment_id INTEGER,
+        loan_id INTEGER,
+        user_id INTEGER,
+        sacco_number TEXT,
+        full_name TEXT,
+        loan_number TEXT,
+        amount REAL,
+        interest_paid REAL,
+        principal_paid REAL,
+        payment_date TEXT,
+        payment_method TEXT,
+        transaction_ref TEXT,
+        notes TEXT,
+        archived_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_arch_users_archive ON archived_users(archive_id);
+    CREATE INDEX IF NOT EXISTS idx_arch_dep_archive   ON archived_savings_deposits(archive_id);
+    CREATE INDEX IF NOT EXISTS idx_arch_loans_archive ON archived_loans(archive_id);
+    CREATE INDEX IF NOT EXISTS idx_arch_rep_archive   ON archived_repayments(archive_id);
+    """)
+
+    conn.commit()
+    conn.close()
+    print("✅ Archive tables ready.")
+
+
+# Run once at startup — safe, uses IF NOT EXISTS
+try:
+    ensure_archive_tables()
+except Exception as e:
+    print(f"⚠️ Could not create archive tables: {e}")
 
 # ============================================================
 # REGISTER CHAT BLUEPRINT
@@ -6171,6 +6303,371 @@ def api_publicity_chat_send():
     db.commit()
     db.close()
     return jsonify({"success": True, "message": "Sent"})
+
+# ============================================================
+# YEAR-END ROLLOVER ROUTES
+# Paste these in app.py (before `if __name__ == "__main__":`)
+# ============================================================
+
+from datetime import datetime
+
+
+# ------------------------------------------------------------
+# PREVIEW — safe, read-only. Shows what WILL be archived.
+# ------------------------------------------------------------
+@app.route("/admin/year-end/preview")
+def year_end_preview():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    if session.get("role") not in ("admin", "chairperson"):
+        flash("Only Admin or Chairperson can run year-end.", "danger")
+        return redirect(url_for("treasurer_dashboard"))
+
+    db = get_db()
+    try:
+        # ----- Members to be cleared (non-staff) -----
+        members = db.execute("""
+            SELECT * FROM users
+            WHERE role NOT IN ('admin','chairperson','treasurer','secretary','publicity')
+               OR role IS NULL
+        """).fetchall()
+
+        # ----- Staff who will be kept -----
+        staff = db.execute("""
+            SELECT id, sacco_number, full_name, email, role
+            FROM users
+            WHERE role IN ('admin','chairperson','treasurer','secretary','publicity')
+        """).fetchall()
+
+        # ----- Totals -----
+        kai_total = sum((m["kai_shares"] or 0) for m in members)
+        ks_total  = sum((m["ks_shares"]  or 0) for m in members)
+        kac_total = sum((m["kac_paid"]   or 0) for m in members)
+        reg_total = sum(20000 for m in members if m["registration_fee_paid"])
+        total_savings = (kai_total * 100000) + (ks_total * 10000)
+
+        loans_count      = db.execute("SELECT COUNT(*) AS c FROM loans").fetchone()["c"]
+        deposits_count   = db.execute("SELECT COUNT(*) AS c FROM savings_deposits").fetchone()["c"]
+        repayments_count = db.execute("SELECT COUNT(*) AS c FROM repayments").fetchone()["c"]
+
+        return render_template(
+            "admin/year-end-preview.html",
+            members_count=len(members),
+            staff_count=len(staff),
+            staff=staff,
+            kai_total=kai_total,
+            ks_total=ks_total,
+            kac_total=kac_total,
+            reg_total=reg_total,
+            total_savings=total_savings,
+            loans_count=loans_count,
+            deposits_count=deposits_count,
+            repayments_count=repayments_count
+        )
+    except Exception as e:
+        flash(f"Preview error: {e}", "danger")
+        return redirect(url_for("treasurer_dashboard"))
+    finally:
+        db.close()
+
+
+# ------------------------------------------------------------
+# EXECUTE — the actual rollover
+# ------------------------------------------------------------
+@app.route("/admin/year-end/execute", methods=["POST"])
+def year_end_execute():
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Permission denied"}), 403
+
+    data = request.get_json() or {}
+    end_date   = (data.get("end_date") or "").strip()
+    year_label = (data.get("year_label") or "").strip()
+    notes      = (data.get("notes") or "").strip()
+    confirm    = (data.get("confirm_text") or "").strip()
+
+    if confirm != "RESET":
+        return jsonify({"success": False, "message": "Type RESET to confirm."}), 400
+    if not end_date:
+        return jsonify({"success": False, "message": "End date is required."}), 400
+
+    try:
+        datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"success": False, "message": "Invalid date format."}), 400
+
+    if not year_label:
+        year_label = end_date[:4]
+
+    db = get_db()
+    try:
+        # ---- Guard: unique archive ----
+        exists = db.execute(
+            "SELECT id FROM archived_years WHERE year_label = ?", (year_label,)
+        ).fetchone()
+        if exists:
+            return jsonify({
+                "success": False,
+                "message": f"An archive for '{year_label}' already exists."
+            }), 400
+
+        db.execute("BEGIN")
+        now = datetime.utcnow().isoformat(timespec="seconds")
+
+        # ---- Who stays / goes ----
+        staff_ids_rows = db.execute("""
+            SELECT id FROM users
+            WHERE role IN ('admin','chairperson','treasurer','secretary','publicity')
+        """).fetchall()
+        staff_ids = [r["id"] for r in staff_ids_rows]
+
+        member_ids_rows = db.execute("""
+            SELECT id FROM users
+            WHERE role NOT IN ('admin','chairperson','treasurer','secretary','publicity')
+               OR role IS NULL
+        """).fetchall()
+        member_ids = [r["id"] for r in member_ids_rows]
+
+        # ---- Totals ----
+        shares = db.execute("""
+            SELECT
+                COALESCE(SUM(kai_shares), 0) AS kai,
+                COALESCE(SUM(ks_shares), 0)  AS ks,
+                COALESCE(SUM(kac_paid), 0)   AS kac,
+                COALESCE(SUM(CASE WHEN registration_fee_paid=1 THEN 1 ELSE 0 END),0) AS reg_count
+            FROM users
+        """).fetchone()
+
+        total_savings = shares["kai"] * 100000 + shares["ks"] * 10000
+
+        loans = db.execute("""
+            SELECT
+                COALESCE(SUM(amount),0) AS disbursed,
+                COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
+            FROM loans
+        """).fetchone()
+
+        interest = db.execute(
+            "SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments"
+        ).fetchone()
+
+        # ---- 1. Archive header ----
+        cur = db.execute("""
+            INSERT INTO archived_years (
+                year_label, started_at, closed_at, closed_by, notes,
+                total_members, total_staff_kept,
+                total_kai_shares, total_ks_shares,
+                total_savings, total_kac_collected, total_registration_fees,
+                total_loans_disbursed, total_loans_repaid,
+                total_interest_collected, total_outstanding_loans
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            year_label, end_date, now, session["user_id"], notes,
+            len(member_ids), len(staff_ids),
+            shares["kai"], shares["ks"],
+            total_savings, shares["kac"], shares["reg_count"] * 20000,
+            loans["disbursed"], loans["repaid"], interest["x"], 0
+        ))
+        archive_id = cur.lastrowid
+
+        # ---- 2. Archive all users ----
+        for u in db.execute("SELECT * FROM users").fetchall():
+            kai = u["kai_shares"] or 0
+            ks  = u["ks_shares"]  or 0
+            savings = kai * 100000 + ks * 10000
+
+            ls = db.execute("""
+                SELECT COALESCE(SUM(amount),0) AS taken,
+                       COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
+                FROM loans WHERE user_id = ?
+            """, (u["id"],)).fetchone()
+
+            ist = db.execute(
+                "SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments WHERE user_id=?",
+                (u["id"],)
+            ).fetchone()
+
+            db.execute("""
+                INSERT INTO archived_users (
+                    archive_id, original_user_id, sacco_number, full_name,
+                    email, phone, role, gender, dob, address,
+                    next_of_kin_name, next_of_kin_phone, relationship,
+                    kai_shares, ks_shares, kac_paid, registration_fee_paid,
+                    savings_balance, total_loans_taken, total_loans_repaid,
+                    outstanding_balance, interest_paid, status,
+                    registration_date, archived_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                archive_id, u["id"], u["sacco_number"], u["full_name"],
+                u["email"], u["phone"], u["role"], u["gender"], u["dob"], u["address"],
+                u["next_of_kin_name"], u["next_of_kin_phone"], u["relationship"],
+                kai, ks, u["kac_paid"] or 0, u["registration_fee_paid"] or 0,
+                savings, ls["taken"], ls["repaid"], ls["taken"] - ls["repaid"],
+                ist["x"], u["status"], u["registration_date"], now
+            ))
+
+        # ---- 3. Archive deposits ----
+        for d in db.execute("""
+            SELECT sd.*, u.sacco_number AS us, u.full_name AS un
+            FROM savings_deposits sd LEFT JOIN users u ON u.id = sd.user_id
+        """).fetchall():
+            db.execute("""
+                INSERT INTO archived_savings_deposits (
+                    archive_id, original_deposit_id, user_id, sacco_number, full_name,
+                    savings_type, amount, shares, deposit_date,
+                    payment_method, receipt_number, notes, created_at, archived_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                archive_id, d["id"], d["user_id"], d["us"], d["un"],
+                d["savings_type"], d["amount"],
+                d["shares"] if "shares" in d.keys() else None,
+                d["deposit_date"], d["payment_method"], d["receipt_number"],
+                d["notes"], d["created_at"] if "created_at" in d.keys() else None, now
+            ))
+
+        # ---- 4. Archive loans ----
+        for l in db.execute("""
+            SELECT l.*, u.sacco_number AS us, u.full_name AS un
+            FROM loans l LEFT JOIN users u ON u.id = l.user_id
+        """).fetchall():
+            db.execute("""
+                INSERT INTO archived_loans (
+                    archive_id, original_loan_id, user_id, sacco_number, full_name,
+                    loan_number, amount, status, application_date, approval_date,
+                    disbursement_date, completed_date, total_interest_accrued,
+                    interest_paid, principal_paid, current_balance,
+                    rejection_reason, archived_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                archive_id, l["id"], l["user_id"], l["us"], l["un"],
+                l["loan_number"], l["amount"], l["status"],
+                l["application_date"], l["approval_date"],
+                l["disbursement_date"], l["completed_date"],
+                l["total_interest_accrued"], l["interest_paid"],
+                l["principal_paid"], l["current_balance"],
+                l["rejection_reason"], now
+            ))
+
+        # ---- 5. Archive repayments ----
+        for r in db.execute("""
+            SELECT r.*, u.sacco_number AS us, u.full_name AS un, l.loan_number AS ln
+            FROM repayments r
+            LEFT JOIN users u ON u.id = r.user_id
+            LEFT JOIN loans l ON l.id = r.loan_id
+        """).fetchall():
+            db.execute("""
+                INSERT INTO archived_repayments (
+                    archive_id, original_repayment_id, loan_id, user_id,
+                    sacco_number, full_name, loan_number,
+                    amount, interest_paid, principal_paid,
+                    payment_date, payment_method, transaction_ref, notes, archived_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                archive_id, r["id"], r["loan_id"], r["user_id"],
+                r["us"], r["un"], r["ln"],
+                r["amount"], r["interest_paid"], r["principal_paid"],
+                r["payment_date"], r["payment_method"],
+                r["transaction_ref"], r["notes"], now
+            ))
+
+        # ---- 6. WIPE financial data ----
+        db.execute("DELETE FROM repayments")
+        db.execute("DELETE FROM loans")
+        db.execute("DELETE FROM savings_deposits")
+
+        # ---- 7. WIPE members only, keep staff ----
+        if member_ids:
+            placeholders = ",".join("?" * len(member_ids))
+            db.execute(f"DELETE FROM users WHERE id IN ({placeholders})", member_ids)
+
+        # ---- 8. Reset settings to defaults ----
+        try:
+            db.execute("""
+                UPDATE settings SET
+                    sacco_name = 'Karacel Association',
+                    registration_number = 'SACCO/REG/' || ? || '/001',
+                    savings_interest_rate = 6.5,
+                    loan_interest_rate = 12,
+                    penalty_rate = 5,
+                    max_loan_amount = '10,000,000',
+                    min_loan_amount = '10,000',
+                    max_tenure = 24
+                WHERE id = 1
+            """, (year_label,))
+        except Exception:
+            pass  # settings table schema may differ — skip if it fails
+
+        db.commit()
+
+        return jsonify({
+            "success": True,
+            "message": (
+                f"Year '{year_label}' archived. "
+                f"{len(member_ids)} members cleared. "
+                f"{len(staff_ids)} staff users retained."
+            ),
+            "archive_id": archive_id,
+            "year_label": year_label,
+            "members_cleared": len(member_ids),
+            "staff_kept": len(staff_ids)
+        })
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Rollover failed: {e}"}), 500
+    finally:
+        db.close()
+
+
+# ------------------------------------------------------------
+# ARCHIVES — browse past years
+# ------------------------------------------------------------
+@app.route("/admin/archives")
+def admin_archives():
+    if "user_id" not in session:
+        return redirect("/login")
+    db = get_db()
+    try:
+        archives = db.execute("""
+            SELECT * FROM archived_years ORDER BY closed_at DESC
+        """).fetchall()
+        return render_template("admin/archives-list.html", archives=archives)
+    finally:
+        db.close()
+
+
+@app.route("/admin/archives/<int:archive_id>")
+def admin_archive_detail(archive_id):
+    if "user_id" not in session:
+        return redirect("/login")
+    db = get_db()
+    try:
+        archive = db.execute(
+            "SELECT * FROM archived_years WHERE id = ?", (archive_id,)
+        ).fetchone()
+        if not archive:
+            flash("Archive not found.", "warning")
+            return redirect(url_for("admin_archives"))
+
+        users      = db.execute("SELECT * FROM archived_users WHERE archive_id=? ORDER BY full_name", (archive_id,)).fetchall()
+        loans      = db.execute("SELECT * FROM archived_loans WHERE archive_id=? ORDER BY application_date DESC", (archive_id,)).fetchall()
+        deposits   = db.execute("SELECT * FROM archived_savings_deposits WHERE archive_id=? ORDER BY deposit_date DESC", (archive_id,)).fetchall()
+        repayments = db.execute("SELECT * FROM archived_repayments WHERE archive_id=? ORDER BY payment_date DESC", (archive_id,)).fetchall()
+
+        return render_template(
+            "admin/archive-detail.html",
+            archive=archive,
+            users=users, loans=loans,
+            deposits=deposits, repayments=repayments
+        )
+    finally:
+        db.close()
+
 
 # ============================================================
 # RUN THE APP

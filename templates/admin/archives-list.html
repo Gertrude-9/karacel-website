@@ -1,0 +1,35 @@
+{% extends "admin/admin-base.html" %}
+{% block title %}Archives{% endblock %}
+{% block content %}
+<main class="admin-main-content">
+    <div class="action-card">
+        <div class="action-title"><i class="fas fa-archive"></i> Year Archives</div>
+        {% if archives %}
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Closed</th>
+                    <th style="text-align:right;">Members</th>
+                    <th style="text-align:right;">Savings</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in archives %}
+                <tr>
+                    <td style="color:#f5c542; font-weight:700;">{{ a.year_label }}</td>
+                    <td>{{ a.closed_at[:10] if a.closed_at else '—' }}</td>
+                    <td style="text-align:right;">{{ a.total_members }}</td>
+                    <td style="text-align:right; color:#4ade80;">{{ "{:,.0f}".format(a.total_savings or 0) }}</td>
+                    <td><a href="{{ url_for('admin_archive_detail', archive_id=a.id) }}" style="color:#00e0ff;">View →</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:rgba(255,255,255,0.4); padding:20px;">No archives yet.</p>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

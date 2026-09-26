@@ -7,92 +7,6 @@
 <!-- Main Content -->
 <main class="admin-main-content">
     
-   
-    
-    <!-- ========== MEMBERS PANEL ========== -->
-    <div id="members-panel" class="content-panel">
-        <div class="action-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-                <div class="action-title" style="margin-bottom:0;">
-                    <i class="fas fa-users"></i> All Members
-                </div>
-                <span style="color: rgba(255,255,255,0.3); font-size: 0.85rem;">
-                    Total: {{ members|length }} members
-                </span>
-            </div>
-
-            <!-- Members Filter -->
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px;">
-                <div style="flex:1; min-width:200px;">
-                    <input type="text" id="searchMembersInput" placeholder="Search by name, SACCO #, phone..." 
-                           onkeyup="filterMembersTable()" 
-                           style="width:100%; padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                </div>
-                <div>
-                    <select id="filterMemberStatus" onchange="filterMembersTable()" 
-                            style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:white;">
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="pending">Pending</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="suspended">Suspended</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="table-wrapper">
-                <table class="styled-table" id="membersTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>SACCO No.</th>
-                            <th>Full Name</th>
-                            <th>Phone</th>
-                            <th>Savings (UGX)</th>
-                            <th>Active Loans</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if members %}
-                            {% for member in members %}
-                            <tr data-status="{{ member.status }}" data-name="{{ member.full_name|lower }}" data-sacco="{{ member.sacco_number|lower }}" data-phone="{{ member.phone or '' }}">
-                                <td>{{ loop.index }}</td>
-                                <td style="color:#f5c542; font-family:monospace;">{{ member.sacco_number }}</td>
-                                <td><strong>{{ member.full_name }}</strong></td>
-                                <td>{{ member.phone or '-' }}</td>
-                                <td style="color:#4ade80;">{{ "{:,.0f}".format(member.savings_balance or 0) }}</td>
-                                <td>{{ member.active_loans_count or 0 }}</td>
-                                <td>
-                                    {% if member.status == 'active' %}
-                                        <span class="badge success">Active</span>
-                                    {% elif member.status == 'pending' %}
-                                        <span class="badge warning">Pending</span>
-                                    {% else %}
-                                        <span class="badge danger">{{ member.status|title }}</span>
-                                    {% endif %}
-                                </td>
-                                <td class="action-btns">
-                                    <button class="view-btn" onclick="viewMember('{{ member.id }}')" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="8" style="text-align:center; padding:30px; color: rgba(255,255,255,0.3);">
-                                    No registered members found
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
 <!-- ========== LOAN APPLICATIONS PANEL ========== -->
     <div id="loan_applications-panel" class="content-panel">
         <div class="admin-stats">
@@ -740,7 +654,7 @@
         </div>
     </div>
 
-    <!-- ========== SETTINGS PANEL ========== -->
+   <!-- ========== SETTINGS PANEL ========== -->
     <div id="settings-panel" class="content-panel">
         <div class="action-card">
             <div class="action-title">
@@ -775,15 +689,15 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
                             <div>
                                 <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Savings Interest Rate (%)</label>
-                                <input type="number" id="savingsRate" value="{{ settings.savings_interest_rate or '6.5' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#4ade80; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                                <input type="number" id="savingsRate" value="{{ settings.savings_interest_rate or '0' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#4ade80; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
                             </div>
                             <div>
                                 <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Loan Interest Rate (%)</label>
-                                <input type="number" id="loanRate" value="{{ settings.loan_interest_rate or '12' }}" step="0.5" min="0" max="30" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#f5c542; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                                <input type="number" id="loanRate" value="{{ settings.loan_interest_rate or '5' }}" step="0.5" min="0" max="30" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#f5c542; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
                             </div>
                             <div>
                                 <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Late Penalty Rate (%)</label>
-                                <input type="number" id="penaltyRate" value="{{ settings.penalty_rate or '5' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#ff6b6b; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
+                                <input type="number" id="penaltyRate" value="{{ settings.penalty_rate or '0' }}" step="0.5" min="0" max="20" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:#ff6b6b; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; transition:all 0.2s;">
                             </div>
                         </div>
                     </div>
@@ -794,7 +708,7 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
                             <div>
                                 <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Max Loan Amount (UGX)</label>
-                                <input type="text" id="maxLoanAmount" value="{{ settings.max_loan_amount or '10,000,000' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
+                                <input type="text" id="maxLoanAmount" value="{{ settings.max_loan_amount or '100,000,000' }}" style="width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; color:white; font-family:'Inter',sans-serif; font-size:0.85rem; transition:all 0.2s;">
                             </div>
                             <div>
                                 <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; display:block; margin-bottom:4px;">Min Loan Amount (UGX)</label>
@@ -836,6 +750,83 @@
                     <div id="settingsMessage" style="display:none; padding:12px 16px; border-radius:8px; margin-top:8px;"></div>
                 </div>
             </form>
+
+            <!-- ============================================================
+                 YEAR-END ROLLOVER
+                 ============================================================ -->
+            <div style="background:rgba(255,107,107,0.04); border:1px solid rgba(255,107,107,0.2); border-radius:12px; padding:20px; margin-top:24px; max-width:700px;">
+
+                <h4 style="color:#ff6b6b; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 8px 0;">
+                    <i class="fas fa-power-off"></i> Start New Year (End Current Year)
+                </h4>
+
+                <p style="color:rgba(255,255,255,0.5); font-size:0.8rem; line-height:1.6; margin:0 0 14px 0;">
+                    This closes the current SACCO year. When you click <strong>Start New Year</strong>, the system will:
+                </p>
+
+                <ul style="color:rgba(255,255,255,0.55); font-size:0.78rem; line-height:1.75; margin:0 0 18px 20px; padding:0;">
+                    <li><strong style="color:#4ade80;">Archive</strong> all members, savings, loans, and repayments</li>
+                    <li><strong style="color:#ff6b6b;">Delete</strong> all member accounts — they must register afresh</li>
+                    <li><strong style="color:#f5c542;">Keep</strong> staff users (Admin, Chairperson, Treasurer, Secretary, Publicity)</li>
+                    <li><strong style="color:#00e0ff;">Reset</strong> SACCO settings to their defaults</li>
+                    <li><strong style="color:#a78bfa;">Preserve</strong> the old data in Archives forever</li>
+                </ul>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+
+                    <div>
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
+                            End Date <span style="color:#ff6b6b;">*</span>
+                        </label>
+                        <input type="date" id="yearEndDate"
+                               style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; outline:none;">
+                    </div>
+
+                    <div>
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
+                            Year Label <span style="color:rgba(255,255,255,0.25); font-size:0.65rem;">(optional — auto from date)</span>
+                        </label>
+                        <input type="text" id="yearEndLabel" placeholder="e.g. 2024" maxlength="20"
+                               style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; outline:none;">
+                    </div>
+
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
+                        Notes (optional)
+                    </label>
+                    <textarea id="yearEndNotes" rows="2" placeholder="Any notes about this year…"
+                              style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; font-family:inherit; resize:vertical; outline:none;"></textarea>
+                </div>
+
+                <div style="margin-bottom:18px;">
+                    <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
+                        Type <strong style="color:#ff6b6b;">RESET</strong> to confirm <span style="color:#ff6b6b;">*</span>
+                    </label>
+                    <input type="text" id="yearEndConfirm" placeholder="RESET" autocomplete="off"
+                           style="width:200px; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#ff6b6b; font-weight:700; letter-spacing:2px; outline:none;">
+                </div>
+
+                <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                    <a href="{{ url_for('year_end_preview') }}"
+                       style="padding:10px 20px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s;"
+                       onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                       onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                        <i class="fas fa-eye"></i> Preview Archive
+                    </a>
+
+                    <button type="button" onclick="executeYearEnd()" id="yearEndBtn"
+                            style="padding:10px 24px; background:linear-gradient(135deg,#ff6b6b,#ef4444); color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; font-size:0.85rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(255,107,107,0.2); transition:all 0.2s;"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 22px rgba(255,107,107,0.35)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(255,107,107,0.2)'">
+                        <i class="fas fa-power-off"></i> Start New Year
+                    </button>
+
+                    <span id="yearEndStatus" style="font-size:0.78rem; color:rgba(255,255,255,0.4);"></span>
+                </div>
+            </div>
+
         </div>
     </div>
 </main>
@@ -845,12 +836,9 @@
 // ============================================================
 // PANEL NAVIGATION
 // ============================================================
-// ============================================================
-// PANEL NAVIGATION
-// ============================================================
 // Panel history stack — remembers the order panels were visited
 let panelHistory = [];
-let currentPanel = 'members';
+let currentPanel = 'loan_applications';
 
 function showPanel(panelName, opts) {
     opts = opts || {};
@@ -874,7 +862,6 @@ function showPanel(panelName, opts) {
     if (selectedLink) selectedLink.classList.add("active");
 
     const titles = {
-        members:           { icon: 'fa-users',        title: 'Members' },
         loan_applications: { icon: 'fa-file-invoice', title: 'Loan Applications' },
         users:             { icon: 'fa-users-cog',    title: 'Staff Users' },
         reports:           { icon: 'fa-chart-bar',    title: 'Reports' },
@@ -908,16 +895,6 @@ function adminGoBack() {
         window.location.href = "{{ url_for('treasurer_dashboard') }}";
     }
 }
-// ============================================================
-// VIEW MEMBER
-// ============================================================
-function viewMember(memberId) {
-    if (!memberId) {
-        alert('Error: Member ID is missing.');
-        return;
-    }
-    window.location.href = '/treasurer/members/view/' + memberId;
-}
 
 // ============================================================
 // VIEW LOAN
@@ -940,25 +917,6 @@ function viewLoan(loanId) {
 // ============================================================
 // FILTER FUNCTIONS
 // ============================================================
-function filterMembersTable() {
-    const searchInput = document.getElementById('searchMembersInput');
-    const statusFilter = document.getElementById('filterMemberStatus');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-    const status = statusFilter ? statusFilter.value : 'all';
-    const table = document.getElementById('membersTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        if (row.querySelector('td[colspan]')) return;
-        const text = row.textContent.toLowerCase();
-        const rowStatus = row.getAttribute('data-status') || '';
-        let show = true;
-        if (searchTerm && !text.includes(searchTerm)) show = false;
-        if (show && status !== 'all' && rowStatus !== status) show = false;
-        row.style.display = show ? '' : 'none';
-    });
-}
-
 function filterLoanApplications() {
     const searchInput = document.getElementById('searchLoanInput');
     const statusFilter = document.getElementById('filterLoanStatus');
@@ -1015,57 +973,41 @@ function filterStaffUsers() {
 }
 
 // ============================================================
-// TOGGLE DROPDOWN — FIXED: just toggles display, no layout overrides
+// TOGGLE DROPDOWN
 // ============================================================
 function toggleDropdown(loanId) {
     const dropdown = document.getElementById('dropdown-' + loanId);
     if (!dropdown) return;
 
-    // Was this dropdown already open?
     const isOpen = dropdown.style.display === 'block';
 
-    // Close every open dropdown first
     document.querySelectorAll('.dropdown-menu').forEach(menu => {
         menu.style.display = 'none';
     });
 
-    // If it was open, we just closed it — done
     if (isOpen) return;
 
-    // Open this one using its inline styles (position:absolute, right:0, top:100%)
     dropdown.style.display = 'block';
 }
 
-// ============================================================
-// CLOSE ALL DROPDOWNS
-// ============================================================
 function closeAllDropdowns() {
     document.querySelectorAll('.dropdown-menu').forEach(menu => {
         menu.style.display = 'none';
     });
 }
 
-// ============================================================
-// CLOSE DROPDOWNS ON OUTSIDE CLICK — SINGLE listener
-// ============================================================
 document.addEventListener('click', function(event) {
     if (!event.target.closest('.dropdown')) {
         closeAllDropdowns();
     }
 });
 
-// ============================================================
-// CLOSE DROPDOWNS ON ESCAPE — SINGLE listener
-// ============================================================
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeAllDropdowns();
     }
 });
 
-// ============================================================
-// CLOSE DROPDOWNS ON SCROLL / RESIZE
-// ============================================================
 window.addEventListener('scroll', function() {
     closeAllDropdowns();
 });
@@ -1121,23 +1063,19 @@ function saveSettings(event) {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
         },
-        credentials: 'same-origin',   // ← keeps session cookie
+        credentials: 'same-origin',
         body: JSON.stringify(data)
     })
     .then(async response => {
-        // Read as text first — lets us see what came back even if it's HTML
         const rawText = await response.text();
         let parsed = null;
         try { parsed = JSON.parse(rawText); } catch (e) { /* not JSON */ }
 
-        // Not OK status — surface the real problem
         if (!response.ok) {
-            // Print the raw response to console so you can see it
             console.error('❌ Settings update failed');
             console.error('Status:', response.status);
             console.error('Response body (first 500 chars):', rawText.substring(0, 500));
 
-            // Detect redirect-to-login
             if (rawText.toLowerCase().includes('<!doctype') || rawText.toLowerCase().includes('<html')) {
                 throw new Error(
                     `Server returned HTML instead of JSON (HTTP ${response.status}). ` +
@@ -1213,7 +1151,7 @@ function showSettingsMessage(message, type) {
 }
 
 // ============================================================
-// ADMIN LOAN FUNCTIONS — FIXED button selector quotes
+// ADMIN LOAN FUNCTIONS
 // ============================================================
 function adminApproveLoan(loanId) {
     if (!loanId) {
@@ -1298,31 +1236,10 @@ function adminRejectLoan(loanId) {
 }
 
 // ============================================================
-// GENERATE REPORT
-// ============================================================
-function generateReport(type) {
-    const cards = document.querySelectorAll('.report-card');
-    cards.forEach(card => {
-        card.style.opacity = '0.5';
-        card.style.cursor = 'wait';
-        card.style.pointerEvents = 'none';
-    });
-    window.open('/admin/reports/generate/' + type, '_blank');
-    setTimeout(() => {
-        cards.forEach(card => {
-            card.style.opacity = '1';
-            card.style.cursor = 'pointer';
-            card.style.pointerEvents = 'auto';
-        });
-    }, 3000);
-}
-
-// ============================================================
 // REPORTS PANEL — Filters + Report selection
 // ============================================================
 let currentReport = 'members';
 
-// ---- Select report type ----
 function selectReport(type) {
     currentReport = type;
     document.querySelectorAll('.report-type-btn').forEach(btn => {
@@ -1330,7 +1247,6 @@ function selectReport(type) {
     });
 }
 
-// ---- Show/hide custom date range ----
 function onRangeChange() {
     const val = document.getElementById('reportRange').value;
     const wrap = document.getElementById('customRangeWrap');
@@ -1341,13 +1257,11 @@ function onRangeChange() {
     });
 }
 
-// ---- Quick range pills ----
 function setQuickRange(range) {
     document.getElementById('reportRange').value = range;
     onRangeChange();
 }
 
-// ---- Reset filters ----
 function resetReportFilters() {
     document.getElementById('reportRange').value = 'month';
     document.getElementById('reportStart').value = '';
@@ -1356,7 +1270,6 @@ function resetReportFilters() {
     onRangeChange();
 }
 
-// ---- Generate the currently-selected report ----
 function generateSelectedReport() {
     const type  = currentReport;
     const range = document.getElementById('reportRange').value;
@@ -1372,7 +1285,6 @@ function generateSelectedReport() {
     window.open(`/admin/reports/generate/${type}?${params.toString()}`, '_blank');
 }
 
-// ---- Legacy wrapper — anything calling generateReport('members') still works ----
 function generateReport(type) {
     if (type) selectReport(type);
     generateSelectedReport();
@@ -1685,10 +1597,10 @@ document.addEventListener('click', function(event) {
 // ============================================================
 document.addEventListener("DOMContentLoaded", function () {
     const hash = window.location.hash.replace("#", "");
-    const validPanels = ['members', 'loan_applications', 'users', 'reports', 'settings'];
+    const validPanels = ['loan_applications', 'users', 'reports', 'settings'];
 
-    // ✅ Default to Members on first load
-    const initialPanel = (hash && validPanels.includes(hash)) ? hash : 'members';
+    // ✅ Default to Loan Applications on first load
+    const initialPanel = (hash && validPanels.includes(hash)) ? hash : 'loan_applications';
     showPanel(initialPanel);
 
     document.querySelectorAll(".admin-nav-item").forEach(link => {
@@ -1703,6 +1615,86 @@ document.addEventListener("DOMContentLoaded", function () {
     loadSettings();
 });
 console.log('✅ Admin Dashboard JavaScript loaded successfully');
+
+// ============================================================
+// YEAR-END ROLLOVER — Start New Year
+// ============================================================
+function executeYearEnd() {
+    const endDate  = document.getElementById('yearEndDate').value;
+    const label    = document.getElementById('yearEndLabel').value.trim();
+    const notes    = document.getElementById('yearEndNotes').value.trim();
+    const confirmT = document.getElementById('yearEndConfirm').value.trim();
+    const statusEl = document.getElementById('yearEndStatus');
+
+    if (!endDate) {
+        alert('Please pick an end date.');
+        return;
+    }
+    if (confirmT !== 'RESET') {
+        alert('Type RESET in the confirmation box to proceed.');
+        return;
+    }
+
+    if (!confirm(
+        `⚠️ FINAL WARNING ⚠️\n\n` +
+        `You are about to END the current SACCO year.\n\n` +
+        `• All members, savings, loans & repayments will be ARCHIVED\n` +
+        `• All member accounts will be DELETED (they must register afresh)\n` +
+        `• Staff users will be KEPT\n` +
+        `• SACCO settings will be RESET to defaults\n\n` +
+        `This CANNOT be undone.\n\n` +
+        `Proceed?`
+    )) {
+        return;
+    }
+
+    const btn = document.getElementById('yearEndBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+    btn.disabled = true;
+    statusEl.textContent = 'Archiving…';
+    statusEl.style.color = 'rgba(255,255,255,0.5)';
+
+    fetch('/admin/year-end/execute', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            end_date: endDate,
+            year_label: label,
+            notes: notes,
+            confirm_text: confirmT
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusEl.textContent = '✅ ' + data.message;
+            statusEl.style.color = '#4ade80';
+
+            document.getElementById('yearEndDate').value = '';
+            document.getElementById('yearEndLabel').value = '';
+            document.getElementById('yearEndNotes').value = '';
+            document.getElementById('yearEndConfirm').value = '';
+
+            setTimeout(() => {
+                window.location.href = '/admin/archives/' + data.archive_id;
+            }, 1500);
+        } else {
+            statusEl.textContent = '❌ ' + data.message;
+            statusEl.style.color = '#ff6b6b';
+            alert('❌ ' + data.message);
+        }
+    })
+    .catch(err => {
+        statusEl.textContent = '❌ ' + err.message;
+        statusEl.style.color = '#ff6b6b';
+        alert('❌ ' + err.message);
+    })
+    .finally(() => {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    });
+}
 </script>
 
 {% endblock %}

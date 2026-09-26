@@ -44,11 +44,10 @@
                 <span>Dashboard</span>
             </a>
 
-            <a href="#" class="admin-nav-item" data-panel="members">
-                <i class="fas fa-users"></i>
-                <span>Members</span>
-            </a>
-
+            <!-- ============================================
+                 FIRST PANEL: Loan Applications
+                 (Members panel removed — starts here)
+                 ============================================ -->
             <a href="#" class="admin-nav-item" data-panel="loan_applications">
                 <i class="fas fa-file-invoice"></i>
                 <span>Loan Applications</span>
@@ -67,6 +66,14 @@
             <a href="#" class="admin-nav-item" data-panel="settings">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
+            </a>
+
+            <!-- ============================================
+                 ARCHIVES — past SACCO years (read-only)
+                 ============================================ -->
+            <a href="{{ url_for('admin_archives') }}" class="admin-nav-item">
+                <i class="fas fa-archive"></i>
+                <span>Archives</span>
             </a>
 
             <a href="{{ url_for('chat_api.treasurer_chat') }}" class="admin-nav-item">
@@ -132,17 +139,6 @@
             <!-- Right side actions -->
             <div class="topbar-actions">
 
-                <!-- Notifications -->
-                <a href="#" class="topbar-icon-btn" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <span class="badge-dot"></span>
-                </a>
-
-                <!-- Chat / Messages -->
-                <a href="{{ url_for('chat_api.treasurer_chat') }}" class="topbar-icon-btn" title="Chat Center">
-                    <i class="fas fa-comments"></i>
-                </a>
-
                 <!-- Profile -->
                 <a href="#" class="topbar-profile" title="{{ session.full_name }}">
                     <div class="topbar-avatar">
@@ -173,9 +169,52 @@
     // TOPBAR BACK BUTTON
     // ============================================================
     // ============================================================
-// PANEL HISTORY — tracks panel switches so Back can undo them
-// ============================================================
- 
+    // PANEL HISTORY — tracks panel switches so Back can undo them
+    // ============================================================
+    let panelHistory = [];
+
+    // Default panel — now 'loan_applications' (was 'members')
+    const DEFAULT_PANEL = 'loan_applications';
+
+    /**
+     * Main back button handler.
+     * 1. If we're inside a panel (not the default one), go back to previous panel.
+     * 2. Otherwise, use browser history if available.
+     * 3. Otherwise, fall back to a sensible URL (set per-page via data attribute
+     *    on <body>, or default to the dashboard).
+     */
+    function adminGoBack() {
+        // 1. Panel-level back navigation
+        if (panelHistory.length > 1) {
+            panelHistory.pop(); // remove current
+            const prevPanel = panelHistory[panelHistory.length - 1];
+            if (typeof showPanel === 'function') {
+                showPanel(prevPanel);
+                window.location.hash = prevPanel;
+                return;
+            }
+        }
+
+        // 2. Browser history back
+        if (window.history.length > 1 && document.referrer) {
+            window.history.back();
+            return;
+        }
+
+        // 3. Fallback URL — read from body[data-back-fallback] or default
+        const fallback =
+            document.body.getAttribute('data-back-fallback') ||
+            (typeof DASHBOARD_URL !== 'undefined' ? DASHBOARD_URL : '/');
+        window.location.href = fallback;
+    }
+
+    // Track panel switches so Back can undo them
+    window.addEventListener('hashchange', function () {
+        const current = window.location.hash.replace('#', '') || DEFAULT_PANEL;
+        if (panelHistory[panelHistory.length - 1] !== current) {
+            panelHistory.push(current);
+        }
+    });
 
     // ============================================================
     // INITIALIZE
@@ -195,13 +234,13 @@
                 });
             });
 
-            const currentHash = window.location.hash.replace("#", "") || "members";
+            const currentHash = window.location.hash.replace("#", "") || DEFAULT_PANEL;
             showPanel(currentHash);
             console.log('Admin dashboard initialized with panel:', currentHash);
         }
 
         window.addEventListener("hashchange", function() {
-            const panelName = window.location.hash.replace("#", "") || "members";
+            const panelName = window.location.hash.replace("#", "") || DEFAULT_PANEL;
             if (document.querySelector('.content-panel')) {
                 showPanel(panelName);
             }

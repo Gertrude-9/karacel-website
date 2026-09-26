@@ -144,6 +144,8 @@
 </div>
 
 <script>
+
+
 // ============================================================
 // PASSWORD TOGGLE
 // ============================================================
@@ -237,6 +239,13 @@ function checkMatch() {
         confirmInput.style.boxShadow = '0 0 0 4px rgba(255,107,107,0.08)';
     }
 }
+// Tell adminGoBack() where to go when there's no history to pop
+    document.addEventListener('DOMContentLoaded', function () {
+        document.body.setAttribute(
+            'data-back-fallback',
+            "{{ url_for('admin_manage_users') }}"
+        );
+    });
 
 // ============================================================
 // ROLE DESCRIPTION

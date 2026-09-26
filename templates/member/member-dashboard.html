@@ -111,19 +111,6 @@ DASHBOARD PANEL
                 <span class="detail-value">{{ member.next_of_kin_phone if member and member.next_of_kin_phone else 'Not specified' }}</span>
             </div>
         </div>
-
-        <div class="balance-highlight">
-            <div class="label">
-                <i class="fas fa-coins"></i> Total Savings Balance
-            </div>
-            <div class="balance-amount">
-                {# Savings = KAI + KS only #}
-                UGX {{ "{:,.0f}".format((kai_amount or 0) + (ks_amount or 0)) }}
-            </div>
-            <div style="margin-top: 6px; font-size: 0.7rem; color: rgba(255,255,255,0.2);">
-                Total Loans Taken: UGX {{ "{:,.0f}".format(total_loans_taken) if total_loans_taken else '0' }}
-            </div>
-        </div>
     </div>
 
     <!-- ============================================
@@ -209,7 +196,7 @@ DASHBOARD PANEL
             {% set kac_remaining = kac_target - kac_val %}
             {% set kac_pct = (kac_val / kac_target * 100) if kac_target > 0 else 0 %}
 
-            <div class="savings-row" style="border-left: 3px solid rgba(255, 143, 177, 0.3); margin-left: 6px; padding-left: 12px; opacity: 0.92;">
+            <div class="savings-row" style="border-left: 3px solid rgba(255, 143, 177, 0.3); opacity: 0.94;">
                 <div class="row-left">
                     <div class="type-badge" style="background: linear-gradient(135deg, #ff8fb1, #cc5577); color: #0a1a2b;">
                         KAC
@@ -262,7 +249,7 @@ DASHBOARD PANEL
             </div>
 
             <!-- Registration Row — NOT part of savings -->
-            <div class="savings-row" style="border-left: 3px solid rgba(167, 139, 250, 0.3); margin-left: 6px; padding-left: 12px; opacity: 0.92;">
+            <div class="savings-row" style="border-left: 3px solid rgba(167, 139, 250, 0.3); opacity: 0.94;">
                 <div class="row-left">
                     <div class="type-badge" style="background: linear-gradient(135deg, #a78bfa, #7c5cd6); color: #0a1a2b;">
                         REG

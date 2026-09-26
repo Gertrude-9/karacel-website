@@ -1,0 +1,26 @@
+{% extends "admin/admin-base.html" %}
+{% block title %}Archive — {{ archive.year_label }}{% endblock %}
+{% block content %}
+<main class="admin-main-content">
+    <div class="action-card">
+        <div class="action-title"><i class="fas fa-archive"></i> Archive — {{ archive.year_label }}</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px;">
+            <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:14px;">
+                <div style="color:rgba(255,255,255,0.4); font-size:0.68rem;">Members</div>
+                <div style="color:#fff; font-size:1.2rem; font-weight:700;">{{ archive.total_members }}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:14px;">
+                <div style="color:rgba(255,255,255,0.4); font-size:0.68rem;">Total Savings</div>
+                <div style="color:#4ade80; font-size:1.2rem; font-weight:700;">{{ "{:,.0f}".format(archive.total_savings or 0) }}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:14px;">
+                <div style="color:rgba(255,255,255,0.4); font-size:0.68rem;">Loans Disbursed</div>
+                <div style="color:#f5c542; font-size:1.2rem; font-weight:700;">{{ "{:,.0f}".format(archive.total_loans_disbursed or 0) }}</div>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_archives') }}" style="color:#f5c542; font-size:0.85rem; text-decoration:none;">
+            <i class="fas fa-arrow-left"></i> All Archives
+        </a>
+    </div>
+</main>
+{% endblock %}
