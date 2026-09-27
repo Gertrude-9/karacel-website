@@ -2329,7 +2329,7 @@ def treasurer_view_loan(loan_id):
 # ============================================================
 @app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
-    print(f"ðŸ” Loan action called for loan {loan_id}")
+    print(f"Loan action called for loan {loan_id}")
 
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -2349,10 +2349,11 @@ def treasurer_approve_loan(loan_id):
         return jsonify({'success': False, 'message': 'Invalid action'}), 400
 
     db = get_db()
-    db.row_factory = sqlite3.Row
+    PH = "%s" if DATABASE_URL else "?"
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        loan = db.execute("""
+        loan_row = db.execute(f"""
             SELECT
                 l.*,
                 u.id AS applicant_id,
@@ -2362,30 +2363,32 @@ def treasurer_approve_loan(loan_id):
                 u.phone
             FROM loans l
             JOIN users u ON l.user_id = u.id
-            WHERE l.id = ?
+            WHERE l.id = {PH}
         """, (loan_id,)).fetchone()
 
-        if not loan:
-            db.close()
+        if not loan_row:
             return jsonify({'success': False, 'message': 'Loan not found'}), 404
 
+        loan = row_to_dict(loan_row)
+
+        # ============================================================
         # REJECT LOAN
+        # ============================================================
         if action == 'reject':
             if not reason:
-                db.close()
                 return jsonify({'success': False, 'message': 'Rejection reason required'}), 400
 
-            db.execute("""
+            db.execute(f"""
                 UPDATE loans
                 SET
                     status = 'rejected',
-                    rejected_date = datetime('now'),
-                    rejection_reason = ?,
-                    rejected_by = ?
-                WHERE id = ?
-            """, (reason, session.get('full_name', 'Treasurer'), loan_id))
+                    rejected_date = {PH},
+                    rejection_reason = {PH},
+                    rejected_by = {PH}
+                WHERE id = {PH}
+            """, (now_str, reason, session.get('full_name', 'Treasurer'), loan_id))
 
-            db.execute("""
+            db.execute(f"""
                 INSERT INTO notifications (
                     user_id,
                     title,
@@ -2394,25 +2397,26 @@ def treasurer_approve_loan(loan_id):
                     is_read,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, 0, datetime('now'))
+                VALUES ({PH}, {PH}, {PH}, {PH}, 0, {PH})
             """, (
                 loan['applicant_id'],
                 'Loan Application Rejected',
                 f"Your loan application {loan['loan_number']} has been rejected.\n\nReason: {reason}",
-                'loan_rejection'
+                'loan_rejection',
+                now_str
             ))
 
             db.commit()
-            db.close()
 
             return jsonify({
                 'success': True,
                 'message': 'Loan rejected successfully. The applicant has been notified.'
             })
 
+        # ============================================================
         # APPROVE LOAN
+        # ============================================================
         if loan['status'] != 'pending':
-            db.close()
             return jsonify({
                 'success': False,
                 'message': f'Loan is {loan["status"]}, not pending'
@@ -2422,7 +2426,6 @@ def treasurer_approve_loan(loan_id):
         savings = float(loan['savings_balance'] or 0)
 
         if savings < required:
-            db.close()
             return jsonify({
                 'success': False,
                 'message': f'Member needs 10% savings (UGX {required:,.0f}). Current: UGX {savings:,.0f}'
@@ -2432,20 +2435,20 @@ def treasurer_approve_loan(loan_id):
         end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
         balance = loan['total_repayment'] if loan['total_repayment'] is not None else loan['amount']
 
-        db.execute("""
+        db.execute(f"""
             UPDATE loans
             SET
                 status = 'approved',
-                approved_date = ?,
-                loan_start_date = ?,
-                loan_end_date = ?,
-                current_balance = ?,
-                approved_by = ?,
+                approved_date = {PH},
+                loan_start_date = {PH},
+                loan_end_date = {PH},
+                current_balance = {PH},
+                approved_by = {PH},
                 approved_by_role = 'treasurer'
-            WHERE id = ?
+            WHERE id = {PH}
         """, (today, today, end_date, balance, session.get('full_name', 'Treasurer'), loan_id))
 
-        db.execute("""
+        db.execute(f"""
             INSERT INTO notifications (
                 user_id,
                 title,
@@ -2454,32 +2457,36 @@ def treasurer_approve_loan(loan_id):
                 is_read,
                 created_at
             )
-            VALUES (?, ?, ?, ?, 0, datetime('now'))
+            VALUES ({PH}, {PH}, {PH}, {PH}, 0, {PH})
         """, (
             loan['applicant_id'],
             'Loan Application Approved',
             f"Your loan application {loan['loan_number']} has been approved. Please wait for disbursement.",
-            'loan_approval'
+            'loan_approval',
+            now_str
         ))
 
         db.commit()
-        db.close()
 
         return jsonify({
             'success': True,
-            'message': 'âœ… Loan approved! Waiting for Chairman disbursement.'
+            'message': 'Loan approved! Waiting for Chairman disbursement.'
         })
 
     except Exception as e:
-        print(f"âŒ Error processing loan action: {e}")
+        print(f"Error processing loan action: {e}")
+        import traceback
+        traceback.print_exc()
         try:
             db.rollback()
-            db.close()
-        except:
+        except Exception:
             pass
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 # ============================================================
 # TREASURER - DISBURSE LOAN
 # ============================================================
@@ -5629,88 +5636,128 @@ def secretary_dashboard():
 # PUBLICITY ROUTES - FULL CRUD
 # ============================================================
 
+# ============================================================
+# PUBLICITY ROUTES
+# ============================================================
+
 @app.route("/publicity/dashboard")
 def publicity_dashboard():
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        # Get total members
-        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
-        
-        # Get announcements count
-        total_announcements = conn.execute("SELECT COUNT(*) FROM announcements").fetchone()[0]
-        
-        # Get upcoming events count
-        upcoming_events = conn.execute("SELECT COUNT(*) FROM events WHERE event_date >= date('now')").fetchone()[0]
-        
-        # Get newsletters count
-        total_newsletters = conn.execute("SELECT COUNT(*) FROM newsletters").fetchone()[0]
-        
-        # Get recent announcements
+        # Member count
+        total_members = fetchval(conn, """
+            SELECT COUNT(*) FROM users
+            WHERE LOWER(role) = 'member' AND status = 'active'
+        """) or 0
+
+        # Announcements count
+        total_announcements = fetchval(conn, "SELECT COUNT(*) FROM announcements") or 0
+
+        # Upcoming events count — DB-specific date function
+        if DATABASE_URL:
+            upcoming_events = fetchval(conn, """
+                SELECT COUNT(*) FROM events
+                WHERE NULLIF(event_date, '')::timestamp >= CURRENT_DATE
+            """) or 0
+        else:
+            upcoming_events = fetchval(conn, """
+                SELECT COUNT(*) FROM events
+                WHERE event_date >= date('now')
+            """) or 0
+
+        # Recent announcements
         announcements = conn.execute("""
-            SELECT * FROM announcements 
-            ORDER BY created_at DESC 
+            SELECT * FROM announcements
+            ORDER BY created_at DESC
             LIMIT 5
         """).fetchall()
-        
-        # Get upcoming events
-        events = conn.execute("""
-            SELECT * FROM events 
-            WHERE event_date >= date('now')
-            ORDER BY event_date ASC 
-            LIMIT 4
-        """).fetchall()
-        
-    except sqlite3.Error as e:
-        print(f"âŒ Database Error: {str(e)}")
+
+        # Upcoming events
+        if DATABASE_URL:
+            events = conn.execute("""
+                SELECT * FROM events
+                WHERE NULLIF(event_date, '')::timestamp >= CURRENT_DATE
+                ORDER BY event_date ASC
+                LIMIT 4
+            """).fetchall()
+        else:
+            events = conn.execute("""
+                SELECT * FROM events
+                WHERE event_date >= date('now')
+                ORDER BY event_date ASC
+                LIMIT 4
+            """).fetchall()
+
+    except Exception as e:
+        print(f"Database Error in publicity_dashboard: {e}")
+        import traceback
+        traceback.print_exc()
         flash(f'Database error: {str(e)}', 'danger')
         return redirect(url_for('login'))
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return render_template(
         "publicity/publicity-dashboard.html",
         total_members=total_members,
         total_announcements=total_announcements,
         upcoming_events=upcoming_events,
-        total_newsletters=total_newsletters,
         announcements=announcements,
         events=events,
-        session=session,  
+        session=session,
     )
 
+
+# ============================================================
+# ANNOUNCEMENTS
+# ============================================================
 
 @app.route("/publicity/announcements")
 def publicity_announcements():
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
+
     try:
-        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
+        total_members = fetchval(conn, """
+            SELECT COUNT(*) FROM users
+            WHERE LOWER(role) = 'member' AND status = 'active'
+        """) or 0
+
         announcements = conn.execute("""
-            SELECT a.*, 
-                   (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active') as recipients
+            SELECT a.*,
+                   (SELECT COUNT(*) FROM users
+                    WHERE LOWER(role) = 'member' AND status = 'active') as recipients
             FROM announcements a
             ORDER BY a.created_at DESC
         """).fetchall()
-    except sqlite3.Error as e:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         flash(f'Database error: {str(e)}', 'danger')
         return redirect("/publicity/dashboard")
     finally:
-        conn.close()
-    
-    return render_template("publicity/publicity-announcements.html", 
-                          announcements=announcements, 
-                          total_members=total_members)
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    return render_template(
+        "publicity/publicity-announcements.html",
+        announcements=announcements,
+        total_members=total_members
+    )
 
 
 @app.route("/publicity/announcement/create", methods=['POST'])
@@ -5718,46 +5765,57 @@ def create_announcement():
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     title = request.form.get('title', '').strip()
     content = request.form.get('content', '').strip()
-    
+
     if not title or not content:
         flash('Please fill in all fields', 'danger')
         return redirect("/publicity/announcements")
-    
+
     conn = get_db()
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        # Insert announcement
-        conn.execute("""
+        # ✅ Use CURRENT_TIMESTAMP — works on both SQLite and PostgreSQL
+        conn.execute(f"""
             INSERT INTO announcements (title, content, created_at, created_by)
-            VALUES (?, ?, datetime('now'), ?)
+            VALUES ({PH}, {PH}, CURRENT_TIMESTAMP, {PH})
         """, (title, content, session.get('user_id')))
         conn.commit()
-        
+
         # Get all active members
         members = conn.execute("""
-            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
+            SELECT id FROM users
+            WHERE LOWER(role) = 'member' AND status = 'active'
         """).fetchall()
-        
-        # Create notifications for all members
+
+        # Create notifications
         for member in members:
-            conn.execute("""
+            member_id = member["id"] if isinstance(member, dict) else member[0]
+            conn.execute(f"""
                 INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
-                VALUES (?, 'announcement', ?, ?, '/publicity/announcements', datetime('now'), 0)
-            """, (member['id'], title, content[:200]))
-        
+                VALUES ({PH}, 'announcement', {PH}, {PH}, '/publicity/announcements', CURRENT_TIMESTAMP, 0)
+            """, (member_id, title, content[:200]))
+
         conn.commit()
-        
-        flash(f'âœ… Announcement posted and sent to {len(members)} members!', 'success')
-        
-    except sqlite3.Error as e:
-        print(f"âŒ Database Error: {str(e)}")
+
+        flash(f'Announcement posted and sent to {len(members)} members!', 'success')
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         flash(f'Database error: {str(e)}', 'danger')
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return redirect("/publicity/announcements")
 
 
@@ -5766,23 +5824,27 @@ def delete_announcement(id):
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        conn.execute("DELETE FROM announcements WHERE id = ?", (id,))
+        conn.execute(f"DELETE FROM announcements WHERE id = {PH}", (id,))
         conn.commit()
         flash('Announcement deleted successfully!', 'success')
-    except sqlite3.Error as e:
+    except Exception as e:
         flash(f'Database error: {str(e)}', 'danger')
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return redirect("/publicity/announcements")
 
 
 # ============================================================
-# EVENTS ROUTES
+# EVENTS
 # ============================================================
 
 @app.route("/publicity/events")
@@ -5790,21 +5852,23 @@ def publicity_events():
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
+
     try:
         events = conn.execute("""
-            SELECT * FROM events 
+            SELECT * FROM events
             ORDER BY event_date ASC, event_time ASC
         """).fetchall()
-    except sqlite3.Error as e:
+    except Exception as e:
         flash(f'Database error: {str(e)}', 'danger')
         return redirect("/publicity/dashboard")
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return render_template("publicity/publicity-events.html", events=events)
 
 
@@ -5813,48 +5877,59 @@ def create_event():
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     title = request.form.get('title', '').strip()
     event_date = request.form.get('event_date', '').strip()
     event_time = request.form.get('event_time', '').strip()
     location = request.form.get('location', '').strip()
     description = request.form.get('description', '').strip()
-    
+
     if not title or not event_date or not location:
         flash('Please fill in all required fields', 'danger')
         return redirect("/publicity/events")
-    
+
     conn = get_db()
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        conn.execute("""
+        conn.execute(f"""
             INSERT INTO events (title, event_date, event_time, location, description, created_at, created_by)
-            VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+            VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, CURRENT_TIMESTAMP, {PH})
         """, (title, event_date, event_time or None, location, description, session.get('user_id')))
         conn.commit()
-        
+
         # Get all active members
         members = conn.execute("""
-            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
+            SELECT id FROM users
+            WHERE LOWER(role) = 'member' AND status = 'active'
         """).fetchall()
-        
-        # Create notifications for all members
+
+        # Create notifications
         for member in members:
-            conn.execute("""
+            member_id = member["id"] if isinstance(member, dict) else member[0]
+            conn.execute(f"""
                 INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
-                VALUES (?, 'event', ?, ?, '/publicity/events', datetime('now'), 0)
-            """, (member['id'], f"ðŸ“… New Event: {title}", f"Join us for {title} on {event_date} at {location}"))
-        
+                VALUES ({PH}, 'event', {PH}, {PH}, '/publicity/events', CURRENT_TIMESTAMP, 0)
+            """, (member_id, f"New Event: {title}", f"Join us for {title} on {event_date} at {location}"))
+
         conn.commit()
-        
-        flash(f'âœ… Event created and notified {len(members)} members!', 'success')
-        
-    except sqlite3.Error as e:
-        print(f"âŒ Database Error: {str(e)}")
+
+        flash(f'Event created and notified {len(members)} members!', 'success')
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         flash(f'Database error: {str(e)}', 'danger')
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return redirect("/publicity/events")
 
 
@@ -5863,270 +5938,23 @@ def delete_event(id):
     if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        conn.execute("DELETE FROM events WHERE id = ?", (id,))
+        conn.execute(f"DELETE FROM events WHERE id = {PH}", (id,))
         conn.commit()
         flash('Event deleted successfully!', 'success')
-    except sqlite3.Error as e:
+    except Exception as e:
         flash(f'Database error: {str(e)}', 'danger')
     finally:
-        conn.close()
-    
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     return redirect("/publicity/events")
-
-
-# ============================================================
-# NEWSLETTER ROUTES
-# ============================================================
-
-@app.route("/publicity/newsletters")
-def publicity_newsletters():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
-    try:
-        total_members = conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active'").fetchone()[0]
-        newsletters = conn.execute("""
-            SELECT n.*,
-                   (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member' AND status = 'active') as recipients
-            FROM newsletters n
-            ORDER BY n.sent_date DESC
-        """).fetchall()
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-        return redirect("/publicity/dashboard")
-    finally:
-        conn.close()
-    
-    return render_template("publicity/publicity-newsletters.html", 
-                          newsletters=newsletters, 
-                          total_members=total_members)
-
-
-@app.route("/publicity/newsletter/create", methods=['POST'])
-def create_newsletter():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    title = request.form.get('title', '').strip()
-    content = request.form.get('content', '').strip()
-    
-    if not title or not content:
-        flash('Please fill in all fields', 'danger')
-        return redirect("/publicity/newsletters")
-    
-    conn = get_db()
-    
-    try:
-        # Get all active members
-        members = conn.execute("""
-            SELECT id FROM users WHERE LOWER(role) = 'member' AND status = 'active'
-        """).fetchall()
-        
-        # Insert newsletter
-        conn.execute("""
-            INSERT INTO newsletters (title, content, sent_date, recipients, created_by)
-            VALUES (?, ?, datetime('now'), ?, ?)
-        """, (title, content, len(members), session.get('user_id')))
-        conn.commit()
-        
-        # Create notifications for all members
-        for member in members:
-            conn.execute("""
-                INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
-                VALUES (?, 'newsletter', ?, ?, '/publicity/newsletters', datetime('now'), 0)
-            """, (member['id'], f"ðŸ“° Newsletter: {title}", content[:200]))
-        
-        conn.commit()
-        
-        flash(f'âœ… Newsletter sent to {len(members)} members!', 'success')
-        
-    except sqlite3.Error as e:
-        print(f"âŒ Database Error: {str(e)}")
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/newsletters")
-
-
-@app.route("/publicity/newsletter/delete/<int:id>", methods=['POST'])
-def delete_newsletter(id):
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    
-    try:
-        conn.execute("DELETE FROM newsletters WHERE id = ?", (id,))
-        conn.commit()
-        flash('Newsletter deleted successfully!', 'success')
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/newsletters")
-
-
-# ============================================================
-# SOCIAL MEDIA ROUTES
-# ============================================================
-
-@app.route("/publicity/social")
-def publicity_social():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
-    try:
-        social_posts = conn.execute("""
-            SELECT * FROM social_posts
-            ORDER BY created_at DESC
-        """).fetchall()
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-        return redirect("/publicity/dashboard")
-    finally:
-        conn.close()
-    
-    return render_template("publicity/publicity-social.html", social_posts=social_posts)
-
-
-@app.route("/publicity/social/create", methods=['POST'])
-def create_social_post():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    platform = request.form.get('platform', '').strip()
-    post = request.form.get('post', '').strip()
-    
-    if not platform or not post:
-        flash('Please fill in all fields', 'danger')
-        return redirect("/publicity/social")
-    
-    conn = get_db()
-    
-    try:
-        conn.execute("""
-            INSERT INTO social_posts (platform, content, created_at, created_by)
-            VALUES (?, ?, datetime('now'), ?)
-        """, (platform, post, session.get('user_id')))
-        conn.commit()
-        
-        flash(f'âœ… Posted to {platform}!', 'success')
-        
-    except sqlite3.Error as e:
-        print(f"âŒ Database Error: {str(e)}")
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/social")
-
-
-@app.route("/publicity/social/delete/<int:id>", methods=['POST'])
-def delete_social_post(id):
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    
-    try:
-        conn.execute("DELETE FROM social_posts WHERE id = ?", (id,))
-        conn.commit()
-        flash('Social post deleted successfully!', 'success')
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/social")
-
-
-# ============================================================
-# NOTIFICATIONS ROUTES
-# ============================================================
-
-@app.route("/publicity/notifications")
-def publicity_notifications():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
-    try:
-        notifications = conn.execute("""
-            SELECT n.*, u.full_name as member_name
-            FROM notifications n
-            JOIN users u ON n.user_id = u.id
-            ORDER BY n.created_at DESC
-            LIMIT 100
-        """).fetchall()
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-        return redirect("/publicity/dashboard")
-    finally:
-        conn.close()
-    
-    return render_template("publicity/publicity-notifications.html", notifications=notifications)
-
-
-@app.route("/publicity/notification/delete/<int:id>", methods=['POST'])
-def delete_notification(id):
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    
-    try:
-        conn.execute("DELETE FROM notifications WHERE id = ?", (id,))
-        conn.commit()
-        flash('Notification deleted!', 'success')
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/notifications")
-
-
-@app.route("/publicity/notifications/clear", methods=['POST'])
-def clear_all_notifications():
-    if session.get("role") not in ["publicity", "secretary", "treasurer", "admin"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-    
-    conn = get_db()
-    
-    try:
-        conn.execute("DELETE FROM notifications")
-        conn.commit()
-        flash('All notifications cleared!', 'success')
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect("/publicity/notifications")
-
 
 # ============================================================
 # MEMBER - NOTIFICATIONS (Updated for staff)
