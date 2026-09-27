@@ -1089,13 +1089,13 @@ def admin_dashboard():
             WHERE LOWER(role) = 'member'
         """)
 
-        # ⚠️ SQLite uses date('now','start of month') — PostgreSQL uses date_trunc
-        #    Detect DB and pick the right SQL.
+        # ⚠️ SQLite stores dates as TEXT and compares lexicographically.
+        #    PostgreSQL needs an explicit cast to timestamp.
         if DATABASE_URL:
             monthly_savings = fetchval(conn, """
                 SELECT COALESCE(SUM(amount), 0)
                 FROM savings_deposits
-                WHERE deposit_date >= date_trunc('month', CURRENT_DATE)
+                WHERE NULLIF(deposit_date, '')::timestamp >= date_trunc('month', CURRENT_DATE)
             """)
         else:
             monthly_savings = fetchval(conn, """
