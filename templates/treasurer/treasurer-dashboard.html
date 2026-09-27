@@ -598,17 +598,10 @@
                     </td>
 
                     <td>
-                        {% if loan.account_number %}
+                        {% if loan.phone %}
                             <span class="payout-num"
-                                  onclick='copyPayout({{ loan.account_number|tojson }}, this)'
-                                  title="Click to copy">
-                                {{ loan.account_number }}
-                                <i class="fas fa-copy payout-copy"></i>
-                            </span>
-                        {% elif loan.phone %}
-                            <span class="payout-num"
-                                  onclick='copyPayout({{ loan.phone|tojson }}, this)'
-                                  title="Click to copy">
+                                onclick='copyPayout({{ loan.phone|tojson }}, this)'
+                                title="Click to copy">
                                 {{ loan.phone }}
                                 <i class="fas fa-copy payout-copy"></i>
                             </span>

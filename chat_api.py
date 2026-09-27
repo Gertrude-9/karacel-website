@@ -2,19 +2,166 @@
 # chat_api.py
 # Complete chat blueprint — pages + API endpoints
 # Used by all staff (treasurer, secretary, admin, chairperson, publicity)
+# Compatible with both SQLite (local) and PostgreSQL (Render)
 # ============================================================
 from flask import (
     Blueprint, jsonify, request, session,
     redirect, url_for, render_template
 )
+import os
 import sqlite3
 import functools
+
+
+# ============================================================
+# DATABASE DETECTION
+# ============================================================
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+
+# ============================================================
+# POSTGRESQL ADAPTER (self-contained for this module)
+# ============================================================
+if DATABASE_URL:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    _NOOP_STATEMENTS = {
+        "BEGIN", "BEGIN TRANSACTION", "BEGIN;",
+        "COMMIT", "COMMIT;", "END", "END;"
+    }
+
+    def _translate_sqlite_to_pg(query: str) -> str:
+        """Convert SQLite-specific SQL to PostgreSQL equivalents."""
+        q = query
+        # Placeholder conversion
+        q = q.replace("?", "%s")
+
+        # Date/time functions
+        q = q.replace("datetime('now')", "CURRENT_TIMESTAMP")
+        q = q.replace("datetime('now', 'localtime')", "CURRENT_TIMESTAMP")
+        q = q.replace("date('now')", "CURRENT_DATE")
+        q = q.replace("date('now', 'start of month')",
+                      "date_trunc('month', CURRENT_DATE)::date")
+        q = q.replace("date('now', '-1 month')",
+                      "(CURRENT_DATE - INTERVAL '1 month')::date")
+        q = q.replace("date('now', '+1 day')",
+                      "(CURRENT_DATE + INTERVAL '1 day')::date")
+
+        # Auto-increment
+        q = q.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+
+        return q
+
+    class _PgCursor:
+        def __init__(self, real_cursor):
+            self._cur = real_cursor
+            self._last_inserted_id = None
+
+        def execute(self, query, params=None):
+            stripped = query.strip().upper().rstrip(";")
+
+            if stripped in _NOOP_STATEMENTS:
+                return self
+
+            translated = _translate_sqlite_to_pg(query)
+
+            if params is None:
+                self._cur.execute(translated)
+            else:
+                self._cur.execute(translated, params)
+
+            if stripped.startswith("INSERT"):
+                try:
+                    self._cur.execute("SELECT LASTVAL()")
+                    row = self._cur.fetchone()
+                    if row:
+                        self._last_inserted_id = list(row.values())[0]
+                except Exception:
+                    self._last_inserted_id = None
+
+            return self
+
+        def executemany(self, query, params_seq):
+            translated = _translate_sqlite_to_pg(query)
+            self._cur.executemany(translated, params_seq)
+            return self
+
+        def executescript(self, script):
+            translated = _translate_sqlite_to_pg(script)
+            self._cur.execute(translated)
+            return self
+
+        def fetchone(self):
+            return self._cur.fetchone()
+
+        def fetchall(self):
+            return self._cur.fetchall()
+
+        def fetchmany(self, size=None):
+            return self._cur.fetchmany(size) if size else self._cur.fetchmany()
+
+        @property
+        def rowcount(self):
+            return self._cur.rowcount
+
+        @property
+        def lastrowid(self):
+            return self._last_inserted_id
+
+        def close(self):
+            return self._cur.close()
+
+        def __iter__(self):
+            return iter(self._cur)
+
+    class _PgConnection:
+        def __init__(self, real_conn):
+            self._conn = real_conn
+
+        def execute(self, query, params=None):
+            cur = self._conn.cursor(cursor_factory=RealDictCursor)
+            adapted = _PgCursor(cur)
+            adapted.execute(query, params)
+            return adapted
+
+        def cursor(self):
+            cur = self._conn.cursor(cursor_factory=RealDictCursor)
+            return _PgCursor(cur)
+
+        def commit(self):
+            self._conn.commit()
+
+        def rollback(self):
+            self._conn.rollback()
+
+        def close(self):
+            self._conn.close()
+
+        @property
+        def row_factory(self):
+            return None
+
+        @row_factory.setter
+        def row_factory(self, value):
+            pass
+
+    def _pg_connect():
+        return _PgConnection(psycopg2.connect(DATABASE_URL))
 
 
 # ============================================================
 # DB helper — self-contained (no circular import with app.py)
 # ============================================================
 def get_db():
+    """
+    Returns SQLite locally, PostgreSQL on Render.
+    """
+    if DATABASE_URL:
+        return _pg_connect()
     conn = sqlite3.connect("sacco.db")
     conn.row_factory = sqlite3.Row
     return conn
@@ -25,15 +172,13 @@ def get_db():
 # ============================================================
 chat_api = Blueprint('chat_api', __name__)
 
-STAFF_ROLES = ["admin",  "treasurer", "secretary"]
+STAFF_ROLES = ["admin", "treasurer", "secretary"]
 
 # Which base template each staff role should extend.
-# If a role isn't listed, the fallback passed to _render_chat_page is used.
 BASE_FOR_ROLE = {
-    "treasurer":   "treasurer/treasurer-base.html",
-    "secretary":   "secretary/secretary-base.html",
-    "admin":       "admin/admin-base.html",
-   
+    "treasurer": "treasurer/treasurer-base.html",
+    "secretary": "secretary/secretary-base.html",
+    "admin":     "admin/admin-base.html",
 }
 
 
@@ -80,7 +225,6 @@ def secretary_chat():
 
 @chat_api.route('/staff/chat')
 def staff_chat():
-    # Generic staff route — falls back to treasurer layout
     return _render_chat_page("treasurer/treasurer-base.html")
 
 
@@ -96,7 +240,6 @@ def api_chat_members_list():
     """
     current_user_id = session['user_id']
     db = get_db()
-    db.row_factory = sqlite3.Row
 
     try:
         # ---------- 1. SACCO MEMBERS ----------
@@ -156,7 +299,7 @@ def api_chat_members_list():
         for row in staff:
             d = dict(row)
             d['type'] = 'staff'
-            d['status'] = 'active'   # staff always considered active
+            d['status'] = 'active'
             d['sacco_number'] = d.get('sacco_number') or ''
             results.append(d)
 
@@ -172,6 +315,8 @@ def api_chat_members_list():
     except Exception as e:
         db.close()
         print(f"Error loading chat targets: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -183,7 +328,6 @@ def api_chat_members_list():
 def api_chat_messages(other_id):
     current_user_id = session['user_id']
     db = get_db()
-    db.row_factory = sqlite3.Row
 
     try:
         messages = db.execute("""
@@ -221,6 +365,8 @@ def api_chat_messages(other_id):
     except Exception as e:
         db.close()
         print(f"Error loading messages: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -256,8 +402,8 @@ def api_chat_send():
         # Insert chat message
         db.execute("""
             INSERT INTO chat_messages
-                (sender_id, receiver_id, message, message_type, created_at, is_read)
-            VALUES (?, ?, ?, ?, datetime('now'), 0)
+                (sender_id, receiver_id, message, message_type, is_read)
+            VALUES (?, ?, ?, ?, 0)
         """, (sender_id, other_id, message, message_type))
 
         # Notification for recipient
@@ -267,8 +413,8 @@ def api_chat_send():
 
         db.execute("""
             INSERT INTO notifications
-                (user_id, type, title, message, link, created_at, is_read)
-            VALUES (?, 'chat', ?, ?, ?, datetime('now'), 0)
+                (user_id, type, title, message, link, is_read)
+            VALUES (?, 'chat', ?, ?, ?, 0)
         """, (
             other_id,
             f"📩 New message from {sender_name} ({sender_role.title()})",
@@ -284,6 +430,8 @@ def api_chat_send():
         db.rollback()
         db.close()
         print(f"Error sending message: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -316,21 +464,25 @@ def api_chat_mark_read():
         db.rollback()
         db.close()
         print(f"Error marking messages as read: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
-
 
 
 # ============================================================
 # DB SETUP — create chat_messages table
 # ============================================================
 def create_chat_table():
+    """Creates the chat_messages table if it doesn't exist.
+    Works with both SQLite and PostgreSQL."""
     db = get_db()
     try:
-        db.execute("""
+        # Choose the correct primary-key syntax
+        pk = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
+
+        db.execute(f"""
             CREATE TABLE IF NOT EXISTS chat_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk},
                 sender_id INTEGER NOT NULL,
                 receiver_id INTEGER NOT NULL,
                 message TEXT NOT NULL,
@@ -348,6 +500,9 @@ def create_chat_table():
         db.close()
         print("✅ Chat messages table ready")
     except Exception as e:
-        print(f"Error creating chat table: {str(e)}")
-        db.rollback()
-        db.close()
+        print(f"⚠️ Error creating chat table: {str(e)}")
+        try:
+            db.rollback()
+            db.close()
+        except Exception:
+            pass

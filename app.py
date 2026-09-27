@@ -2,9 +2,8 @@ from flask import Flask, jsonify, render_template, request, redirect, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
-from datetime import datetime, timedelta
-import re
 import os
+from datetime import datetime, timedelta
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -12,156 +11,288 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
 
+from dotenv import load_dotenv
+load_dotenv()
 
+
+# ============================================================
+# POSTGRESQL ADAPTER — makes PostgreSQL look like SQLite
+# ============================================================
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    class PostgresCursorAdapter:
+        """Wraps a psycopg2 cursor. Converts ? → %s and provides sqlite3.Row-like access."""
+        def __init__(self, real_cursor):
+            self._cur = real_cursor
+
+        def execute(self, query, params=None):
+            query = query.replace("?", "%s")
+            if params is None:
+                self._cur.execute(query)
+            else:
+                self._cur.execute(query, params)
+            return self
+
+        def executemany(self, query, params_seq):
+            query = query.replace("?", "%s")
+            self._cur.executemany(query, params_seq)
+            return self
+
+        def executescript(self, script):
+            self._cur.execute(script)
+            return self
+
+        def fetchone(self):
+            return self._cur.fetchone()
+
+        def fetchall(self):
+            return self._cur.fetchall()
+
+        def fetchmany(self, size=None):
+            return self._cur.fetchmany(size) if size else self._cur.fetchmany()
+
+        @property
+        def rowcount(self):
+            return self._cur.rowcount
+
+        @property
+        def lastrowid(self):
+            try:
+                self._cur.execute("SELECT LASTVAL()")
+                return self._cur.fetchone()["lastval"]
+            except Exception:
+                return None
+
+        def close(self):
+            return self._cur.close()
+
+        def __iter__(self):
+            return iter(self._cur)
+
+    class PostgresConnectionAdapter:
+        """Wraps a psycopg2 connection. Mimics sqlite3.Connection."""
+        def __init__(self, real_conn):
+            self._conn = real_conn
+
+        def execute(self, query, params=None):
+            cur = self._conn.cursor(cursor_factory=RealDictCursor)
+            adapted = PostgresCursorAdapter(cur)
+            adapted.execute(query, params)
+            return adapted
+
+        def cursor(self):
+            cur = self._conn.cursor(cursor_factory=RealDictCursor)
+            return PostgresCursorAdapter(cur)
+
+        def commit(self):
+            self._conn.commit()
+
+        def rollback(self):
+            self._conn.rollback()
+
+        def close(self):
+            self._conn.close()
+
+        @property
+        def row_factory(self):
+            return None
+
+        @row_factory.setter
+        def row_factory(self, value):
+            pass
+
+    def _pg_connect():
+        return PostgresConnectionAdapter(psycopg2.connect(DATABASE_URL))
+
+    print("✅ Using PostgreSQL database")
+else:
+    def _pg_connect():
+        return None
+    print("✅ Using SQLite database (local dev)")
+
+
+# ============================================================
+# APP SETUP
+# ============================================================
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 
-# Configuration for file uploads
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'receipts'), exist_ok=True)
 
 
 def get_db():
+    """Returns SQLite locally, PostgreSQL on Render."""
+    if DATABASE_URL:
+        return _pg_connect()
     conn = sqlite3.connect("sacco.db")
     conn.row_factory = sqlite3.Row
     return conn
-
 # ============================================================
 # ARCHIVE TABLES — created automatically on startup
 # ============================================================
 def ensure_archive_tables():
-    """Creates archive tables if they don't exist yet. Safe to run every boot."""
-    conn = sqlite3.connect("sacco.db")
+    """Creates archive tables if they don't exist yet. Works with both SQLite and PostgreSQL."""
+    conn = get_db()
     cur = conn.cursor()
 
-    cur.executescript("""
-    CREATE TABLE IF NOT EXISTS archived_years (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        year_label TEXT NOT NULL UNIQUE,
-        started_at TEXT NOT NULL,
-        closed_at TEXT NOT NULL,
-        closed_by INTEGER,
-        notes TEXT,
-        total_members INTEGER DEFAULT 0,
-        total_staff_kept INTEGER DEFAULT 0,
-        total_kai_shares INTEGER DEFAULT 0,
-        total_ks_shares INTEGER DEFAULT 0,
-        total_savings REAL DEFAULT 0,
-        total_kac_collected REAL DEFAULT 0,
-        total_registration_fees REAL DEFAULT 0,
-        total_loans_disbursed REAL DEFAULT 0,
-        total_loans_repaid REAL DEFAULT 0,
-        total_interest_collected REAL DEFAULT 0,
-        total_outstanding_loans REAL DEFAULT 0
-    );
+    # PostgreSQL uses SERIAL instead of INTEGER PRIMARY KEY AUTOINCREMENT
+    if DATABASE_URL:
+        pk_type = "SERIAL PRIMARY KEY"
+        text_type = "TEXT"
+        real_type = "REAL"
+        int_type = "INTEGER"
+    else:
+        pk_type = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        text_type = "TEXT"
+        real_type = "REAL"
+        int_type = "INTEGER"
 
-    CREATE TABLE IF NOT EXISTS archived_users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        archive_id INTEGER NOT NULL,
-        original_user_id INTEGER NOT NULL,
-        sacco_number TEXT,
-        full_name TEXT,
-        email TEXT,
-        phone TEXT,
-        role TEXT,
-        gender TEXT,
-        dob TEXT,
-        address TEXT,
-        next_of_kin_name TEXT,
-        next_of_kin_phone TEXT,
-        relationship TEXT,
-        kai_shares INTEGER DEFAULT 0,
-        ks_shares INTEGER DEFAULT 0,
-        kac_paid REAL DEFAULT 0,
-        registration_fee_paid INTEGER DEFAULT 0,
-        savings_balance REAL DEFAULT 0,
-        total_loans_taken REAL DEFAULT 0,
-        total_loans_repaid REAL DEFAULT 0,
-        outstanding_balance REAL DEFAULT 0,
-        interest_paid REAL DEFAULT 0,
-        status TEXT,
-        registration_date TEXT,
-        archived_at TEXT NOT NULL
-    );
+    tables_sql = [
+        f"""
+        CREATE TABLE IF NOT EXISTS archived_years (
+            id {pk_type},
+            year_label {text_type} NOT NULL UNIQUE,
+            started_at {text_type} NOT NULL,
+            closed_at {text_type} NOT NULL,
+            closed_by {int_type},
+            notes {text_type},
+            total_members {int_type} DEFAULT 0,
+            total_staff_kept {int_type} DEFAULT 0,
+            total_kai_shares {int_type} DEFAULT 0,
+            total_ks_shares {int_type} DEFAULT 0,
+            total_savings {real_type} DEFAULT 0,
+            total_kac_collected {real_type} DEFAULT 0,
+            total_registration_fees {real_type} DEFAULT 0,
+            total_loans_disbursed {real_type} DEFAULT 0,
+            total_loans_repaid {real_type} DEFAULT 0,
+            total_interest_collected {real_type} DEFAULT 0,
+            total_outstanding_loans {real_type} DEFAULT 0
+        )
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS archived_users (
+            id {pk_type},
+            archive_id {int_type} NOT NULL,
+            original_user_id {int_type} NOT NULL,
+            sacco_number {text_type},
+            full_name {text_type},
+            email {text_type},
+            phone {text_type},
+            role {text_type},
+            gender {text_type},
+            dob {text_type},
+            address {text_type},
+            next_of_kin_name {text_type},
+            next_of_kin_phone {text_type},
+            relationship {text_type},
+            kai_shares {int_type} DEFAULT 0,
+            ks_shares {int_type} DEFAULT 0,
+            kac_paid {real_type} DEFAULT 0,
+            registration_fee_paid {int_type} DEFAULT 0,
+            savings_balance {real_type} DEFAULT 0,
+            total_loans_taken {real_type} DEFAULT 0,
+            total_loans_repaid {real_type} DEFAULT 0,
+            outstanding_balance {real_type} DEFAULT 0,
+            interest_paid {real_type} DEFAULT 0,
+            status {text_type},
+            registration_date {text_type},
+            archived_at {text_type} NOT NULL
+        )
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS archived_savings_deposits (
+            id {pk_type},
+            archive_id {int_type} NOT NULL,
+            original_deposit_id {int_type},
+            user_id {int_type},
+            sacco_number {text_type},
+            full_name {text_type},
+            savings_type {text_type},
+            amount {real_type},
+            shares {int_type},
+            deposit_date {text_type},
+            payment_method {text_type},
+            receipt_number {text_type},
+            notes {text_type},
+            created_at {text_type},
+            archived_at {text_type} NOT NULL
+        )
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS archived_loans (
+            id {pk_type},
+            archive_id {int_type} NOT NULL,
+            original_loan_id {int_type},
+            user_id {int_type},
+            sacco_number {text_type},
+            full_name {text_type},
+            loan_number {text_type},
+            amount {real_type},
+            status {text_type},
+            application_date {text_type},
+            approval_date {text_type},
+            disbursement_date {text_type},
+            completed_date {text_type},
+            total_interest_accrued {real_type},
+            interest_paid {real_type},
+            principal_paid {real_type},
+            current_balance {real_type},
+            rejection_reason {text_type},
+            archived_at {text_type} NOT NULL
+        )
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS archived_repayments (
+            id {pk_type},
+            archive_id {int_type} NOT NULL,
+            original_repayment_id {int_type},
+            loan_id {int_type},
+            user_id {int_type},
+            sacco_number {text_type},
+            full_name {text_type},
+            loan_number {text_type},
+            amount {real_type},
+            interest_paid {real_type},
+            principal_paid {real_type},
+            payment_date {text_type},
+            payment_method {text_type},
+            transaction_ref {text_type},
+            notes {text_type},
+            archived_at {text_type} NOT NULL
+        )
+        """
+    ]
 
-    CREATE TABLE IF NOT EXISTS archived_savings_deposits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        archive_id INTEGER NOT NULL,
-        original_deposit_id INTEGER,
-        user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        savings_type TEXT,
-        amount REAL,
-        shares INTEGER,
-        deposit_date TEXT,
-        payment_method TEXT,
-        receipt_number TEXT,
-        notes TEXT,
-        created_at TEXT,
-        archived_at TEXT NOT NULL
-    );
+    for sql in tables_sql:
+        cur.execute(sql)
 
-    CREATE TABLE IF NOT EXISTS archived_loans (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        archive_id INTEGER NOT NULL,
-        original_loan_id INTEGER,
-        user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        loan_number TEXT,
-        amount REAL,
-        status TEXT,
-        application_date TEXT,
-        approval_date TEXT,
-        disbursement_date TEXT,
-        completed_date TEXT,
-        total_interest_accrued REAL,
-        interest_paid REAL,
-        principal_paid REAL,
-        current_balance REAL,
-        rejection_reason TEXT,
-        archived_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS archived_repayments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        archive_id INTEGER NOT NULL,
-        original_repayment_id INTEGER,
-        loan_id INTEGER,
-        user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        loan_number TEXT,
-        amount REAL,
-        interest_paid REAL,
-        principal_paid REAL,
-        payment_date TEXT,
-        payment_method TEXT,
-        transaction_ref TEXT,
-        notes TEXT,
-        archived_at TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_arch_users_archive ON archived_users(archive_id);
-    CREATE INDEX IF NOT EXISTS idx_arch_dep_archive   ON archived_savings_deposits(archive_id);
-    CREATE INDEX IF NOT EXISTS idx_arch_loans_archive ON archived_loans(archive_id);
-    CREATE INDEX IF NOT EXISTS idx_arch_rep_archive   ON archived_repayments(archive_id);
-    """)
+    # Indexes (work in both databases)
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_arch_users_archive ON archived_users(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_arch_dep_archive ON archived_savings_deposits(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_arch_loans_archive ON archived_loans(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_arch_rep_archive ON archived_repayments(archive_id)",
+    ]
+    for sql in indexes:
+        try:
+            cur.execute(sql)
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
     print("✅ Archive tables ready.")
-
-
-# Run once at startup — safe, uses IF NOT EXISTS
-try:
-    ensure_archive_tables()
-except Exception as e:
-    print(f"⚠️ Could not create archive tables: {e}")
 
 # ============================================================
 # REGISTER CHAT BLUEPRINT
@@ -175,176 +306,192 @@ create_chat_table()
 def create_database():
     conn = get_db()
     cursor = conn.cursor()
-    
-    # ============================================================
-    # FIRST: CHECK AND ADD MISSING COLUMNS TO EXISTING TABLES
-    # ============================================================
-    # Check users table
-    cursor.execute("PRAGMA table_info(users)")
-    existing_columns = [col[1] for col in cursor.fetchall()]
-    
-    columns_to_add = {
-        'kai_shares': 'INTEGER DEFAULT 0',
-        'ks_shares': 'INTEGER DEFAULT 0',
-        'kac_paid': 'INTEGER DEFAULT 0',
-        'kac_paid_date': 'TEXT',
-        'registration_fee_paid': 'INTEGER DEFAULT 0',
-        'registration_fee_paid_date': 'TEXT'
-    }
-    
-    for col_name, col_type in columns_to_add.items():
-        if col_name not in existing_columns:
-            try:
-                cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to users: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-    
-    # Check system_settings table
-    cursor.execute("PRAGMA table_info(system_settings)")
-    existing_settings_columns = [col[1] for col in cursor.fetchall()]
-    
-    settings_columns_to_add = {
-        'kai_share_price': 'INTEGER DEFAULT 100000',
-        'ks_share_price': 'INTEGER DEFAULT 10000',
-        'kac_annual_fee': 'INTEGER DEFAULT 100000',
-        'registration_fee': 'INTEGER DEFAULT 20000'
-    }
-    
-    for col_name, col_type in settings_columns_to_add.items():
-        if col_name not in existing_settings_columns:
-            try:
-                cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to system_settings: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-    
-    # Check savings_deposits table
-    cursor.execute("PRAGMA table_info(savings_deposits)")
-    existing_deposits_columns = [col[1] for col in cursor.fetchall()]
-    
-    deposits_columns_to_add = {
-        'savings_type': 'TEXT DEFAULT "KAI"',
-        'shares': 'INTEGER DEFAULT 0'
-    }
-    
-    for col_name, col_type in deposits_columns_to_add.items():
-        if col_name not in existing_deposits_columns:
-            try:
-                cursor.execute(f"ALTER TABLE savings_deposits ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to savings_deposits: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-    
-    # Check repayments table
-    cursor.execute("PRAGMA table_info(repayments)")
-    existing_repayments_columns = [col[1] for col in cursor.fetchall()]
-    
-    repayments_columns_to_add = {
-        'interest_paid': 'REAL DEFAULT 0',
-        'principal_paid': 'REAL DEFAULT 0',
-        'balance_after': 'REAL DEFAULT 0',
-        'notes': 'TEXT'
-    }
-    
-    for col_name, col_type in repayments_columns_to_add.items():
-        if col_name not in existing_repayments_columns:
-            try:
-                cursor.execute(f"ALTER TABLE repayments ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to repayments: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-    
-    # Check loans table
-    cursor.execute("PRAGMA table_info(loans)")
-    existing_loans_columns = [col[1] for col in cursor.fetchall()]
-    
-    loans_columns_to_add = {
-        'total_interest_accrued': 'REAL DEFAULT 0',
-        'principal_paid': 'REAL DEFAULT 0',
-        'interest_paid': 'REAL DEFAULT 0',
-        'months_paid': 'INTEGER DEFAULT 0',
-        'original_balance': 'REAL DEFAULT 0',
-        'total_interest_calculated': 'REAL DEFAULT 0',
-        'due_date': 'TEXT',
-        'application_fee': 'REAL DEFAULT 1000',
-        'application_fee_paid': 'INTEGER DEFAULT 0',
-        'net_loan_amount': 'REAL DEFAULT 0',
-        'loan_type': 'TEXT DEFAULT "standard"',
-        'disbursed_amount': 'REAL DEFAULT 0',
-        'total_fees_paid': 'REAL DEFAULT 0',
-        'total_penalties': 'REAL DEFAULT 0',
-        # ✅ NEW: Simple interest tracking
-        'accrued_interest': 'REAL DEFAULT 0',
-        'last_interest_applied_date': 'TEXT',
-        'total_interest_charged': 'REAL DEFAULT 0'
-    }
-    
-    for col_name, col_type in loans_columns_to_add.items():
-        if col_name not in existing_loans_columns:
-            try:
-                cursor.execute(f"ALTER TABLE loans ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to loans: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
 
-    # ============================================================
-    # BACKFILL: Set last_interest_applied_date for existing loans
-    # ============================================================
+    is_pg = bool(DATABASE_URL)
+
+    # ------------------------------------------------------------
+    # Helper: get existing columns (works for both DBs)
+    # ------------------------------------------------------------
+    def get_columns(table_name):
+        if is_pg:
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = %s", (table_name,)
+            )
+            rows = cursor.fetchall()
+            return [r["column_name"] for r in rows]
+        else:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            return [col[1] for col in cursor.fetchall()]
+
+    # ------------------------------------------------------------
+    # Helper: check if table exists
+    # ------------------------------------------------------------
+    def table_exists(table_name):
+        if is_pg:
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+                (table_name,)
+            )
+            return cursor.fetchone() is not None
+        else:
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (table_name,)
+            )
+            return cursor.fetchone() is not None
+
+    # ------------------------------------------------------------
+    # Add missing columns to `users`
+    # ------------------------------------------------------------
+    if table_exists("users"):
+        existing = get_columns("users")
+        for col_name, col_type in {
+            'kai_shares': 'INTEGER DEFAULT 0',
+            'ks_shares': 'INTEGER DEFAULT 0',
+            'kac_paid': 'REAL DEFAULT 0',
+            'kac_paid_date': 'TEXT',
+            'registration_fee_paid': 'INTEGER DEFAULT 0',
+            'registration_fee_paid_date': 'TEXT'
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to users: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # ------------------------------------------------------------
+    # Add missing columns to `system_settings`
+    # ------------------------------------------------------------
+    if table_exists("system_settings"):
+        existing = get_columns("system_settings")
+        for col_name, col_type in {
+            'kai_share_price': 'INTEGER DEFAULT 100000',
+            'ks_share_price': 'INTEGER DEFAULT 10000',
+            'kac_annual_fee': 'INTEGER DEFAULT 100000',
+            'registration_fee': 'INTEGER DEFAULT 20000'
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to system_settings: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # ------------------------------------------------------------
+    # Add missing columns to `savings_deposits`
+    # ------------------------------------------------------------
+    if table_exists("savings_deposits"):
+        existing = get_columns("savings_deposits")
+        for col_name, col_type in {
+            'savings_type': "TEXT DEFAULT 'KAI'",
+            'shares': 'INTEGER DEFAULT 0'
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE savings_deposits ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to savings_deposits: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # ------------------------------------------------------------
+    # Add missing columns to `repayments`
+    # ------------------------------------------------------------
+    if table_exists("repayments"):
+        existing = get_columns("repayments")
+        for col_name, col_type in {
+            'interest_paid': 'REAL DEFAULT 0',
+            'principal_paid': 'REAL DEFAULT 0',
+            'balance_after': 'REAL DEFAULT 0',
+            'notes': 'TEXT'
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE repayments ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to repayments: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # ------------------------------------------------------------
+    # Add missing columns to `loans`
+    # ------------------------------------------------------------
+    if table_exists("loans"):
+        existing = get_columns("loans")
+        for col_name, col_type in {
+            'total_interest_accrued': 'REAL DEFAULT 0',
+            'principal_paid': 'REAL DEFAULT 0',
+            'interest_paid': 'REAL DEFAULT 0',
+            'months_paid': 'INTEGER DEFAULT 0',
+            'original_balance': 'REAL DEFAULT 0',
+            'total_interest_calculated': 'REAL DEFAULT 0',
+            'due_date': 'TEXT',
+            'application_fee': 'REAL DEFAULT 1000',
+            'application_fee_paid': 'INTEGER DEFAULT 0',
+            'net_loan_amount': 'REAL DEFAULT 0',
+            'loan_type': "TEXT DEFAULT 'standard'",
+            'disbursed_amount': 'REAL DEFAULT 0',
+            'total_fees_paid': 'REAL DEFAULT 0',
+            'total_penalties': 'REAL DEFAULT 0',
+            'accrued_interest': 'REAL DEFAULT 0',
+            'last_interest_applied_date': 'TEXT',
+            'total_interest_charged': 'REAL DEFAULT 0',
+            # ✅ NEW: payout destination chosen by the member
+            'send_to_type': 'TEXT',
+            'send_to_value': 'TEXT',
+            'send_to_secondary': 'TEXT'
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE loans ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to loans: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
+    # Backfill
     try:
         cursor.execute("""
             UPDATE loans
             SET last_interest_applied_date = COALESCE(
-                disbursed_date,
-                approved_date,
-                loan_start_date,
-                application_date
+                disbursed_date, approved_date, loan_start_date, application_date
             )
             WHERE last_interest_applied_date IS NULL
             AND status IN ('disbursed', 'active', 'approved')
         """)
-        rows_updated = cursor.rowcount
-        if rows_updated > 0:
-            print(f"✅ Backfilled last_interest_applied_date for {rows_updated} existing loan(s)")
+        rows = cursor.rowcount
+        if rows > 0:
+            print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
     except Exception as e:
         print(f"⚠️ Backfill warning: {e}")
 
-    
-    # ============================================================
-    # CHECK NOTIFICATIONS TABLE FOR MISSING COLUMNS
-    # ============================================================
-    cursor.execute("PRAGMA table_info(notifications)")
-    existing_notifications_columns = [col[1] for col in cursor.fetchall()]
-    
-    # Add missing columns to notifications if they don't exist
-    notifications_columns_to_add = {
-        'link': 'TEXT',
-        'is_read': 'INTEGER DEFAULT 0'
-    }
-    
-    # Check if 'type' column exists, if not add it
-    if 'type' not in existing_notifications_columns:
-        try:
-            cursor.execute("ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'")
-            print("✅ Added column to notifications: type")
-        except Exception as e:
-            print(f"⚠️ Could not add column type: {e}")
-    
-    for col_name, col_type in notifications_columns_to_add.items():
-        if col_name not in existing_notifications_columns:
+    # ------------------------------------------------------------
+    # Add missing columns to `notifications`
+    # ------------------------------------------------------------
+    if table_exists("notifications"):
+        existing = get_columns("notifications")
+        if 'type' not in existing:
             try:
-                cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to notifications: {col_name}")
+                cursor.execute("ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'")
+                print("✅ Added column to notifications: type")
             except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-    
+                print(f"⚠️ Could not add column type: {e}")
+        for col_name, col_type in {'link': 'TEXT', 'is_read': 'INTEGER DEFAULT 0'}.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to notifications: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+
     # ============================================================
-    # NOW CREATE TABLES IF THEY DON'T EXIST (with all columns)
+    # CREATE TABLES (with correct PK syntax per DB)
     # ============================================================
-    # Create users table with ALL savings type columns
-    cursor.execute("""
+    pk = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
+
+    # USERS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         full_name TEXT NOT NULL,
         gender TEXT,
         dob TEXT,
@@ -359,20 +506,20 @@ def create_database():
         next_of_kin_name TEXT,
         relationship TEXT,
         next_of_kin_phone TEXT,
-        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        registration_date TEXT,
         kai_shares INTEGER DEFAULT 0,
         ks_shares INTEGER DEFAULT 0,
-        kac_paid INTEGER DEFAULT 0,
+        kac_paid REAL DEFAULT 0,
         kac_paid_date TEXT,
         registration_fee_paid INTEGER DEFAULT 0,
         registration_fee_paid_date TEXT
     )
     """)
-    
-    # Create loans table
-    cursor.execute("""
+
+    # LOANS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS loans (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         loan_number TEXT UNIQUE NOT NULL,
         user_id INTEGER NOT NULL,
         amount REAL NOT NULL,
@@ -407,7 +554,7 @@ def create_database():
         disbursed_by TEXT,
         disbursed_by_role TEXT,
         rejected_by TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TEXT,
         total_interest_accrued REAL DEFAULT 0,
         principal_paid REAL DEFAULT 0,
         interest_paid REAL DEFAULT 0,
@@ -424,45 +571,42 @@ def create_database():
         total_penalties REAL DEFAULT 0,
         accrued_interest REAL DEFAULT 0,
         last_interest_applied_date TEXT,
-        total_interest_charged REAL DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        total_interest_charged REAL DEFAULT 0
     )
     """)
 
-    # Create notifications table with type column (not notification_type)
-    cursor.execute("""
+    # NOTIFICATIONS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         user_id INTEGER NOT NULL,
         type TEXT DEFAULT 'general',
         title TEXT NOT NULL,
         message TEXT NOT NULL,
         link TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_read INTEGER DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TEXT,
+        is_read INTEGER DEFAULT 0
     )
     """)
 
-    # Create loan guarantors table
-    cursor.execute("""
+    # LOAN GUARANTORS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS loan_guarantors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         loan_id INTEGER NOT NULL,
         guarantor_name TEXT NOT NULL,
         phone TEXT NOT NULL,
         email TEXT,
         relationship TEXT,
         status TEXT DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (loan_id) REFERENCES loans(id)
+        created_at TEXT
     )
     """)
 
-    # Create repayments table with interest tracking
-    cursor.execute("""
+    # REPAYMENTS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS repayments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         loan_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
         amount REAL NOT NULL,
@@ -474,16 +618,14 @@ def create_database():
         transaction_ref TEXT,
         notes TEXT,
         status TEXT DEFAULT 'completed',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (loan_id) REFERENCES loans(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TEXT
     )
     """)
 
-    # Create savings deposits table with savings type
-    cursor.execute("""
+    # SAVINGS DEPOSITS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS savings_deposits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         user_id INTEGER NOT NULL,
         amount REAL NOT NULL,
         savings_type TEXT DEFAULT 'KAI',
@@ -492,87 +634,73 @@ def create_database():
         payment_method TEXT,
         receipt_number TEXT,
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TEXT
     )
     """)
 
-    # Create guarantor tracking table
-    cursor.execute("""
+    # GUARANTOR TRACKING
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS guarantor_tracking (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         guarantor_id INTEGER NOT NULL,
         loan_id INTEGER NOT NULL,
         member_name TEXT NOT NULL,
         amount_guaranteed REAL NOT NULL,
         outstanding_balance REAL DEFAULT 0,
         repayment_status TEXT DEFAULT 'on_track',
-        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (guarantor_id) REFERENCES users(id),
-        FOREIGN KEY (loan_id) REFERENCES loans(id)
+        last_updated TEXT
     )
     """)
 
-    # ============================================================
-    # PUBLICITY TABLES
-    # ============================================================
-    
-    # Create announcements table
-    cursor.execute("""
+    # PUBLICITY
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS announcements (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by INTEGER,
-        FOREIGN KEY (created_by) REFERENCES users(id)
+        created_at TEXT,
+        created_by INTEGER
     )
     """)
 
-    # Create events table
-    cursor.execute("""
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         title TEXT NOT NULL,
-        event_date DATE NOT NULL,
-        event_time TIME,
+        event_date TEXT NOT NULL,
+        event_time TEXT,
         location TEXT NOT NULL,
         description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by INTEGER,
-        FOREIGN KEY (created_by) REFERENCES users(id)
+        created_at TEXT,
+        created_by INTEGER
     )
     """)
 
-    # Create newsletters table
-    cursor.execute("""
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS newsletters (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        sent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sent_date TEXT,
         recipients INTEGER DEFAULT 0,
-        created_by INTEGER,
-        FOREIGN KEY (created_by) REFERENCES users(id)
+        created_by INTEGER
     )
     """)
 
-    # Create social posts table
-    cursor.execute("""
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS social_posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         platform TEXT NOT NULL,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by INTEGER,
-        FOREIGN KEY (created_by) REFERENCES users(id)
+        created_at TEXT,
+        created_by INTEGER
     )
     """)
 
-    # Create system settings table
-    cursor.execute("""
+    # SYSTEM SETTINGS
+    cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS system_settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {pk},
         sacco_name TEXT DEFAULT 'Karacel Association',
         registration_number TEXT DEFAULT 'SACCO/REG/2024/001',
         savings_interest_rate REAL DEFAULT 6.5,
@@ -585,102 +713,68 @@ def create_database():
         ks_share_price INTEGER DEFAULT 10000,
         kac_annual_fee INTEGER DEFAULT 100000,
         registration_fee INTEGER DEFAULT 20000,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TEXT
     )
     """)
 
-    # Insert default settings if none exist
-    settings_exists = cursor.execute("SELECT COUNT(*) FROM system_settings").fetchone()[0]
-    if settings_exists == 0:
+    # ---- Default settings ----
+    cursor.execute("SELECT COUNT(*) AS c FROM system_settings")
+    row = cursor.fetchone()
+    count = row["c"] if is_pg else row[0]
+    if count == 0:
         cursor.execute("""
             INSERT INTO system_settings (
                 sacco_name, registration_number, savings_interest_rate,
                 loan_interest_rate, penalty_rate, max_loan_amount,
                 min_loan_amount, max_tenure, kai_share_price,
-                ks_share_price, kac_annual_fee, registration_fee
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ks_share_price, kac_annual_fee, registration_fee, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            'Karacel Association',
-            'SACCO/REG/2024/001',
-            6.5,
-            12,
-            5,
-            '10000000',
-            '10000',
-            24,
-            100000,
-            10000,
-            100000,
-            20000
+            'Karacel Association', 'SACCO/REG/2024/001', 6.5, 12, 5,
+            '10000000', '10000', 24, 100000, 10000, 100000, 20000,
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ))
 
-    # Create admin user only if no users exist
-    admin_exists = cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
-    if admin_exists == 0:
+    # ---- Default admin ----
+    cursor.execute("SELECT COUNT(*) AS c FROM users WHERE role = 'admin'")
+    row = cursor.fetchone()
+    admin_count = row["c"] if is_pg else row[0]
+    if admin_count == 0:
         cursor.execute("""
             INSERT INTO users (
                 full_name, gender, dob, sacco_number,
                 email, phone, address, password, role, status,
                 savings_balance, next_of_kin_name, relationship,
-                next_of_kin_phone
+                next_of_kin_phone, registration_date
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            "System Administrator",
-            "Male",
-            "1990-01-01",
-            "ADM001",
-            "admin@sacco.com",
-            "0700000000",
-            "Head Office",
+            "System Administrator", "Male", "1990-01-01", "ADM001",
+            "admin@sacco.com", "0700000000", "Head Office",
             generate_password_hash("admin123"),
-            "admin",
-            "active",
-            0,
-            None,
-            None,
-            None
+            "admin", "active", 0, None, None, None,
+            datetime.now().strftime('%Y-%m-%d')
         ))
 
-    # ============================================================
-    # CREATE INDEXES FOR BETTER PERFORMANCE
-    # ============================================================
-    
-    # Notifications indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)")
-    
-    # Announcements indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at)")
-    
-    # Events indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date)")
-    
-    # Newsletters indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_newsletters_sent_date ON newsletters(sent_date)")
-    
-    # Social posts indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_social_posts_created_at ON social_posts(created_at)")
-    
-    # Loans indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_loans_application_date ON loans(application_date)")
-    
-    # Repayments indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_repayments_payment_date ON repayments(payment_date)")
-    
-    # Savings deposits indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_savings_deposits_deposit_date ON savings_deposits(deposit_date)")
+    # ---- Indexes ----
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)",
+        "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
+        "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
+    ]
+    for sql in indexes:
+        try:
+            cursor.execute(sql)
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
     print("✅ Database created/updated successfully with all tables!")
-    print("📊 Tables created: users, loans, notifications, loan_guarantors, repayments, savings_deposits, guarantor_tracking, announcements, events, newsletters, social_posts, system_settings")
 
 create_database()
 
@@ -859,7 +953,6 @@ def login():
 
         conn = get_db()
         try:
-            conn.row_factory = sqlite3.Row
             user = conn.execute(
                 "SELECT * FROM users WHERE sacco_number = ?",
                 (sacco_number,)
@@ -880,8 +973,6 @@ def login():
         flash("Invalid SACCO number or password", "error")
 
     return render_template("login.html")
-
-
 # ============================================================
 # STAFF MEMBER PORTAL ACCESS ROUTE
 # ============================================================
@@ -1456,7 +1547,6 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
-                u.account_number,
                 u.email,
                 u.savings_balance,
                 u.role
@@ -1520,7 +1610,6 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
-                u.account_number,
                 u.email,
                 u.role
             FROM loans l
@@ -1564,7 +1653,6 @@ def treasurer_dashboard():
                 u.full_name,
                 u.sacco_number,
                 u.phone,
-                u.account_number,
                 u.email,
                 u.role
             FROM loans l
@@ -3602,6 +3690,11 @@ def member_apply_loan():
             purpose = data.get('purpose')
             repayment_plan = data.get('repayment_plan', 'monthly')
             
+            # ✅ NEW: payout destination chosen by the member
+            send_to_type      = (data.get('send_to_type') or 'phone').strip()
+            send_to_value     = (data.get('send_to_value') or '').strip()
+            send_to_secondary = (data.get('send_to_secondary') or '').strip()
+            
             g1_name = data.get('guarantor1_name', '')
             g1_phone = data.get('guarantor1_phone', '')
             g1_email = data.get('guarantor1_email', '')
@@ -3616,6 +3709,11 @@ def member_apply_loan():
             purpose = request.form.get('purpose')
             repayment_plan = request.form.get('repayment_plan', 'monthly')
             
+            # ✅ NEW: payout destination chosen by the member
+            send_to_type      = (request.form.get('send_to_type') or 'phone').strip()
+            send_to_value     = (request.form.get('send_to_value') or '').strip()
+            send_to_secondary = (request.form.get('send_to_secondary') or '').strip()
+            
             g1_name = request.form.get('guarantor1_name', '')
             g1_phone = request.form.get('guarantor1_phone', '')
             g1_email = request.form.get('guarantor1_email', '')
@@ -3625,6 +3723,19 @@ def member_apply_loan():
             g2_phone = request.form.get('guarantor2_phone', '')
             g2_email = request.form.get('guarantor2_email', '')
             g2_relationship = request.form.get('guarantor2_relationship', '')
+        
+        # ---- Validate payout destination ----
+        if not send_to_value:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Please enter where the money should be sent.'}), 400
+            flash('Please enter where the money should be sent.', 'danger')
+            return redirect(url_for('member_apply_loan'))
+        
+        if send_to_type == 'both' and not send_to_secondary:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Please enter the account number too.'}), 400
+            flash('Please enter the account number too.', 'danger')
+            return redirect(url_for('member_apply_loan'))
         
         if loan_amount < 10000 or loan_amount > 10000000:
             if request.is_json:
@@ -3673,6 +3784,9 @@ def member_apply_loan():
                 return redirect(url_for('member_apply_loan'))
         
         cursor = db.cursor()
+        # ============================================================
+        # INSERT LOAN — now includes send_to_* payout fields
+        # ============================================================
         cursor.execute("""
             INSERT INTO loans (
                 loan_number, user_id, amount, interest_rate, interest_amount,
@@ -3682,25 +3796,26 @@ def member_apply_loan():
                 start_month, end_month, total_interest_accrued,
                 principal_paid, interest_paid, months_paid,
                 original_balance, total_interest_calculated, due_date,
-                loan_start_date, loan_end_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                loan_start_date, loan_end_date,
+                send_to_type, send_to_value, send_to_secondary
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            loan_ref, 
-            user_id, 
-            loan_amount, 
+            loan_ref,
+            user_id,
+            loan_amount,
             monthly_rate_percent,
             interest_amount,
-            total_repayment, 
+            total_repayment,
             interest_amount,
             1,
             purpose,
-            repayment_plan, 
-            'pending', 
+            repayment_plan,
+            'pending',
             application_date.strftime('%Y-%m-%d'),
             total_repayment,
             application_date.strftime('%Y-%m-%d'),
             due_date_str,
-            application_date.month, 
+            application_date.month,
             due_date.month,
             interest_amount,
             0,
@@ -3710,7 +3825,10 @@ def member_apply_loan():
             interest_amount,
             due_date_str,
             application_date.strftime('%Y-%m-%d'),
-            due_date_str
+            due_date_str,
+            send_to_type,
+            send_to_value,
+            send_to_secondary
         ))
         
         loan_id = cursor.lastrowid
@@ -3749,6 +3867,14 @@ def member_apply_loan():
         else:
             success_message += ' No guarantors required based on your savings.'
         
+        # Build a display string for the payout destination
+        if send_to_type == 'phone':
+            send_to_display = '📱 Phone: ' + send_to_value
+        elif send_to_type == 'account':
+            send_to_display = '🏦 Account: ' + send_to_value
+        else:
+            send_to_display = '📱 ' + send_to_value + ' | 🏦 ' + send_to_secondary
+        
         if request.is_json:
             return jsonify({
                 'success': True,
@@ -3764,7 +3890,12 @@ def member_apply_loan():
                 'repayment_plan': repayment_plan,
                 'due_date': due_date_str,
                 'loan_start_date': application_date.strftime('%Y-%m-%d'),
-                'loan_end_date': due_date_str
+                'loan_end_date': due_date_str,
+                # ✅ NEW: return payout info so the modal can display it
+                'send_to_type': send_to_type,
+                'send_to_value': send_to_value,
+                'send_to_secondary': send_to_secondary,
+                'send_to_display': send_to_display,
             })
         
         flash(success_message, 'success')
@@ -3779,7 +3910,6 @@ def member_apply_loan():
             return jsonify({'success': False, 'message': str(e)}), 500
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('member_apply_loan'))
-
 
 # ============================================================
 # MEMBER - REPAYMENTS
