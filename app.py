@@ -510,29 +510,21 @@ def create_database():
             conn.rollback()
             cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `notifications`
-    # ------------------------------------------------------------
     if table_exists("notifications"):
         existing = get_columns("notifications")
-        if 'type' not in existing:
+    for col_name, col_type in {
+        'notification_type': 'TEXT',
+        'link': 'TEXT',
+        'is_read': 'INTEGER DEFAULT 0'
+    }.items():
+        if col_name not in existing:
             try:
-                cursor.execute("ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'")
-                print("âœ… Added column to notifications: type")
+                cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Added column to notifications: {col_name}")
             except Exception as e:
-                print(f"âš ï¸ Could not add column type: {e}")
+                print(f"⚠️ Could not add column {col_name}: {e}")
                 conn.rollback()
                 cursor = conn.cursor()
-        for col_name, col_type in {'link': 'TEXT', 'is_read': 'INTEGER DEFAULT 0'}.items():
-            if col_name not in existing:
-                try:
-                    cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to notifications: {col_name}")
-                except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
-                    conn.rollback()
-                    cursor = conn.cursor()
-
     # ============================================================
     # CREATE TABLES (with correct PK syntax per DB)
     # ============================================================
@@ -3500,32 +3492,34 @@ def member_dashboard():
     user_id = session["user_id"]
     user_role = session.get("role", "member")
     is_staff_view = request.args.get('staff_view', False)
-    
-    db = get_db()
-    db.row_factory = sqlite3.Row
 
+    db = get_db()
     try:
+        # ⚠️ Placeholder char differs per DB
+        PH = "%s" if DATABASE_URL else "?"
+
         member = db.execute(
-            "SELECT * FROM users WHERE id = ?",
+            f"SELECT * FROM users WHERE id = {PH}",
             (user_id,)
         ).fetchone()
 
         if not member:
-            db.close()
             flash("Member not found", "danger")
             return redirect(url_for("login"))
 
+        member_dict = row_to_dict(member)
+
         # ============================================================
-        # TOTAL SAVINGS â€” KAI + KS only (exclude KAC & Registration)
+        # TOTAL SAVINGS — KAI + KS only (exclude KAC & Registration)
         # ============================================================
-        total_savings = db.execute("""
+        total_savings = fetchval(db, f"""
             SELECT COALESCE(SUM(amount), 0) as total
             FROM savings_deposits
-            WHERE user_id = ?
+            WHERE user_id = {PH}
               AND savings_type IN ('KAI', 'KS')
-        """, (user_id,)).fetchone()['total']
+        """, (user_id,)) or 0
 
-        loans_data = db.execute("""
+        loans_data = db.execute(f"""
             SELECT
                 l.*,
                 COALESCE((
@@ -3535,7 +3529,7 @@ def member_dashboard():
                     AND status = 'completed'
                 ), 0) as total_paid
             FROM loans l
-            WHERE l.user_id = ?
+            WHERE l.user_id = {PH}
             ORDER BY l.application_date DESC
         """, (user_id,)).fetchall()
 
@@ -3545,7 +3539,7 @@ def member_dashboard():
         total_loans_taken = 0
 
         for loan_row in loans_data:
-            loan = dict(loan_row)
+            loan = row_to_dict(loan_row)
             total_loans_taken += float(loan.get('amount', 0) or 0)
             loan_total = float(loan.get('total_repayment') or loan.get('amount', 0) or 0)
             total_paid = float(loan.get('total_paid', 0) or 0)
@@ -3558,7 +3552,7 @@ def member_dashboard():
 
             loans.append(loan)
 
-        savings_deposits = db.execute("""
+        savings_deposits = db.execute(f"""
             SELECT
                 id,
                 amount,
@@ -3570,11 +3564,11 @@ def member_dashboard():
                 notes,
                 created_at
             FROM savings_deposits
-            WHERE user_id = ?
+            WHERE user_id = {PH}
             ORDER BY deposit_date DESC
         """, (user_id,)).fetchall()
 
-        repayments = db.execute("""
+        repayments = db.execute(f"""
             SELECT
                 r.id,
                 r.loan_id,
@@ -3591,11 +3585,11 @@ def member_dashboard():
                 l.loan_number
             FROM repayments r
             JOIN loans l ON r.loan_id = l.id
-            WHERE l.user_id = ?
+            WHERE l.user_id = {PH}
             ORDER BY r.payment_date DESC
         """, (user_id,)).fetchall()
 
-        guarantors = db.execute("""
+        guarantors = db.execute(f"""
             SELECT
                 lg.id,
                 lg.loan_id,
@@ -3610,66 +3604,61 @@ def member_dashboard():
                 l.status as loan_status
             FROM loan_guarantors lg
             JOIN loans l ON lg.loan_id = l.id
-            WHERE l.user_id = ?
+            WHERE l.user_id = {PH}
             ORDER BY lg.id DESC
         """, (user_id,)).fetchall()
 
-        notifications = db.execute("""
+        # ✅ Removed `notification_type` — it doesn't exist
+        notifications = db.execute(f"""
             SELECT
                 id,
                 user_id,
                 title,
                 message,
-                notification_type,
                 type,
                 link,
                 is_read,
                 created_at
             FROM notifications
-            WHERE user_id = ?
+            WHERE user_id = {PH}
             ORDER BY created_at DESC
         """, (user_id,)).fetchall()
 
-        unread_notifications_count = db.execute("""
+        unread_notifications_count = fetchval(db, f"""
             SELECT COUNT(*) AS count
             FROM notifications
-            WHERE user_id = ?
+            WHERE user_id = {PH}
             AND is_read = 0
-        """, (user_id,)).fetchone()['count']
+        """, (user_id,)) or 0
 
         # ============================================================
         # SAVINGS BY TYPE (KAI, KS, KAC, Registration)
         # ============================================================
-        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        if settings:
-            kai_share_price  = settings['kai_share_price']  or 100000
-            ks_share_price   = settings['ks_share_price']   or 10000
-            kac_annual_fee   = settings['kac_annual_fee']   or 100000
-            registration_fee = settings['registration_fee'] or 20000
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings_row:
+            settings_dict = row_to_dict(settings_row)
+            kai_share_price  = settings_dict.get('kai_share_price')  or 100000
+            ks_share_price   = settings_dict.get('ks_share_price')   or 10000
+            kac_annual_fee   = settings_dict.get('kac_annual_fee')   or 100000
+            registration_fee = settings_dict.get('registration_fee') or 20000
         else:
             kai_share_price  = 100000
             ks_share_price   = 10000
             kac_annual_fee   = 100000
             registration_fee = 20000
 
-        kai_shares   = member['kai_shares'] or 0
-        ks_shares    = member['ks_shares'] or 0
-        reg_fee_paid = member['registration_fee_paid'] or 0
+        kai_shares   = member_dict.get('kai_shares') or 0
+        ks_shares    = member_dict.get('ks_shares') or 0
+        reg_fee_paid = member_dict.get('registration_fee_paid') or 0
 
         # ============================================================
-        # KAC â€” INSTALLMENT-AWARE
-        # kac_paid holds the running total (0 â†’ kac_annual_fee)
+        # KAC — INSTALLMENT-AWARE
         # ============================================================
-        try:
-            kac_paid_raw = member['kac_paid']
-        except (IndexError, KeyError):
-            kac_paid_raw = 0
+        kac_paid_raw = member_dict.get('kac_paid', 0)
 
-        # Coerce to a float, handle None / bool / string safely
         if kac_paid_raw is None:
             kac_paid = 0.0
         elif isinstance(kac_paid_raw, bool):
-            # Legacy boolean â€” treat as fully paid or nothing
             kac_paid = float(kac_annual_fee) if kac_paid_raw else 0.0
         else:
             try:
@@ -3677,25 +3666,19 @@ def member_dashboard():
             except (TypeError, ValueError):
                 kac_paid = 0.0
 
-        # Cap at the annual fee
         if kac_paid > kac_annual_fee:
             kac_paid = float(kac_annual_fee)
 
-        # The actual amount paid toward KAC (this is what the template shows)
         kac_amount = kac_paid
-
-        # Booleans for the template
         kac_fully_paid = (kac_paid >= kac_annual_fee)
 
         kai_amount = kai_shares * kai_share_price
         ks_amount  = ks_shares  * ks_share_price
         reg_amount = registration_fee if reg_fee_paid else 0
 
-        db.close()
-
         # Check if user is staff (has a staff role)
         is_staff = user_role in ["admin", "chairperson", "treasurer", "secretary", "publicity"]
-        
+
         # Role dashboard URLs for navigation back
         role_dashboards = {
             "admin": "/admin/dashboard",
@@ -3706,8 +3689,7 @@ def member_dashboard():
             "member": "/member/dashboard"
         }
         role_dashboard_url = role_dashboards.get(user_role, "/member/dashboard")
-        
-        # Role display name
+
         role_display_names = {
             "admin": "Admin",
             "chairperson": "Chairperson",
@@ -3720,8 +3702,8 @@ def member_dashboard():
 
         return render_template(
             "member/member-dashboard.html",
-            member=member,
-            user=member,
+            member=member_dict,
+            user=member_dict,
             total_savings=total_savings,
             active_loans_count=active_loans_count,
             active_loans_balance=active_loans_balance,
@@ -3741,12 +3723,12 @@ def member_dashboard():
             # Savings by type
             kai_shares=kai_shares,
             ks_shares=ks_shares,
-            kac_paid=kac_paid,                 # numeric running total
-            kac_fully_paid=kac_fully_paid,     # boolean flag
+            kac_paid=kac_paid,
+            kac_fully_paid=kac_fully_paid,
             reg_fee_paid=reg_fee_paid,
             kai_amount=kai_amount,
             ks_amount=ks_amount,
-            kac_amount=kac_amount,             # actual amount paid (0 â†’ fee)
+            kac_amount=kac_amount,
             reg_amount=reg_amount,
             kai_share_price=kai_share_price,
             ks_share_price=ks_share_price,
@@ -3758,13 +3740,13 @@ def member_dashboard():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        try:
-            db.close()
-        except:
-            pass
         flash(f"Error loading dashboard: {str(e)}", "danger")
         return redirect(url_for("login"))
-
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 # ============================================================
 # MEMBER - APPLY LOAN
