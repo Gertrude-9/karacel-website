@@ -2848,7 +2848,7 @@ def treasurer_enter_repayment():
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
-# ============================================================
+## ============================================================
 # TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT) - INCLUDES STAFF
 # ============================================================
 @app.route("/treasurer/members/add", methods=["GET", "POST"])
@@ -2856,188 +2856,237 @@ def treasurer_add_members():
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         flash('Access denied. Only Treasurer, Admin, or Secretary can register users.', 'danger')
         return redirect("/login")
-    
+
     db = get_db()
-    db.row_factory = sqlite3.Row
-    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-    
-    if request.method == "POST":
-        full_name = request.form.get('full_name', '').strip()
-        gender = request.form.get('gender', '')
-        dob = request.form.get('dob', '')
-        sacco_number = request.form.get('sacco_number', '').strip().upper()
-        email = request.form.get('email', '').strip()
-        phone = request.form.get('phone', '').strip()
-        address = request.form.get('address', '').strip()
-        password = request.form.get('password', 'password123').strip()
-        role = request.form.get('role', 'member')
-        status = request.form.get('status', 'active')
-        savings_balance = float(request.form.get('savings_balance', 0) or 0)
-        next_of_kin_name = request.form.get('next_of_kin_name', '').strip()
-        relationship = request.form.get('relationship', '')
-        next_of_kin_phone = request.form.get('next_of_kin_phone', '').strip()
-        
-        # Savings type specific fields
-        kai_shares = int(request.form.get('kai_shares', 0) or 0)
-        ks_shares = int(request.form.get('ks_shares', 0) or 0)
-        kac_paid = 1 if request.form.get('kac_paid') == 'on' else 0
-        registration_fee_paid = 1 if request.form.get('registration_fee_paid') == 'on' else 0
-        
-        errors = []
-        if not full_name:
-            errors.append('Full name is required')
-        if not sacco_number:
-            errors.append('SACCO number is required')
-        if not phone:
-            errors.append('Phone number is required')
-        if not dob:
-            errors.append('Date of birth is required')
-        if not next_of_kin_name:
-            errors.append('Next of kin name is required')
-        if not next_of_kin_phone:
-            errors.append('Next of kin phone is required')
-        
-        if errors:
-            for error in errors:
-                flash(error, 'danger')
-            db.close()
-            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-        
-        # Check if SACCO number exists
-        existing = db.execute("SELECT id FROM users WHERE sacco_number = ?", (sacco_number,)).fetchone()
-        if existing:
-            flash(f'SACCO number "{sacco_number}" already exists!', 'danger')
-            db.close()
-            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-        
-        if email:
-            existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-            if existing:
-                flash(f'Email "{email}" is already registered!', 'danger')
-                db.close()
+    try:
+        # ✅ Use fetchval — works on both SQLite and PostgreSQL
+        completed_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'completed'") or 0
+
+        if request.method == "POST":
+            full_name = request.form.get('full_name', '').strip()
+            gender = request.form.get('gender', '')
+            dob = request.form.get('dob', '')
+            sacco_number = request.form.get('sacco_number', '').strip().upper()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            address = request.form.get('address', '').strip()
+            password = request.form.get('password', 'password123').strip()
+            role = request.form.get('role', 'member')
+            status = request.form.get('status', 'active')
+            savings_balance = float(request.form.get('savings_balance', 0) or 0)
+            next_of_kin_name = request.form.get('next_of_kin_name', '').strip()
+            relationship = request.form.get('relationship', '')
+            next_of_kin_phone = request.form.get('next_of_kin_phone', '').strip()
+
+            # Savings type specific fields
+            kai_shares = int(request.form.get('kai_shares', 0) or 0)
+            ks_shares = int(request.form.get('ks_shares', 0) or 0)
+            kac_paid = 1 if request.form.get('kac_paid') == 'on' else 0
+            registration_fee_paid = 1 if request.form.get('registration_fee_paid') == 'on' else 0
+
+            errors = []
+            if not full_name:
+                errors.append('Full name is required')
+            if not sacco_number:
+                errors.append('SACCO number is required')
+            if not phone:
+                errors.append('Phone number is required')
+            if not dob:
+                errors.append('Date of birth is required')
+            if not next_of_kin_name:
+                errors.append('Next of kin name is required')
+            if not next_of_kin_phone:
+                errors.append('Next of kin phone is required')
+
+            if errors:
+                for error in errors:
+                    flash(error, 'danger')
                 return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-        
-        existing = db.execute("SELECT id FROM users WHERE phone = ?", (phone,)).fetchone()
-        if existing:
-            flash(f'Phone number "{phone}" is already registered!', 'danger')
-            db.close()
-            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-        
-        try:
-            cursor = db.cursor()
-            
+
+            # ⚠️ Placeholder char differs per DB
+            PH = "%s" if DATABASE_URL else "?"
+
+            # Check if SACCO number exists
+            existing = db.execute(
+                f"SELECT id FROM users WHERE sacco_number = {PH}",
+                (sacco_number,)
+            ).fetchone()
+            if existing:
+                flash(f'SACCO number "{sacco_number}" already exists!', 'danger')
+                return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+
+            if email:
+                existing = db.execute(
+                    f"SELECT id FROM users WHERE email = {PH}",
+                    (email,)
+                ).fetchone()
+                if existing:
+                    flash(f'Email "{email}" is already registered!', 'danger')
+                    return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+
+            existing = db.execute(
+                f"SELECT id FROM users WHERE phone = {PH}",
+                (phone,)
+            ).fetchone()
+            if existing:
+                flash(f'Phone number "{phone}" already registered!', 'danger')
+                return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+
             # Get settings for share prices
             settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
             if settings:
-                kai_share_price = settings['kai_share_price'] or 100000
-                ks_share_price = settings['ks_share_price'] or 10000
-                kac_annual_fee = settings['kac_annual_fee'] or 100000
-                registration_fee = settings['registration_fee'] or 20000
+                settings_dict = row_to_dict(settings)
+                kai_share_price = settings_dict.get('kai_share_price') or 100000
+                ks_share_price = settings_dict.get('ks_share_price') or 10000
+                kac_annual_fee = settings_dict.get('kac_annual_fee') or 100000
+                registration_fee = settings_dict.get('registration_fee') or 20000
             else:
                 kai_share_price = 100000
                 ks_share_price = 10000
                 kac_annual_fee = 100000
                 registration_fee = 20000
-            
+
             # Calculate total savings from shares
             total_savings_from_shares = (kai_shares * kai_share_price) + (ks_shares * ks_share_price)
             if kac_paid:
                 total_savings_from_shares += kac_annual_fee
             if registration_fee_paid:
                 total_savings_from_shares += registration_fee
-            
-            # Use the provided savings_balance or calculate from shares
+
             final_savings_balance = savings_balance if savings_balance > 0 else total_savings_from_shares
-            
+
             # ============================================================
-            # INSERT USER (ALLOW STAFF ROLES)
+            # INSERT USER — password hash is computed in Python, not in SQL
             # ============================================================
-            cursor.execute("""
-                INSERT INTO users (
+            hashed_password = generate_password_hash(password)
+
+            if DATABASE_URL:
+                # PostgreSQL — use RETURNING id
+                row = db.execute("""
+                    INSERT INTO users (
+                        full_name, gender, dob, sacco_number,
+                        email, phone, address, password, role, status,
+                        savings_balance,
+                        next_of_kin_name, relationship, next_of_kin_phone,
+                        kai_shares, ks_shares, kac_paid, registration_fee_paid
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
                     full_name, gender, dob, sacco_number,
-                    email, phone, address,
-                    generate_password_hash(plain_password), role, status,
-                    savings_balance,
+                    email, phone, address, hashed_password, role, status,
+                    final_savings_balance,
                     next_of_kin_name, relationship, next_of_kin_phone,
                     kai_shares, ks_shares, kac_paid, registration_fee_paid
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                full_name, gender, dob, sacco_number,
-                email, phone, address,
-                password, role, status,
-                final_savings_balance,
-                next_of_kin_name, relationship, next_of_kin_phone,
-                kai_shares, ks_shares, kac_paid, registration_fee_paid
-            ))
-            
-            user_id = cursor.lastrowid
-            
+                )).fetchone()
+                user_id = row["id"] if isinstance(row, dict) else row[0]
+            else:
+                # SQLite — use lastrowid
+                cursor = db.cursor()
+                cursor.execute("""
+                    INSERT INTO users (
+                        full_name, gender, dob, sacco_number,
+                        email, phone, address, password, role, status,
+                        savings_balance,
+                        next_of_kin_name, relationship, next_of_kin_phone,
+                        kai_shares, ks_shares, kac_paid, registration_fee_paid
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    full_name, gender, dob, sacco_number,
+                    email, phone, address, hashed_password, role, status,
+                    final_savings_balance,
+                    next_of_kin_name, relationship, next_of_kin_phone,
+                    kai_shares, ks_shares, kac_paid, registration_fee_paid
+                ))
+                user_id = cursor.lastrowid
+
             # ============================================================
             # RECORD SAVINGS DEPOSITS FOR EACH TYPE
             # ============================================================
             today = datetime.now().strftime('%Y-%m-%d')
-            
+
             if kai_shares > 0:
-                cursor.execute("""
+                db.execute(f"""
                     INSERT INTO savings_deposits (
-                        user_id, amount, savings_type, shares, deposit_date, 
+                        user_id, amount, savings_type, shares, deposit_date,
                         payment_method, receipt_number, notes
                     )
-                    VALUES (?, ?, 'KAI', ?, ?, 'registration', ?, ?)
-                """, (user_id, kai_shares * kai_share_price, kai_shares, today, f'REG-KAI-{sacco_number}', f'Initial KAI shares for {full_name}'))
-            
+                    VALUES ({PH}, {PH}, 'KAI', {PH}, {PH}, 'registration', {PH}, {PH})
+                """, (
+                    user_id, kai_shares * kai_share_price, kai_shares, today,
+                    f'REG-KAI-{sacco_number}', f'Initial KAI shares for {full_name}'
+                ))
+
             if ks_shares > 0:
-                cursor.execute("""
+                db.execute(f"""
                     INSERT INTO savings_deposits (
-                        user_id, amount, savings_type, shares, deposit_date, 
+                        user_id, amount, savings_type, shares, deposit_date,
                         payment_method, receipt_number, notes
                     )
-                    VALUES (?, ?, 'KS', ?, ?, 'registration', ?, ?)
-                """, (user_id, ks_shares * ks_share_price, ks_shares, today, f'REG-KS-{sacco_number}', f'Initial KS shares for {full_name}'))
-            
+                    VALUES ({PH}, {PH}, 'KS', {PH}, {PH}, 'registration', {PH}, {PH})
+                """, (
+                    user_id, ks_shares * ks_share_price, ks_shares, today,
+                    f'REG-KS-{sacco_number}', f'Initial KS shares for {full_name}'
+                ))
+
             if kac_paid:
-                cursor.execute("""
+                db.execute(f"""
                     INSERT INTO savings_deposits (
-                        user_id, amount, savings_type, shares, deposit_date, 
+                        user_id, amount, savings_type, shares, deposit_date,
                         payment_method, receipt_number, notes
                     )
-                    VALUES (?, ?, 'KAC', 1, ?, 'registration', ?, ?)
-                """, (user_id, kac_annual_fee, today, f'REG-KAC-{sacco_number}', f'KAC payment for {full_name}'))
-            
+                    VALUES ({PH}, {PH}, 'KAC', 1, {PH}, 'registration', {PH}, {PH})
+                """, (
+                    user_id, kac_annual_fee, today,
+                    f'REG-KAC-{sacco_number}', f'KAC payment for {full_name}'
+                ))
+
             if registration_fee_paid:
-                cursor.execute("""
+                db.execute(f"""
                     INSERT INTO savings_deposits (
-                        user_id, amount, savings_type, shares, deposit_date, 
+                        user_id, amount, savings_type, shares, deposit_date,
                         payment_method, receipt_number, notes
                     )
-                    VALUES (?, ?, 'REGISTRATION', 1, ?, 'registration', ?, ?)
-                """, (user_id, registration_fee, today, f'REG-REG-{sacco_number}', f'Registration fee for {full_name}'))
-            
+                    VALUES ({PH}, {PH}, 'REGISTRATION', 1, {PH}, 'registration', {PH}, {PH})
+                """, (
+                    user_id, registration_fee, today,
+                    f'REG-REG-{sacco_number}', f'Registration fee for {full_name}'
+                ))
+
             db.commit()
-            db.close()
-            
-            # Debug
+
+            # Debug (ASCII only)
             print("=" * 60)
-            print(f"âœ… USER REGISTERED: {full_name} ({role})")
-            print(f"ðŸ“Š KAI: {kai_shares} shares (UGX {kai_shares * kai_share_price:,.0f})")
-            print(f"ðŸ“Š KS: {ks_shares} shares (UGX {ks_shares * ks_share_price:,.0f})")
-            print(f"ðŸ“Š KAC: {'Paid' if kac_paid else 'Not paid'}")
-            print(f"ðŸ“Š Registration: {'Paid' if registration_fee_paid else 'Not paid'}")
-            print(f"ðŸ’° Total Savings: UGX {final_savings_balance:,.0f}")
+            print(f"USER REGISTERED: {full_name} ({role})")
+            print(f"KAI: {kai_shares} shares (UGX {kai_shares * kai_share_price:,.0f})")
+            print(f"KS: {ks_shares} shares (UGX {ks_shares * ks_share_price:,.0f})")
+            print(f"KAC: {'Paid' if kac_paid else 'Not paid'}")
+            print(f"Registration: {'Paid' if registration_fee_paid else 'Not paid'}")
+            print(f"Total Savings: UGX {final_savings_balance:,.0f}")
             print("=" * 60)
-            
-            flash(f'âœ… {role.title()} "{full_name}" registered successfully with all savings types!', 'success')
+
+            flash(f'{role.title()} "{full_name}" registered successfully with all savings types!', 'success')
             return redirect(url_for('treasurer_dashboard'))
-            
-        except Exception as e:
+
+        # GET request
+        return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+
+    except Exception as e:
+        try:
             db.rollback()
+        except Exception:
+            pass
+        import traceback
+        traceback.print_exc()
+        flash(f'Error registering user: {str(e)}', 'danger')
+        return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+    finally:
+        try:
             db.close()
-            flash(f'Error registering user: {str(e)}', 'danger')
-            return render_template("treasurer/add-member.html", completed_loans=completed_loans)
-    
-    db.close()
-    return render_template("treasurer/add-member.html", completed_loans=completed_loans)
+        except Exception:
+            pass
 
 # ============================================================
 # TREASURER - VIEW USER DETAILS (HTML Page) - WORKS FOR ALL
