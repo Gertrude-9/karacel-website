@@ -5,14 +5,9 @@
 {% block content %}
 
 <div class="app-bar">
-    <div class="app-bar-left">
-        <h2><i class="fas fa-file-invoice"></i> Loan Details</h2>
-        <span>{{ loan.loan_number }} - {{ loan.full_name }}</span>
-    </div>
+    
     <div class="app-bar-right">
-        <a href="{{ url_for('treasurer_dashboard') }}#loan_applications" class="btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back
-        </a>
+
         {% if loan.status == 'pending' and accepted_guarantors == 2 %}
             <button onclick="approveLoan('{{ loan.id }}')" class="btn-primary" style="background: #4ade80; color: #0a0a14;">
                 <i class="fas fa-check"></i> Approve
@@ -118,112 +113,130 @@
     </div>
 
     <!-- Two Column Layout -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        
-        <!-- Left Column: Loan Details -->
-        <div class="action-card">
-            <div class="action-title">
-                <i class="fas fa-info-circle"></i> Loan Information
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Loan Number</div>
-                    <div style="color: #f5c542; font-family: monospace; font-weight: 600;">{{ loan.loan_number }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Status</div>
-                    <div>
-                        <span class="badge 
-                            {% if loan.status == 'pending' %}warning
-                            {% elif loan.status == 'approved' %}info
-                            {% elif loan.status == 'disbursed' %}success
-                            {% elif loan.status == 'completed' %}success
-                            {% else %}danger{% endif %}">
-                            {{ loan.status|upper }}
-                        </span>
-                    </div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Amount</div>
-                    <div style="color: #4ade80; font-weight: 600; font-size: 1.1rem;">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Rate</div>
-                    <div>{{ loan.interest_rate }}%</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Tenure</div>
-                    <div>{{ loan.tenure }} Months</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Repayment Plan</div>
-                    <div>{{ loan.repayment_plan|title if loan.repayment_plan else 'Monthly' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Total Repayment</div>
-                    <div style="color: #f5c542;">UGX {{ "{:,.0f}".format(loan.total_repayment) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Monthly Installment</div>
-                    <div>UGX {{ "{:,.0f}".format(loan.monthly_installment) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Interest Amount</div>
-                    <div>UGX {{ "{:,.0f}".format(loan.interest_amount) }}</div>
-                </div>
-                <div style="grid-column: 1 / -1;">
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Purpose</div>
-                    <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
-                        {{ loan.purpose or 'Not specified' }}
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="loan-details-grid">
 
-        <!-- Right Column: Member Details -->
-        <div class="action-card">
-            <div class="action-title">
-                <i class="fas fa-user"></i> Member Information
+    <!-- Left Column: Loan Details -->
+    <div class="action-card detail-card">
+        <div class="action-title">
+            <i class="fas fa-info-circle"></i> Loan Information
+        </div>
+        <div class="detail-grid">
+
+            <div class="detail-item">
+                <div class="detail-label">Loan Number</div>
+                <div class="detail-value mono gold">{{ loan.loan_number }}</div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div style="grid-column: 1 / -1;">
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Full Name</div>
-                    <div style="font-weight: 600; font-size: 1.05rem;">{{ loan.full_name }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">SACCO Number</div>
-                    <div style="color: #f5c542; font-family: monospace;">{{ loan.sacco_number }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Phone</div>
-                    <div>{{ loan.phone or 'Not provided' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Email</div>
-                    <div>{{ loan.email or 'Not provided' }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Savings Balance</div>
-                    <div style="color: #4ade80;">UGX {{ "{:,.0f}".format(loan.savings_balance or 0) }}</div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Required Savings (10%)</div>
-                    <div style="color: {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}#4ade80{% else %}#ff6b6b{% endif %};">
-                        UGX {{ "{:,.0f}".format(loan.amount * 0.1) }}
-                        {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}
-                            <span style="color: #4ade80; font-size: 0.75rem;">✓ Met</span>
-                        {% else %}
-                            <span style="color: #ff6b6b; font-size: 0.75rem;">✗ Not Met</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div>
-                    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem;">Application Date</div>
-                    <div>{{ loan.application_date }}</div>
+
+            <div class="detail-item">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                    <span class="badge
+                        {% if loan.status == 'pending' %}warning
+                        {% elif loan.status == 'approved' %}info
+                        {% elif loan.status == 'disbursed' %}success
+                        {% elif loan.status == 'completed' %}success
+                        {% else %}danger{% endif %}">
+                        {{ loan.status|upper }}
+                    </span>
                 </div>
             </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Amount</div>
+                <div class="detail-value green large">UGX {{ "{:,.0f}".format(loan.amount) }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Interest Rate</div>
+                <div class="detail-value">{{ loan.interest_rate }}%</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Tenure</div>
+                <div class="detail-value">{{ loan.tenure }} Months</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Repayment Plan</div>
+                <div class="detail-value">{{ loan.repayment_plan|title if loan.repayment_plan else 'Monthly' }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Total Repayment</div>
+                <div class="detail-value gold">UGX {{ "{:,.0f}".format(loan.total_repayment) }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Monthly Installment</div>
+                <div class="detail-value">UGX {{ "{:,.0f}".format(loan.monthly_installment) }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Interest Amount</div>
+                <div class="detail-value">UGX {{ "{:,.0f}".format(loan.interest_amount) }}</div>
+            </div>
+
+            <div class="detail-item full-width">
+                <div class="detail-label">Purpose</div>
+                <div class="purpose-box">{{ loan.purpose or 'Not specified' }}</div>
+            </div>
+
         </div>
     </div>
+
+    <!-- Right Column: Member Details -->
+    <div class="action-card detail-card">
+        <div class="action-title">
+            <i class="fas fa-user"></i> Member Information
+        </div>
+        <div class="detail-grid">
+
+            <div class="detail-item full-width">
+                <div class="detail-label">Full Name</div>
+                <div class="detail-value large">{{ loan.full_name }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">SACCO Number</div>
+                <div class="detail-value mono gold">{{ loan.sacco_number }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Phone</div>
+                <div class="detail-value">{{ loan.phone or 'Not provided' }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ loan.email or 'Not provided' }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Savings Balance</div>
+                <div class="detail-value green">UGX {{ "{:,.0f}".format(loan.savings_balance or 0) }}</div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Required Savings (10%)</div>
+                <div class="detail-value {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}green{% else %}red{% endif %}">
+                    UGX {{ "{:,.0f}".format(loan.amount * 0.1) }}
+                    {% if (loan.savings_balance or 0) >= (loan.amount * 0.1) %}
+                        <span class="met-badge met">✓ Met</span>
+                    {% else %}
+                        <span class="met-badge not-met">✗ Not Met</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Application Date</div>
+                <div class="detail-value">{{ loan.application_date }}</div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
 
     <!-- Guarantors Section -->
     <div class="action-card" style="margin-top: 20px;">
