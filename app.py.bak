@@ -1505,11 +1505,11 @@ def treasurer_dashboard():
         # ============================================================
         # LOAN STATISTICS
         # ============================================================
-        pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'")
-        approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'")
-        active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
-        completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
-        rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
+        pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
+        approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'").fetchone()[0]
+        active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')").fetchone()[0]
+        completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
+        rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'").fetchone()[0]
         
         # ============================================================
         # SAVINGS BY TYPE - Include staff
@@ -1538,7 +1538,7 @@ def treasurer_dashboard():
             kac_annual_fee = 100000
             registration_fee = 20000
         
-        all_active_users = conn.execute("""
+        all_active_users = fetchval(conn, """
             SELECT * FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
@@ -1570,7 +1570,7 @@ def treasurer_dashboard():
         # ============================================================
         # LOAN APPLICATIONS - Include staff loans
         # ============================================================
-        loan_applications = conn.execute("""
+        loan_applications = fetchval(conn, """
             SELECT 
                 l.id,
                 l.loan_number,
@@ -1720,8 +1720,8 @@ def treasurer_dashboard():
         # ============================================================
         # INTEREST STATISTICS
         # ============================================================
-        total_interest_accrued = fetchval(conn, "SELECT COALESCE(SUM(total_interest_accrued), 0) FROM loans")
-        total_interest_paid = fetchval(conn, "SELECT COALESCE(SUM(interest_paid), 0) FROM loans")
+        total_interest_accrued = fetchval(conn, "SELECT COALESCE(SUM(total_interest_accrued), 0) FROM loans").fetchone()[0]
+        total_interest_paid = fetchval(conn, "SELECT COALESCE(SUM(interest_paid), 0) FROM loans").fetchone()[0]
         total_interest_outstanding = total_interest_accrued - total_interest_paid
         
         # ============================================================
