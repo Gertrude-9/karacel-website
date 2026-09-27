@@ -469,15 +469,24 @@ def api_chat_mark_read():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ============================================================
-# DB SETUP — create chat_messages table
-# ============================================================
 def create_chat_table():
-    """Creates the chat_messages table if it doesn't exist.
-    Works with both SQLite and PostgreSQL."""
     db = get_db()
     try:
-        # Choose the correct primary-key syntax
+        # Guard: make sure `users` exists first (FK dependency)
+        try:
+            db.execute("SELECT 1 FROM users LIMIT 1")
+        except Exception:
+            print("⏭️ Skipping chat table — users table not ready yet")
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            try:
+                db.close()
+            except Exception:
+                pass
+            return
+
         pk = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
         db.execute(f"""
@@ -497,12 +506,15 @@ def create_chat_table():
         db.execute("CREATE INDEX IF NOT EXISTS idx_chat_receiver ON chat_messages(receiver_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_chat_unread ON chat_messages(receiver_id, is_read)")
         db.commit()
-        db.close()
         print("✅ Chat messages table ready")
     except Exception as e:
         print(f"⚠️ Error creating chat table: {str(e)}")
         try:
             db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
             db.close()
         except Exception:
             pass

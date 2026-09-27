@@ -297,10 +297,11 @@ def ensure_archive_tables():
 # ============================================================
 # REGISTER CHAT BLUEPRINT
 # ============================================================
-from chat_api import chat_api, create_chat_table
+from chat_api import chat_api
 
 app.register_blueprint(chat_api)
-create_chat_table()
+# NOTE: create_chat_table() is deferred until AFTER create_database()
+# (see the bottom of this file, just after create_database() is called)
 
 
 def create_database():
@@ -360,6 +361,8 @@ def create_database():
                     print(f"✅ Added column to users: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Add missing columns to `system_settings`
@@ -378,6 +381,8 @@ def create_database():
                     print(f"✅ Added column to system_settings: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Add missing columns to `savings_deposits`
@@ -394,6 +399,8 @@ def create_database():
                     print(f"✅ Added column to savings_deposits: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Add missing columns to `repayments`
@@ -412,6 +419,8 @@ def create_database():
                     print(f"✅ Added column to repayments: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Add missing columns to `loans`
@@ -447,22 +456,30 @@ def create_database():
                     print(f"✅ Added column to loans: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
-    # Backfill
-    try:
-        cursor.execute("""
-            UPDATE loans
-            SET last_interest_applied_date = COALESCE(
-                disbursed_date, approved_date, loan_start_date, application_date
-            )
-            WHERE last_interest_applied_date IS NULL
-            AND status IN ('disbursed', 'active', 'approved')
-        """)
-        rows = cursor.rowcount
-        if rows > 0:
-            print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
-    except Exception as e:
-        print(f"⚠️ Backfill warning: {e}")
+    # ------------------------------------------------------------
+    # Backfill (only if `loans` table exists yet)
+    # ------------------------------------------------------------
+    if table_exists("loans"):
+        try:
+            cursor.execute("""
+                UPDATE loans
+                SET last_interest_applied_date = COALESCE(
+                    disbursed_date, approved_date, loan_start_date, application_date
+                )
+                WHERE last_interest_applied_date IS NULL
+                AND status IN ('disbursed', 'active', 'approved')
+            """)
+            rows = cursor.rowcount
+            if rows > 0:
+                print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
+        except Exception as e:
+            print(f"⚠️ Backfill warning: {e}")
+            # ⚠️ CRITICAL for PostgreSQL — clear the aborted transaction
+            conn.rollback()
+            cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Add missing columns to `notifications`
@@ -475,6 +492,8 @@ def create_database():
                 print("✅ Added column to notifications: type")
             except Exception as e:
                 print(f"⚠️ Could not add column type: {e}")
+                conn.rollback()
+                cursor = conn.cursor()
         for col_name, col_type in {'link': 'TEXT', 'is_read': 'INTEGER DEFAULT 0'}.items():
             if col_name not in existing:
                 try:
@@ -482,6 +501,8 @@ def create_database():
                     print(f"✅ Added column to notifications: {col_name}")
                 except Exception as e:
                     print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
 
     # ============================================================
     # CREATE TABLES (with correct PK syntax per DB)
@@ -571,7 +592,10 @@ def create_database():
         total_penalties REAL DEFAULT 0,
         accrued_interest REAL DEFAULT 0,
         last_interest_applied_date TEXT,
-        total_interest_charged REAL DEFAULT 0
+        total_interest_charged REAL DEFAULT 0,
+        send_to_type TEXT,
+        send_to_value TEXT,
+        send_to_secondary TEXT
     )
     """)
 
@@ -770,13 +794,28 @@ def create_database():
         try:
             cursor.execute(sql)
         except Exception:
-            pass
+            conn.rollback()
+            cursor = conn.cursor()
 
     conn.commit()
     conn.close()
     print("✅ Database created/updated successfully with all tables!")
 
+
+# ============================================================
+# RUN DATABASE CREATION
+# ============================================================
 create_database()
+
+# ============================================================
+# Now that all core tables (users, etc.) exist, create the chat
+# table with its foreign key. This MUST run AFTER create_database().
+# ============================================================
+try:
+    from chat_api import create_chat_table
+    create_chat_table()
+except Exception as e:
+    print(f"⚠️ Could not create chat table: {e}")
 
 
 # ============================================
