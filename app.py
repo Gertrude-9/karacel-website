@@ -3093,47 +3093,57 @@ def treasurer_add_members():
             pass
 
 # ============================================================
-# TREASURER - VIEW USER DETAILS (HTML Page) - WORKS FOR ALL
+# TREASURER - VIEW USER DETAILS (HTML Page)
 # ============================================================
 @app.route("/treasurer/members/view/<int:user_id>")
 def treasurer_member_details(user_id):
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     db = get_db()
-    db.row_factory = sqlite3.Row
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        # Get ANY user (member OR staff) - removed role filter
-        user = db.execute("""
-            SELECT * FROM users WHERE id = ?
-        """, (user_id,)).fetchone()
-        
-        if not user:
+        # Get ANY user (member OR staff)
+        user_row = db.execute(
+            f"SELECT * FROM users WHERE id = {PH}",
+            (user_id,)
+        ).fetchone()
+
+        if not user_row:
             flash('User not found', 'danger')
             return redirect(url_for('treasurer_dashboard'))
-        
-        loans = db.execute("""
-            SELECT * FROM loans WHERE user_id = ? ORDER BY application_date DESC
-        """, (user_id,)).fetchall()
-        
-        deposits = db.execute("""
-            SELECT * FROM savings_deposits WHERE user_id = ? ORDER BY deposit_date DESC
-        """, (user_id,)).fetchall()
-        
-        repayments = db.execute("""
-            SELECT r.*, l.loan_number 
+
+        user = row_to_dict(user_row)
+
+        loans = db.execute(
+            f"SELECT * FROM loans WHERE user_id = {PH} ORDER BY application_date DESC",
+            (user_id,)
+        ).fetchall()
+
+        deposits = db.execute(
+            f"SELECT * FROM savings_deposits WHERE user_id = {PH} ORDER BY deposit_date DESC",
+            (user_id,)
+        ).fetchall()
+
+        repayments = db.execute(f"""
+            SELECT r.*, l.loan_number
             FROM repayments r
             JOIN loans l ON r.loan_id = l.id
-            WHERE r.user_id = ?
+            WHERE r.user_id = {PH}
             ORDER BY r.payment_date DESC
         """, (user_id,)).fetchall()
-        
-        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-        
-        db.close()
-        
+
+        completed_loans = fetchval(db,
+            "SELECT COUNT(*) FROM loans WHERE status = 'completed'"
+        ) or 0
+
+        print("=" * 60)
+        print(f"MEMBER DETAILS LOADED: {user.get('full_name')}")
+        print(f"Loans: {len(loans)}  Deposits: {len(deposits)}  Repayments: {len(repayments)}")
+        print("=" * 60)
+
         return render_template(
             "treasurer/member-details.html",
             member=user,
@@ -3142,28 +3152,37 @@ def treasurer_member_details(user_id):
             repayments=repayments,
             completed_loans=completed_loans
         )
-        
+
     except Exception as e:
-        db.close()
-        flash(f'Error: {str(e)}', 'danger')
+        import traceback
+        traceback.print_exc()
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        flash(f'Error loading member: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard'))
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 # ============================================================
-# TREASURER - VIEW USER (JSON for Edit Modal) - FULL DATA
+# TREASURER - VIEW USER (JSON for Edit Modal)
 # ============================================================
 @app.route("/treasurer/member/view/<int:user_id>")
 def treasurer_member_view_json(user_id):
     """Return complete user data as JSON for AJAX calls"""
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
+
     db = get_db()
-    db.row_factory = sqlite3.Row
-    
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        # Get ALL user data including all registration fields
-        user = db.execute("""
+        user_row = db.execute(f"""
             SELECT 
                 id,
                 full_name,
@@ -3185,24 +3204,26 @@ def treasurer_member_view_json(user_id):
                 kac_paid,
                 registration_fee_paid
             FROM users 
-            WHERE id = ?
+            WHERE id = {PH}
         """, (user_id,)).fetchone()
-        
-        if not user:
-            db.close()
+
+        if not user_row:
             return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        db.close()
-        
+
         return jsonify({
             'success': True,
-            'member': dict(user)
+            'member': row_to_dict(user_row)
         })
-        
+
     except Exception as e:
-        db.close()
-        print(f"âŒ Error getting user: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass00
 
 
 # ============================================================
