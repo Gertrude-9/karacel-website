@@ -451,7 +451,7 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
+        # ------------------------------------------------------------
     # Add missing columns to `loans`
     # ------------------------------------------------------------
     if table_exists("loans"):
@@ -474,22 +474,24 @@ def create_database():
             'accrued_interest': 'REAL DEFAULT 0',
             'last_interest_applied_date': 'TEXT',
             'total_interest_charged': 'REAL DEFAULT 0',
-            # âœ… NEW: payout destination chosen by the member
+            # ✅ Payout destination chosen by the member
             'send_to_type': 'TEXT',
             'send_to_value': 'TEXT',
-            'send_to_secondary': 'TEXT'
+            'send_to_secondary': 'TEXT',
+            # ✅ Add this if your route uses it
+            'next_interest_date': 'TEXT',
         }.items():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE loans ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to loans: {col_name}")
+                    print(f"✅ Added column to loans: {col_name}")
                 except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
+                    print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
     # ------------------------------------------------------------
-    # Backfill (only if `loans` table exists yet)
+    # Backfill (only if `loans` table exists)
     # ------------------------------------------------------------
     if table_exists("loans"):
         try:
@@ -503,28 +505,31 @@ def create_database():
             """)
             rows = cursor.rowcount
             if rows > 0:
-                print(f"âœ… Backfilled last_interest_applied_date for {rows} loan(s)")
+                print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
         except Exception as e:
-            print(f"âš ï¸ Backfill warning: {e}")
-            # âš ï¸ CRITICAL for PostgreSQL â€” clear the aborted transaction
+            print(f"⚠️ Backfill warning: {e}")
+            # ⚠️ CRITICAL for PostgreSQL — clear the aborted transaction
             conn.rollback()
             cursor = conn.cursor()
 
+    # ------------------------------------------------------------
+    # Add missing columns to `notifications`
+    # ------------------------------------------------------------
     if table_exists("notifications"):
         existing = get_columns("notifications")
-    for col_name, col_type in {
-        'notification_type': 'TEXT',
-        'link': 'TEXT',
-        'is_read': 'INTEGER DEFAULT 0'
-    }.items():
-        if col_name not in existing:
-            try:
-                cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
-                print(f"✅ Added column to notifications: {col_name}")
-            except Exception as e:
-                print(f"⚠️ Could not add column {col_name}: {e}")
-                conn.rollback()
-                cursor = conn.cursor()
+        for col_name, col_type in {
+            'notification_type': 'TEXT',
+            'link': 'TEXT',
+            'is_read': 'INTEGER DEFAULT 0',
+        }.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
+                    print(f"✅ Added column to notifications: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    conn.rollback()
+                    cursor = conn.cursor()
     # ============================================================
     # CREATE TABLES (with correct PK syntax per DB)
     # ============================================================
@@ -3755,61 +3760,70 @@ def member_dashboard():
 def member_apply_loan():
     if "user_id" not in session:
         return redirect("/login")
-    
+
     user_id = session["user_id"]
+    PH = "%s" if DATABASE_URL else "?"
     db = get_db()
-    
+
     if request.method == "GET":
-        member = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        
-        total_savings = db.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total 
-            FROM savings_deposits 
-            WHERE user_id = ?
-        """, (user_id,)).fetchone()['total']
-        
-        db.close()
-        
-        from datetime import datetime, timedelta
-        now = datetime.now()
-        current_year = now.year
-        current_date = now.strftime('%d %B %Y')
-        due_date = now + timedelta(days=30)
-        due_date_formatted = due_date.strftime('%d %B %Y')
-        due_date_iso = due_date.strftime('%Y-%m-%d')
-        
-        return render_template(
-            "member/apply-loan.html", 
-            member=member, 
-            total_savings=total_savings,
-            max_loan_amount=10000000,
-            loan_interest_rate=12,
-            current_year=current_year,
-            now=now,
-            current_date=current_date,
-            due_date=due_date,
-            due_date_formatted=due_date_formatted,
-            due_date_iso=due_date_iso
-        )
-    
-    # POST - Submit loan application
+        try:
+            member = db.execute(
+                f"SELECT * FROM users WHERE id = {PH}",
+                (user_id,)
+            ).fetchone()
+
+            total_savings = fetchval(db, f"""
+                SELECT COALESCE(SUM(amount), 0) as total
+                FROM savings_deposits
+                WHERE user_id = {PH}
+            """, (user_id,)) or 0
+
+            member_dict = row_to_dict(member)
+
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            current_year = now.year
+            current_date = now.strftime('%d %B %Y')
+            due_date = now + timedelta(days=30)
+            due_date_formatted = due_date.strftime('%d %B %Y')
+            due_date_iso = due_date.strftime('%Y-%m-%d')
+
+            return render_template(
+                "member/apply-loan.html",
+                member=member_dict,
+                total_savings=total_savings,
+                max_loan_amount=10000000,
+                loan_interest_rate=12,
+                current_year=current_year,
+                now=now,
+                current_date=current_date,
+                due_date=due_date,
+                due_date_formatted=due_date_formatted,
+                due_date_iso=due_date_iso
+            )
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # ============ POST - Submit loan application ============
     try:
         if request.is_json:
             data = request.get_json()
             loan_amount = float(data.get('loan_amount'))
             purpose = data.get('purpose')
             repayment_plan = data.get('repayment_plan', 'monthly')
-            
-            # âœ… NEW: payout destination chosen by the member
+
             send_to_type      = (data.get('send_to_type') or 'phone').strip()
             send_to_value     = (data.get('send_to_value') or '').strip()
             send_to_secondary = (data.get('send_to_secondary') or '').strip()
-            
+
             g1_name = data.get('guarantor1_name', '')
             g1_phone = data.get('guarantor1_phone', '')
             g1_email = data.get('guarantor1_email', '')
             g1_relationship = data.get('guarantor1_relationship', '')
-            
+
             g2_name = data.get('guarantor2_name', '')
             g2_phone = data.get('guarantor2_phone', '')
             g2_email = data.get('guarantor2_email', '')
@@ -3818,45 +3832,44 @@ def member_apply_loan():
             loan_amount = float(request.form.get('loan_amount'))
             purpose = request.form.get('purpose')
             repayment_plan = request.form.get('repayment_plan', 'monthly')
-            
-            # âœ… NEW: payout destination chosen by the member
+
             send_to_type      = (request.form.get('send_to_type') or 'phone').strip()
             send_to_value     = (request.form.get('send_to_value') or '').strip()
             send_to_secondary = (request.form.get('send_to_secondary') or '').strip()
-            
+
             g1_name = request.form.get('guarantor1_name', '')
             g1_phone = request.form.get('guarantor1_phone', '')
             g1_email = request.form.get('guarantor1_email', '')
             g1_relationship = request.form.get('guarantor1_relationship', '')
-            
+
             g2_name = request.form.get('guarantor2_name', '')
             g2_phone = request.form.get('guarantor2_phone', '')
             g2_email = request.form.get('guarantor2_email', '')
             g2_relationship = request.form.get('guarantor2_relationship', '')
-        
+
         # ---- Validate payout destination ----
         if not send_to_value:
             if request.is_json:
                 return jsonify({'success': False, 'message': 'Please enter where the money should be sent.'}), 400
             flash('Please enter where the money should be sent.', 'danger')
             return redirect(url_for('member_apply_loan'))
-        
+
         if send_to_type == 'both' and not send_to_secondary:
             if request.is_json:
                 return jsonify({'success': False, 'message': 'Please enter the account number too.'}), 400
             flash('Please enter the account number too.', 'danger')
             return redirect(url_for('member_apply_loan'))
-        
+
         if loan_amount < 10000 or loan_amount > 10000000:
             if request.is_json:
                 return jsonify({'success': False, 'message': 'Loan amount must be between UGX 10,000 and UGX 10,000,000'}), 400
             flash('Loan amount must be between UGX 10,000 and UGX 10,000,000', 'danger')
             return redirect(url_for('member_apply_loan'))
-        
+
         from datetime import datetime, timedelta
-        
+
         application_date = datetime.now()
-        
+
         monthly_rate_percent = get_interest_rate(loan_amount)
         monthly_rate = monthly_rate_percent / 100
         interest_amount = loan_amount * monthly_rate
@@ -3864,127 +3877,140 @@ def member_apply_loan():
         due_date = application_date + timedelta(days=30)
         due_date_str = due_date.strftime('%Y-%m-%d')
         loan_ref = generate_loan_reference()
-        
-        total_savings = db.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total 
-            FROM savings_deposits 
-            WHERE user_id = ?
-        """, (user_id,)).fetchone()['total']
-        
+
+        total_savings = fetchval(db, f"""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM savings_deposits
+            WHERE user_id = {PH}
+        """, (user_id,)) or 0
+
         savings_threshold = total_savings * 0.95
         guarantors_required = loan_amount > savings_threshold
-        
+
         if guarantors_required:
             if not g1_name or not g1_phone:
                 if request.is_json:
                     return jsonify({'success': False, 'message': 'Guarantor 1 details are required for this loan amount'}), 400
                 flash('Guarantor 1 details are required for this loan amount', 'danger')
                 return redirect(url_for('member_apply_loan'))
-            
+
             if not g2_name or not g2_phone:
                 if request.is_json:
                     return jsonify({'success': False, 'message': 'Guarantor 2 details are required for this loan amount'}), 400
                 flash('Guarantor 2 details are required for this loan amount', 'danger')
                 return redirect(url_for('member_apply_loan'))
-            
+
             if g1_name.lower() == g2_name.lower() or g1_phone == g2_phone:
                 if request.is_json:
                     return jsonify({'success': False, 'message': 'Guarantor 1 and Guarantor 2 must be different'}), 400
                 flash('Guarantor 1 and Guarantor 2 must be different', 'danger')
                 return redirect(url_for('member_apply_loan'))
-        
-        cursor = db.cursor()
+
         # ============================================================
-        # INSERT LOAN â€” now includes send_to_* payout fields
+        # INSERT LOAN
+        # ✅ Removed next_interest_date (doesn't exist)
+        # ✅ Uses PH placeholder
+        # ✅ RETURNING id for PostgreSQL
         # ============================================================
-        cursor.execute("""
-            INSERT INTO loans (
-                loan_number, user_id, amount, interest_rate, interest_amount,
-                total_repayment, monthly_installment, tenure, purpose,
-                repayment_plan, status, application_date,
-                current_balance, last_interest_date, next_interest_date,
-                start_month, end_month, total_interest_accrued,
-                principal_paid, interest_paid, months_paid,
-                original_balance, total_interest_calculated, due_date,
-                loan_start_date, loan_end_date,
+        if DATABASE_URL:
+            row = db.execute(f"""
+                INSERT INTO loans (
+                    loan_number, user_id, amount, interest_rate, interest_amount,
+                    total_repayment, monthly_installment, tenure, purpose,
+                    repayment_plan, status, application_date,
+                    current_balance, last_interest_date,
+                    start_month, end_month, total_interest_accrued,
+                    principal_paid, interest_paid, months_paid,
+                    original_balance, total_interest_calculated, due_date,
+                    loan_start_date, loan_end_date,
+                    send_to_type, send_to_value, send_to_secondary
+                ) VALUES (
+                    {PH}, {PH}, {PH}, {PH}, {PH},
+                    {PH}, {PH}, {PH}, {PH},
+                    {PH}, {PH}, {PH},
+                    {PH}, {PH},
+                    {PH}, {PH}, {PH},
+                    {PH}, {PH}, {PH},
+                    {PH}, {PH}, {PH},
+                    {PH}, {PH},
+                    {PH}, {PH}, {PH}
+                )
+                RETURNING id
+            """, (
+                loan_ref, user_id, loan_amount, monthly_rate_percent, interest_amount,
+                total_repayment, interest_amount, 1, purpose,
+                repayment_plan, 'pending', application_date.strftime('%Y-%m-%d'),
+                total_repayment, application_date.strftime('%Y-%m-%d'),
+                application_date.month, due_date.month, interest_amount,
+                0, 0, 0,
+                loan_amount, interest_amount, due_date_str,
+                application_date.strftime('%Y-%m-%d'), due_date_str,
                 send_to_type, send_to_value, send_to_secondary
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            loan_ref,
-            user_id,
-            loan_amount,
-            monthly_rate_percent,
-            interest_amount,
-            total_repayment,
-            interest_amount,
-            1,
-            purpose,
-            repayment_plan,
-            'pending',
-            application_date.strftime('%Y-%m-%d'),
-            total_repayment,
-            application_date.strftime('%Y-%m-%d'),
-            due_date_str,
-            application_date.month,
-            due_date.month,
-            interest_amount,
-            0,
-            0,
-            0,
-            loan_amount,
-            interest_amount,
-            due_date_str,
-            application_date.strftime('%Y-%m-%d'),
-            due_date_str,
-            send_to_type,
-            send_to_value,
-            send_to_secondary
-        ))
-        
-        loan_id = cursor.lastrowid
-        
+            )).fetchone()
+            loan_id = row["id"] if isinstance(row, dict) else row[0]
+        else:
+            cursor = db.cursor()
+            cursor.execute("""
+                INSERT INTO loans (
+                    loan_number, user_id, amount, interest_rate, interest_amount,
+                    total_repayment, monthly_installment, tenure, purpose,
+                    repayment_plan, status, application_date,
+                    current_balance, last_interest_date,
+                    start_month, end_month, total_interest_accrued,
+                    principal_paid, interest_paid, months_paid,
+                    original_balance, total_interest_calculated, due_date,
+                    loan_start_date, loan_end_date,
+                    send_to_type, send_to_value, send_to_secondary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                loan_ref, user_id, loan_amount, monthly_rate_percent, interest_amount,
+                total_repayment, interest_amount, 1, purpose,
+                repayment_plan, 'pending', application_date.strftime('%Y-%m-%d'),
+                total_repayment, application_date.strftime('%Y-%m-%d'),
+                application_date.month, due_date.month, interest_amount,
+                0, 0, 0,
+                loan_amount, interest_amount, due_date_str,
+                application_date.strftime('%Y-%m-%d'), due_date_str,
+                send_to_type, send_to_value, send_to_secondary
+            ))
+            loan_id = cursor.lastrowid
+
+        # Insert guarantors
         if guarantors_required:
-            cursor.execute("""
-                INSERT INTO loan_guarantors (
-                    loan_id, guarantor_name, phone, email, relationship, status
-                ) VALUES (?, ?, ?, ?, ?, ?)
+            db.execute(f"""
+                INSERT INTO loan_guarantors (loan_id, guarantor_name, phone, email, relationship, status)
+                VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH})
             """, (loan_id, g1_name, g1_phone, g1_email, g1_relationship, 'active'))
-            
-            cursor.execute("""
-                INSERT INTO loan_guarantors (
-                    loan_id, guarantor_name, phone, email, relationship, status
-                ) VALUES (?, ?, ?, ?, ?, ?)
+
+            db.execute(f"""
+                INSERT INTO loan_guarantors (loan_id, guarantor_name, phone, email, relationship, status)
+                VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH})
             """, (loan_id, g2_name, g2_phone, g2_email, g2_relationship, 'active'))
         else:
-            cursor.execute("""
-                INSERT INTO loan_guarantors (
-                    loan_id, guarantor_name, phone, email, relationship, status
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (loan_id, 'No Guarantor Required', 'N/A', 'N/A', 'N/A', 'accepted'))
-            
-            cursor.execute("""
-                INSERT INTO loan_guarantors (
-                    loan_id, guarantor_name, phone, email, relationship, status
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (loan_id, 'No Guarantor Required', 'N/A', 'N/A', 'N/A', 'accepted'))
-        
+            db.execute(f"""
+                INSERT INTO loan_guarantors (loan_id, guarantor_name, phone, email, relationship, status)
+                VALUES ({PH}, 'No Guarantor Required', 'N/A', 'N/A', 'N/A', 'accepted')
+            """, (loan_id,))
+            db.execute(f"""
+                INSERT INTO loan_guarantors (loan_id, guarantor_name, phone, email, relationship, status)
+                VALUES ({PH}, 'No Guarantor Required', 'N/A', 'N/A', 'N/A', 'accepted')
+            """, (loan_id,))
+
         db.commit()
-        db.close()
-        
-        success_message = 'âœ… Loan application submitted successfully!'
+
+        success_message = 'Loan application submitted successfully!'
         if guarantors_required:
             success_message += ' Guarantors will be contacted manually by the SACCO team.'
         else:
             success_message += ' No guarantors required based on your savings.'
-        
-        # Build a display string for the payout destination
+
         if send_to_type == 'phone':
-            send_to_display = 'ðŸ“± Phone: ' + send_to_value
+            send_to_display = 'Phone: ' + send_to_value
         elif send_to_type == 'account':
-            send_to_display = 'ðŸ¦ Account: ' + send_to_value
+            send_to_display = 'Account: ' + send_to_value
         else:
-            send_to_display = 'ðŸ“± ' + send_to_value + ' | ðŸ¦ ' + send_to_secondary
-        
+            send_to_display = 'Phone: ' + send_to_value + ' | Account: ' + send_to_secondary
+
         if request.is_json:
             return jsonify({
                 'success': True,
@@ -4001,26 +4027,31 @@ def member_apply_loan():
                 'due_date': due_date_str,
                 'loan_start_date': application_date.strftime('%Y-%m-%d'),
                 'loan_end_date': due_date_str,
-                # âœ… NEW: return payout info so the modal can display it
                 'send_to_type': send_to_type,
                 'send_to_value': send_to_value,
                 'send_to_secondary': send_to_secondary,
                 'send_to_display': send_to_display,
             })
-        
+
         flash(success_message, 'success')
         return redirect(url_for('treasurer_dashboard') + '#loan_applications')
-        
+
     except Exception as e:
-        db.rollback()
-        db.close()
         import traceback
         traceback.print_exc()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         if request.is_json:
             return jsonify({'success': False, 'message': str(e)}), 500
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('member_apply_loan'))
-
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 # ============================================================
 # MEMBER - REPAYMENTS
 # ============================================================
