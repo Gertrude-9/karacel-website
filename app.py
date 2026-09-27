@@ -6237,11 +6237,13 @@ def api_member_chat_send():
     """, (member_id, staff_id, body))
 
     sender_name = session.get("full_name", "Member")
-    db.execute("""
+        PH = "%s" if DATABASE_URL else "?"
+
+    db.execute(f"""
         INSERT INTO notifications
             (user_id, type, title, message, link, created_at, is_read)
-        VALUES (?, 'chat', ?, ?, '/staff/chat', datetime('now'), 0)
-    """, (staff_id, f"ðŸ“© New message from {sender_name} (Member)", body[:200]))
+        VALUES ({PH}, 'chat', {PH}, {PH}, '/staff/chat', CURRENT_TIMESTAMP, 0)
+    """, (staff_id, f"New message from {sender_name} (Member)", body[:200]))
 
     db.commit()
     db.close()
