@@ -6218,38 +6218,64 @@ def api_member_chat_send():
         return jsonify({"success": False, "message": "Message too long"}), 400
 
     member_id = session["user_id"]
+    PH = "%s" if DATABASE_URL else "?"
+
     db = get_db()
-    db.row_factory = sqlite3.Row
+    try:
+        # Verify target is a staff member
+        target_row = db.execute(
+            f"SELECT id, role, full_name FROM users WHERE id = {PH}",
+            (staff_id,)
+        ).fetchone()
 
-    target = db.execute("SELECT id, role, full_name FROM users WHERE id = ?", (staff_id,)).fetchone()
-    if not target:
-        db.close()
-        return jsonify({"success": False, "message": "Staff not found"}), 404
-    if (target["role"] or "").lower() not in STAFF_ROLES:
-        db.close()
-        return jsonify({"success": False, "message": "Members cannot message other members"}), 403
+        if not target_row:
+            return jsonify({"success": False, "message": "Staff not found"}), 404
 
-    cursor = db.cursor()
-    cursor.execute("""
-        INSERT INTO chat_messages
-            (sender_id, receiver_id, message, message_type, is_read)
-        VALUES (?, ?, ?, 'general', 0)
-    """, (member_id, staff_id, body))
+        target = row_to_dict(target_row)
+        target_role = (target.get("role") or "").lower()
 
-    sender_name = session.get("full_name", "Member")
-        PH = "%s" if DATABASE_URL else "?"
+        if target_role not in STAFF_ROLES:
+            return jsonify({
+                "success": False,
+                "message": "Members cannot message other members"
+            }), 403
 
-    db.execute(f"""
-        INSERT INTO notifications
-            (user_id, type, title, message, link, created_at, is_read)
-        VALUES ({PH}, 'chat', {PH}, {PH}, '/staff/chat', CURRENT_TIMESTAMP, 0)
-    """, (staff_id, f"New message from {sender_name} (Member)", body[:200]))
+        # Insert chat message
+        cursor = db.cursor()
+        cursor.execute(f"""
+            INSERT INTO chat_messages
+                (sender_id, receiver_id, message, message_type, is_read)
+            VALUES ({PH}, {PH}, {PH}, 'general', 0)
+        """, (member_id, staff_id, body))
 
-    db.commit()
-    db.close()
+        # Create notification for the staff member
+        sender_name = session.get("full_name", "Member")
+        db.execute(f"""
+            INSERT INTO notifications
+                (user_id, type, title, message, link, created_at, is_read)
+            VALUES ({PH}, 'chat', {PH}, {PH}, '/staff/chat', CURRENT_TIMESTAMP, 0)
+        """, (
+            staff_id,
+            f"New message from {sender_name} (Member)",
+            body[:200]
+        ))
 
-    return jsonify({"success": True, "message": "Sent"})
+        db.commit()
+        return jsonify({"success": True, "message": "Sent"})
 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 # ============================================================
 # PUBLICITY CHAT â€” separate from chat_api.py
 # Renders a member-chat-style page for publicity staff only.
