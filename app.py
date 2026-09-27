@@ -138,6 +138,35 @@ def get_db():
     conn = sqlite3.connect("sacco.db")
     conn.row_factory = sqlite3.Row
     return conn
+
+def fetchval(conn, query, params=None):
+    """
+    Return the first column of the first row.
+    Works on both SQLite (row[0]) and PostgreSQL (dict).
+    Returns None if no rows.
+    """
+    if params is None:
+        params = ()
+    row = conn.execute(query, params).fetchone()
+    if row is None:
+        return None
+    # PostgreSQL RealDictCursor → dict
+    if isinstance(row, dict):
+        return list(row.values())[0]
+    # SQLite Row or tuple
+    return row[0]
+
+
+def row_to_dict(row):
+    """Convert a SQLite Row or PostgreSQL dict into a plain dict."""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return dict(row)
+    try:
+        return dict(row)  # sqlite3.Row supports this
+    except Exception:
+        return row
 # ============================================================
 # ARCHIVE TABLES — created automatically on startup
 # ============================================================
@@ -1039,182 +1068,176 @@ def logout():
 # ============================================
 # ADMIN DASHBOARD
 # ============================================
+# ============================================
+# ADMIN DASHBOARD
+# ============================================
 @app.route("/admin/dashboard")
 def admin_dashboard():
     if session.get("role") != "admin":
         return redirect("/login")
 
     conn = get_db()
-
-    total_members = conn.execute("""
-        SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'
-    """).fetchone()[0]
-
-    total_savings = conn.execute("""
-        SELECT COALESCE(SUM(savings_balance), 0) 
-        FROM users 
-        WHERE LOWER(role) = 'member'
-    """).fetchone()[0]
-
-    monthly_savings = conn.execute("""
-        SELECT COALESCE(SUM(amount), 0) 
-        FROM savings_deposits 
-        WHERE deposit_date >= date('now', 'start of month')
-    """).fetchone()[0]
-
-    total_deposits = conn.execute("""
-        SELECT COUNT(*) FROM savings_deposits
-    """).fetchone()[0]
-
-    recent_deposits = conn.execute("""
-        SELECT sd.*, u.full_name, u.sacco_number
-        FROM savings_deposits sd
-        JOIN users u ON sd.user_id = u.id
-        ORDER BY sd.deposit_date DESC
-        LIMIT 5
-    """).fetchall()
-
-    members = conn.execute("""
-        SELECT 
-            u.*,
-            COALESCE((SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('approved', 'disbursed', 'active')), 0) as active_loans_count
-        FROM users u 
-        WHERE LOWER(u.role) = 'member'
-        ORDER BY u.id DESC
-    """).fetchall()
-
-    total_loans = conn.execute("""
-        SELECT COALESCE(SUM(amount), 0) 
-        FROM loans 
-        WHERE status IN ('approved', 'disbursed', 'active')
-    """).fetchone()[0]
-
-    active_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status IN ('approved', 'disbursed', 'active')
-    """).fetchone()[0]
-
-    pending_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status = 'pending'
-    """).fetchone()[0]
-
-    approved_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status = 'approved'
-    """).fetchone()[0]
-
-    rejected_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status = 'rejected'
-    """).fetchone()[0]
-
-    disbursed_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status = 'disbursed'
-    """).fetchone()[0]
-
-    completed_loans = conn.execute("""
-        SELECT COUNT(*) 
-        FROM loans 
-        WHERE status = 'completed'
-    """).fetchone()[0]
-
-    loan_applications = conn.execute("""
-        SELECT 
-            l.*, 
-            u.full_name, 
-            u.savings_balance,
-            COALESCE((SELECT COUNT(*) FROM loan_guarantors WHERE loan_id = l.id AND status = 'active'), 0) as total_guarantors,
-            COALESCE((SELECT COUNT(*) FROM loan_guarantors WHERE loan_id = l.id AND status = 'pending'), 0) as pending_guarantors
-        FROM loans l
-        JOIN users u ON l.user_id = u.id
-        ORDER BY 
-            CASE 
-                WHEN l.status = 'pending' THEN 1
-                WHEN l.status = 'approved' THEN 2
-                WHEN l.status = 'disbursed' THEN 3
-                WHEN l.status = 'active' THEN 4
-                WHEN l.status = 'completed' THEN 5
-                WHEN l.status = 'rejected' THEN 6
-            END,
-            l.application_date DESC
-        LIMIT 50
-    """).fetchall()
-
-    recent_activities = conn.execute("""
-        SELECT 'deposit' as type, sd.amount, sd.deposit_date as date, u.full_name, u.sacco_number 
-        FROM savings_deposits sd
-        JOIN users u ON sd.user_id = u.id
-        UNION ALL
-        SELECT 'repayment' as type, r.amount, r.payment_date as date, u.full_name, u.sacco_number 
-        FROM repayments r
-        JOIN users u ON r.user_id = u.id
-        WHERE r.status = 'completed'
-        ORDER BY date DESC
-        LIMIT 10
-    """).fetchall()
-
-    staff_users = conn.execute("""
-        SELECT 
-            u.*,
-            COUNT(DISTINCT l.id) as loans_processed,
-            COUNT(DISTINCT sd.id) as deposits_processed
-        FROM users u
-        LEFT JOIN loans l ON l.user_id = u.id
-        LEFT JOIN savings_deposits sd ON sd.user_id = u.id
-        WHERE LOWER(u.role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
-        GROUP BY u.id
-        ORDER BY 
-            CASE 
-                WHEN LOWER(u.role) = 'admin' THEN 1
-                WHEN LOWER(u.role) = 'chairperson' THEN 2
-                WHEN LOWER(u.role) = 'treasurer' THEN 3
-                WHEN LOWER(u.role) = 'secretary' THEN 4
-                WHEN LOWER(u.role) = 'publicity' THEN 5
-            END,
-            u.full_name
-    """).fetchall()
-
-    staff_counts = {
-        'treasurer': conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'").fetchone()[0],
-        'secretary': conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'").fetchone()[0],
-        'publicity': conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'").fetchone()[0],
-        'admin': conn.execute("SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')").fetchone()[0]
-    }
-
-    today = datetime.now().strftime('%Y-%m-%d')
-
-    # Get settings
-    settings = {}
     try:
-        conn.row_factory = sqlite3.Row
-        settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        if settings_row:
-            settings = dict(settings_row)
+        # -------- Member stats --------
+        total_members = fetchval(conn, """
+            SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'
+        """)
+
+        total_savings = fetchval(conn, """
+            SELECT COALESCE(SUM(savings_balance), 0)
+            FROM users
+            WHERE LOWER(role) = 'member'
+        """)
+
+        # ⚠️ SQLite uses date('now','start of month') — PostgreSQL uses date_trunc
+        #    Detect DB and pick the right SQL.
+        if DATABASE_URL:
+            monthly_savings = fetchval(conn, """
+                SELECT COALESCE(SUM(amount), 0)
+                FROM savings_deposits
+                WHERE deposit_date >= date_trunc('month', CURRENT_DATE)
+            """)
         else:
-            settings = {
-                'sacco_name': 'Karacel Association',
-                'registration_number': 'SACCO/REG/2024/001',
-                'savings_interest_rate': 6.5,
-                'loan_interest_rate': 12,
-                'penalty_rate': 5,
-                'max_loan_amount': '10,000,000',
-                'min_loan_amount': '10,000',
-                'max_tenure': 24,
-                'kai_share_price': 100000,
-                'ks_share_price': 10000,
-                'kac_annual_fee': 100000,
-                'registration_fee': 20000
-            }
-    except Exception as e:
-        print(f"Error loading settings: {e}")
-        settings = {
+            monthly_savings = fetchval(conn, """
+                SELECT COALESCE(SUM(amount), 0)
+                FROM savings_deposits
+                WHERE deposit_date >= date('now', 'start of month')
+            """)
+
+        total_deposits = fetchval(conn, """
+            SELECT COUNT(*) FROM savings_deposits
+        """)
+
+        recent_deposits = conn.execute("""
+            SELECT sd.*, u.full_name, u.sacco_number
+            FROM savings_deposits sd
+            JOIN users u ON sd.user_id = u.id
+            ORDER BY sd.deposit_date DESC
+            LIMIT 5
+        """).fetchall()
+
+        members = conn.execute("""
+            SELECT
+                u.*,
+                COALESCE((
+                    SELECT COUNT(*) FROM loans
+                    WHERE user_id = u.id
+                    AND status IN ('approved', 'disbursed', 'active')
+                ), 0) AS active_loans_count
+            FROM users u
+            WHERE LOWER(u.role) = 'member'
+            ORDER BY u.id DESC
+        """).fetchall()
+
+        # -------- Loan stats --------
+        total_loans = fetchval(conn, """
+            SELECT COALESCE(SUM(amount), 0)
+            FROM loans
+            WHERE status IN ('approved', 'disbursed', 'active')
+        """)
+
+        active_loans = fetchval(conn, """
+            SELECT COUNT(*)
+            FROM loans
+            WHERE status IN ('approved', 'disbursed', 'active')
+        """)
+
+        pending_loans = fetchval(conn, """
+            SELECT COUNT(*) FROM loans WHERE status = 'pending'
+        """)
+
+        approved_loans = fetchval(conn, """
+            SELECT COUNT(*) FROM loans WHERE status = 'approved'
+        """)
+
+        rejected_loans = fetchval(conn, """
+            SELECT COUNT(*) FROM loans WHERE status = 'rejected'
+        """)
+
+        disbursed_loans = fetchval(conn, """
+            SELECT COUNT(*) FROM loans WHERE status = 'disbursed'
+        """)
+
+        completed_loans = fetchval(conn, """
+            SELECT COUNT(*) FROM loans WHERE status = 'completed'
+        """)
+
+        loan_applications = conn.execute("""
+            SELECT
+                l.*,
+                u.full_name,
+                u.savings_balance,
+                COALESCE((
+                    SELECT COUNT(*) FROM loan_guarantors
+                    WHERE loan_id = l.id AND status = 'active'
+                ), 0) AS total_guarantors,
+                COALESCE((
+                    SELECT COUNT(*) FROM loan_guarantors
+                    WHERE loan_id = l.id AND status = 'pending'
+                ), 0) AS pending_guarantors
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            ORDER BY
+                CASE
+                    WHEN l.status = 'pending'   THEN 1
+                    WHEN l.status = 'approved'  THEN 2
+                    WHEN l.status = 'disbursed' THEN 3
+                    WHEN l.status = 'active'    THEN 4
+                    WHEN l.status = 'completed' THEN 5
+                    WHEN l.status = 'rejected'  THEN 6
+                END,
+                l.application_date DESC
+            LIMIT 50
+        """).fetchall()
+
+        recent_activities = conn.execute("""
+            SELECT 'deposit' AS type, sd.amount, sd.deposit_date AS date,
+                   u.full_name, u.sacco_number
+            FROM savings_deposits sd
+            JOIN users u ON sd.user_id = u.id
+            UNION ALL
+            SELECT 'repayment' AS type, r.amount, r.payment_date AS date,
+                   u.full_name, u.sacco_number
+            FROM repayments r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.status = 'completed'
+            ORDER BY date DESC
+            LIMIT 10
+        """).fetchall()
+
+        # -------- Staff --------
+        staff_users = conn.execute("""
+            SELECT
+                u.*,
+                COUNT(DISTINCT l.id)  AS loans_processed,
+                COUNT(DISTINCT sd.id) AS deposits_processed
+            FROM users u
+            LEFT JOIN loans l             ON l.user_id = u.id
+            LEFT JOIN savings_deposits sd ON sd.user_id = u.id
+            WHERE LOWER(u.role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+            GROUP BY u.id
+            ORDER BY
+                CASE
+                    WHEN LOWER(u.role) = 'admin'       THEN 1
+                    WHEN LOWER(u.role) = 'chairperson' THEN 2
+                    WHEN LOWER(u.role) = 'treasurer'   THEN 3
+                    WHEN LOWER(u.role) = 'secretary'   THEN 4
+                    WHEN LOWER(u.role) = 'publicity'   THEN 5
+                END,
+                u.full_name
+        """).fetchall()
+
+        staff_counts = {
+            'treasurer': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'"),
+            'secretary': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'"),
+            'publicity': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'"),
+            'admin':     fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')"),
+        }
+
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        # -------- Settings --------
+        default_settings = {
             'sacco_name': 'Karacel Association',
             'registration_number': 'SACCO/REG/2024/001',
             'savings_interest_rate': 6.5,
@@ -1226,59 +1249,52 @@ def admin_dashboard():
             'kai_share_price': 100000,
             'ks_share_price': 10000,
             'kac_annual_fee': 100000,
-            'registration_fee': 20000
+            'registration_fee': 20000,
         }
 
-    conn.close()
+        settings = default_settings.copy()
+        try:
+            settings_row = conn.execute(
+                "SELECT * FROM system_settings LIMIT 1"
+            ).fetchone()
+            if settings_row:
+                settings.update(row_to_dict(settings_row))
+        except Exception as e:
+            print(f"Error loading settings: {e}")
 
-    return render_template(
-        "admin/admin-dashboard.html",
-        members=members,
-        total_members=total_members,
-        total_savings=total_savings,
-        monthly_savings=monthly_savings,
-        total_deposits=total_deposits,
-        recent_deposits=recent_deposits,
-        total_loans=total_loans,
-        active_loans=active_loans,
-        pending_loans=pending_loans,
-        approved_loans=approved_loans,
-        rejected_loans=rejected_loans,
-        disbursed_loans=disbursed_loans,
-        completed_loans=completed_loans,
-        loan_applications=loan_applications,
-        recent_activities=recent_activities,
-        staff_users=staff_users,
-        staff_counts=staff_counts,
-        today=today,
-        now=datetime.now(),
-        settings=settings
-    )
+        return render_template(
+            "admin/admin-dashboard.html",
+            members=members,
+            total_members=total_members,
+            total_savings=total_savings,
+            monthly_savings=monthly_savings,
+            total_deposits=total_deposits,
+            recent_deposits=recent_deposits,
+            total_loans=total_loans,
+            active_loans=active_loans,
+            pending_loans=pending_loans,
+            approved_loans=approved_loans,
+            rejected_loans=rejected_loans,
+            disbursed_loans=disbursed_loans,
+            completed_loans=completed_loans,
+            loan_applications=loan_applications,
+            recent_activities=recent_activities,
+            staff_users=staff_users,
+            staff_counts=staff_counts,
+            today=today,
+            now=datetime.now(),
+            settings=settings,
+        )
 
-
-# ============================================================
-# CONTEXT PROCESSOR - Global template variables
-# ============================================================
-@app.context_processor
-def inject_globals():
-    """Inject common variables into all templates"""
-    from datetime import datetime
-    
-    completed_loans = 0
-    try:
-        if 'user_id' in session:
-            role = session.get('role', '')
-            if role in ['treasurer', 'admin', 'chairperson']:
-                db = get_db()
-                completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-                db.close()
     except Exception as e:
-        print(f"Error getting completed_loans: {e}")
-    
-    return {
-        'now': datetime.now(),
-        'completed_loans': completed_loans
-    }
+        import traceback
+        traceback.print_exc()
+        return f"Admin dashboard error: {e}", 500
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 # ============================================================
