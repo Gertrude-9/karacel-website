@@ -5472,7 +5472,6 @@ def chairperson_dashboard():
         return redirect("/login")
     return render_template("chairperson/chairperson-dashboard.html")
 
-
 # ============================================================
 # SECRETARY DASHBOARD - FULL VERSION
 # ============================================================
@@ -5481,13 +5480,11 @@ def secretary_dashboard():
     if session.get("role") != "secretary":
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     db = get_db()
-    db.row_factory = sqlite3.Row
-    
     try:
         # ============================================================
-        # GET ALL MEMBERS FOR CHAT
+        # GET ALL MEMBERS
         # ============================================================
         members = db.execute("""
             SELECT 
@@ -5506,28 +5503,29 @@ def secretary_dashboard():
             WHERE LOWER(role) = 'member'
             ORDER BY full_name ASC
         """).fetchall()
-        
+
         # ============================================================
-        # GET STATISTICS FOR DASHBOARD
+        # STATISTICS
         # ============================================================
         total_members = len(members)
-        active_members = db.execute("""
+
+        active_members = fetchval(db, """
             SELECT COUNT(*) FROM users 
             WHERE LOWER(role) = 'member' AND status = 'active'
-        """).fetchone()[0]
-        
-        total_loans = db.execute("SELECT COUNT(*) FROM loans").fetchone()[0]
-        pending_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'pending'").fetchone()[0]
-        active_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')").fetchone()[0]
-        completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-        
-        total_savings = db.execute("""
+        """) or 0
+
+        total_loans = fetchval(db, "SELECT COUNT(*) FROM loans") or 0
+        pending_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'pending'") or 0
+        active_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')") or 0
+        completed_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'completed'") or 0
+
+        total_savings = fetchval(db, """
             SELECT COALESCE(SUM(savings_balance), 0) 
             FROM users WHERE LOWER(role) = 'member'
-        """).fetchone()[0]
-        
+        """) or 0
+
         # ============================================================
-        # GET RECENT ACTIVITIES
+        # RECENT ACTIVITIES
         # ============================================================
         recent_activities = db.execute("""
             SELECT 
@@ -5561,9 +5559,9 @@ def secretary_dashboard():
             ORDER BY date DESC
             LIMIT 20
         """).fetchall()
-        
+
         # ============================================================
-        # GET PENDING LOAN APPLICATIONS
+        # PENDING LOAN APPLICATIONS
         # ============================================================
         pending_loan_applications = db.execute("""
             SELECT 
@@ -5576,13 +5574,13 @@ def secretary_dashboard():
             WHERE l.status = 'pending'
             ORDER BY l.application_date DESC
         """).fetchall()
-        
+
         # ============================================================
-        # GET SYSTEM SETTINGS
+        # SYSTEM SETTINGS
         # ============================================================
-        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        if settings:
-            settings = dict(settings)
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings_row:
+            settings = row_to_dict(settings_row)
         else:
             settings = {
                 'sacco_name': 'Karacel Association',
@@ -5594,18 +5592,16 @@ def secretary_dashboard():
                 'min_loan_amount': '10,000',
                 'max_tenure': 24
             }
-        
-        db.close()
-        
-        # Debug - print to console
+
+        # Debug
         print("=" * 60)
-        print(f"ðŸ” SECRETARY DASHBOARD LOADED")
-        print(f"ðŸ“Š Total Members: {total_members}")
-        print(f"ðŸ“Š Active Members: {active_members}")
-        print(f"ðŸ“Š Total Loans: {total_loans}")
-        print(f"ðŸ“Š Pending Loans: {pending_loans}")
+        print("SECRETARY DASHBOARD LOADED")
+        print(f"Total Members: {total_members}")
+        print(f"Active Members: {active_members}")
+        print(f"Total Loans: {total_loans}")
+        print(f"Pending Loans: {pending_loans}")
         print("=" * 60)
-        
+
         return render_template(
             "secretary/secretary-dashboard.html",
             members=members,
@@ -5622,14 +5618,18 @@ def secretary_dashboard():
             now=datetime.now(),
             session=session
         )
-        
+
     except Exception as e:
-        db.close()
-        print(f"âŒ Error loading secretary dashboard: {str(e)}")
+        print(f"Error loading secretary dashboard: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('login'))
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 # ============================================================
