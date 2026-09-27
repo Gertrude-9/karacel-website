@@ -1305,10 +1305,8 @@ def treasurer_dashboard():
     if session.get("role") not in ["treasurer", "secretary", "admin", "chairperson"]:
         flash('Access denied', 'danger')
         return redirect("/login")
-    
+
     conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
     try:
         # ============================================================
         # GET ALL ACTIVE USERS (MEMBERS + STAFF)
@@ -1348,7 +1346,7 @@ def treasurer_dashboard():
                 END,
                 full_name ASC
         """).fetchall()
-        
+
         # ============================================================
         # GET STAFF MEMBERS
         # ============================================================
@@ -1371,7 +1369,7 @@ def treasurer_dashboard():
             AND LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
             ORDER BY full_name ASC
         """).fetchall()
-        
+
         # ============================================================
         # GET REGULAR MEMBERS ONLY
         # ============================================================
@@ -1394,9 +1392,9 @@ def treasurer_dashboard():
             AND LOWER(role) = 'member'
             ORDER BY full_name ASC
         """).fetchall()
-        
+
         # ============================================================
-        # RECENT DEPOSITS - FIXED: Include ALL users (members + staff)
+        # RECENT DEPOSITS - Include ALL users (members + staff)
         # ============================================================
         recent_deposits = conn.execute("""
             SELECT 
@@ -1418,9 +1416,9 @@ def treasurer_dashboard():
             ORDER BY sd.deposit_date DESC, sd.created_at DESC
             LIMIT 20
         """).fetchall()
-        
+
         # ============================================================
-        # RECENT REPAYMENTS - FIXED: Include ALL users (members + staff)
+        # RECENT REPAYMENTS - Include ALL users (members + staff)
         # ============================================================
         recent_repayments = conn.execute("""
             SELECT 
@@ -1449,9 +1447,9 @@ def treasurer_dashboard():
             ORDER BY r.payment_date DESC
             LIMIT 20
         """).fetchall()
-        
+
         # ============================================================
-        # ALL DEPOSITS - FIXED: Include ALL users
+        # ALL DEPOSITS - Include ALL users
         # ============================================================
         all_deposits = conn.execute("""
             SELECT 
@@ -1472,36 +1470,46 @@ def treasurer_dashboard():
             WHERE u.status = 'active'
             ORDER BY sd.deposit_date DESC, sd.created_at DESC
         """).fetchall()
-        
+
         # ============================================================
         # STATISTICS - Include ALL users
         # ============================================================
         total_members = len(members)
         total_regular_members = len(regular_members)
         total_staff_members = len(staff_members)
-        
+
         total_savings = fetchval(conn, """
             SELECT COALESCE(SUM(savings_balance), 0) 
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
-        """
-        
+        """)
+
         total_deposits = fetchval(conn, """
             SELECT COALESCE(SUM(sd.amount), 0) 
             FROM savings_deposits sd
             JOIN users u ON sd.user_id = u.id
             WHERE u.status = 'active'
-        """
-        
-        monthly_deposits = fetchval(conn, """
-            SELECT COALESCE(SUM(sd.amount), 0) 
-            FROM savings_deposits sd
-            JOIN users u ON sd.user_id = u.id
-            WHERE u.status = 'active'
-            AND sd.deposit_date >= date('now', 'start of month')
-        """
-        
+        """)
+
+        # ⚠️ SQLite uses date('now','start of month') — PostgreSQL needs date_trunc + cast
+        if DATABASE_URL:
+            monthly_deposits = fetchval(conn, """
+                SELECT COALESCE(SUM(sd.amount), 0) 
+                FROM savings_deposits sd
+                JOIN users u ON sd.user_id = u.id
+                WHERE u.status = 'active'
+                AND NULLIF(sd.deposit_date, '')::timestamp >= date_trunc('month', CURRENT_DATE)
+            """)
+        else:
+            monthly_deposits = fetchval(conn, """
+                SELECT COALESCE(SUM(sd.amount), 0) 
+                FROM savings_deposits sd
+                JOIN users u ON sd.user_id = u.id
+                WHERE u.status = 'active'
+                AND sd.deposit_date >= date('now', 'start of month')
+            """)
+
         # ============================================================
         # LOAN STATISTICS
         # ============================================================
@@ -1510,7 +1518,7 @@ def treasurer_dashboard():
         active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
         completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
         rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
-        
+
         # ============================================================
         # SAVINGS BY TYPE - Include staff
         # ============================================================
@@ -1524,10 +1532,10 @@ def treasurer_dashboard():
         registration_fees_count = 0
         kai_shares = 0
         ks_shares = 0
-        
+
         settings = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         if settings:
-            settings_dict = dict(settings)
+            settings_dict = row_to_dict(settings)
             kai_share_price = settings_dict.get('kai_share_price', 100000) or 100000
             ks_share_price = settings_dict.get('ks_share_price', 10000) or 10000
             kac_annual_fee = settings_dict.get('kac_annual_fee', 100000) or 100000
@@ -1537,36 +1545,36 @@ def treasurer_dashboard():
             ks_share_price = 10000
             kac_annual_fee = 100000
             registration_fee = 20000
-        
+
         all_active_users = conn.execute("""
             SELECT * FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
         """).fetchall()
-        
+
         for user in all_active_users:
-            user_dict = dict(user)
-            
+            user_dict = row_to_dict(user)
+
             if user_dict.get('kai_shares'):
                 shares = user_dict['kai_shares']
                 kai_shares += shares
                 kai_total += shares * kai_share_price
                 kai_members += 1
-            
+
             if user_dict.get('ks_shares'):
                 shares = user_dict['ks_shares']
                 ks_shares += shares
                 ks_total += shares * ks_share_price
                 ks_members += 1
-            
+
             if user_dict.get('kac_paid'):
                 kac_total += kac_annual_fee
                 kac_members += 1
-            
+
             if user_dict.get('registration_fee_paid'):
                 registration_fees_total += registration_fee
                 registration_fees_count += 1
-        
+
         # ============================================================
         # LOAN APPLICATIONS - Include staff loans
         # ============================================================
@@ -1611,12 +1619,23 @@ def treasurer_dashboard():
             ORDER BY l.application_date DESC
             LIMIT 50
         """).fetchall()
-        
-        # Convert to dictionaries and add guarantors
+
+        # Convert to dicts and attach guarantors
         all_loan_applications = []
         for loan_row in loan_applications:
-            loan = dict(loan_row)
+            loan = row_to_dict(loan_row)
             guarantors = conn.execute("""
+                SELECT 
+                    id,
+                    guarantor_name,
+                    phone,
+                    email,
+                    relationship,
+                    status
+                FROM loan_guarantors 
+                WHERE loan_id = %s 
+                ORDER BY id
+            """ if DATABASE_URL else """
                 SELECT 
                     id,
                     guarantor_name,
@@ -1628,9 +1647,9 @@ def treasurer_dashboard():
                 WHERE loan_id = ? 
                 ORDER BY id
             """, (loan['id'],)).fetchall()
-            loan['guarantors'] = [dict(g) for g in guarantors] if guarantors else []
+            loan['guarantors'] = [row_to_dict(g) for g in guarantors] if guarantors else []
             all_loan_applications.append(loan)
-        
+
         # ============================================================
         # ACTIVE LOANS LIST - Include staff
         # ============================================================
@@ -1673,7 +1692,7 @@ def treasurer_dashboard():
             AND u.status = 'active'
             ORDER BY l.application_date DESC
         """).fetchall()
-        
+
         # ============================================================
         # COMPLETED LOANS LIST - Include staff
         # ============================================================
@@ -1716,26 +1735,29 @@ def treasurer_dashboard():
             AND u.status = 'active'
             ORDER BY l.completed_date DESC, l.application_date DESC
         """).fetchall()
-        
+
         # ============================================================
         # INTEREST STATISTICS
         # ============================================================
         total_interest_accrued = fetchval(conn, "SELECT COALESCE(SUM(total_interest_accrued), 0) FROM loans")
         total_interest_paid = fetchval(conn, "SELECT COALESCE(SUM(interest_paid), 0) FROM loans")
-        total_interest_outstanding = total_interest_accrued - total_interest_paid
-        
+        total_interest_outstanding = (total_interest_accrued or 0) - (total_interest_paid or 0)
+
         # ============================================================
         # HIGHEST BORROWER - Include staff
         # ============================================================
         highest_borrower = {'name': 'N/A', 'total': 0}
         highest_interest_borrower = {'name': 'N/A', 'interest': 0}
         total_loan_fees = 0
-        
+
         current_year = datetime.now().year
         year_start = f"{current_year}-01-01"
         year_end = f"{current_year}-12-31"
-        
-        loans_this_year = fetchval(conn, """
+
+        # ⚠️ Branch ? / %s for placeholders
+        placeholder = "%s" if DATABASE_URL else "?"
+
+        loans_this_year = conn.execute(f"""
             SELECT 
                 l.user_id,
                 u.full_name,
@@ -1746,38 +1768,39 @@ def treasurer_dashboard():
                 COALESCE(SUM(l.total_interest_accrued), 0) as total_interest_accrued
             FROM loans l
             JOIN users u ON l.user_id = u.id
-            WHERE l.application_date >= ? AND l.application_date <= ?
+            WHERE l.application_date >= {placeholder} AND l.application_date <= {placeholder}
             AND l.status IN ('disbursed', 'active', 'completed')
             AND u.status = 'active'
-            GROUP BY l.user_id
+            GROUP BY l.user_id, u.full_name, u.role
             ORDER BY total_borrowed DESC
         """, (year_start, year_end)).fetchall()
-        
-        total_loan_fees = fetchval(conn, """
+
+        total_loan_fees = fetchval(conn, f"""
             SELECT COUNT(*) * 1000 as total_fees
             FROM loans
-            WHERE application_date >= ? AND application_date <= ?
+            WHERE application_date >= {placeholder} AND application_date <= {placeholder}
             AND status IN ('disbursed', 'active', 'completed', 'approved')
-        """, (year_start, year_end)).fetchone()[0] or 0
-        
+        """, (year_start, year_end)) or 0
+
         if loans_this_year and len(loans_this_year) > 0:
-            top_borrower = loans_this_year[0]
+            top_borrower = row_to_dict(loans_this_year[0])
             highest_borrower = {
                 'name': top_borrower['full_name'],
                 'total': top_borrower['total_borrowed'] or 0,
                 'count': top_borrower['loan_count'] or 0,
                 'role': top_borrower['role'] or 'member'
             }
-            
+
             loans_list = []
             for loan in loans_this_year:
+                loan_d = row_to_dict(loan)
                 loans_list.append({
-                    'full_name': loan['full_name'],
-                    'total_interest_paid': loan['total_interest_paid'] or 0,
-                    'total_interest_accrued': loan['total_interest_accrued'] or 0,
-                    'role': loan['role'] or 'member'
+                    'full_name': loan_d['full_name'],
+                    'total_interest_paid': loan_d['total_interest_paid'] or 0,
+                    'total_interest_accrued': loan_d['total_interest_accrued'] or 0,
+                    'role': loan_d['role'] or 'member'
                 })
-            
+
             if loans_list:
                 sorted_by_interest = sorted(loans_list, key=lambda x: x['total_interest_paid'], reverse=True)
                 if sorted_by_interest and sorted_by_interest[0]['total_interest_paid'] > 0:
@@ -1788,19 +1811,17 @@ def treasurer_dashboard():
                         'accrued': top_interest['total_interest_accrued'],
                         'role': top_interest['role'] or 'member'
                     }
-        
+
         # Debug
         print("=" * 60)
-        print(f"ðŸ” TREASURER DASHBOARD LOADED")
-        print(f"ðŸ“Š Total Active Users: {total_members}")
-        print(f"ðŸ“Š Regular Members: {total_regular_members}")
-        print(f"ðŸ“Š Staff Members: {total_staff_members}")
-        print(f"ðŸ“Š Recent Deposits: {len(recent_deposits)}")
-        print(f"ðŸ“Š Recent Repayments: {len(recent_repayments)}")
+        print("TREASURER DASHBOARD LOADED")
+        print(f"Total Active Users: {total_members}")
+        print(f"Regular Members: {total_regular_members}")
+        print(f"Staff Members: {total_staff_members}")
+        print(f"Recent Deposits: {len(recent_deposits)}")
+        print(f"Recent Repayments: {len(recent_repayments)}")
         print("=" * 60)
-        
-        conn.close()
-        
+
         return render_template(
             "treasurer/treasurer-dashboard.html",
             # Members
@@ -1810,14 +1831,14 @@ def treasurer_dashboard():
             total_members=total_members,
             total_regular_members=total_regular_members,
             total_staff_members=total_staff_members,
-            
+
             # Savings
             total_savings=total_savings,
             total_deposits=total_deposits,
             monthly_deposits=monthly_deposits,
             all_deposits=all_deposits,
             recent_deposits=recent_deposits,
-            
+
             # Savings by type
             kai_total=kai_total,
             ks_total=ks_total,
@@ -1829,7 +1850,7 @@ def treasurer_dashboard():
             registration_fees_count=registration_fees_count,
             kai_shares=kai_shares,
             ks_shares=ks_shares,
-            
+
             # Loans
             pending_loans=pending_loans,
             approved_loans=approved_loans,
@@ -1839,31 +1860,34 @@ def treasurer_dashboard():
             active_loans_list=active_loans_list,
             completed_loans_list=completed_loans_list,
             all_loan_applications=all_loan_applications,
-            
+
             # Interest
             total_interest_accrued=total_interest_accrued,
             total_interest_paid=total_interest_paid,
             total_interest_outstanding=total_interest_outstanding,
-            
+
             # Top borrowers
             highest_borrower=highest_borrower,
             highest_interest_borrower=highest_interest_borrower,
             total_loan_fees=total_loan_fees,
-            
+
             # Recent activity
             recent_repayments=recent_repayments,
-            
+
             now=datetime.now()
         )
-        
+
     except Exception as e:
-        conn.close()
-        print(f"âŒ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('login'))
-    
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 # ============================================================
 # TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF - FIXED
 # ============================================================
