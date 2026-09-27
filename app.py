@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request, redirect, session, flash, url_for, send_file
+﻿from flask import Flask, jsonify, render_template, request, redirect, session, flash, url_for, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
@@ -16,7 +16,7 @@ load_dotenv()
 
 
 # ============================================================
-# POSTGRESQL ADAPTER — makes PostgreSQL look like SQLite
+# POSTGRESQL ADAPTER â€” makes PostgreSQL look like SQLite
 # ============================================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -28,7 +28,7 @@ if DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
     class PostgresCursorAdapter:
-        """Wraps a psycopg2 cursor. Converts ? → %s and provides sqlite3.Row-like access."""
+        """Wraps a psycopg2 cursor. Converts ? â†’ %s and provides sqlite3.Row-like access."""
         def __init__(self, real_cursor):
             self._cur = real_cursor
 
@@ -111,11 +111,11 @@ if DATABASE_URL:
     def _pg_connect():
         return PostgresConnectionAdapter(psycopg2.connect(DATABASE_URL))
 
-    print("✅ Using PostgreSQL database")
+    print("âœ… Using PostgreSQL database")
 else:
     def _pg_connect():
         return None
-    print("✅ Using SQLite database (local dev)")
+    print("âœ… Using SQLite database (local dev)")
 
 
 # ============================================================
@@ -150,7 +150,7 @@ def fetchval(conn, query, params=None):
     row = conn.execute(query, params).fetchone()
     if row is None:
         return None
-    # PostgreSQL RealDictCursor → dict
+    # PostgreSQL RealDictCursor â†’ dict
     if isinstance(row, dict):
         return list(row.values())[0]
     # SQLite Row or tuple
@@ -168,7 +168,7 @@ def row_to_dict(row):
     except Exception:
         return row
 # ============================================================
-# ARCHIVE TABLES — created automatically on startup
+# ARCHIVE TABLES â€” created automatically on startup
 # ============================================================
 def ensure_archive_tables():
     """Creates archive tables if they don't exist yet. Works with both SQLite and PostgreSQL."""
@@ -321,7 +321,7 @@ def ensure_archive_tables():
 
     conn.commit()
     conn.close()
-    print("✅ Archive tables ready.")
+    print("âœ… Archive tables ready.")
 
 # ============================================================
 # REGISTER CHAT BLUEPRINT
@@ -387,9 +387,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to users: {col_name}")
+                    print(f"âœ… Added column to users: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -407,9 +407,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to system_settings: {col_name}")
+                    print(f"âœ… Added column to system_settings: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -425,9 +425,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE savings_deposits ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to savings_deposits: {col_name}")
+                    print(f"âœ… Added column to savings_deposits: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -445,9 +445,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE repayments ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to repayments: {col_name}")
+                    print(f"âœ… Added column to repayments: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -474,7 +474,7 @@ def create_database():
             'accrued_interest': 'REAL DEFAULT 0',
             'last_interest_applied_date': 'TEXT',
             'total_interest_charged': 'REAL DEFAULT 0',
-            # ✅ NEW: payout destination chosen by the member
+            # âœ… NEW: payout destination chosen by the member
             'send_to_type': 'TEXT',
             'send_to_value': 'TEXT',
             'send_to_secondary': 'TEXT'
@@ -482,9 +482,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE loans ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to loans: {col_name}")
+                    print(f"âœ… Added column to loans: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -503,10 +503,10 @@ def create_database():
             """)
             rows = cursor.rowcount
             if rows > 0:
-                print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
+                print(f"âœ… Backfilled last_interest_applied_date for {rows} loan(s)")
         except Exception as e:
-            print(f"⚠️ Backfill warning: {e}")
-            # ⚠️ CRITICAL for PostgreSQL — clear the aborted transaction
+            print(f"âš ï¸ Backfill warning: {e}")
+            # âš ï¸ CRITICAL for PostgreSQL â€” clear the aborted transaction
             conn.rollback()
             cursor = conn.cursor()
 
@@ -518,18 +518,18 @@ def create_database():
         if 'type' not in existing:
             try:
                 cursor.execute("ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'")
-                print("✅ Added column to notifications: type")
+                print("âœ… Added column to notifications: type")
             except Exception as e:
-                print(f"⚠️ Could not add column type: {e}")
+                print(f"âš ï¸ Could not add column type: {e}")
                 conn.rollback()
                 cursor = conn.cursor()
         for col_name, col_type in {'link': 'TEXT', 'is_read': 'INTEGER DEFAULT 0'}.items():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type}")
-                    print(f"✅ Added column to notifications: {col_name}")
+                    print(f"âœ… Added column to notifications: {col_name}")
                 except Exception as e:
-                    print(f"⚠️ Could not add column {col_name}: {e}")
+                    print(f"âš ï¸ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -828,7 +828,7 @@ def create_database():
 
     conn.commit()
     conn.close()
-    print("✅ Database created/updated successfully with all tables!")
+    print("âœ… Database created/updated successfully with all tables!")
 
 
 # ============================================================
@@ -844,7 +844,7 @@ try:
     from chat_api import create_chat_table
     create_chat_table()
 except Exception as e:
-    print(f"⚠️ Could not create chat table: {e}")
+    print(f"âš ï¸ Could not create chat table: {e}")
 
 
 # ============================================
@@ -1089,7 +1089,7 @@ def admin_dashboard():
             WHERE LOWER(role) = 'member'
         """)
 
-        # ⚠️ SQLite stores dates as TEXT and compares lexicographically.
+        # âš ï¸ SQLite stores dates as TEXT and compares lexicographically.
         #    PostgreSQL needs an explicit cast to timestamp.
         if DATABASE_URL:
             monthly_savings = fetchval(conn, """
@@ -1485,14 +1485,14 @@ def treasurer_dashboard():
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
-        """).fetchone()[0]
+        """
         
         total_deposits = fetchval(conn, """
             SELECT COALESCE(SUM(sd.amount), 0) 
             FROM savings_deposits sd
             JOIN users u ON sd.user_id = u.id
             WHERE u.status = 'active'
-        """).fetchone()[0]
+        """
         
         monthly_deposits = fetchval(conn, """
             SELECT COALESCE(SUM(sd.amount), 0) 
@@ -1500,7 +1500,7 @@ def treasurer_dashboard():
             JOIN users u ON sd.user_id = u.id
             WHERE u.status = 'active'
             AND sd.deposit_date >= date('now', 'start of month')
-        """).fetchone()[0]
+        """
         
         # ============================================================
         # LOAN STATISTICS
@@ -1634,7 +1634,7 @@ def treasurer_dashboard():
         # ============================================================
         # ACTIVE LOANS LIST - Include staff
         # ============================================================
-        active_loans_list = fetchval(conn, """
+        active_loans_list = conn.execute("""
             SELECT 
                 l.id,
                 l.loan_number,
@@ -1677,7 +1677,7 @@ def treasurer_dashboard():
         # ============================================================
         # COMPLETED LOANS LIST - Include staff
         # ============================================================
-        completed_loans_list = fetchval(conn, """
+        completed_loans_list = conn.execute("""
             SELECT 
                 l.id,
                 l.loan_number,
@@ -1791,12 +1791,12 @@ def treasurer_dashboard():
         
         # Debug
         print("=" * 60)
-        print(f"🔍 TREASURER DASHBOARD LOADED")
-        print(f"📊 Total Active Users: {total_members}")
-        print(f"📊 Regular Members: {total_regular_members}")
-        print(f"📊 Staff Members: {total_staff_members}")
-        print(f"📊 Recent Deposits: {len(recent_deposits)}")
-        print(f"📊 Recent Repayments: {len(recent_repayments)}")
+        print(f"ðŸ” TREASURER DASHBOARD LOADED")
+        print(f"ðŸ“Š Total Active Users: {total_members}")
+        print(f"ðŸ“Š Regular Members: {total_regular_members}")
+        print(f"ðŸ“Š Staff Members: {total_staff_members}")
+        print(f"ðŸ“Š Recent Deposits: {len(recent_deposits)}")
+        print(f"ðŸ“Š Recent Repayments: {len(recent_repayments)}")
         print("=" * 60)
         
         conn.close()
@@ -1858,7 +1858,7 @@ def treasurer_dashboard():
         
     except Exception as e:
         conn.close()
-        print(f"❌ Error: {str(e)}")
+        print(f"âŒ Error: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
@@ -1918,7 +1918,7 @@ def treasurer_savings_deposit():
             registration_fee = 20000
         
         # ============================================================
-        # KAC VALIDATION — prevent overpayment beyond remaining balance
+        # KAC VALIDATION â€” prevent overpayment beyond remaining balance
         # ============================================================
         if savings_type == 'KAC':
             current_row = db.execute(
@@ -1937,7 +1937,7 @@ def treasurer_savings_deposit():
                 db.close()
                 flash(
                     f'KAC payment exceeds remaining balance. '
-                    f'Current: UGX {current_kac:,.0f} / {kac_annual_fee:,.0f} · '
+                    f'Current: UGX {current_kac:,.0f} / {kac_annual_fee:,.0f} Â· '
                     f'Remaining: UGX {remaining:,.0f}',
                     'warning'
                 )
@@ -1986,7 +1986,7 @@ def treasurer_savings_deposit():
 
         elif savings_type == 'KAC':
             # ============================================================
-            # KAC — RUNNING TOTAL (installments up to 100,000)
+            # KAC â€” RUNNING TOTAL (installments up to 100,000)
             # ============================================================
             row = db.execute(
                 "SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = ?",
@@ -2017,7 +2017,7 @@ def treasurer_savings_deposit():
                         WHERE user_id = ? AND is_read = 0
                     """, (user_id,))
                 except sqlite3.OperationalError:
-                    # Table doesn't exist yet — ignore
+                    # Table doesn't exist yet â€” ignore
                     pass
 
         elif savings_type == 'REGISTRATION':
@@ -2034,22 +2034,22 @@ def treasurer_savings_deposit():
         
         # Debug logging
         print("=" * 60)
-        print(f"💰 DEPOSIT RECORDED")
-        print(f"👤 User: {user['full_name']} ({user['role']})")
-        print(f"📊 Type: {savings_type}")
-        print(f"💵 Amount: UGX {amount:,.0f}")
-        print(f"📈 Shares: {shares}")
+        print(f"ðŸ’° DEPOSIT RECORDED")
+        print(f"ðŸ‘¤ User: {user['full_name']} ({user['role']})")
+        print(f"ðŸ“Š Type: {savings_type}")
+        print(f"ðŸ’µ Amount: UGX {amount:,.0f}")
+        print(f"ðŸ“ˆ Shares: {shares}")
         if savings_type == 'KAC':
-            print(f"🎯 KAC total now: UGX {new_kac:,.0f} / {kac_annual_fee:,.0f}")
+            print(f"ðŸŽ¯ KAC total now: UGX {new_kac:,.0f} / {kac_annual_fee:,.0f}")
             if fully_paid:
-                print(f"✅ KAC FULLY PAID")
+                print(f"âœ… KAC FULLY PAID")
         print("=" * 60)
         
-        flash(f'✅ {savings_type} deposit of UGX {amount:,.0f} recorded successfully for {user["full_name"]}!', 'success')
+        flash(f'âœ… {savings_type} deposit of UGX {amount:,.0f} recorded successfully for {user["full_name"]}!', 'success')
         return redirect(url_for('treasurer_dashboard'))
     
     # ============================================================
-    # GET request — show the form
+    # GET request â€” show the form
     # ============================================================
     db = get_db()
     db.row_factory = sqlite3.Row
@@ -2308,7 +2308,7 @@ def treasurer_view_loan(loan_id):
 # ============================================================
 @app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
-    print(f"🔍 Loan action called for loan {loan_id}")
+    print(f"ðŸ” Loan action called for loan {loan_id}")
 
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -2446,11 +2446,11 @@ def treasurer_approve_loan(loan_id):
 
         return jsonify({
             'success': True,
-            'message': '✅ Loan approved! Waiting for Chairman disbursement.'
+            'message': 'âœ… Loan approved! Waiting for Chairman disbursement.'
         })
 
     except Exception as e:
-        print(f"❌ Error processing loan action: {e}")
+        print(f"âŒ Error processing loan action: {e}")
         try:
             db.rollback()
             db.close()
@@ -2464,7 +2464,7 @@ def treasurer_approve_loan(loan_id):
 # ============================================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
-    print(f"💰 Disburse called for loan {loan_id}")
+    print(f"ðŸ’° Disburse called for loan {loan_id}")
     
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -2508,7 +2508,7 @@ def treasurer_disburse_loan(loan_id):
         
         return jsonify({
             'success': True,
-            'message': '💰 Loan disbursed successfully!'
+            'message': 'ðŸ’° Loan disbursed successfully!'
         })
         
     except Exception as e:
@@ -2619,7 +2619,7 @@ def treasurer_record_payment():
                 WHERE id = ?
             """, (amount, interest_paid, principal_paid, loan_id))
             status = 'completed'
-            message = f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.'
+            message = f'âœ… LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.'
         else:
             conn.execute("""
                 UPDATE loans 
@@ -2632,7 +2632,7 @@ def treasurer_record_payment():
                 WHERE id = ?
             """, (new_balance, amount, interest_paid, principal_paid, loan_id))
             status = 'active'
-            message = f'✅ Payment of UGX {amount:,.0f} recorded successfully! Remaining: UGX {new_balance:,.0f}'
+            message = f'âœ… Payment of UGX {amount:,.0f} recorded successfully! Remaining: UGX {new_balance:,.0f}'
         
         conn.commit()
         conn.close()
@@ -2650,19 +2650,19 @@ def treasurer_record_payment():
     except sqlite3.Error as e:
         conn.rollback()
         conn.close()
-        print(f"❌ Database Error in payment: {str(e)}")
+        print(f"âŒ Database Error in payment: {str(e)}")
         return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
     except Exception as e:
         conn.rollback()
         conn.close()
-        print(f"❌ Error in payment: {str(e)}")
+        print(f"âŒ Error in payment: {str(e)}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 
 # ============================================================
 # TREASURER - ENTER REPAYMENT
-# GET  → redirect to dashboard (the repayments panel is inside it)
-# POST → save the repayment, then redirect back to dashboard
+# GET  â†’ redirect to dashboard (the repayments panel is inside it)
+# POST â†’ save the repayment, then redirect back to dashboard
 # ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
@@ -2671,14 +2671,14 @@ def treasurer_enter_repayment():
         return redirect("/login")
 
     # ============================================================
-    # GET — the dashboard already contains the repayments panel.
+    # GET â€” the dashboard already contains the repayments panel.
     # Send the user there with a hash to auto-open that panel.
     # ============================================================
     if request.method == "GET":
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
     # ============================================================
-    # POST — process repayment
+    # POST â€” process repayment
     # ============================================================
     db = get_db()
     db.row_factory = sqlite3.Row
@@ -2791,7 +2791,7 @@ def treasurer_enter_repayment():
             ))
             db.commit()
             db.close()
-            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
+            flash(f'âœ… LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
         else:
             db.execute("""
                 UPDATE loans 
@@ -2812,9 +2812,9 @@ def treasurer_enter_repayment():
             ))
             db.commit()
             db.close()
-            flash(f'✅ Payment of UGX {amount:,.0f} recorded successfully!', 'success')
-            flash(f'📊 Interest paid: UGX {interest_paid:,.0f} | Principal paid: UGX {principal_paid:,.0f}', 'info')
-            flash(f'💰 Remaining balance: UGX {new_balance:,.0f}', 'info')
+            flash(f'âœ… Payment of UGX {amount:,.0f} recorded successfully!', 'success')
+            flash(f'ðŸ“Š Interest paid: UGX {interest_paid:,.0f} | Principal paid: UGX {principal_paid:,.0f}', 'info')
+            flash(f'ðŸ’° Remaining balance: UGX {new_balance:,.0f}', 'info')
 
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
@@ -2995,15 +2995,15 @@ def treasurer_add_members():
             
             # Debug
             print("=" * 60)
-            print(f"✅ USER REGISTERED: {full_name} ({role})")
-            print(f"📊 KAI: {kai_shares} shares (UGX {kai_shares * kai_share_price:,.0f})")
-            print(f"📊 KS: {ks_shares} shares (UGX {ks_shares * ks_share_price:,.0f})")
-            print(f"📊 KAC: {'Paid' if kac_paid else 'Not paid'}")
-            print(f"📊 Registration: {'Paid' if registration_fee_paid else 'Not paid'}")
-            print(f"💰 Total Savings: UGX {final_savings_balance:,.0f}")
+            print(f"âœ… USER REGISTERED: {full_name} ({role})")
+            print(f"ðŸ“Š KAI: {kai_shares} shares (UGX {kai_shares * kai_share_price:,.0f})")
+            print(f"ðŸ“Š KS: {ks_shares} shares (UGX {ks_shares * ks_share_price:,.0f})")
+            print(f"ðŸ“Š KAC: {'Paid' if kac_paid else 'Not paid'}")
+            print(f"ðŸ“Š Registration: {'Paid' if registration_fee_paid else 'Not paid'}")
+            print(f"ðŸ’° Total Savings: UGX {final_savings_balance:,.0f}")
             print("=" * 60)
             
-            flash(f'✅ {role.title()} "{full_name}" registered successfully with all savings types!', 'success')
+            flash(f'âœ… {role.title()} "{full_name}" registered successfully with all savings types!', 'success')
             return redirect(url_for('treasurer_dashboard'))
             
         except Exception as e:
@@ -3124,7 +3124,7 @@ def treasurer_member_view_json(user_id):
         
     except Exception as e:
         db.close()
-        print(f"❌ Error getting user: {str(e)}")
+        print(f"âŒ Error getting user: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -3303,12 +3303,12 @@ def treasurer_update_member(user_id):
         
         # Debug - print to console
         print("=" * 60)
-        print(f"👤 USER UPDATED: {user['full_name']} ({user['role']})")
-        print(f"📊 KAI: +{diff_kai_shares} shares (UGX {diff_kai_shares * kai_share_price:,.0f})")
-        print(f"📊 KS: +{diff_ks_shares} shares (UGX {diff_ks_shares * ks_share_price:,.0f})")
-        print(f"📊 KAC: {'Added' if diff_kac > 0 else 'No change'}")
-        print(f"📊 Registration: {'Added' if diff_reg > 0 else 'No change'}")
-        print(f"💰 Total Savings: UGX {total_savings:,.0f}")
+        print(f"ðŸ‘¤ USER UPDATED: {user['full_name']} ({user['role']})")
+        print(f"ðŸ“Š KAI: +{diff_kai_shares} shares (UGX {diff_kai_shares * kai_share_price:,.0f})")
+        print(f"ðŸ“Š KS: +{diff_ks_shares} shares (UGX {diff_ks_shares * ks_share_price:,.0f})")
+        print(f"ðŸ“Š KAC: {'Added' if diff_kac > 0 else 'No change'}")
+        print(f"ðŸ“Š Registration: {'Added' if diff_reg > 0 else 'No change'}")
+        print(f"ðŸ’° Total Savings: UGX {total_savings:,.0f}")
         print("=" * 60)
         
         return jsonify({'success': True, 'message': 'User updated successfully'})
@@ -3443,7 +3443,7 @@ def member_dashboard():
             return redirect(url_for("login"))
 
         # ============================================================
-        # TOTAL SAVINGS — KAI + KS only (exclude KAC & Registration)
+        # TOTAL SAVINGS â€” KAI + KS only (exclude KAC & Registration)
         # ============================================================
         total_savings = db.execute("""
             SELECT COALESCE(SUM(amount), 0) as total
@@ -3584,8 +3584,8 @@ def member_dashboard():
         reg_fee_paid = member['registration_fee_paid'] or 0
 
         # ============================================================
-        # KAC — INSTALLMENT-AWARE
-        # kac_paid holds the running total (0 → kac_annual_fee)
+        # KAC â€” INSTALLMENT-AWARE
+        # kac_paid holds the running total (0 â†’ kac_annual_fee)
         # ============================================================
         try:
             kac_paid_raw = member['kac_paid']
@@ -3596,7 +3596,7 @@ def member_dashboard():
         if kac_paid_raw is None:
             kac_paid = 0.0
         elif isinstance(kac_paid_raw, bool):
-            # Legacy boolean — treat as fully paid or nothing
+            # Legacy boolean â€” treat as fully paid or nothing
             kac_paid = float(kac_annual_fee) if kac_paid_raw else 0.0
         else:
             try:
@@ -3673,7 +3673,7 @@ def member_dashboard():
             reg_fee_paid=reg_fee_paid,
             kai_amount=kai_amount,
             ks_amount=ks_amount,
-            kac_amount=kac_amount,             # actual amount paid (0 → fee)
+            kac_amount=kac_amount,             # actual amount paid (0 â†’ fee)
             reg_amount=reg_amount,
             kai_share_price=kai_share_price,
             ks_share_price=ks_share_price,
@@ -3745,7 +3745,7 @@ def member_apply_loan():
             purpose = data.get('purpose')
             repayment_plan = data.get('repayment_plan', 'monthly')
             
-            # ✅ NEW: payout destination chosen by the member
+            # âœ… NEW: payout destination chosen by the member
             send_to_type      = (data.get('send_to_type') or 'phone').strip()
             send_to_value     = (data.get('send_to_value') or '').strip()
             send_to_secondary = (data.get('send_to_secondary') or '').strip()
@@ -3764,7 +3764,7 @@ def member_apply_loan():
             purpose = request.form.get('purpose')
             repayment_plan = request.form.get('repayment_plan', 'monthly')
             
-            # ✅ NEW: payout destination chosen by the member
+            # âœ… NEW: payout destination chosen by the member
             send_to_type      = (request.form.get('send_to_type') or 'phone').strip()
             send_to_value     = (request.form.get('send_to_value') or '').strip()
             send_to_secondary = (request.form.get('send_to_secondary') or '').strip()
@@ -3840,7 +3840,7 @@ def member_apply_loan():
         
         cursor = db.cursor()
         # ============================================================
-        # INSERT LOAN — now includes send_to_* payout fields
+        # INSERT LOAN â€” now includes send_to_* payout fields
         # ============================================================
         cursor.execute("""
             INSERT INTO loans (
@@ -3916,7 +3916,7 @@ def member_apply_loan():
         db.commit()
         db.close()
         
-        success_message = '✅ Loan application submitted successfully!'
+        success_message = 'âœ… Loan application submitted successfully!'
         if guarantors_required:
             success_message += ' Guarantors will be contacted manually by the SACCO team.'
         else:
@@ -3924,11 +3924,11 @@ def member_apply_loan():
         
         # Build a display string for the payout destination
         if send_to_type == 'phone':
-            send_to_display = '📱 Phone: ' + send_to_value
+            send_to_display = 'ðŸ“± Phone: ' + send_to_value
         elif send_to_type == 'account':
-            send_to_display = '🏦 Account: ' + send_to_value
+            send_to_display = 'ðŸ¦ Account: ' + send_to_value
         else:
-            send_to_display = '📱 ' + send_to_value + ' | 🏦 ' + send_to_secondary
+            send_to_display = 'ðŸ“± ' + send_to_value + ' | ðŸ¦ ' + send_to_secondary
         
         if request.is_json:
             return jsonify({
@@ -3946,7 +3946,7 @@ def member_apply_loan():
                 'due_date': due_date_str,
                 'loan_start_date': application_date.strftime('%Y-%m-%d'),
                 'loan_end_date': due_date_str,
-                # ✅ NEW: return payout info so the modal can display it
+                # âœ… NEW: return payout info so the modal can display it
                 'send_to_type': send_to_type,
                 'send_to_value': send_to_value,
                 'send_to_secondary': send_to_secondary,
@@ -4331,13 +4331,13 @@ def treasurer_savings_reports():
         
         # Debug
         print("=" * 60)
-        print("📊 SAVINGS REPORTS - INCLUDING STAFF")
-        print(f"📊 Total Users: {total_members}")
-        print(f"📊 Regular Members: {total_regular_members}")
-        print(f"📊 Staff Members: {total_staff_members}")
-        print(f"📊 KAI Members: {kai_members}")
-        print(f"📊 KS Members: {ks_members}")
-        print(f"📊 KAC Members: {kac_members}")
+        print("ðŸ“Š SAVINGS REPORTS - INCLUDING STAFF")
+        print(f"ðŸ“Š Total Users: {total_members}")
+        print(f"ðŸ“Š Regular Members: {total_regular_members}")
+        print(f"ðŸ“Š Staff Members: {total_staff_members}")
+        print(f"ðŸ“Š KAI Members: {kai_members}")
+        print(f"ðŸ“Š KS Members: {ks_members}")
+        print(f"ðŸ“Š KAC Members: {kac_members}")
         print("=" * 60)
         
         return render_template(
@@ -4360,7 +4360,7 @@ def treasurer_savings_reports():
         
     except Exception as e:
         db.close()
-        print(f"❌ Error: {str(e)}")
+        print(f"âŒ Error: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
@@ -4646,7 +4646,7 @@ def reset_user_password(user_id):
     try:
         data = request.get_json(silent=True) or {}
 
-        # ✅ Accept either key
+        # âœ… Accept either key
         new_password = (data.get("password") or data.get("new_password") or "").strip()
 
         if not new_password:
@@ -4926,7 +4926,7 @@ def generate_report(report_type):
             for m in members_raw:
                 md = dict(m)
 
-                # KAC boolean → numeric coercion
+                # KAC boolean â†’ numeric coercion
                 kac_val = md.get('kac_paid') or 0
                 try:
                     kac_val = float(kac_val)
@@ -5364,7 +5364,7 @@ def generate_report(report_type):
             db.close()
         except Exception:
             pass
-        print(f"❌ Error generating report: {str(e)}")
+        print(f"âŒ Error generating report: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error generating report: {str(e)}', 'danger')
@@ -5506,11 +5506,11 @@ def secretary_dashboard():
         
         # Debug - print to console
         print("=" * 60)
-        print(f"🔍 SECRETARY DASHBOARD LOADED")
-        print(f"📊 Total Members: {total_members}")
-        print(f"📊 Active Members: {active_members}")
-        print(f"📊 Total Loans: {total_loans}")
-        print(f"📊 Pending Loans: {pending_loans}")
+        print(f"ðŸ” SECRETARY DASHBOARD LOADED")
+        print(f"ðŸ“Š Total Members: {total_members}")
+        print(f"ðŸ“Š Active Members: {active_members}")
+        print(f"ðŸ“Š Total Loans: {total_loans}")
+        print(f"ðŸ“Š Pending Loans: {pending_loans}")
         print("=" * 60)
         
         return render_template(
@@ -5532,7 +5532,7 @@ def secretary_dashboard():
         
     except Exception as e:
         db.close()
-        print(f"❌ Error loading secretary dashboard: {str(e)}")
+        print(f"âŒ Error loading secretary dashboard: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
@@ -5581,7 +5581,7 @@ def publicity_dashboard():
         """).fetchall()
         
     except sqlite3.Error as e:
-        print(f"❌ Database Error: {str(e)}")
+        print(f"âŒ Database Error: {str(e)}")
         flash(f'Database error: {str(e)}', 'danger')
         return redirect(url_for('login'))
     finally:
@@ -5664,10 +5664,10 @@ def create_announcement():
         
         conn.commit()
         
-        flash(f'✅ Announcement posted and sent to {len(members)} members!', 'success')
+        flash(f'âœ… Announcement posted and sent to {len(members)} members!', 'success')
         
     except sqlite3.Error as e:
-        print(f"❌ Database Error: {str(e)}")
+        print(f"âŒ Database Error: {str(e)}")
         flash(f'Database error: {str(e)}', 'danger')
     finally:
         conn.close()
@@ -5757,14 +5757,14 @@ def create_event():
             conn.execute("""
                 INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
                 VALUES (?, 'event', ?, ?, '/publicity/events', datetime('now'), 0)
-            """, (member['id'], f"📅 New Event: {title}", f"Join us for {title} on {event_date} at {location}"))
+            """, (member['id'], f"ðŸ“… New Event: {title}", f"Join us for {title} on {event_date} at {location}"))
         
         conn.commit()
         
-        flash(f'✅ Event created and notified {len(members)} members!', 'success')
+        flash(f'âœ… Event created and notified {len(members)} members!', 'success')
         
     except sqlite3.Error as e:
-        print(f"❌ Database Error: {str(e)}")
+        print(f"âŒ Database Error: {str(e)}")
         flash(f'Database error: {str(e)}', 'danger')
     finally:
         conn.close()
@@ -5857,14 +5857,14 @@ def create_newsletter():
             conn.execute("""
                 INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
                 VALUES (?, 'newsletter', ?, ?, '/publicity/newsletters', datetime('now'), 0)
-            """, (member['id'], f"📰 Newsletter: {title}", content[:200]))
+            """, (member['id'], f"ðŸ“° Newsletter: {title}", content[:200]))
         
         conn.commit()
         
-        flash(f'✅ Newsletter sent to {len(members)} members!', 'success')
+        flash(f'âœ… Newsletter sent to {len(members)} members!', 'success')
         
     except sqlite3.Error as e:
-        print(f"❌ Database Error: {str(e)}")
+        print(f"âŒ Database Error: {str(e)}")
         flash(f'Database error: {str(e)}', 'danger')
     finally:
         conn.close()
@@ -5941,10 +5941,10 @@ def create_social_post():
         """, (platform, post, session.get('user_id')))
         conn.commit()
         
-        flash(f'✅ Posted to {platform}!', 'success')
+        flash(f'âœ… Posted to {platform}!', 'success')
         
     except sqlite3.Error as e:
-        print(f"❌ Database Error: {str(e)}")
+        print(f"âŒ Database Error: {str(e)}")
         flash(f'Database error: {str(e)}', 'danger')
     finally:
         conn.close()
@@ -6136,7 +6136,7 @@ STAFF_ROLES = ["admin", "chairperson", "treasurer", "secretary", "publicity"]
 
 @app.route("/member/chat")
 def member_chat():
-    """Member chat page — shows list of staff, then thread with chosen staff."""
+    """Member chat page â€” shows list of staff, then thread with chosen staff."""
     if "user_id" not in session:
         return redirect("/login")
 
@@ -6306,7 +6306,7 @@ def api_member_chat_send():
         INSERT INTO notifications
             (user_id, type, title, message, link, created_at, is_read)
         VALUES (?, 'chat', ?, ?, '/staff/chat', datetime('now'), 0)
-    """, (staff_id, f"📩 New message from {sender_name} (Member)", body[:200]))
+    """, (staff_id, f"ðŸ“© New message from {sender_name} (Member)", body[:200]))
 
     db.commit()
     db.close()
@@ -6314,7 +6314,7 @@ def api_member_chat_send():
     return jsonify({"success": True, "message": "Sent"})
 
 # ============================================================
-# PUBLICITY CHAT — separate from chat_api.py
+# PUBLICITY CHAT â€” separate from chat_api.py
 # Renders a member-chat-style page for publicity staff only.
 # ============================================================
 PUBLICITY_ALLOWED_ROLES = ["publicity"]     # only publicity can use these routes
@@ -6333,7 +6333,7 @@ def _require_publicity():
 
 @app.route("/publicity/chat")
 def publicity_chat():
-    """Publicity chat page — pick any member or other staff to chat with."""
+    """Publicity chat page â€” pick any member or other staff to chat with."""
     bad = _require_publicity()
     if bad:
         return bad
@@ -6480,7 +6480,7 @@ def api_publicity_chat_send():
         db.execute("""
             INSERT INTO notifications (user_id, type, title, message, link, created_at, is_read)
             VALUES (?, 'chat', ?, ?, ?, datetime('now'), 0)
-        """, (other_id, f"📩 New message from {sender_name} (Publicity)", body[:200], link))
+        """, (other_id, f"ðŸ“© New message from {sender_name} (Publicity)", body[:200], link))
     except Exception as e:
         print("Notification insert failed (non-fatal):", e)
 
@@ -6497,7 +6497,7 @@ from datetime import datetime
 
 
 # ------------------------------------------------------------
-# PREVIEW — safe, read-only. Shows what WILL be archived.
+# PREVIEW â€” safe, read-only. Shows what WILL be archived.
 # ------------------------------------------------------------
 @app.route("/admin/year-end/preview")
 def year_end_preview():
@@ -6557,7 +6557,7 @@ def year_end_preview():
 
 
 # ------------------------------------------------------------
-# EXECUTE — the actual rollover
+# EXECUTE â€” the actual rollover
 # ------------------------------------------------------------
 @app.route("/admin/year-end/execute", methods=["POST"])
 def year_end_execute():
@@ -6782,7 +6782,7 @@ def year_end_execute():
                 WHERE id = 1
             """, (year_label,))
         except Exception:
-            pass  # settings table schema may differ — skip if it fails
+            pass  # settings table schema may differ â€” skip if it fails
 
         db.commit()
 
@@ -6809,7 +6809,7 @@ def year_end_execute():
 
 
 # ------------------------------------------------------------
-# ARCHIVES — browse past years
+# ARCHIVES â€” browse past years
 # ------------------------------------------------------------
 @app.route("/admin/archives")
 def admin_archives():
@@ -6858,3 +6858,4 @@ def admin_archive_detail(archive_id):
 # ============================================================
 if __name__ == "__main__":
     app.run(debug=True)
+
