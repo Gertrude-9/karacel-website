@@ -1123,86 +1123,132 @@ function showSettingsMessage(message, type) {
 // ============================================================
 // ADMIN LOAN FUNCTIONS
 // ============================================================
+// SAFE JSON FETCH — handles HTML error pages gracefully
+// ============================================================
+async function safeFetchJSON(url, options) {
+    try {
+        const res = await fetch(url, options);
+        const text = await res.text();
+
+        // Try to parse JSON
+        try {
+            return JSON.parse(text);
+        } catch (parseErr) {
+            // Server returned HTML (likely a 404 or 500 page)
+            const stripped = text
+                .replace(/<script[\s\S]*?<\/script>/gi, '')
+                .replace(/<style[\s\S]*?<\/style>/gi, '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .substring(0, 180);
+
+            return {
+                success: false,
+                message: `HTTP ${res.status} — ${stripped || 'Server returned non-JSON response'}`,
+                _http_status: res.status,
+                _raw: text.substring(0, 500)
+            };
+        }
+    } catch (networkErr) {
+        return {
+            success: false,
+            message: 'Network error: ' + networkErr.message
+        };
+    }
+}
+
+// ============================================================
+// ADMIN APPROVE LOAN
+// ============================================================
 function adminApproveLoan(loanId) {
     if (!loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
-    if (confirm('✅ FINAL APPROVAL: This will approve and disburse the loan.\n\nThe member and treasurer will be notified.')) {
-        const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan('${loanId}')"]`);
-        btns.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-        });
-        fetch('/admin/loan/approve/' + loanId, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'approve' })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                location.reload();
-            } else {
-                alert('❌ Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('❌ Error: ' + error.message);
-            console.error('Error details:', error);
-        })
-        .finally(() => {
-            btns.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-check-double"></i>';
-                btn.disabled = false;
-            });
-        });
+
+    if (!confirm('✅ FINAL APPROVAL\n\nApprove and disburse this loan?\n\nThe member and treasurer will be notified.')) {
+        return;
     }
+
+    const btns = document.querySelectorAll(`button[onclick*="adminApproveLoan('${loanId}')"]`);
+    const origContents = [];
+    btns.forEach((btn, i) => {
+        origContents[i] = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+        btn.disabled = true;
+    });
+
+    safeFetchJSON('/admin/loan/approve/' + loanId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' })
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + (data.message || 'Unknown error'));
+            console.error('Server response:', data);
+        }
+    })
+    .finally(() => {
+        btns.forEach((btn, i) => {
+            btn.innerHTML = origContents[i] || '<i class="fas fa-check-double"></i>';
+            btn.disabled = false;
+        });
+    });
 }
 
+// ============================================================
+// ADMIN REJECT LOAN
+// ============================================================
 function adminRejectLoan(loanId) {
     if (!loanId) {
         alert('Error: Loan ID is missing.');
         return;
     }
+
     const reason = prompt('❌ Please provide a reason for rejecting this loan application:');
     if (reason === null) return;
     if (reason.trim() === '') {
         alert('❌ Please provide a reason for rejection.');
         return;
     }
-    if (confirm('❌ FINAL REJECT: This will permanently reject this loan application.\n\nReason: ' + reason)) {
-        const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan('${loanId}')"]`);
-        btns.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-        });
-        fetch('/admin/loan/approve/' + loanId, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'reject', reason: reason.trim() })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                location.reload();
-            } else {
-                alert('❌ Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('❌ Error: ' + error.message);
-            console.error('Error details:', error);
-        })
-        .finally(() => {
-            btns.forEach(btn => {
-                btn.innerHTML = '<i class="fas fa-times"></i>';
-                btn.disabled = false;
-            });
-        });
+
+    if (!confirm('❌ FINAL REJECT\n\nReject this loan application?\n\nReason: ' + reason)) {
+        return;
     }
+
+    const btns = document.querySelectorAll(`button[onclick*="adminRejectLoan('${loanId}')"]`);
+    const origContents = [];
+    btns.forEach((btn, i) => {
+        origContents[i] = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting…';
+        btn.disabled = true;
+    });
+
+    safeFetchJSON('/admin/loan/approve/' + loanId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', reason: reason.trim() })
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + (data.message || 'Unknown error'));
+            console.error('Server response:', data);
+        }
+    })
+    .finally(() => {
+        btns.forEach((btn, i) => {
+            btn.innerHTML = origContents[i] || '<i class="fas fa-times"></i>';
+            btn.disabled = false;
+        });
+    });
 }
 
 // ============================================================
