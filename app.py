@@ -4939,7 +4939,184 @@ def admin_register_user():
     finally:
         db.close()
 
+# ============================================================
+# ADMIN — UPDATE USER
+# ============================================================
+@app.route("/admin/users/update/<int:user_id>", methods=["POST"])
+def admin_update_user(user_id):
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Access denied"}), 403
 
+    data = request.get_json() or {}
+    full_name = (data.get("full_name") or "").strip()
+    email     = (data.get("email") or "").strip()
+    phone     = (data.get("phone") or "").strip()
+    role      = (data.get("role") or "").strip()
+    status    = (data.get("status") or "active").strip()
+
+    if not full_name or not email:
+        return jsonify({"success": False, "message": "Full name and email are required"}), 400
+
+    PH = "%s" if DATABASE_URL else "?"
+    db = get_db()
+    try:
+        # Check user exists
+        user_row = db.execute(
+            f"SELECT id FROM users WHERE id = {PH}", (user_id,)
+        ).fetchone()
+        if not user_row:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        # Check email uniqueness (excluding this user)
+        existing = db.execute(
+            f"SELECT id FROM users WHERE email = {PH} AND id != {PH}",
+            (email, user_id)
+        ).fetchone()
+        if existing:
+            return jsonify({"success": False, "message": "Email is already in use by another user"}), 400
+
+        # Update
+        db.execute(f"""
+            UPDATE users
+               SET full_name = {PH},
+                   email = {PH},
+                   phone = {PH},
+                   role = {PH},
+                   status = {PH}
+             WHERE id = {PH}
+        """, (full_name, email, phone, role, status, user_id))
+
+        db.commit()
+        print(f"✅ Updated user {user_id}: {full_name} ({role})")
+        return jsonify({"success": True, "message": "User updated successfully"})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try: db.rollback()
+        except Exception: pass
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        try: db.close()
+        except Exception: pass
+
+
+# ============================================================
+# ADMIN — DELETE USER (FK-safe)
+# ============================================================
+@app.route("/admin/users/delete/<int:user_id>", methods=["POST", "DELETE"])
+def admin_delete_user(user_id):
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    # Prevent self-delete
+    if session.get("user_id") == user_id:
+        return jsonify({"success": False, "message": "You cannot delete your own account"}), 400
+
+    PH = "%s" if DATABASE_URL else "?"
+    db = get_db()
+    try:
+        # Check user exists
+        user_row = db.execute(
+            f"SELECT id, full_name FROM users WHERE id = {PH}", (user_id,)
+        ).fetchone()
+        if not user_row:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        user_dict = row_to_dict(user_row)
+        name = user_dict.get("full_name", f"User {user_id}")
+
+        # FK-safe order: delete children first
+        for tbl, col in [
+            ("chat_messages", "sender_id"),
+            ("chat_messages", "receiver_id"),
+            ("notifications", "user_id"),
+            ("repayments", "user_id"),
+            ("savings_deposits", "user_id"),
+        ]:
+            try:
+                db.execute(f"DELETE FROM {tbl} WHERE {col} = {PH}", (user_id,))
+            except Exception as e:
+                print(f"⚠️ {tbl}.{col} cleanup: {e}")
+                try: db.rollback()
+                except Exception: pass
+
+        # Delete loans for this user
+        try:
+            db.execute(f"DELETE FROM loan_guarantors WHERE loan_id IN (SELECT id FROM loans WHERE user_id = {PH})", (user_id,))
+        except Exception as e:
+            print(f"⚠️ loan_guarantors cleanup: {e}")
+            try: db.rollback()
+            except Exception: pass
+
+        try:
+            db.execute(f"DELETE FROM loans WHERE user_id = {PH}", (user_id,))
+        except Exception as e:
+            print(f"⚠️ loans cleanup: {e}")
+            try: db.rollback()
+            except Exception: pass
+
+        # Finally delete the user
+        db.execute(f"DELETE FROM users WHERE id = {PH}", (user_id,))
+        db.commit()
+
+        print(f"✅ Deleted user {user_id}: {name}")
+        return jsonify({"success": True, "message": f'User "{name}" deleted successfully'})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try: db.rollback()
+        except Exception: pass
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        try: db.close()
+        except Exception: pass
+
+
+# ============================================================
+# ADMIN — RESET USER PASSWORD
+# ============================================================
+@app.route("/admin/users/reset-password/<int:user_id>", methods=["POST"])
+def admin_reset_user_password(user_id):
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    data = request.get_json() or {}
+    new_password = (data.get("new_password") or "").strip()
+
+    if not new_password or len(new_password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters"}), 400
+
+    PH = "%s" if DATABASE_URL else "?"
+    db = get_db()
+    try:
+        user_row = db.execute(
+            f"SELECT id, full_name FROM users WHERE id = {PH}", (user_id,)
+        ).fetchone()
+        if not user_row:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        hashed = generate_password_hash(new_password)
+        db.execute(
+            f"UPDATE users SET password = {PH} WHERE id = {PH}",
+            (hashed, user_id)
+        )
+        db.commit()
+
+        user_dict = row_to_dict(user_row)
+        print(f"✅ Reset password for user {user_id}: {user_dict.get('full_name')}")
+        return jsonify({"success": True, "message": "Password reset successfully"})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try: db.rollback()
+        except Exception: pass
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        try: db.close()
+        except Exception: pass
 
 
 # ============================================================
