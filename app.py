@@ -340,6 +340,21 @@ def create_database():
     is_pg = bool(DATABASE_URL)
     PH = "%s" if is_pg else "?"
 
+        # ⚠️ ONE-TIME: Drop old archive tables with wrong schema
+    # REMOVE THIS AFTER ONE SUCCESSFUL DEPLOY
+    if is_pg:
+        for t in ["archived_years", "archived_users", "archived_savings_deposits",
+                  "archived_savings", "archived_members", "archived_loans",
+                  "archived_repayments"]:
+            try:
+                cursor.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
+                conn.commit()
+                print(f"🗑️ Dropped old {t}")
+            except Exception as e:
+                print(f"⚠️ Could not drop {t}: {e}")
+                conn.rollback()
+                cursor = conn.cursor()
+
     # ------------------------------------------------------------
     # Helper: get existing columns (works for both DBs)
     # ------------------------------------------------------------
@@ -767,7 +782,7 @@ def create_database():
     """)
 
     # ============================================================
-    # ✅ ARCHIVE TABLES (Year-End Rollover)
+    # ✅ ARCHIVE TABLES (match year_end_execute route EXACTLY)
     # ============================================================
 
     # archived_years — one row per closed SACCO year
@@ -775,56 +790,78 @@ def create_database():
     CREATE TABLE IF NOT EXISTS archived_years (
         id {pk},
         year_label TEXT NOT NULL,
-        end_date TEXT NOT NULL,
+        started_at TEXT,
+        closed_at TEXT,
+        closed_by INTEGER,
         notes TEXT,
         total_members INTEGER DEFAULT 0,
+        total_staff_kept INTEGER DEFAULT 0,
+        total_kai_shares INTEGER DEFAULT 0,
+        total_ks_shares INTEGER DEFAULT 0,
         total_savings REAL DEFAULT 0,
-        total_loans REAL DEFAULT 0,
-        total_repayments REAL DEFAULT 0,
-        archived_at TEXT,
-        archived_by INTEGER
+        total_kac_collected REAL DEFAULT 0,
+        total_registration_fees REAL DEFAULT 0,
+        total_loans_disbursed REAL DEFAULT 0,
+        total_loans_repaid REAL DEFAULT 0,
+        total_interest_collected REAL DEFAULT 0,
+        total_outstanding_loans REAL DEFAULT 0
     )
     """)
 
-    # archived_members — frozen snapshot of members
+    # archived_users — frozen snapshot of every user
     cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_members (
+    CREATE TABLE IF NOT EXISTS archived_users (
         id {pk},
         archive_id INTEGER NOT NULL,
         original_user_id INTEGER,
-        full_name TEXT,
         sacco_number TEXT,
-        phone TEXT,
+        full_name TEXT,
         email TEXT,
+        phone TEXT,
         role TEXT,
-        status TEXT,
-        savings_balance REAL DEFAULT 0,
+        gender TEXT,
+        dob TEXT,
+        address TEXT,
+        next_of_kin_name TEXT,
+        next_of_kin_phone TEXT,
+        relationship TEXT,
         kai_shares INTEGER DEFAULT 0,
         ks_shares INTEGER DEFAULT 0,
         kac_paid REAL DEFAULT 0,
         registration_fee_paid INTEGER DEFAULT 0,
+        savings_balance REAL DEFAULT 0,
+        total_loans_taken REAL DEFAULT 0,
+        total_loans_repaid REAL DEFAULT 0,
+        outstanding_balance REAL DEFAULT 0,
+        interest_paid REAL DEFAULT 0,
+        status TEXT,
         registration_date TEXT,
         archived_at TEXT
     )
     """)
 
-    # archived_savings — frozen deposits
+    # archived_savings_deposits — frozen deposits
     cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_savings (
+    CREATE TABLE IF NOT EXISTS archived_savings_deposits (
         id {pk},
         archive_id INTEGER NOT NULL,
-        original_user_id INTEGER,
-        amount REAL,
+        original_deposit_id INTEGER,
+        user_id INTEGER,
+        sacco_number TEXT,
+        full_name TEXT,
         savings_type TEXT,
+        amount REAL,
         shares INTEGER,
         deposit_date TEXT,
         payment_method TEXT,
         receipt_number TEXT,
-        notes TEXT
+        notes TEXT,
+        created_at TEXT,
+        archived_at TEXT
     )
     """)
 
-    # archived_loans
+    # archived_loans — frozen loans
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_loans (
         id {pk},
@@ -832,29 +869,42 @@ def create_database():
         original_loan_id INTEGER,
         loan_number TEXT,
         user_id INTEGER,
+        sacco_number TEXT,
+        full_name TEXT,
         amount REAL,
         interest_rate REAL,
+        interest_amount REAL,
         total_repayment REAL,
+        monthly_installment REAL,
+        tenure INTEGER,
+        purpose TEXT,
+        repayment_plan TEXT,
         status TEXT,
         application_date TEXT,
         approved_date TEXT,
         disbursed_date TEXT,
         completed_date TEXT,
+        rejected_date TEXT,
+        rejection_reason TEXT,
         current_balance REAL DEFAULT 0,
         total_interest_accrued REAL DEFAULT 0,
         principal_paid REAL DEFAULT 0,
-        interest_paid REAL DEFAULT 0
+        interest_paid REAL DEFAULT 0,
+        due_date TEXT,
+        archived_at TEXT
     )
     """)
 
-    # archived_repayments
+    # archived_repayments — frozen repayments
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_repayments (
         id {pk},
         archive_id INTEGER NOT NULL,
         original_repayment_id INTEGER,
         loan_id INTEGER,
+        loan_number TEXT,
         user_id INTEGER,
+        full_name TEXT,
         amount REAL,
         interest_paid REAL DEFAULT 0,
         principal_paid REAL DEFAULT 0,
@@ -862,9 +912,138 @@ def create_database():
         payment_date TEXT,
         payment_method TEXT,
         transaction_ref TEXT,
-        status TEXT
+        notes TEXT,
+        status TEXT,
+        archived_at TEXT
     )
     """)
+
+    # ------------------------------------------------------------
+    # PATCH existing archive tables (in case they have the old schema)
+    # ------------------------------------------------------------
+    patch_map = {
+        "archived_years": {
+            'started_at': 'TEXT',
+            'closed_at': 'TEXT',
+            'closed_by': 'INTEGER',
+            'year_label': 'TEXT',
+            'notes': 'TEXT',
+            'total_members': 'INTEGER DEFAULT 0',
+            'total_staff_kept': 'INTEGER DEFAULT 0',
+            'total_kai_shares': 'INTEGER DEFAULT 0',
+            'total_ks_shares': 'INTEGER DEFAULT 0',
+            'total_savings': 'REAL DEFAULT 0',
+            'total_kac_collected': 'REAL DEFAULT 0',
+            'total_registration_fees': 'REAL DEFAULT 0',
+            'total_loans_disbursed': 'REAL DEFAULT 0',
+            'total_loans_repaid': 'REAL DEFAULT 0',
+            'total_interest_collected': 'REAL DEFAULT 0',
+            'total_outstanding_loans': 'REAL DEFAULT 0',
+        },
+        "archived_users": {
+            'archive_id': 'INTEGER',
+            'original_user_id': 'INTEGER',
+            'sacco_number': 'TEXT',
+            'full_name': 'TEXT',
+            'email': 'TEXT',
+            'phone': 'TEXT',
+            'role': 'TEXT',
+            'gender': 'TEXT',
+            'dob': 'TEXT',
+            'address': 'TEXT',
+            'next_of_kin_name': 'TEXT',
+            'next_of_kin_phone': 'TEXT',
+            'relationship': 'TEXT',
+            'kai_shares': 'INTEGER DEFAULT 0',
+            'ks_shares': 'INTEGER DEFAULT 0',
+            'kac_paid': 'REAL DEFAULT 0',
+            'registration_fee_paid': 'INTEGER DEFAULT 0',
+            'savings_balance': 'REAL DEFAULT 0',
+            'total_loans_taken': 'REAL DEFAULT 0',
+            'total_loans_repaid': 'REAL DEFAULT 0',
+            'outstanding_balance': 'REAL DEFAULT 0',
+            'interest_paid': 'REAL DEFAULT 0',
+            'status': 'TEXT',
+            'registration_date': 'TEXT',
+            'archived_at': 'TEXT',
+        },
+        "archived_savings_deposits": {
+            'archive_id': 'INTEGER',
+            'original_deposit_id': 'INTEGER',
+            'user_id': 'INTEGER',
+            'sacco_number': 'TEXT',
+            'full_name': 'TEXT',
+            'savings_type': 'TEXT',
+            'amount': 'REAL',
+            'shares': 'INTEGER',
+            'deposit_date': 'TEXT',
+            'payment_method': 'TEXT',
+            'receipt_number': 'TEXT',
+            'notes': 'TEXT',
+            'created_at': 'TEXT',
+            'archived_at': 'TEXT',
+        },
+        "archived_loans": {
+            'archive_id': 'INTEGER',
+            'original_loan_id': 'INTEGER',
+            'loan_number': 'TEXT',
+            'user_id': 'INTEGER',
+            'sacco_number': 'TEXT',
+            'full_name': 'TEXT',
+            'amount': 'REAL',
+            'interest_rate': 'REAL',
+            'interest_amount': 'REAL',
+            'total_repayment': 'REAL',
+            'monthly_installment': 'REAL',
+            'tenure': 'INTEGER',
+            'purpose': 'TEXT',
+            'repayment_plan': 'TEXT',
+            'status': 'TEXT',
+            'application_date': 'TEXT',
+            'approved_date': 'TEXT',
+            'disbursed_date': 'TEXT',
+            'completed_date': 'TEXT',
+            'rejected_date': 'TEXT',
+            'rejection_reason': 'TEXT',
+            'current_balance': 'REAL DEFAULT 0',
+            'total_interest_accrued': 'REAL DEFAULT 0',
+            'principal_paid': 'REAL DEFAULT 0',
+            'interest_paid': 'REAL DEFAULT 0',
+            'due_date': 'TEXT',
+            'archived_at': 'TEXT',
+        },
+        "archived_repayments": {
+            'archive_id': 'INTEGER',
+            'original_repayment_id': 'INTEGER',
+            'loan_id': 'INTEGER',
+            'loan_number': 'TEXT',
+            'user_id': 'INTEGER',
+            'full_name': 'TEXT',
+            'amount': 'REAL',
+            'interest_paid': 'REAL DEFAULT 0',
+            'principal_paid': 'REAL DEFAULT 0',
+            'balance_after': 'REAL DEFAULT 0',
+            'payment_date': 'TEXT',
+            'payment_method': 'TEXT',
+            'transaction_ref': 'TEXT',
+            'notes': 'TEXT',
+            'status': 'TEXT',
+            'archived_at': 'TEXT',
+        },
+    }
+
+    for table_name, columns in patch_map.items():
+        if table_exists(table_name):
+            existing = get_columns(table_name)
+            for col_name, col_type in columns.items():
+                if col_name not in existing:
+                    try:
+                        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}")
+                        print(f"✅ Added column to {table_name}: {col_name}")
+                    except Exception as e:
+                        print(f"⚠️ Could not add column {col_name} to {table_name}: {e}")
+                        conn.rollback()
+                        cursor = conn.cursor()
 
     print("✅ Archive tables ready.")
 
@@ -916,8 +1095,8 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
         "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_members_aid ON archived_members(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_savings_aid ON archived_savings(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_users_aid ON archived_users(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_savings_deposits_aid ON archived_savings_deposits(archive_id)",
         "CREATE INDEX IF NOT EXISTS idx_archived_loans_aid ON archived_loans(archive_id)",
         "CREATE INDEX IF NOT EXISTS idx_archived_repayments_aid ON archived_repayments(archive_id)",
     ]
@@ -939,7 +1118,7 @@ def create_database():
 create_database()
 
 # ============================================================
-# Create chat table after core tables exist
+# Now create the chat table (needs users table to exist first)
 # ============================================================
 try:
     from chat_api import create_chat_table
