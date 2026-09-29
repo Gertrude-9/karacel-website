@@ -332,28 +332,12 @@ app.register_blueprint(chat_api)
 # NOTE: create_chat_table() is deferred until AFTER create_database()
 # (see the bottom of this file, just after create_database() is called)
 
-
 def create_database():
     conn = get_db()
     cursor = conn.cursor()
 
     is_pg = bool(DATABASE_URL)
     PH = "%s" if is_pg else "?"
-
-        # ⚠️ ONE-TIME: Drop old archive tables with wrong schema
-    # REMOVE THIS AFTER ONE SUCCESSFUL DEPLOY
-    if is_pg:
-        for t in ["archived_years", "archived_users", "archived_savings_deposits",
-                  "archived_savings", "archived_members", "archived_loans",
-                  "archived_repayments"]:
-            try:
-                cursor.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
-                conn.commit()
-                print(f"🗑️ Dropped old {t}")
-            except Exception as e:
-                print(f"⚠️ Could not drop {t}: {e}")
-                conn.rollback()
-                cursor = conn.cursor()
 
     # ------------------------------------------------------------
     # Helper: get existing columns (works for both DBs)
@@ -785,7 +769,7 @@ def create_database():
     # ✅ ARCHIVE TABLES (match year_end_execute route EXACTLY)
     # ============================================================
 
-    # archived_years — one row per closed SACCO year
+    # archived_years
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_years (
         id {pk},
@@ -808,7 +792,7 @@ def create_database():
     )
     """)
 
-    # archived_users — frozen snapshot of every user
+    # archived_users
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_users (
         id {pk},
@@ -840,7 +824,7 @@ def create_database():
     )
     """)
 
-    # archived_savings_deposits — frozen deposits
+    # archived_savings_deposits
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_savings_deposits (
         id {pk},
@@ -861,7 +845,7 @@ def create_database():
     )
     """)
 
-    # archived_loans — frozen loans
+    # archived_loans
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_loans (
         id {pk},
@@ -895,7 +879,7 @@ def create_database():
     )
     """)
 
-    # archived_repayments — frozen repayments
+    # archived_repayments
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS archived_repayments (
         id {pk},
@@ -919,15 +903,12 @@ def create_database():
     """)
 
     # ------------------------------------------------------------
-    # PATCH existing archive tables (in case they have the old schema)
+    # PATCH existing archive tables (add any missing columns)
     # ------------------------------------------------------------
     patch_map = {
         "archived_years": {
-            'started_at': 'TEXT',
-            'closed_at': 'TEXT',
-            'closed_by': 'INTEGER',
-            'year_label': 'TEXT',
-            'notes': 'TEXT',
+            'started_at': 'TEXT', 'closed_at': 'TEXT', 'closed_by': 'INTEGER',
+            'year_label': 'TEXT', 'notes': 'TEXT',
             'total_members': 'INTEGER DEFAULT 0',
             'total_staff_kept': 'INTEGER DEFAULT 0',
             'total_kai_shares': 'INTEGER DEFAULT 0',
@@ -941,18 +922,11 @@ def create_database():
             'total_outstanding_loans': 'REAL DEFAULT 0',
         },
         "archived_users": {
-            'archive_id': 'INTEGER',
-            'original_user_id': 'INTEGER',
-            'sacco_number': 'TEXT',
-            'full_name': 'TEXT',
-            'email': 'TEXT',
-            'phone': 'TEXT',
-            'role': 'TEXT',
-            'gender': 'TEXT',
-            'dob': 'TEXT',
-            'address': 'TEXT',
-            'next_of_kin_name': 'TEXT',
-            'next_of_kin_phone': 'TEXT',
+            'archive_id': 'INTEGER', 'original_user_id': 'INTEGER',
+            'sacco_number': 'TEXT', 'full_name': 'TEXT',
+            'email': 'TEXT', 'phone': 'TEXT', 'role': 'TEXT',
+            'gender': 'TEXT', 'dob': 'TEXT', 'address': 'TEXT',
+            'next_of_kin_name': 'TEXT', 'next_of_kin_phone': 'TEXT',
             'relationship': 'TEXT',
             'kai_shares': 'INTEGER DEFAULT 0',
             'ks_shares': 'INTEGER DEFAULT 0',
@@ -963,72 +937,45 @@ def create_database():
             'total_loans_repaid': 'REAL DEFAULT 0',
             'outstanding_balance': 'REAL DEFAULT 0',
             'interest_paid': 'REAL DEFAULT 0',
-            'status': 'TEXT',
-            'registration_date': 'TEXT',
+            'status': 'TEXT', 'registration_date': 'TEXT',
             'archived_at': 'TEXT',
         },
         "archived_savings_deposits": {
-            'archive_id': 'INTEGER',
-            'original_deposit_id': 'INTEGER',
-            'user_id': 'INTEGER',
-            'sacco_number': 'TEXT',
-            'full_name': 'TEXT',
-            'savings_type': 'TEXT',
-            'amount': 'REAL',
-            'shares': 'INTEGER',
-            'deposit_date': 'TEXT',
-            'payment_method': 'TEXT',
-            'receipt_number': 'TEXT',
-            'notes': 'TEXT',
-            'created_at': 'TEXT',
-            'archived_at': 'TEXT',
+            'archive_id': 'INTEGER', 'original_deposit_id': 'INTEGER',
+            'user_id': 'INTEGER', 'sacco_number': 'TEXT', 'full_name': 'TEXT',
+            'savings_type': 'TEXT', 'amount': 'REAL', 'shares': 'INTEGER',
+            'deposit_date': 'TEXT', 'payment_method': 'TEXT',
+            'receipt_number': 'TEXT', 'notes': 'TEXT',
+            'created_at': 'TEXT', 'archived_at': 'TEXT',
         },
         "archived_loans": {
-            'archive_id': 'INTEGER',
-            'original_loan_id': 'INTEGER',
-            'loan_number': 'TEXT',
-            'user_id': 'INTEGER',
-            'sacco_number': 'TEXT',
-            'full_name': 'TEXT',
-            'amount': 'REAL',
-            'interest_rate': 'REAL',
-            'interest_amount': 'REAL',
-            'total_repayment': 'REAL',
-            'monthly_installment': 'REAL',
-            'tenure': 'INTEGER',
-            'purpose': 'TEXT',
-            'repayment_plan': 'TEXT',
-            'status': 'TEXT',
-            'application_date': 'TEXT',
-            'approved_date': 'TEXT',
-            'disbursed_date': 'TEXT',
-            'completed_date': 'TEXT',
-            'rejected_date': 'TEXT',
-            'rejection_reason': 'TEXT',
+            'archive_id': 'INTEGER', 'original_loan_id': 'INTEGER',
+            'loan_number': 'TEXT', 'user_id': 'INTEGER',
+            'sacco_number': 'TEXT', 'full_name': 'TEXT',
+            'amount': 'REAL', 'interest_rate': 'REAL',
+            'interest_amount': 'REAL', 'total_repayment': 'REAL',
+            'monthly_installment': 'REAL', 'tenure': 'INTEGER',
+            'purpose': 'TEXT', 'repayment_plan': 'TEXT', 'status': 'TEXT',
+            'application_date': 'TEXT', 'approved_date': 'TEXT',
+            'disbursed_date': 'TEXT', 'completed_date': 'TEXT',
+            'rejected_date': 'TEXT', 'rejection_reason': 'TEXT',
             'current_balance': 'REAL DEFAULT 0',
             'total_interest_accrued': 'REAL DEFAULT 0',
             'principal_paid': 'REAL DEFAULT 0',
             'interest_paid': 'REAL DEFAULT 0',
-            'due_date': 'TEXT',
-            'archived_at': 'TEXT',
+            'due_date': 'TEXT', 'archived_at': 'TEXT',
         },
         "archived_repayments": {
-            'archive_id': 'INTEGER',
-            'original_repayment_id': 'INTEGER',
-            'loan_id': 'INTEGER',
-            'loan_number': 'TEXT',
-            'user_id': 'INTEGER',
-            'full_name': 'TEXT',
+            'archive_id': 'INTEGER', 'original_repayment_id': 'INTEGER',
+            'loan_id': 'INTEGER', 'loan_number': 'TEXT',
+            'user_id': 'INTEGER', 'full_name': 'TEXT',
             'amount': 'REAL',
             'interest_paid': 'REAL DEFAULT 0',
             'principal_paid': 'REAL DEFAULT 0',
             'balance_after': 'REAL DEFAULT 0',
-            'payment_date': 'TEXT',
-            'payment_method': 'TEXT',
-            'transaction_ref': 'TEXT',
-            'notes': 'TEXT',
-            'status': 'TEXT',
-            'archived_at': 'TEXT',
+            'payment_date': 'TEXT', 'payment_method': 'TEXT',
+            'transaction_ref': 'TEXT', 'notes': 'TEXT',
+            'status': 'TEXT', 'archived_at': 'TEXT',
         },
     }
 
@@ -6793,7 +6740,7 @@ def year_end_preview():
 
 
 # ------------------------------------------------------------
-# EXECUTE â€” the actual rollover
+# EXECUTE — the actual rollover
 # ------------------------------------------------------------
 @app.route("/admin/year-end/execute", methods=["POST"])
 def year_end_execute():
@@ -6823,10 +6770,12 @@ def year_end_execute():
         year_label = end_date[:4]
 
     db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
         # ---- Guard: unique archive ----
         exists = db.execute(
-            "SELECT id FROM archived_years WHERE year_label = ?", (year_label,)
+            f"SELECT id FROM archived_years WHERE year_label = {PH}", (year_label,)
         ).fetchone()
         if exists:
             return jsonify({
@@ -6834,7 +6783,6 @@ def year_end_execute():
                 "message": f"An archive for '{year_label}' already exists."
             }), 400
 
-        db.execute("BEGIN")
         now = datetime.utcnow().isoformat(timespec="seconds")
 
         # ---- Who stays / goes ----
@@ -6842,17 +6790,17 @@ def year_end_execute():
             SELECT id FROM users
             WHERE role IN ('admin','chairperson','treasurer','secretary','publicity')
         """).fetchall()
-        staff_ids = [r["id"] for r in staff_ids_rows]
+        staff_ids = [row_to_dict(r)["id"] for r in staff_ids_rows]
 
         member_ids_rows = db.execute("""
             SELECT id FROM users
             WHERE role NOT IN ('admin','chairperson','treasurer','secretary','publicity')
                OR role IS NULL
         """).fetchall()
-        member_ids = [r["id"] for r in member_ids_rows]
+        member_ids = [row_to_dict(r)["id"] for r in member_ids_rows]
 
         # ---- Totals ----
-        shares = db.execute("""
+        shares_row = db.execute("""
             SELECT
                 COALESCE(SUM(kai_shares), 0) AS kai,
                 COALESCE(SUM(ks_shares), 0)  AS ks,
@@ -6860,57 +6808,84 @@ def year_end_execute():
                 COALESCE(SUM(CASE WHEN registration_fee_paid=1 THEN 1 ELSE 0 END),0) AS reg_count
             FROM users
         """).fetchone()
+        shares = row_to_dict(shares_row)
 
-        total_savings = shares["kai"] * 100000 + shares["ks"] * 10000
+        total_savings = (shares["kai"] or 0) * 100000 + (shares["ks"] or 0) * 10000
 
-        loans = db.execute("""
+        loans_row = db.execute("""
             SELECT
                 COALESCE(SUM(amount),0) AS disbursed,
                 COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
             FROM loans
         """).fetchone()
+        loans = row_to_dict(loans_row)
 
-        interest = db.execute(
+        interest_row = db.execute(
             "SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments"
         ).fetchone()
+        interest = row_to_dict(interest_row)
 
-        # ---- 1. Archive header ----
-        cur = db.execute("""
-            INSERT INTO archived_years (
-                year_label, started_at, closed_at, closed_by, notes,
-                total_members, total_staff_kept,
-                total_kai_shares, total_ks_shares,
-                total_savings, total_kac_collected, total_registration_fees,
-                total_loans_disbursed, total_loans_repaid,
-                total_interest_collected, total_outstanding_loans
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            year_label, end_date, now, session["user_id"], notes,
-            len(member_ids), len(staff_ids),
-            shares["kai"], shares["ks"],
-            total_savings, shares["kac"], shares["reg_count"] * 20000,
-            loans["disbursed"], loans["repaid"], interest["x"], 0
-        ))
-        archive_id = cur.lastrowid
+        # ---- 1. Archive header (RETURNING id for PostgreSQL) ----
+        if DATABASE_URL:
+            ins_row = db.execute("""
+                INSERT INTO archived_years (
+                    year_label, started_at, closed_at, closed_by, notes,
+                    total_members, total_staff_kept,
+                    total_kai_shares, total_ks_shares,
+                    total_savings, total_kac_collected, total_registration_fees,
+                    total_loans_disbursed, total_loans_repaid,
+                    total_interest_collected, total_outstanding_loans
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
+            """, (
+                year_label, end_date, now, session["user_id"], notes,
+                len(member_ids), len(staff_ids),
+                shares["kai"], shares["ks"],
+                total_savings, shares["kac"], (shares["reg_count"] or 0) * 20000,
+                loans["disbursed"], loans["repaid"], interest["x"], 0
+            )).fetchone()
+            archive_id = row_to_dict(ins_row)["id"]
+        else:
+            cursor = db.cursor()
+            cursor.execute("""
+                INSERT INTO archived_years (
+                    year_label, started_at, closed_at, closed_by, notes,
+                    total_members, total_staff_kept,
+                    total_kai_shares, total_ks_shares,
+                    total_savings, total_kac_collected, total_registration_fees,
+                    total_loans_disbursed, total_loans_repaid,
+                    total_interest_collected, total_outstanding_loans
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                year_label, end_date, now, session["user_id"], notes,
+                len(member_ids), len(staff_ids),
+                shares["kai"], shares["ks"],
+                total_savings, shares["kac"], (shares["reg_count"] or 0) * 20000,
+                loans["disbursed"], loans["repaid"], interest["x"], 0
+            ))
+            archive_id = cursor.lastrowid
 
         # ---- 2. Archive all users ----
-        for u in db.execute("SELECT * FROM users").fetchall():
-            kai = u["kai_shares"] or 0
-            ks  = u["ks_shares"]  or 0
+        for u_row in db.execute("SELECT * FROM users").fetchall():
+            u = row_to_dict(u_row)
+            kai = u.get("kai_shares") or 0
+            ks  = u.get("ks_shares")  or 0
             savings = kai * 100000 + ks * 10000
 
-            ls = db.execute("""
+            ls_row = db.execute(f"""
                 SELECT COALESCE(SUM(amount),0) AS taken,
                        COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
-                FROM loans WHERE user_id = ?
+                FROM loans WHERE user_id = {PH}
             """, (u["id"],)).fetchone()
+            ls = row_to_dict(ls_row)
 
-            ist = db.execute(
-                "SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments WHERE user_id=?",
+            ist_row = db.execute(
+                f"SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments WHERE user_id={PH}",
                 (u["id"],)
             ).fetchone()
+            ist = row_to_dict(ist_row)
 
-            db.execute("""
+            db.execute(f"""
                 INSERT INTO archived_users (
                     archive_id, original_user_id, sacco_number, full_name,
                     email, phone, role, gender, dob, address,
@@ -6919,78 +6894,90 @@ def year_end_execute():
                     savings_balance, total_loans_taken, total_loans_repaid,
                     outstanding_balance, interest_paid, status,
                     registration_date, archived_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
+                          {PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
+                          {PH},{PH},{PH},{PH},{PH})
             """, (
-                archive_id, u["id"], u["sacco_number"], u["full_name"],
-                u["email"], u["phone"], u["role"], u["gender"], u["dob"], u["address"],
-                u["next_of_kin_name"], u["next_of_kin_phone"], u["relationship"],
-                kai, ks, u["kac_paid"] or 0, u["registration_fee_paid"] or 0,
-                savings, ls["taken"], ls["repaid"], ls["taken"] - ls["repaid"],
-                ist["x"], u["status"], u["registration_date"], now
+                archive_id, u["id"], u.get("sacco_number"), u.get("full_name"),
+                u.get("email"), u.get("phone"), u.get("role"), u.get("gender"),
+                u.get("dob"), u.get("address"),
+                u.get("next_of_kin_name"), u.get("next_of_kin_phone"), u.get("relationship"),
+                kai, ks, u.get("kac_paid") or 0, u.get("registration_fee_paid") or 0,
+                savings, ls.get("taken") or 0, ls.get("repaid") or 0,
+                (ls.get("taken") or 0) - (ls.get("repaid") or 0),
+                ist.get("x") or 0, u.get("status"), u.get("registration_date"), now
             ))
 
         # ---- 3. Archive deposits ----
-        for d in db.execute("""
+        for d_row in db.execute("""
             SELECT sd.*, u.sacco_number AS us, u.full_name AS un
             FROM savings_deposits sd LEFT JOIN users u ON u.id = sd.user_id
         """).fetchall():
-            db.execute("""
+            d = row_to_dict(d_row)
+            db.execute(f"""
                 INSERT INTO archived_savings_deposits (
                     archive_id, original_deposit_id, user_id, sacco_number, full_name,
                     savings_type, amount, shares, deposit_date,
                     payment_method, receipt_number, notes, created_at, archived_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
             """, (
-                archive_id, d["id"], d["user_id"], d["us"], d["un"],
-                d["savings_type"], d["amount"],
-                d["shares"] if "shares" in d.keys() else None,
-                d["deposit_date"], d["payment_method"], d["receipt_number"],
-                d["notes"], d["created_at"] if "created_at" in d.keys() else None, now
+                archive_id, d.get("id"), d.get("user_id"), d.get("us"), d.get("un"),
+                d.get("savings_type"), d.get("amount"),
+                d.get("shares"),   # may be None — safe
+                d.get("deposit_date"), d.get("payment_method"), d.get("receipt_number"),
+                d.get("notes"), d.get("created_at"), now
             ))
 
         # ---- 4. Archive loans ----
-        for l in db.execute("""
+        for l_row in db.execute("""
             SELECT l.*, u.sacco_number AS us, u.full_name AS un
             FROM loans l LEFT JOIN users u ON u.id = l.user_id
         """).fetchall():
-            db.execute("""
+            l = row_to_dict(l_row)
+            db.execute(f"""
                 INSERT INTO archived_loans (
                     archive_id, original_loan_id, user_id, sacco_number, full_name,
-                    loan_number, amount, status, application_date, approval_date,
-                    disbursement_date, completed_date, total_interest_accrued,
+                    loan_number, amount, status, application_date, approved_date,
+                    disbursed_date, completed_date, total_interest_accrued,
                     interest_paid, principal_paid, current_balance,
                     rejection_reason, archived_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
+                          {PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
             """, (
-                archive_id, l["id"], l["user_id"], l["us"], l["un"],
-                l["loan_number"], l["amount"], l["status"],
-                l["application_date"], l["approval_date"],
-                l["disbursement_date"], l["completed_date"],
-                l["total_interest_accrued"], l["interest_paid"],
-                l["principal_paid"], l["current_balance"],
-                l["rejection_reason"], now
+                archive_id, l.get("id"), l.get("user_id"), l.get("us"), l.get("un"),
+                l.get("loan_number"), l.get("amount"), l.get("status"),
+                l.get("application_date"), l.get("approved_date"),
+                l.get("disbursed_date"), l.get("completed_date"),
+                l.get("total_interest_accrued") or 0,
+                l.get("interest_paid") or 0,
+                l.get("principal_paid") or 0,
+                l.get("current_balance") or 0,
+                l.get("rejection_reason"), now
             ))
 
         # ---- 5. Archive repayments ----
-        for r in db.execute("""
+        for r_row in db.execute("""
             SELECT r.*, u.sacco_number AS us, u.full_name AS un, l.loan_number AS ln
             FROM repayments r
             LEFT JOIN users u ON u.id = r.user_id
             LEFT JOIN loans l ON l.id = r.loan_id
         """).fetchall():
-            db.execute("""
+            r = row_to_dict(r_row)
+            db.execute(f"""
                 INSERT INTO archived_repayments (
                     archive_id, original_repayment_id, loan_id, user_id,
                     sacco_number, full_name, loan_number,
                     amount, interest_paid, principal_paid,
                     payment_date, payment_method, transaction_ref, notes, archived_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
             """, (
-                archive_id, r["id"], r["loan_id"], r["user_id"],
-                r["us"], r["un"], r["ln"],
-                r["amount"], r["interest_paid"], r["principal_paid"],
-                r["payment_date"], r["payment_method"],
-                r["transaction_ref"], r["notes"], now
+                archive_id, r.get("id"), r.get("loan_id"), r.get("user_id"),
+                r.get("us"), r.get("un"), r.get("ln"),
+                r.get("amount"),
+                r.get("interest_paid") or 0,
+                r.get("principal_paid") or 0,
+                r.get("payment_date"), r.get("payment_method"),
+                r.get("transaction_ref"), r.get("notes"), now
             ))
 
         # ---- 6. WIPE financial data ----
@@ -7000,15 +6987,15 @@ def year_end_execute():
 
         # ---- 7. WIPE members only, keep staff ----
         if member_ids:
-            placeholders = ",".join("?" * len(member_ids))
+            placeholders = ",".join([PH] * len(member_ids))
             db.execute(f"DELETE FROM users WHERE id IN ({placeholders})", member_ids)
 
         # ---- 8. Reset settings to defaults ----
         try:
-            db.execute("""
-                UPDATE settings SET
+            db.execute(f"""
+                UPDATE system_settings SET
                     sacco_name = 'Karacel Association',
-                    registration_number = 'SACCO/REG/' || ? || '/001',
+                    registration_number = {PH},
                     savings_interest_rate = 6.5,
                     loan_interest_rate = 12,
                     penalty_rate = 5,
@@ -7016,9 +7003,9 @@ def year_end_execute():
                     min_loan_amount = '10,000',
                     max_tenure = 24
                 WHERE id = 1
-            """, (year_label,))
-        except Exception:
-            pass  # settings table schema may differ â€” skip if it fails
+            """, (f'SACCO/REG/{year_label}/001',))
+        except Exception as e:
+            print(f"⚠️ Settings reset skipped: {e}")
 
         db.commit()
 
@@ -7036,13 +7023,18 @@ def year_end_execute():
         })
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "message": f"Rollover failed: {e}"}), 500
     finally:
-        db.close()
-
+        try:
+            db.close()
+        except Exception:
+            pass
 
 # ------------------------------------------------------------
 # ARCHIVES â€” browse past years
