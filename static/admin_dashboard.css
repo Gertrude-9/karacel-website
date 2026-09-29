@@ -2958,3 +2958,175 @@
             padding: 16px;
         }
     }
+
+    /* ============================================================
+   INLINE LOAN ACTIONS — expands under the clicked row
+   ============================================================ */
+
+/* 3-dots trigger button */
+.row-toggle-btn {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.5);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.row-toggle-btn:hover {
+    background: rgba(245,197,66,0.1);
+    color: #f5c542;
+    border-color: rgba(245,197,66,0.35);
+}
+
+.row-toggle-btn.active {
+    background: rgba(245,197,66,0.15);
+    color: #f5c542;
+    border-color: rgba(245,197,66,0.4);
+    transform: rotate(90deg);
+}
+
+/* Expanded actions row */
+.actions-row td {
+    padding: 0 !important;
+    border-top: none !important;
+}
+
+.actions-row-inner {
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    border-left: 3px solid #f5c542;
+    border-top: 1px dashed rgba(255,255,255,0.06);
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+    animation: expandRow 0.22s ease;
+}
+
+@keyframes expandRow {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.actions-label {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-right: 6px;
+}
+.actions-label i {
+    color: #f5c542;
+    margin-right: 4px;
+}
+
+/* Inline action buttons */
+.inline-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.inline-action:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.15);
+}
+
+.action-view {
+    background: rgba(0,224,255,0.08);
+    color: #00e0ff;
+    border-color: rgba(0,224,255,0.2);
+}
+.action-view:hover {
+    background: rgba(0,224,255,0.15);
+    border-color: rgba(0,224,255,0.4);
+}
+
+.action-approve {
+    background: rgba(74,222,128,0.1);
+    color: #4ade80;
+    border-color: rgba(74,222,128,0.25);
+}
+.action-approve:hover {
+    background: rgba(74,222,128,0.2);
+    border-color: rgba(74,222,128,0.5);
+}
+
+.action-reject {
+    background: rgba(255,107,107,0.1);
+    color: #ff6b6b;
+    border-color: rgba(255,107,107,0.25);
+}
+.action-reject:hover {
+    background: rgba(255,107,107,0.2);
+    border-color: rgba(255,107,107,0.5);
+}
+
+.action-success {
+    background: rgba(74,222,128,0.06);
+    color: #4ade80;
+    border-color: rgba(74,222,128,0.15);
+    cursor: default;
+}
+.action-success:hover {
+    transform: none;
+    filter: none;
+}
+
+.action-info {
+    background: rgba(245,197,66,0.08);
+    color: #f5c542;
+    border-color: rgba(245,197,66,0.2);
+    cursor: default;
+}
+.action-info:hover {
+    transform: none;
+    filter: none;
+}
+
+.actions-id {
+    margin-left: auto;
+    color: rgba(255,255,255,0.25);
+    font-size: 0.7rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Mobile — stack action buttons */
+@media (max-width: 640px) {
+    .actions-row-inner {
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .inline-action {
+        width: 100%;
+        justify-content: center;
+    }
+    .actions-id {
+        margin-left: 0;
+        text-align: center;
+    }
+}
+
+/* Ensure the table wrapper doesn't clip the expanded row */
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+}
