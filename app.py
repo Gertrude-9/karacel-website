@@ -4984,15 +4984,15 @@ def generate_report(report_type):
 
     start, end = resolve_range()
     db = get_db()
-    db.row_factory = sqlite3.Row
+    PH = "%s" if DATABASE_URL else "?"
 
     try:
         # ============================================================
         # LOAD SETTINGS
         # ============================================================
-        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        if settings:
-            s = dict(settings)
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings_row:
+            s = row_to_dict(settings_row)
             kai_share_price  = int(s.get('kai_share_price', 100000) or 100000)
             ks_share_price   = int(s.get('ks_share_price', 10000) or 10000)
             kac_annual_fee   = int(s.get('kac_annual_fee', 100000) or 100000)
@@ -5038,9 +5038,9 @@ def generate_report(report_type):
             kai_total = ks_total = 0
 
             for m in members_raw:
-                md = dict(m)
+                md = row_to_dict(m)
 
-                # KAC boolean â†’ numeric coercion
+                # KAC boolean → numeric coercion
                 kac_val = md.get('kac_paid') or 0
                 try:
                     kac_val = float(kac_val)
@@ -5050,11 +5050,11 @@ def generate_report(report_type):
                     kac_val = kac_annual_fee
                 md['kac_paid'] = min(int(kac_val), kac_annual_fee)
 
-                # Active loans count
-                md['active_loans'] = db.execute("""
+                # Active loans count — uses fetchval
+                md['active_loans'] = fetchval(db, f"""
                     SELECT COUNT(*) FROM loans 
-                    WHERE user_id = ? AND status IN ('approved','disbursed','active')
-                """, (md['id'],)).fetchone()[0] or 0
+                    WHERE user_id = {PH} AND status IN ('approved','disbursed','active')
+                """, (md['id'],)) or 0
 
                 # Counters
                 role = (md.get('role') or 'member').lower()
@@ -5076,7 +5076,6 @@ def generate_report(report_type):
 
                 members_list.append(md)
 
-            db.close()
             return render_template(
                 "admin/reports/member-report.html",
                 members=members_list,
@@ -5100,21 +5099,19 @@ def generate_report(report_type):
         # FINANCIAL REPORT
         # ============================================================
         elif report_type == 'financial':
-            # User counts
-            total_users = db.execute("""
+            total_users = fetchval(db, """
                 SELECT COUNT(*) FROM users
                 WHERE status = 'active'
                 AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-            """).fetchone()[0] or 0
+            """) or 0
 
-            member_count = db.execute("""
+            member_count = fetchval(db, """
                 SELECT COUNT(*) FROM users
                 WHERE status = 'active' AND LOWER(role) = 'member'
-            """).fetchone()[0] or 0
+            """) or 0
 
             staff_count = total_users - member_count
 
-            # Savings breakdown by type
             kai_total = ks_total = kac_total = reg_total = 0
             kai_shares = ks_shares = 0
             kai_members = ks_members = kac_members = reg_members = 0
@@ -5128,7 +5125,7 @@ def generate_report(report_type):
             """).fetchall()
 
             for u in all_users:
-                ud = dict(u)
+                ud = row_to_dict(u)
                 total_savings += _to_int(ud.get('savings_balance'))
 
                 kai_sh = int(ud.get('kai_shares') or 0)
@@ -5159,17 +5156,16 @@ def generate_report(report_type):
                     reg_total += registration_fee
                     reg_members += 1
 
-            # Loan status breakdown
-            raw_loans = db.execute("""
+            raw_loans = db.execute(f"""
                 SELECT status, amount, current_balance
                 FROM loans
-                WHERE application_date >= ? AND application_date <= ?
+                WHERE application_date >= {PH} AND application_date <= {PH}
             """, (start, end)).fetchall()
 
             def bucket(statuses):
                 c = a = 0
                 for l in raw_loans:
-                    ld = dict(l)
+                    ld = row_to_dict(l)
                     if (ld.get('status') or '').lower() in statuses:
                         c += 1
                         a += _to_int(ld.get('amount'))
@@ -5183,38 +5179,36 @@ def generate_report(report_type):
             rejected_loans,   rejected_amount   = bucket(['rejected'])
 
             total_loans = len(raw_loans)
-            total_loan_amount = sum(_to_int(dict(l).get('amount')) for l in raw_loans) or 0
+            total_loan_amount = sum(_to_int(row_to_dict(l).get('amount')) for l in raw_loans) or 0
 
             def pct(n):
                 return round((n / total_loans * 100), 1) if total_loans > 0 else 0.0
 
-            # Money aggregates
-            total_disbursed = _to_int(db.execute("""
+            total_disbursed = _to_int(fetchval(db, """
                 SELECT COALESCE(SUM(amount),0) FROM loans
                 WHERE status IN ('disbursed','active','completed')
-            """).fetchone()[0])
+            """))
 
-            total_repayments = _to_int(db.execute("""
+            total_repayments = _to_int(fetchval(db, """
                 SELECT COALESCE(SUM(amount),0) FROM repayments
                 WHERE status = 'completed'
-            """).fetchone()[0])
+            """))
 
-            total_interest_accrued = _to_int(db.execute("""
+            total_interest_accrued = _to_int(fetchval(db, """
                 SELECT COALESCE(SUM(total_interest_accrued),0) FROM loans
-            """).fetchone()[0])
+            """))
 
-            total_interest_paid = _to_int(db.execute("""
+            total_interest_paid = _to_int(fetchval(db, """
                 SELECT COALESCE(SUM(interest_paid),0) FROM loans
-            """).fetchone()[0])
+            """))
 
             total_interest_outstanding = max(0, total_interest_accrued - total_interest_paid)
 
-            total_app_fees = _to_int(db.execute("""
+            total_app_fees = _to_int(fetchval(db, f"""
                 SELECT COALESCE(SUM(application_fee),0) FROM loans
-                WHERE application_date >= ? AND application_date <= ?
-            """, (start, end)).fetchone()[0])
+                WHERE application_date >= {PH} AND application_date <= {PH}
+            """, (start, end)))
 
-            # Staff breakdown
             staff_rows = db.execute("""
                 SELECT role, COALESCE(savings_balance, 0) AS balance
                 FROM users
@@ -5226,7 +5220,7 @@ def generate_report(report_type):
             staff_savings = {'admin': 0, 'treasurer': 0, 'secretary': 0, 'publicity': 0, 'total': 0}
 
             for s_row in staff_rows:
-                sd = dict(s_row)
+                sd = row_to_dict(s_row)
                 role = (sd.get('role') or '').lower()
                 balance = _to_int(sd.get('balance'))
 
@@ -5244,8 +5238,6 @@ def generate_report(report_type):
                     staff_savings['publicity'] += balance
 
                 staff_savings['total'] += balance
-
-            db.close()
 
             return render_template(
                 "admin/reports/financial-report.html",
@@ -5284,7 +5276,7 @@ def generate_report(report_type):
         # LOAN REPORT
         # ============================================================
         elif report_type == 'loans':
-            raw_loans = db.execute("""
+            raw_loans = db.execute(f"""
                 SELECT
                     l.id, l.loan_number, l.amount, l.current_balance, l.status,
                     l.application_date, l.approved_date, l.disbursed_date, l.completed_date,
@@ -5300,7 +5292,7 @@ def generate_report(report_type):
                     ), 0) AS total_paid
                 FROM loans l
                 JOIN users u ON l.user_id = u.id
-                WHERE l.application_date >= ? AND l.application_date <= ?
+                WHERE l.application_date >= {PH} AND l.application_date <= {PH}
                 ORDER BY l.application_date DESC
             """, (start, end)).fetchall()
 
@@ -5312,7 +5304,7 @@ def generate_report(report_type):
             member_loan_count = staff_loan_count = 0
 
             for r in raw_loans:
-                d = dict(r)
+                d = row_to_dict(r)
                 d['amount']                 = _to_int(d.get('amount'))
                 d['current_balance']        = _to_int(d.get('current_balance')) or d['amount']
                 d['total_interest_accrued'] = _to_int(d.get('total_interest_accrued'))
@@ -5348,7 +5340,6 @@ def generate_report(report_type):
             total_loans = len(loans_list)
             total_interest_outstanding = max(0, total_interest_accrued - total_interest_paid)
 
-            db.close()
             return render_template(
                 "admin/reports/loan-report.html",
                 loans=loans_list,
@@ -5380,7 +5371,7 @@ def generate_report(report_type):
         # SAVINGS REPORT
         # ============================================================
         elif report_type == 'savings':
-            rows = db.execute("""
+            rows = db.execute(f"""
                 SELECT
                     u.id, u.full_name, u.sacco_number, u.role, u.status,
                     COALESCE(u.savings_balance, 0) AS savings_balance,
@@ -5391,14 +5382,14 @@ def generate_report(report_type):
                     COALESCE((
                         SELECT COUNT(*) FROM savings_deposits sd
                         WHERE sd.user_id = u.id
-                        AND sd.deposit_date >= ?
-                        AND sd.deposit_date <= ?
+                        AND sd.deposit_date >= {PH}
+                        AND sd.deposit_date <= {PH}
                     ), 0) AS deposit_count,
                     COALESCE((
                         SELECT SUM(sd.amount) FROM savings_deposits sd
                         WHERE sd.user_id = u.id
-                        AND sd.deposit_date >= ?
-                        AND sd.deposit_date <= ?
+                        AND sd.deposit_date >= {PH}
+                        AND sd.deposit_date <= {PH}
                     ), 0) AS total_deposited
                 FROM users u
                 WHERE LOWER(u.role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
@@ -5412,7 +5403,7 @@ def generate_report(report_type):
             kai_total = ks_total = kac_total = reg_total = 0
 
             for r in rows:
-                d = dict(r)
+                d = row_to_dict(r)
                 kac_val = d.get('kac_paid') or 0
                 try:
                     kac_val = float(kac_val)
@@ -5439,14 +5430,13 @@ def generate_report(report_type):
 
                 member_savings_list.append(d)
 
-            total_deposits = db.execute("""
+            total_deposits = fetchval(db, f"""
                 SELECT COUNT(*) FROM savings_deposits
-                WHERE deposit_date >= ? AND deposit_date <= ?
-            """, (start, end)).fetchone()[0] or 0
+                WHERE deposit_date >= {PH} AND deposit_date <= {PH}
+            """, (start, end)) or 0
 
             top_saver_name = member_savings_list[0]['full_name'] if member_savings_list else 'N/A'
 
-            db.close()
             return render_template(
                 "admin/reports/savings-report.html",
                 member_savings=member_savings_list,
@@ -5469,20 +5459,20 @@ def generate_report(report_type):
             )
 
         else:
-            db.close()
             flash('Invalid report type', 'danger')
             return redirect(url_for('admin_dashboard'))
 
     except Exception as e:
-        try:
-            db.close()
-        except Exception:
-            pass
-        print(f"âŒ Error generating report: {str(e)}")
+        print(f"Error generating report: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error generating report: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
     
 # ============================================================
 # OTHER DASHBOARDS
