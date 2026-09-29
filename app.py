@@ -2491,6 +2491,147 @@ def admin_view_loan(loan_id):
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
 
+# ============================================================
+# ADMIN — APPROVE / REJECT LOAN (final approval + disburse)
+# ============================================================
+@app.route("/admin/loan/approve/<int:loan_id>", methods=["POST"])
+def admin_approve_loan(loan_id):
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Please login first"}), 401
+
+    if session.get("role") not in ("admin", "chairperson"):
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "").strip().lower()
+    reason = (data.get("reason") or "").strip()
+
+    if action not in ("approve", "reject"):
+        return jsonify({"success": False, "message": "Invalid action"}), 400
+
+    PH = "%s" if DATABASE_URL else "?"
+    db = get_db()
+    try:
+        loan_row = db.execute(f"""
+            SELECT
+                l.*,
+                u.id AS applicant_id,
+                u.full_name,
+                u.email,
+                u.phone,
+                u.savings_balance
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.id = {PH}
+        """, (loan_id,)).fetchone()
+
+        if not loan_row:
+            return jsonify({"success": False, "message": "Loan not found"}), 404
+
+        loan = row_to_dict(loan_row)
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # ---- REJECT ----
+        if action == "reject":
+            if not reason:
+                return jsonify({"success": False, "message": "Rejection reason required"}), 400
+
+            db.execute(f"""
+                UPDATE loans
+                   SET status = 'rejected',
+                       rejected_date = {PH},
+                       rejection_reason = {PH},
+                       rejected_by = {PH}
+                 WHERE id = {PH}
+            """, (now_str, reason, session.get('full_name', 'Admin'), loan_id))
+
+            db.execute(f"""
+                INSERT INTO notifications (
+                    user_id, type, title, message, link, is_read, created_at
+                )
+                VALUES ({PH}, 'loan_rejection', {PH}, {PH}, '/member/dashboard', 0, {PH})
+            """, (
+                loan['applicant_id'],
+                'Loan Application Rejected',
+                f"Your loan {loan['loan_number']} has been rejected.\n\nReason: {reason}",
+                now_str
+            ))
+
+            db.commit()
+            print(f"✅ Admin rejected loan {loan_id}")
+            return jsonify({
+                "success": True,
+                "message": "Loan rejected successfully. The applicant has been notified."
+            })
+
+        # ---- APPROVE ----
+        if loan.get("status") != "approved":
+            return jsonify({
+                "success": False,
+                "message": f"Loan is '{loan.get('status')}', not awaiting final approval."
+            }), 400
+
+        required = float(loan.get('amount') or 0) * 0.10
+        savings = float(loan.get('savings_balance') or 0)
+        if savings < required:
+            return jsonify({
+                "success": False,
+                "message": f"Member needs 10% savings (UGX {required:,.0f}). Current: UGX {savings:,.0f}"
+            }), 400
+
+        today = datetime.now().strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        balance = loan.get('total_repayment') or loan.get('amount') or 0
+
+        db.execute(f"""
+            UPDATE loans
+               SET status = 'disbursed',
+                   approved_date = {PH},
+                   disbursed_date = {PH},
+                   loan_start_date = {PH},
+                   loan_end_date = {PH},
+                   current_balance = {PH},
+                   approved_by = {PH},
+                   approved_by_role = 'admin',
+                   disbursed_by = {PH},
+                   disbursed_by_role = 'admin'
+             WHERE id = {PH}
+        """, (
+            today, today, today, end_date, balance,
+            session.get('full_name', 'Admin'),
+            session.get('full_name', 'Admin'),
+            loan_id
+        ))
+
+        db.execute(f"""
+            INSERT INTO notifications (
+                user_id, type, title, message, link, is_read, created_at
+            )
+            VALUES ({PH}, 'loan_disbursed', {PH}, {PH}, '/member/dashboard', 0, {PH})
+        """, (
+            loan['applicant_id'],
+            'Loan Approved & Disbursed',
+            f"Your loan {loan['loan_number']} has been approved and disbursed. Please repay by {end_date}.",
+            now_str
+        ))
+
+        db.commit()
+        print(f"✅ Admin approved & disbursed loan {loan_id}")
+        return jsonify({
+            "success": True,
+            "message": "Loan approved and marked as disbursed. The applicant has been notified."
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try: db.rollback()
+        except Exception: pass
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        try: db.close()
+        except Exception: pass
+
 
 # ============================================================
 # TREASURER - VIEW LOAN DETAILS
