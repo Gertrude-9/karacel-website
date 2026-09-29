@@ -751,81 +751,61 @@
                 </div>
             </form>
 
-            <!-- ============================================================
-                 YEAR-END ROLLOVER
-                 ============================================================ -->
-            <div style="background:rgba(255,107,107,0.04); border:1px solid rgba(255,107,107,0.2); border-radius:12px; padding:20px; margin-top:24px; max-width:700px;">
+        <!-- ============================================================
+            SYSTEM RESET (was: Year-End Rollover)
+            ============================================================ -->
+        <div style="background:rgba(255,107,107,0.04); border:1px solid rgba(255,107,107,0.2); border-radius:12px; padding:20px; margin-top:24px; max-width:700px;">
 
-                <h4 style="color:#ff6b6b; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 8px 0;">
-                    <i class="fas fa-power-off"></i> Start New Year (End Current Year)
-                </h4>
+            <h4 style="color:#ff6b6b; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 8px 0;">
+                <i class="fas fa-power-off"></i> Reset System to Defaults
+            </h4>
 
-                <p style="color:rgba(255,255,255,0.5); font-size:0.8rem; line-height:1.6; margin:0 0 14px 0;">
-                    This closes the current SACCO year. When you click <strong>Start New Year</strong>, the system will:
+            <p style="color:rgba(255,255,255,0.5); font-size:0.8rem; line-height:1.6; margin:0 0 14px 0;">
+                <strong style="color:#ff6b6b;">This is a destructive action.</strong> When you click <strong>Reset System</strong>, the system will:
+            </p>
+
+            <ul style="color:rgba(255,255,255,0.55); font-size:0.78rem; line-height:1.75; margin:0 0 18px 20px; padding:0;">
+                <li><strong style="color:#ff6b6b;">Delete</strong> all members, savings, loans, repayments</li>
+                <li><strong style="color:#ff6b6b;">Delete</strong> all chat messages and notifications</li>
+                <li><strong style="color:#ff6b6b;">Delete</strong> all announcements, events, and publicity posts</li>
+                <li><strong style="color:#4ade80;">Keep</strong> your admin account (you stay logged in)</li>
+                <li><strong style="color:#f5c542;">Reset</strong> all SACCO settings to defaults</li>
+                <li><strong style="color:#00e0ff;">Reset</strong> ID counters so new records start from 1</li>
+            </ul>
+
+            <div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.15); border-radius:8px; padding:12px 14px; margin-bottom:18px;">
+                <p style="color:#ff6b6b; font-size:0.75rem; margin:0; display:flex; align-items:flex-start; gap:8px; line-height:1.5;">
+                    <i class="fas fa-exclamation-triangle" style="margin-top:2px;"></i>
+                    <span>This action <strong>cannot be undone</strong>. There is no backup, no archive, no recovery. Make sure you have exported any data you need before proceeding.</span>
                 </p>
-
-                <ul style="color:rgba(255,255,255,0.55); font-size:0.78rem; line-height:1.75; margin:0 0 18px 20px; padding:0;">
-                    <li><strong style="color:#4ade80;">Archive</strong> all members, savings, loans, and repayments</li>
-                    <li><strong style="color:#ff6b6b;">Delete</strong> all member accounts — they must register afresh</li>
-                    <li><strong style="color:#f5c542;">Keep</strong> staff users (Admin, Chairperson, Treasurer, Secretary, Publicity)</li>
-                    <li><strong style="color:#00e0ff;">Reset</strong> SACCO settings to their defaults</li>
-                    <li><strong style="color:#a78bfa;">Preserve</strong> the old data in Archives forever</li>
-                </ul>
-
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
-
-                    <div>
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
-                            End Date <span style="color:#ff6b6b;">*</span>
-                        </label>
-                        <input type="date" id="yearEndDate"
-                               style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; outline:none;">
-                    </div>
-
-                    <div>
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
-                            Year Label <span style="color:rgba(255,255,255,0.25); font-size:0.65rem;">(optional — auto from date)</span>
-                        </label>
-                        <input type="text" id="yearEndLabel" placeholder="e.g. 2024" maxlength="20"
-                               style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; outline:none;">
-                    </div>
-
-                </div>
-
-                <div style="margin-bottom:14px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
-                        Notes (optional)
-                    </label>
-                    <textarea id="yearEndNotes" rows="2" placeholder="Any notes about this year…"
-                              style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:white; font-family:inherit; resize:vertical; outline:none;"></textarea>
-                </div>
-
-                <div style="margin-bottom:18px;">
-                    <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
-                        Type <strong style="color:#ff6b6b;">RESET</strong> to confirm <span style="color:#ff6b6b;">*</span>
-                    </label>
-                    <input type="text" id="yearEndConfirm" placeholder="RESET" autocomplete="off"
-                           style="width:200px; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#ff6b6b; font-weight:700; letter-spacing:2px; outline:none;">
-                </div>
-
-                <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                    <a href="{{ url_for('year_end_preview') }}"
-                       style="padding:10px 20px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s;"
-                       onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                       onmouseout="this.style.background='rgba(255,255,255,0.04)'">
-                        <i class="fas fa-eye"></i> Preview Archive
-                    </a>
-
-                    <button type="button" onclick="executeYearEnd()" id="yearEndBtn"
-                            style="padding:10px 24px; background:linear-gradient(135deg,#ff6b6b,#ef4444); color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; font-size:0.85rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(255,107,107,0.2); transition:all 0.2s;"
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 22px rgba(255,107,107,0.35)'"
-                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(255,107,107,0.2)'">
-                        <i class="fas fa-power-off"></i> Start New Year
-                    </button>
-
-                    <span id="yearEndStatus" style="font-size:0.78rem; color:rgba(255,255,255,0.4);"></span>
-                </div>
             </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="color:rgba(255,255,255,0.4); font-size:0.72rem; display:block; margin-bottom:5px;">
+                    Type <strong style="color:#ff6b6b;">RESET</strong> to confirm <span style="color:#ff6b6b;">*</span>
+                </label>
+                <input type="text" id="yearEndConfirm" placeholder="RESET" autocomplete="off"
+                    style="width:200px; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#ff6b6b; font-weight:700; letter-spacing:2px; outline:none;">
+            </div>
+
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                <a href="{{ url_for('year_end_preview') }}"
+                style="padding:10px 20px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                    <i class="fas fa-eye"></i> Preview What Will Be Deleted
+                </a>
+
+                <button type="button" onclick="executeYearEnd()" id="yearEndBtn"
+                        style="padding:10px 24px; background:linear-gradient(135deg,#ff6b6b,#ef4444); color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; font-size:0.85rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(255,107,107,0.2); transition:all 0.2s;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 22px rgba(255,107,107,0.35)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(255,107,107,0.2)'">
+                    <i class="fas fa-power-off"></i> Reset System to Defaults
+                </button>
+
+                <span id="yearEndStatus" style="font-size:0.78rem; color:rgba(255,255,255,0.4);"></span>
+            </div>
+        </div>
 
         </div>
     </div>
@@ -1617,19 +1597,12 @@ document.addEventListener("DOMContentLoaded", function () {
 console.log('✅ Admin Dashboard JavaScript loaded successfully');
 
 // ============================================================
-// YEAR-END ROLLOVER — Start New Year
+// SYSTEM RESET — Reset everything to defaults
 // ============================================================
 function executeYearEnd() {
-    const endDate  = document.getElementById('yearEndDate').value;
-    const label    = document.getElementById('yearEndLabel').value.trim();
-    const notes    = document.getElementById('yearEndNotes').value.trim();
     const confirmT = document.getElementById('yearEndConfirm').value.trim();
     const statusEl = document.getElementById('yearEndStatus');
 
-    if (!endDate) {
-        alert('Please pick an end date.');
-        return;
-    }
     if (confirmT !== 'RESET') {
         alert('Type RESET in the confirmation box to proceed.');
         return;
@@ -1637,11 +1610,15 @@ function executeYearEnd() {
 
     if (!confirm(
         `⚠️ FINAL WARNING ⚠️\n\n` +
-        `You are about to END the current SACCO year.\n\n` +
-        `• All members, savings, loans & repayments will be ARCHIVED\n` +
-        `• All member accounts will be DELETED (they must register afresh)\n` +
-        `• Staff users will be KEPT\n` +
-        `• SACCO settings will be RESET to defaults\n\n` +
+        `You are about to RESET the entire system.\n\n` +
+        `This will DELETE:\n` +
+        `• All members and their accounts\n` +
+        `• All savings deposits\n` +
+        `• All loans and repayments\n` +
+        `• All chat messages and notifications\n` +
+        `• All announcements, events, and publicity posts\n\n` +
+        `Your admin account will be KEPT.\n` +
+        `All settings will be RESET to defaults.\n\n` +
         `This CANNOT be undone.\n\n` +
         `Proceed?`
     )) {
@@ -1650,20 +1627,15 @@ function executeYearEnd() {
 
     const btn = document.getElementById('yearEndBtn');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
     btn.disabled = true;
-    statusEl.textContent = 'Archiving…';
+    statusEl.textContent = 'Resetting system…';
     statusEl.style.color = 'rgba(255,255,255,0.5)';
 
     fetch('/admin/year-end/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            end_date: endDate,
-            year_label: label,
-            notes: notes,
-            confirm_text: confirmT
-        })
+        body: JSON.stringify({ confirm_text: confirmT })
     })
     .then(r => r.json())
     .then(data => {
@@ -1671,14 +1643,12 @@ function executeYearEnd() {
             statusEl.textContent = '✅ ' + data.message;
             statusEl.style.color = '#4ade80';
 
-            document.getElementById('yearEndDate').value = '';
-            document.getElementById('yearEndLabel').value = '';
-            document.getElementById('yearEndNotes').value = '';
             document.getElementById('yearEndConfirm').value = '';
 
+            // Reload the page after 2 seconds to show fresh state
             setTimeout(() => {
-                window.location.href = '/admin/archives/' + data.archive_id;
-            }, 1500);
+                window.location.reload();
+            }, 2000);
         } else {
             statusEl.textContent = '❌ ' + data.message;
             statusEl.style.color = '#ff6b6b';

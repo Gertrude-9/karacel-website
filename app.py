@@ -6676,11 +6676,8 @@ def api_publicity_chat_send():
 # Paste these in app.py (before `if __name__ == "__main__":`)
 # ============================================================
 
-from datetime import datetime
-
-
 # ------------------------------------------------------------
-# PREVIEW â€” safe, read-only. Shows what WILL be archived.
+# PREVIEW — safe, read-only
 # ------------------------------------------------------------
 @app.route("/admin/year-end/preview")
 def year_end_preview():
@@ -6693,54 +6690,35 @@ def year_end_preview():
 
     db = get_db()
     try:
-        # ----- Members to be cleared (non-staff) -----
-        members = db.execute("""
-            SELECT * FROM users
-            WHERE role NOT IN ('admin','chairperson','treasurer','secretary','publicity')
-               OR role IS NULL
-        """).fetchall()
-
-        # ----- Staff who will be kept -----
-        staff = db.execute("""
-            SELECT id, sacco_number, full_name, email, role
-            FROM users
-            WHERE role IN ('admin','chairperson','treasurer','secretary','publicity')
-        """).fetchall()
-
-        # ----- Totals -----
-        kai_total = sum((m["kai_shares"] or 0) for m in members)
-        ks_total  = sum((m["ks_shares"]  or 0) for m in members)
-        kac_total = sum((m["kac_paid"]   or 0) for m in members)
-        reg_total = sum(20000 for m in members if m["registration_fee_paid"])
-        total_savings = (kai_total * 100000) + (ks_total * 10000)
-
-        loans_count      = db.execute("SELECT COUNT(*) AS c FROM loans").fetchone()["c"]
-        deposits_count   = db.execute("SELECT COUNT(*) AS c FROM savings_deposits").fetchone()["c"]
-        repayments_count = db.execute("SELECT COUNT(*) AS c FROM repayments").fetchone()["c"]
+        # Counts for the preview
+        total_users = fetchval(db, "SELECT COUNT(*) FROM users") or 0
+        total_loans = fetchval(db, "SELECT COUNT(*) FROM loans") or 0
+        total_deposits = fetchval(db, "SELECT COUNT(*) FROM savings_deposits") or 0
+        total_repayments = fetchval(db, "SELECT COUNT(*) FROM repayments") or 0
+        total_messages = fetchval(db, "SELECT COUNT(*) FROM chat_messages") or 0
+        total_notifications = fetchval(db, "SELECT COUNT(*) FROM notifications") or 0
 
         return render_template(
             "admin/year-end-preview.html",
-            members_count=len(members),
-            staff_count=len(staff),
-            staff=staff,
-            kai_total=kai_total,
-            ks_total=ks_total,
-            kac_total=kac_total,
-            reg_total=reg_total,
-            total_savings=total_savings,
-            loans_count=loans_count,
-            deposits_count=deposits_count,
-            repayments_count=repayments_count
+            total_users=total_users,
+            total_loans=total_loans,
+            total_deposits=total_deposits,
+            total_repayments=total_repayments,
+            total_messages=total_messages,
+            total_notifications=total_notifications,
         )
     except Exception as e:
         flash(f"Preview error: {e}", "danger")
         return redirect(url_for("treasurer_dashboard"))
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 # ------------------------------------------------------------
-# EXECUTE — the actual rollover
+# EXECUTE — Simple full reset (no archiving)
 # ------------------------------------------------------------
 @app.route("/admin/year-end/execute", methods=["POST"])
 def year_end_execute():
@@ -6751,275 +6729,153 @@ def year_end_execute():
         return jsonify({"success": False, "message": "Permission denied"}), 403
 
     data = request.get_json() or {}
-    end_date   = (data.get("end_date") or "").strip()
-    year_label = (data.get("year_label") or "").strip()
-    notes      = (data.get("notes") or "").strip()
-    confirm    = (data.get("confirm_text") or "").strip()
+    confirm = (data.get("confirm_text") or "").strip()
 
     if confirm != "RESET":
         return jsonify({"success": False, "message": "Type RESET to confirm."}), 400
-    if not end_date:
-        return jsonify({"success": False, "message": "End date is required."}), 400
-
-    try:
-        datetime.strptime(end_date, "%Y-%m-%d")
-    except ValueError:
-        return jsonify({"success": False, "message": "Invalid date format."}), 400
-
-    if not year_label:
-        year_label = end_date[:4]
 
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
 
     try:
-        # ---- Guard: unique archive ----
-        exists = db.execute(
-            f"SELECT id FROM archived_years WHERE year_label = {PH}", (year_label,)
-        ).fetchone()
-        if exists:
-            return jsonify({
-                "success": False,
-                "message": f"An archive for '{year_label}' already exists."
-            }), 400
+        # Get current admin id so we don't delete ourselves
+        current_uid = session["user_id"]
 
-        now = datetime.utcnow().isoformat(timespec="seconds")
+        # ============================================================
+        # WIPE — FK-safe order: children before parents
+        # ============================================================
 
-        # ---- Who stays / goes ----
-        staff_ids_rows = db.execute("""
-            SELECT id FROM users
-            WHERE role IN ('admin','chairperson','treasurer','secretary','publicity')
-        """).fetchall()
-        staff_ids = [row_to_dict(r)["id"] for r in staff_ids_rows]
+        # 1. Chat messages (FK to users)
+        try:
+            db.execute("DELETE FROM chat_messages")
+            print("✅ Cleared chat_messages")
+        except Exception as e:
+            print(f"⚠️ chat_messages: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        member_ids_rows = db.execute("""
-            SELECT id FROM users
-            WHERE role NOT IN ('admin','chairperson','treasurer','secretary','publicity')
-               OR role IS NULL
-        """).fetchall()
-        member_ids = [row_to_dict(r)["id"] for r in member_ids_rows]
+        # 2. Notifications (FK to users)
+        try:
+            db.execute("DELETE FROM notifications")
+            print("✅ Cleared notifications")
+        except Exception as e:
+            print(f"⚠️ notifications: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        # ---- Totals ----
-        shares_row = db.execute("""
-            SELECT
-                COALESCE(SUM(kai_shares), 0) AS kai,
-                COALESCE(SUM(ks_shares), 0)  AS ks,
-                COALESCE(SUM(kac_paid), 0)   AS kac,
-                COALESCE(SUM(CASE WHEN registration_fee_paid=1 THEN 1 ELSE 0 END),0) AS reg_count
-            FROM users
-        """).fetchone()
-        shares = row_to_dict(shares_row)
+        # 3. Loan guarantors (FK to loans)
+        try:
+            db.execute("DELETE FROM loan_guarantors")
+            print("✅ Cleared loan_guarantors")
+        except Exception as e:
+            print(f"⚠️ loan_guarantors: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        total_savings = (shares["kai"] or 0) * 100000 + (shares["ks"] or 0) * 10000
+        # 4. Guarantor tracking (FK to loans)
+        try:
+            db.execute("DELETE FROM guarantor_tracking")
+            print("✅ Cleared guarantor_tracking")
+        except Exception as e:
+            print(f"⚠️ guarantor_tracking: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        loans_row = db.execute("""
-            SELECT
-                COALESCE(SUM(amount),0) AS disbursed,
-                COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
-            FROM loans
-        """).fetchone()
-        loans = row_to_dict(loans_row)
+        # 5. Repayments (FK to loans + users)
+        try:
+            db.execute("DELETE FROM repayments")
+            print("✅ Cleared repayments")
+        except Exception as e:
+            print(f"⚠️ repayments: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        interest_row = db.execute(
-            "SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments"
-        ).fetchone()
-        interest = row_to_dict(interest_row)
+        # 6. Loans (FK to users)
+        try:
+            db.execute("DELETE FROM loans")
+            print("✅ Cleared loans")
+        except Exception as e:
+            print(f"⚠️ loans: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        # ---- 1. Archive header (RETURNING id for PostgreSQL) ----
-        if DATABASE_URL:
-            ins_row = db.execute("""
-                INSERT INTO archived_years (
-                    year_label, started_at, closed_at, closed_by, notes,
-                    total_members, total_staff_kept,
-                    total_kai_shares, total_ks_shares,
-                    total_savings, total_kac_collected, total_registration_fees,
-                    total_loans_disbursed, total_loans_repaid,
-                    total_interest_collected, total_outstanding_loans
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                RETURNING id
-            """, (
-                year_label, end_date, now, session["user_id"], notes,
-                len(member_ids), len(staff_ids),
-                shares["kai"], shares["ks"],
-                total_savings, shares["kac"], (shares["reg_count"] or 0) * 20000,
-                loans["disbursed"], loans["repaid"], interest["x"], 0
-            )).fetchone()
-            archive_id = row_to_dict(ins_row)["id"]
-        else:
-            cursor = db.cursor()
-            cursor.execute("""
-                INSERT INTO archived_years (
-                    year_label, started_at, closed_at, closed_by, notes,
-                    total_members, total_staff_kept,
-                    total_kai_shares, total_ks_shares,
-                    total_savings, total_kac_collected, total_registration_fees,
-                    total_loans_disbursed, total_loans_repaid,
-                    total_interest_collected, total_outstanding_loans
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """, (
-                year_label, end_date, now, session["user_id"], notes,
-                len(member_ids), len(staff_ids),
-                shares["kai"], shares["ks"],
-                total_savings, shares["kac"], (shares["reg_count"] or 0) * 20000,
-                loans["disbursed"], loans["repaid"], interest["x"], 0
-            ))
-            archive_id = cursor.lastrowid
+        # 7. Savings deposits (FK to users)
+        try:
+            db.execute("DELETE FROM savings_deposits")
+            print("✅ Cleared savings_deposits")
+        except Exception as e:
+            print(f"⚠️ savings_deposits: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-        # ---- 2. Archive all users ----
-        for u_row in db.execute("SELECT * FROM users").fetchall():
-            u = row_to_dict(u_row)
-            kai = u.get("kai_shares") or 0
-            ks  = u.get("ks_shares")  or 0
-            savings = kai * 100000 + ks * 10000
+        # 8. Publicity tables (no FK to users)
+        for tbl in ("announcements", "events", "newsletters", "social_posts"):
+            try:
+                db.execute(f"DELETE FROM {tbl}")
+                print(f"✅ Cleared {tbl}")
+            except Exception as e:
+                print(f"⚠️ {tbl}: {e}")
+                try: db.rollback()
+                except Exception: pass
 
-            ls_row = db.execute(f"""
-                SELECT COALESCE(SUM(amount),0) AS taken,
-                       COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) AS repaid
-                FROM loans WHERE user_id = {PH}
-            """, (u["id"],)).fetchone()
-            ls = row_to_dict(ls_row)
+        # 9. Delete ALL users except current admin
+        try:
+            db.execute(f"DELETE FROM users WHERE id != {PH}", (current_uid,))
+            print(f"✅ Cleared users (kept admin id={current_uid})")
+        except Exception as e:
+            print(f"⚠️ users delete: {e}")
+            try: db.rollback()
+            except Exception: pass
 
-            ist_row = db.execute(
-                f"SELECT COALESCE(SUM(interest_paid),0) AS x FROM repayments WHERE user_id={PH}",
-                (u["id"],)
-            ).fetchone()
-            ist = row_to_dict(ist_row)
-
-            db.execute(f"""
-                INSERT INTO archived_users (
-                    archive_id, original_user_id, sacco_number, full_name,
-                    email, phone, role, gender, dob, address,
-                    next_of_kin_name, next_of_kin_phone, relationship,
-                    kai_shares, ks_shares, kac_paid, registration_fee_paid,
-                    savings_balance, total_loans_taken, total_loans_repaid,
-                    outstanding_balance, interest_paid, status,
-                    registration_date, archived_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
-                          {PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
-                          {PH},{PH},{PH},{PH},{PH})
-            """, (
-                archive_id, u["id"], u.get("sacco_number"), u.get("full_name"),
-                u.get("email"), u.get("phone"), u.get("role"), u.get("gender"),
-                u.get("dob"), u.get("address"),
-                u.get("next_of_kin_name"), u.get("next_of_kin_phone"), u.get("relationship"),
-                kai, ks, u.get("kac_paid") or 0, u.get("registration_fee_paid") or 0,
-                savings, ls.get("taken") or 0, ls.get("repaid") or 0,
-                (ls.get("taken") or 0) - (ls.get("repaid") or 0),
-                ist.get("x") or 0, u.get("status"), u.get("registration_date"), now
-            ))
-
-        # ---- 3. Archive deposits ----
-        for d_row in db.execute("""
-            SELECT sd.*, u.sacco_number AS us, u.full_name AS un
-            FROM savings_deposits sd LEFT JOIN users u ON u.id = sd.user_id
-        """).fetchall():
-            d = row_to_dict(d_row)
-            db.execute(f"""
-                INSERT INTO archived_savings_deposits (
-                    archive_id, original_deposit_id, user_id, sacco_number, full_name,
-                    savings_type, amount, shares, deposit_date,
-                    payment_method, receipt_number, notes, created_at, archived_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
-            """, (
-                archive_id, d.get("id"), d.get("user_id"), d.get("us"), d.get("un"),
-                d.get("savings_type"), d.get("amount"),
-                d.get("shares"),   # may be None — safe
-                d.get("deposit_date"), d.get("payment_method"), d.get("receipt_number"),
-                d.get("notes"), d.get("created_at"), now
-            ))
-
-        # ---- 4. Archive loans ----
-        for l_row in db.execute("""
-            SELECT l.*, u.sacco_number AS us, u.full_name AS un
-            FROM loans l LEFT JOIN users u ON u.id = l.user_id
-        """).fetchall():
-            l = row_to_dict(l_row)
-            db.execute(f"""
-                INSERT INTO archived_loans (
-                    archive_id, original_loan_id, user_id, sacco_number, full_name,
-                    loan_number, amount, status, application_date, approved_date,
-                    disbursed_date, completed_date, total_interest_accrued,
-                    interest_paid, principal_paid, current_balance,
-                    rejection_reason, archived_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},
-                          {PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
-            """, (
-                archive_id, l.get("id"), l.get("user_id"), l.get("us"), l.get("un"),
-                l.get("loan_number"), l.get("amount"), l.get("status"),
-                l.get("application_date"), l.get("approved_date"),
-                l.get("disbursed_date"), l.get("completed_date"),
-                l.get("total_interest_accrued") or 0,
-                l.get("interest_paid") or 0,
-                l.get("principal_paid") or 0,
-                l.get("current_balance") or 0,
-                l.get("rejection_reason"), now
-            ))
-
-        # ---- 5. Archive repayments ----
-        for r_row in db.execute("""
-            SELECT r.*, u.sacco_number AS us, u.full_name AS un, l.loan_number AS ln
-            FROM repayments r
-            LEFT JOIN users u ON u.id = r.user_id
-            LEFT JOIN loans l ON l.id = r.loan_id
-        """).fetchall():
-            r = row_to_dict(r_row)
-            db.execute(f"""
-                INSERT INTO archived_repayments (
-                    archive_id, original_repayment_id, loan_id, user_id,
-                    sacco_number, full_name, loan_number,
-                    amount, interest_paid, principal_paid,
-                    payment_date, payment_method, transaction_ref, notes, archived_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})
-            """, (
-                archive_id, r.get("id"), r.get("loan_id"), r.get("user_id"),
-                r.get("us"), r.get("un"), r.get("ln"),
-                r.get("amount"),
-                r.get("interest_paid") or 0,
-                r.get("principal_paid") or 0,
-                r.get("payment_date"), r.get("payment_method"),
-                r.get("transaction_ref"), r.get("notes"), now
-            ))
-
-        # ---- 6. WIPE financial data ----
-        db.execute("DELETE FROM repayments")
-        db.execute("DELETE FROM loans")
-        db.execute("DELETE FROM savings_deposits")
-
-        # ---- 7. WIPE members only, keep staff ----
-        if member_ids:
-            placeholders = ",".join([PH] * len(member_ids))
-            db.execute(f"DELETE FROM users WHERE id IN ({placeholders})", member_ids)
-
-        # ---- 8. Reset settings to defaults ----
+        # 10. Reset settings to defaults
         try:
             db.execute(f"""
                 UPDATE system_settings SET
                     sacco_name = 'Karacel Association',
-                    registration_number = {PH},
+                    registration_number = 'SACCO/REG/2024/001',
                     savings_interest_rate = 6.5,
                     loan_interest_rate = 12,
                     penalty_rate = 5,
-                    max_loan_amount = '10,000,000',
-                    min_loan_amount = '10,000',
-                    max_tenure = 24
+                    max_loan_amount = '10000000',
+                    min_loan_amount = '10000',
+                    max_tenure = 24,
+                    kai_share_price = 100000,
+                    ks_share_price = 10000,
+                    kac_annual_fee = 100000,
+                    registration_fee = 20000,
+                    updated_at = {PH}
                 WHERE id = 1
-            """, (f'SACCO/REG/{year_label}/001',))
+            """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),))
+            print("✅ Settings reset to defaults")
         except Exception as e:
-            print(f"⚠️ Settings reset skipped: {e}")
+            print(f"⚠️ settings reset: {e}")
+            try: db.rollback()
+            except Exception: pass
+
+        # 11. Reset PostgreSQL sequences (so new IDs start at 1)
+        if DATABASE_URL:
+            for tbl in ("users", "loans", "repayments", "savings_deposits",
+                        "notifications", "chat_messages", "loan_guarantors"):
+                try:
+                    db.execute(f"""
+                        SELECT setval(
+                            pg_get_serial_sequence('{tbl}', 'id'),
+                            COALESCE((SELECT MAX(id) FROM {tbl}), 1),
+                            true
+                        )
+                    """)
+                except Exception:
+                    try: db.rollback()
+                    except Exception: pass
 
         db.commit()
+        print("=" * 60)
+        print("✅ SYSTEM RESET COMPLETE")
+        print("=" * 60)
 
         return jsonify({
             "success": True,
-            "message": (
-                f"Year '{year_label}' archived. "
-                f"{len(member_ids)} members cleared. "
-                f"{len(staff_ids)} staff users retained."
-            ),
-            "archive_id": archive_id,
-            "year_label": year_label,
-            "members_cleared": len(member_ids),
-            "staff_kept": len(staff_ids)
+            "message": "System reset to defaults. All data cleared. You remain logged in as admin."
         })
 
     except Exception as e:
@@ -7029,13 +6885,12 @@ def year_end_execute():
             pass
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": f"Rollover failed: {e}"}), 500
+        return jsonify({"success": False, "message": f"Reset failed: {e}"}), 500
     finally:
         try:
             db.close()
         except Exception:
             pass
-
 # ------------------------------------------------------------
 # ARCHIVES â€” browse past years
 # ------------------------------------------------------------
