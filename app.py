@@ -338,6 +338,7 @@ def create_database():
     cursor = conn.cursor()
 
     is_pg = bool(DATABASE_URL)
+    PH = "%s" if is_pg else "?"
 
     # ------------------------------------------------------------
     # Helper: get existing columns (works for both DBs)
@@ -387,9 +388,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to users: {col_name}")
+                    print(f"✅ Added column to users: {col_name}")
                 except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
+                    print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -407,9 +408,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to system_settings: {col_name}")
+                    print(f"✅ Added column to system_settings: {col_name}")
                 except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
+                    print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -425,9 +426,9 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE savings_deposits ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to savings_deposits: {col_name}")
+                    print(f"✅ Added column to savings_deposits: {col_name}")
                 except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
+                    print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
@@ -445,13 +446,13 @@ def create_database():
             if col_name not in existing:
                 try:
                     cursor.execute(f"ALTER TABLE repayments ADD COLUMN {col_name} {col_type}")
-                    print(f"âœ… Added column to repayments: {col_name}")
+                    print(f"✅ Added column to repayments: {col_name}")
                 except Exception as e:
-                    print(f"âš ï¸ Could not add column {col_name}: {e}")
+                    print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
 
-        # ------------------------------------------------------------
+    # ------------------------------------------------------------
     # Add missing columns to `loans`
     # ------------------------------------------------------------
     if table_exists("loans"):
@@ -474,11 +475,9 @@ def create_database():
             'accrued_interest': 'REAL DEFAULT 0',
             'last_interest_applied_date': 'TEXT',
             'total_interest_charged': 'REAL DEFAULT 0',
-            # ✅ Payout destination chosen by the member
             'send_to_type': 'TEXT',
             'send_to_value': 'TEXT',
             'send_to_secondary': 'TEXT',
-            # ✅ Add this if your route uses it
             'next_interest_date': 'TEXT',
         }.items():
             if col_name not in existing:
@@ -491,7 +490,7 @@ def create_database():
                     cursor = conn.cursor()
 
     # ------------------------------------------------------------
-    # Backfill (only if `loans` table exists)
+    # Backfill
     # ------------------------------------------------------------
     if table_exists("loans"):
         try:
@@ -508,7 +507,6 @@ def create_database():
                 print(f"✅ Backfilled last_interest_applied_date for {rows} loan(s)")
         except Exception as e:
             print(f"⚠️ Backfill warning: {e}")
-            # ⚠️ CRITICAL for PostgreSQL — clear the aborted transaction
             conn.rollback()
             cursor = conn.cursor()
 
@@ -530,8 +528,9 @@ def create_database():
                     print(f"⚠️ Could not add column {col_name}: {e}")
                     conn.rollback()
                     cursor = conn.cursor()
+
     # ============================================================
-    # CREATE TABLES (with correct PK syntax per DB)
+    # CREATE TABLES
     # ============================================================
     pk = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
@@ -767,18 +766,120 @@ def create_database():
     )
     """)
 
+    # ============================================================
+    # ✅ ARCHIVE TABLES (Year-End Rollover)
+    # ============================================================
+
+    # archived_years — one row per closed SACCO year
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS archived_years (
+        id {pk},
+        year_label TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        notes TEXT,
+        total_members INTEGER DEFAULT 0,
+        total_savings REAL DEFAULT 0,
+        total_loans REAL DEFAULT 0,
+        total_repayments REAL DEFAULT 0,
+        archived_at TEXT,
+        archived_by INTEGER
+    )
+    """)
+
+    # archived_members — frozen snapshot of members
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS archived_members (
+        id {pk},
+        archive_id INTEGER NOT NULL,
+        original_user_id INTEGER,
+        full_name TEXT,
+        sacco_number TEXT,
+        phone TEXT,
+        email TEXT,
+        role TEXT,
+        status TEXT,
+        savings_balance REAL DEFAULT 0,
+        kai_shares INTEGER DEFAULT 0,
+        ks_shares INTEGER DEFAULT 0,
+        kac_paid REAL DEFAULT 0,
+        registration_fee_paid INTEGER DEFAULT 0,
+        registration_date TEXT,
+        archived_at TEXT
+    )
+    """)
+
+    # archived_savings — frozen deposits
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS archived_savings (
+        id {pk},
+        archive_id INTEGER NOT NULL,
+        original_user_id INTEGER,
+        amount REAL,
+        savings_type TEXT,
+        shares INTEGER,
+        deposit_date TEXT,
+        payment_method TEXT,
+        receipt_number TEXT,
+        notes TEXT
+    )
+    """)
+
+    # archived_loans
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS archived_loans (
+        id {pk},
+        archive_id INTEGER NOT NULL,
+        original_loan_id INTEGER,
+        loan_number TEXT,
+        user_id INTEGER,
+        amount REAL,
+        interest_rate REAL,
+        total_repayment REAL,
+        status TEXT,
+        application_date TEXT,
+        approved_date TEXT,
+        disbursed_date TEXT,
+        completed_date TEXT,
+        current_balance REAL DEFAULT 0,
+        total_interest_accrued REAL DEFAULT 0,
+        principal_paid REAL DEFAULT 0,
+        interest_paid REAL DEFAULT 0
+    )
+    """)
+
+    # archived_repayments
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS archived_repayments (
+        id {pk},
+        archive_id INTEGER NOT NULL,
+        original_repayment_id INTEGER,
+        loan_id INTEGER,
+        user_id INTEGER,
+        amount REAL,
+        interest_paid REAL DEFAULT 0,
+        principal_paid REAL DEFAULT 0,
+        balance_after REAL DEFAULT 0,
+        payment_date TEXT,
+        payment_method TEXT,
+        transaction_ref TEXT,
+        status TEXT
+    )
+    """)
+
+    print("✅ Archive tables ready.")
+
     # ---- Default settings ----
     cursor.execute("SELECT COUNT(*) AS c FROM system_settings")
     row = cursor.fetchone()
     count = row["c"] if is_pg else row[0]
     if count == 0:
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO system_settings (
                 sacco_name, registration_number, savings_interest_rate,
                 loan_interest_rate, penalty_rate, max_loan_amount,
                 min_loan_amount, max_tenure, kai_share_price,
                 ks_share_price, kac_annual_fee, registration_fee, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
         """, (
             'Karacel Association', 'SACCO/REG/2024/001', 6.5, 12, 5,
             '10000000', '10000', 24, 100000, 10000, 100000, 20000,
@@ -790,14 +891,14 @@ def create_database():
     row = cursor.fetchone()
     admin_count = row["c"] if is_pg else row[0]
     if admin_count == 0:
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO users (
                 full_name, gender, dob, sacco_number,
                 email, phone, address, password, role, status,
                 savings_balance, next_of_kin_name, relationship,
                 next_of_kin_phone, registration_date
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
         """, (
             "System Administrator", "Male", "1990-01-01", "ADM001",
             "admin@sacco.com", "0700000000", "Head Office",
@@ -815,6 +916,10 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
         "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_members_aid ON archived_members(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_savings_aid ON archived_savings(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_loans_aid ON archived_loans(archive_id)",
+        "CREATE INDEX IF NOT EXISTS idx_archived_repayments_aid ON archived_repayments(archive_id)",
     ]
     for sql in indexes:
         try:
@@ -825,7 +930,7 @@ def create_database():
 
     conn.commit()
     conn.close()
-    print("âœ… Database created/updated successfully with all tables!")
+    print("✅ Database created/updated successfully with all tables!")
 
 
 # ============================================================
@@ -834,14 +939,13 @@ def create_database():
 create_database()
 
 # ============================================================
-# Now that all core tables (users, etc.) exist, create the chat
-# table with its foreign key. This MUST run AFTER create_database().
+# Create chat table after core tables exist
 # ============================================================
 try:
     from chat_api import create_chat_table
     create_chat_table()
 except Exception as e:
-    print(f"âš ï¸ Could not create chat table: {e}")
+    print(f"⚠️ Could not create chat table: {e}")
 
 
 # ============================================
