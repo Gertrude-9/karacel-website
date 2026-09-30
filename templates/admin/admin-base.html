@@ -76,7 +76,7 @@
             </a>
         </div>
 
-        <a href="/admin/logs" class="admin-nav-item" data-panel="logs">
+       <a href="/admin/logs" class="admin-nav-item">
             <i class="fas fa-clipboard-list"></i>
             <span>System Logs</span>
         </a>
@@ -217,35 +217,48 @@
 
     // ============================================================
     // INITIALIZE
-    // ============================================================
     document.addEventListener("DOMContentLoaded", function () {
-        const hasPanels = document.querySelector('.content-panel');
+    const hasPanels = document.querySelector('.content-panel');
 
-        if (hasPanels) {
-            document.querySelectorAll(".admin-nav-item").forEach(link => {
-                link.addEventListener("click", function (e) {
-                    const panelName = this.getAttribute("data-panel");
-                    if (panelName) {
-                        e.preventDefault();
+    if (hasPanels) {
+        document.querySelectorAll(".admin-nav-item").forEach(link => {
+            link.addEventListener("click", function (e) {
+                const panelName = this.getAttribute("data-panel");
+                const href = this.getAttribute("href") || "";
+
+                // Only intercept clicks when:
+                //   1. The link has a data-panel attribute (panel switch)
+                //   2. AND the link does NOT point to a real URL
+                //      (i.e. href is "#" or empty)
+                //
+                // Any link with a real path like "/admin/logs" is allowed to navigate.
+                const isRealUrl = href && href !== "#" && !href.startsWith("#");
+
+                if (panelName && !isRealUrl) {
+                    e.preventDefault();
+                    if (typeof showPanel === 'function') {
                         showPanel(panelName);
                         window.location.hash = panelName;
                     }
-                });
+                }
+                // Otherwise: let the browser navigate normally
             });
-
-            const currentHash = window.location.hash.replace("#", "") || DEFAULT_PANEL;
-            showPanel(currentHash);
-            console.log('Admin dashboard initialized with panel:', currentHash);
-        }
-
-        window.addEventListener("hashchange", function() {
-            const panelName = window.location.hash.replace("#", "") || DEFAULT_PANEL;
-            if (document.querySelector('.content-panel')) {
-                showPanel(panelName);
-            }
         });
-    });
 
+        const currentHash = window.location.hash.replace("#", "") || DEFAULT_PANEL;
+        if (typeof showPanel === 'function') {
+            showPanel(currentHash);
+        }
+        console.log('Admin dashboard initialized with panel:', currentHash);
+    }
+
+    window.addEventListener("hashchange", function() {
+        const panelName = window.location.hash.replace("#", "") || DEFAULT_PANEL;
+        if (document.querySelector('.content-panel') && typeof showPanel === 'function') {
+            showPanel(panelName);
+        }
+    });
+});
     // ============================================================
     // REPORTS PANEL
     // ============================================================

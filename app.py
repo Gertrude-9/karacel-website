@@ -928,30 +928,31 @@ def admin_dashboard():
 
     conn = get_db()
     try:
+        # -------- Member stats --------
         total_members = fetchval(conn, """
             SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'
-        """)
+        """) or 0
 
         total_savings = fetchval(conn, """
             SELECT COALESCE(SUM(savings_balance), 0)
             FROM users
             WHERE LOWER(role) = 'member'
-        """)
+        """) or 0
 
         if DATABASE_URL:
             monthly_savings = fetchval(conn, """
                 SELECT COALESCE(SUM(amount), 0)
                 FROM savings_deposits
                 WHERE NULLIF(deposit_date, '')::timestamp >= date_trunc('month', CURRENT_DATE)
-            """)
+            """) or 0
         else:
             monthly_savings = fetchval(conn, """
                 SELECT COALESCE(SUM(amount), 0)
                 FROM savings_deposits
                 WHERE deposit_date >= date('now', 'start of month')
-            """)
+            """) or 0
 
-        total_deposits = fetchval(conn, "SELECT COUNT(*) FROM savings_deposits")
+        total_deposits = fetchval(conn, "SELECT COUNT(*) FROM savings_deposits") or 0
 
         recent_deposits = conn.execute("""
             SELECT sd.*, u.full_name, u.sacco_number
@@ -974,23 +975,24 @@ def admin_dashboard():
             ORDER BY u.id DESC
         """).fetchall()
 
+        # -------- Loan stats --------
         total_loans = fetchval(conn, """
             SELECT COALESCE(SUM(amount), 0)
             FROM loans
             WHERE status IN ('approved', 'disbursed', 'active')
-        """)
+        """) or 0
 
         active_loans = fetchval(conn, """
             SELECT COUNT(*)
             FROM loans
             WHERE status IN ('approved', 'disbursed', 'active')
-        """)
+        """) or 0
 
-        pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'")
-        approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'")
-        rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
-        disbursed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'disbursed'")
-        completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
+        pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'") or 0
+        approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'") or 0
+        rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'") or 0
+        disbursed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'disbursed'") or 0
+        completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'") or 0
 
         loan_applications = conn.execute("""
             SELECT
@@ -1035,6 +1037,7 @@ def admin_dashboard():
             LIMIT 10
         """).fetchall()
 
+        # -------- Staff --------
         staff_users = conn.execute("""
             SELECT
                 u.*,
@@ -1057,14 +1060,15 @@ def admin_dashboard():
         """).fetchall()
 
         staff_counts = {
-            'treasurer': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'"),
-            'secretary': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'"),
-            'publicity': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'"),
-            'admin':     fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')"),
+            'treasurer': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'treasurer'") or 0,
+            'secretary': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'secretary'") or 0,
+            'publicity': fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) = 'publicity'") or 0,
+            'admin':     fetchval(conn, "SELECT COUNT(*) FROM users WHERE LOWER(role) IN ('admin', 'chairperson')") or 0,
         }
 
         today = datetime.now().strftime('%Y-%m-%d')
 
+        # -------- Settings --------
         default_settings = {
             'sacco_name': 'Karacel Association',
             'registration_number': 'SACCO/REG/2024/001',
@@ -1116,8 +1120,14 @@ def admin_dashboard():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return f"Admin dashboard error: {e}", 500
+        return (
+            "<pre style='background:#0a0a0a;color:#ff6b6b;padding:24px;"
+            "font-size:14px;line-height:1.6;font-family:monospace;"
+            "white-space:pre-wrap;'>ADMIN DASHBOARD ERROR:\n\n"
+            + traceback.format_exc() +
+            "</pre>",
+            500
+        )
     finally:
         try:
             conn.close()
