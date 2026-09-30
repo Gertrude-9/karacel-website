@@ -2476,7 +2476,7 @@ def treasurer_savings_deposit():
                 details=f"{savings_type} deposit UGX {amount:,.0f} for {user['full_name']}"
             )
 
-            flash(...)
+            flash(f'Deposit of UGX {amount:,.0f} recorded for {user["full_name"]} ({savings_type})!', 'success')
 
             # ---- Debug ----
             print("=" * 60)
