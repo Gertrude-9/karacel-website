@@ -1170,6 +1170,7 @@ def admin_system_logs():
 
         where_sql = " AND ".join(where)
 
+        # ---- Fetch logs ----
         logs = db.execute(f"""
             SELECT id, user_id, user_name, user_role,
                    action, target, details,
@@ -1179,7 +1180,9 @@ def admin_system_logs():
             ORDER BY created_at DESC
             LIMIT 500
         """, tuple(params)).fetchall()
+        logs = logs or []
 
+        # ---- Summary counts ----
         total_logs = fetchval(db, "SELECT COUNT(*) FROM system_logs") or 0
 
         treasurer_access_count = fetchval(db, """
@@ -1187,6 +1190,7 @@ def admin_system_logs():
             WHERE target = 'treasurer_dashboard'
         """) or 0
 
+        # ---- Unique accessors ----
         unique_accessors = db.execute("""
             SELECT user_name, user_role, COUNT(*) AS hits
             FROM system_logs
@@ -1194,12 +1198,21 @@ def admin_system_logs():
             GROUP BY user_name, user_role
             ORDER BY hits DESC
         """).fetchall()
+        unique_accessors = unique_accessors or []
 
-        actions = db.execute("""
+        # ---- Distinct actions ----
+        actions_rows = db.execute("""
             SELECT DISTINCT action FROM system_logs
             WHERE action IS NOT NULL
             ORDER BY action
         """).fetchall()
+        actions_rows = actions_rows or []
+
+        actions_list = []
+        for a in actions_rows:
+            d = row_to_dict(a)
+            if d and d.get("action"):
+                actions_list.append(d["action"])
 
         return render_template(
             "admin/system-logs.html",
@@ -1207,7 +1220,7 @@ def admin_system_logs():
             total_logs=total_logs,
             treasurer_access_count=treasurer_access_count,
             unique_accessors=unique_accessors,
-            actions=[row_to_dict(a).get("action") for a in actions],
+            actions=actions_list,
             filter_user=filter_user,
             filter_action=filter_action,
             filter_target=filter_target,
@@ -1217,13 +1230,19 @@ def admin_system_logs():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        flash(f"Error loading logs: {e}", "danger")
-        return redirect(url_for("admin_dashboard"))
+        return (
+            "<pre style='background:#0a0a0a;color:#ff6b6b;padding:24px;"
+            "font-size:14px;line-height:1.6;font-family:monospace;"
+            "white-space:pre-wrap;'>ADMIN LOGS ERROR:\n\n"
+            + traceback.format_exc() +
+            "</pre>",
+            500
+        )
     finally:
-        try: db.close()
-        except Exception: pass
-
+        try:
+            db.close()
+        except Exception:
+            pass
 
 # ============================================================
 # TREASURER DASHBOARD
