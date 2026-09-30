@@ -188,12 +188,12 @@
     white-space: nowrap;
 }
 
-/* Fixed column widths for clean alignment */
-.syslog-table thead th:nth-child(1) { width: 150px; }  /* Time */
-.syslog-table thead th:nth-child(2) { width: 160px; }  /* User */
-.syslog-table thead th:nth-child(3) { width: 110px; }  /* Role */
-.syslog-table thead th:nth-child(4) { width: 160px; }  /* Action */
-.syslog-table thead th:nth-child(5) { width: 190px; }  /* Target */
+/* Rebalanced column widths */
+.syslog-table thead th:nth-child(1) { width: 180px; }  /* Time — full date + time */
+.syslog-table thead th:nth-child(2) { width: 130px; }  /* User — tighter */
+.syslog-table thead th:nth-child(3) { width: 100px; }  /* Role — compact */
+.syslog-table thead th:nth-child(4) { width: 150px; }  /* Action */
+.syslog-table thead th:nth-child(5) { width: 170px; }  /* Target */
 .syslog-table thead th:nth-child(6) { }                 /* Details — flexible */
 
 .syslog-table tbody td {
@@ -368,7 +368,7 @@
         </a>
     </form>
 
-    <!-- Logs Table (no IP column) -->
+    <!-- Logs Table -->
     <div class="syslog-tablewrap">
         <table class="syslog-table">
             <thead>
@@ -385,7 +385,7 @@
                 {% if logs %}
                     {% for l in logs %}
                     <tr>
-                        <td class="syslog-time">{{ l.created_at }}</td>
+                        <td class="syslog-time" title="{{ l.created_at }}">{{ l.created_at }}</td>
                         <td class="syslog-name" title="{{ l.user_name }}">{{ l.user_name }}</td>
                         <td>
                             {% set r = (l.user_role or 'default')|lower %}
