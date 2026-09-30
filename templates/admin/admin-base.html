@@ -68,18 +68,18 @@
                 <span>Settings</span>
             </a>
 
-           
-
             <a href="{{ url_for('chat_api.treasurer_chat') }}" class="admin-nav-item">
                 <i class="fas fa-comments"></i>
                 <span>Chat Center</span>
             </a>
+
+             <a href="/admin/logs" class="admin-nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>System Logs</span>
+            </a>
         </div>
 
-       <a href="/admin/logs" class="admin-nav-item">
-            <i class="fas fa-clipboard-list"></i>
-            <span>System Logs</span>
-        </a>
+      
 
         <li class="nav-item staff-member-portal-item">
             <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
@@ -226,12 +226,8 @@
                 const panelName = this.getAttribute("data-panel");
                 const href = this.getAttribute("href") || "";
 
-                // Only intercept clicks when:
-                //   1. The link has a data-panel attribute (panel switch)
-                //   2. AND the link does NOT point to a real URL
-                //      (i.e. href is "#" or empty)
-                //
-                // Any link with a real path like "/admin/logs" is allowed to navigate.
+                // Only intercept when the link has data-panel AND no real URL.
+                // Real URLs (starting with "/" or "/something") navigate normally.
                 const isRealUrl = href && href !== "#" && !href.startsWith("#");
 
                 if (panelName && !isRealUrl) {
@@ -241,7 +237,6 @@
                         window.location.hash = panelName;
                     }
                 }
-                // Otherwise: let the browser navigate normally
             });
         });
 
