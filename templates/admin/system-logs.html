@@ -1,0 +1,443 @@
+{% extends "admin/admin-base.html" %}
+{% block title %}System Logs{% endblock %}
+{% block content %}
+
+<style>
+.syslog-wrap {
+    padding: 24px;
+    max-width: 1300px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255,255,255,0.9);
+}
+
+.syslog-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.syslog-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.syslog-header-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: rgba(0,224,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00e0ff;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.syslog-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.syslog-header p {
+    margin: 2px 0 0;
+    color: rgba(255,255,255,0.45);
+    font-size: 0.75rem;
+}
+
+.syslog-live-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: #4ade80;
+    background: rgba(74,222,128,0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(74,222,128,0.25);
+    white-space: nowrap;
+}
+.syslog-live-badge i { font-size: 0.5rem; margin-right: 4px; }
+
+/* Stats grid */
+.syslog-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+@media (max-width: 700px) {
+    .syslog-stats { grid-template-columns: 1fr; }
+}
+
+.syslog-stat {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+}
+
+.syslog-stat-val {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.syslog-stat-label {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+}
+
+/* Section title */
+.syslog-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    margin: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* User chips */
+.syslog-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.syslog-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(0,224,255,0.06);
+    border: 1px solid rgba(0,224,255,0.18);
+    border-radius: 10px;
+}
+.syslog-chip i { color: #00e0ff; font-size: 0.95rem; }
+.syslog-chip-name {
+    font-weight: 600;
+    color: rgba(255,255,255,0.92);
+    font-size: 0.85rem;
+}
+.syslog-chip-meta {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.7rem;
+    margin-top: 2px;
+}
+
+/* Filters */
+.syslog-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+@media (max-width: 700px) {
+    .syslog-filters { grid-template-columns: 1fr; }
+}
+
+.syslog-input {
+    padding: 11px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 9px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+.syslog-input:focus {
+    border-color: #f5c542;
+    background: rgba(255,255,255,0.06);
+}
+
+.syslog-btn {
+    padding: 11px 20px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.syslog-btn-primary {
+    background: linear-gradient(135deg, #f5c542, #eab308);
+    color: #0a0a14;
+}
+.syslog-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(245,197,66,0.3);
+}
+.syslog-btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.75);
+    border: 1px solid rgba(255,255,255,0.08);
+    text-decoration: none;
+}
+.syslog-btn-ghost:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+}
+
+/* Table */
+.syslog-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.syslog-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.syslog-table thead th {
+    text-align: left;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.5);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    white-space: nowrap;
+}
+.syslog-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+}
+.syslog-table tbody tr:hover {
+    background: rgba(255,255,255,0.02);
+}
+.syslog-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.syslog-time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.6);
+    white-space: nowrap;
+}
+.syslog-name {
+    font-weight: 600;
+    color: rgba(255,255,255,0.92);
+}
+.syslog-mono {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #00e0ff;
+}
+.syslog-target {
+    font-family: 'Courier New', monospace;
+    font-size: 0.73rem;
+    color: rgba(255,255,255,0.6);
+}
+.syslog-detail {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.8rem;
+}
+.syslog-ip {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.42);
+}
+
+/* Role badge */
+.syslog-role {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.syslog-role-admin       { background: rgba(255,107,107,0.12); color: #ff6b6b; }
+.syslog-role-chairperson { background: rgba(245,197,66,0.12);  color: #f5c542; }
+.syslog-role-treasurer   { background: rgba(74,222,128,0.12);  color: #4ade80; }
+.syslog-role-secretary   { background: rgba(0,224,255,0.12);   color: #00e0ff; }
+.syslog-role-publicity   { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.syslog-role-default     { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); }
+
+/* Empty state */
+.syslog-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: rgba(255,255,255,0.35);
+}
+.syslog-empty i {
+    font-size: 2.2rem;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.4;
+}
+
+/* Mobile tweaks */
+@media (max-width: 600px) {
+    .syslog-wrap { padding: 14px; }
+    .syslog-card { padding: 16px; }
+    .syslog-header h3 { font-size: 1rem; }
+    .syslog-stat-val { font-size: 1.6rem; }
+}
+</style>
+
+<div class="syslog-wrap">
+
+    <!-- Header -->
+    <div class="syslog-card">
+        <div class="syslog-header">
+            <div class="syslog-header-icon">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div style="flex:1; min-width:0;">
+                <h3>System Activity Logs</h3>
+                <p>Who accessed what, and when — full audit trail</p>
+            </div>
+            <span class="syslog-live-badge">
+                <i class="fas fa-circle"></i> Live
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="syslog-stats">
+        <div class="syslog-stat">
+            <div class="syslog-stat-val" style="color:#f5c542;">{{ total_logs }}</div>
+            <div class="syslog-stat-label">Total Log Entries</div>
+        </div>
+        <div class="syslog-stat">
+            <div class="syslog-stat-val" style="color:#00e0ff;">{{ treasurer_access_count }}</div>
+            <div class="syslog-stat-label">Treasurer Dashboard Hits</div>
+        </div>
+        <div class="syslog-stat">
+            <div class="syslog-stat-val" style="color:#4ade80;">{{ unique_accessors|length }}</div>
+            <div class="syslog-stat-label">Unique Users</div>
+        </div>
+    </div>
+
+    <!-- Who accesses treasurer dashboard -->
+    {% if unique_accessors %}
+    <div class="syslog-card">
+        <div class="syslog-title">
+            <i class="fas fa-user-shield" style="color:#00e0ff;"></i> Users Who Accessed Treasurer Dashboard
+        </div>
+        <div class="syslog-chips">
+            {% for row in unique_accessors %}
+            {% set d = row %}
+            <div class="syslog-chip">
+                <i class="fas fa-user"></i>
+                <div>
+                    <div class="syslog-chip-name">{{ d.user_name }}</div>
+                    <div class="syslog-chip-meta">
+                        {{ d.user_role|title }} · {{ d.hits }} access{{ 'es' if d.hits != 1 else '' }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="syslog-card">
+        <div class="syslog-title">
+            <i class="fas fa-filter" style="color:#f5c542;"></i> Filters
+        </div>
+        <form method="GET" action="/admin/logs" class="syslog-filters">
+            <input type="text" name="user" value="{{ filter_user }}" placeholder="User name or ID" class="syslog-input">
+
+            <select name="action" class="syslog-input">
+                <option value="">All Actions</option>
+                {% for a in actions %}
+                <option value="{{ a }}" {% if filter_action == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+
+            <input type="text" name="target" value="{{ filter_target }}" placeholder="Target (e.g. treasurer_dashboard)" class="syslog-input">
+
+            <input type="date" name="from" value="{{ filter_from }}" class="syslog-input">
+
+            <input type="date" name="to" value="{{ filter_to }}" class="syslog-input">
+
+            <button type="submit" class="syslog-btn syslog-btn-primary">
+                <i class="fas fa-search"></i> Filter
+            </button>
+
+            <a href="/admin/logs" class="syslog-btn syslog-btn-ghost">
+                <i class="fas fa-undo"></i> Clear
+            </a>
+        </form>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="syslog-card">
+        <div class="syslog-title">
+            <i class="fas fa-list"></i> Recent Activity (last 500 entries)
+        </div>
+
+        <div class="syslog-table-wrap">
+            <table class="syslog-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>Details</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        {% set l = log %}
+                        <tr>
+                            <td class="syslog-time">{{ l.created_at }}</td>
+                            <td class="syslog-name">{{ l.user_name }}</td>
+                            <td>
+                                {% set r = (l.user_role or 'default')|lower %}
+                                <span class="syslog-role syslog-role-{{ r }}">{{ l.user_role|title }}</span>
+                            </td>
+                            <td class="syslog-mono">{{ l.action }}</td>
+                            <td class="syslog-target">{{ l.target or '-' }}</td>
+                            <td class="syslog-detail">{{ l.details or '-' }}</td>
+                            <td class="syslog-ip">{{ l.ip_address or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7">
+                                <div class="syslog-empty">
+                                    <i class="fas fa-inbox"></i>
+                                    No log entries found
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

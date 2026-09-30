@@ -156,6 +156,47 @@ def fetchval(conn, query, params=None):
     # SQLite Row or tuple
     return row[0]
 
+def log_action(action, target=None, details=None):
+    """
+    Insert an audit log entry.
+    Called from any route to record what happened.
+    Fails silently if logging breaks so it never blocks the main request.
+    """
+    try:
+        user_id   = session.get("user_id")
+        user_name = session.get("full_name") or session.get("email") or "Unknown"
+        user_role = session.get("role") or "anonymous"
+
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+        # X-Forwarded-For may contain multiple IPs; take the first
+        ip = ip.split(",")[0].strip() if ip else ""
+        ua = (request.headers.get("User-Agent") or "")[:300]
+
+        db = get_db()
+        try:
+            PH = "%s" if DATABASE_URL else "?"
+            db.execute(f"""
+                INSERT INTO system_logs (
+                    user_id, user_name, user_role,
+                    action, target, details,
+                    ip_address, user_agent, created_at
+                )
+                VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
+            """, (
+                user_id, user_name, user_role,
+                action, target, details,
+                ip, ua,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ))
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"⚠️ log_action failed: {e}")
+
 
 def row_to_dict(row):
     """Convert a SQLite Row or PostgreSQL dict into a plain dict."""
@@ -764,6 +805,38 @@ def create_database():
         updated_at TEXT
     )
     """)
+
+        # ============================================================
+    # ✅ SYSTEM LOGS (audit trail)
+    # ============================================================
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS system_logs (
+        id {pk},
+        user_id INTEGER,
+        user_name TEXT,
+        user_role TEXT,
+        action TEXT NOT NULL,
+        target TEXT,
+        details TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        created_at TEXT
+    )
+    """)
+
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS idx_logs_user_id ON system_logs(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_action ON system_logs(action)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON system_logs(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_target ON system_logs(target)",
+    ]:
+        try:
+            cursor.execute(sql)
+        except Exception:
+            conn.rollback()
+            cursor = conn.cursor()
+
+    print("✅ system_logs table ready.")
 
     # ============================================================
     # ✅ ARCHIVE TABLES (match year_end_execute route EXACTLY)
@@ -1523,6 +1596,110 @@ def admin_dashboard():
         except Exception:
             pass
 
+# ============================================================
+# ADMIN — SYSTEM LOGS
+# ============================================================
+@app.route("/admin/logs")
+def admin_system_logs():
+    if session.get("role") not in ("admin", "chairperson"):
+        flash('Access denied', 'danger')
+        return redirect("/login")
+
+    db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
+    try:
+        # ---- Filters ----
+        filter_user   = (request.args.get("user") or "").strip()
+        filter_action = (request.args.get("action") or "").strip()
+        filter_target = (request.args.get("target") or "").strip()
+        filter_from   = (request.args.get("from") or "").strip()
+        filter_to     = (request.args.get("to") or "").strip()
+
+        where = ["1=1"]
+        params = []
+
+        if filter_user:
+            where.append(f"(LOWER(user_name) LIKE {PH} OR CAST(user_id AS TEXT) = {PH})")
+            params.append(f"%{filter_user.lower()}%")
+            params.append(filter_user)
+
+        if filter_action:
+            where.append(f"action = {PH}")
+            params.append(filter_action)
+
+        if filter_target:
+            where.append(f"LOWER(target) LIKE {PH}")
+            params.append(f"%{filter_target.lower()}%")
+
+        if filter_from:
+            where.append(f"created_at >= {PH}")
+            params.append(filter_from + " 00:00:00")
+
+        if filter_to:
+            where.append(f"created_at <= {PH}")
+            params.append(filter_to + " 23:59:59")
+
+        where_sql = " AND ".join(where)
+
+        # ---- Fetch logs ----
+        logs = db.execute(f"""
+            SELECT id, user_id, user_name, user_role,
+                   action, target, details,
+                   ip_address, created_at
+            FROM system_logs
+            WHERE {where_sql}
+            ORDER BY created_at DESC
+            LIMIT 500
+        """, tuple(params)).fetchall()
+
+        # ---- Summary counts ----
+        total_logs = fetchval(db, "SELECT COUNT(*) FROM system_logs") or 0
+
+        treasurer_access_count = fetchval(db, f"""
+            SELECT COUNT(*) FROM system_logs
+            WHERE target = 'treasurer_dashboard'
+        """) or 0
+
+        # Unique users who accessed treasurer dashboard
+        unique_accessors = db.execute(f"""
+            SELECT DISTINCT user_name, user_role, COUNT(*) AS hits
+            FROM system_logs
+            WHERE target = 'treasurer_dashboard'
+            GROUP BY user_name, user_role
+            ORDER BY hits DESC
+        """).fetchall()
+
+        # Distinct actions for filter dropdown
+        actions = db.execute("""
+            SELECT DISTINCT action FROM system_logs
+            WHERE action IS NOT NULL
+            ORDER BY action
+        """).fetchall()
+
+        return render_template(
+            "admin/system-logs.html",
+            logs=logs,
+            total_logs=total_logs,
+            treasurer_access_count=treasurer_access_count,
+            unique_accessors=unique_accessors,
+            actions=[row_to_dict(a).get("action") for a in actions],
+            filter_user=filter_user,
+            filter_action=filter_action,
+            filter_target=filter_target,
+            filter_from=filter_from,
+            filter_to=filter_to,
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f"Error loading logs: {e}", "danger")
+        return redirect(url_for("admin_dashboard"))
+    finally:
+        try: db.close()
+        except Exception: pass
+
 
 # ============================================================
 # TREASURER DASHBOARD - FIXED RECENT ACTIVITIES
@@ -1532,6 +1709,13 @@ def treasurer_dashboard():
     if session.get("role") not in ["treasurer", "secretary", "admin", "chairperson"]:
         flash('Access denied', 'danger')
         return redirect("/login")
+
+     # 🔍 LOG THIS ACCESS
+    log_action(
+        action="view_dashboard",
+        target="treasurer_dashboard",
+        details=f"Accessed by {session.get('role', 'unknown')}"
+    )
 
     conn = get_db()
     try:
@@ -2285,6 +2469,15 @@ def treasurer_savings_deposit():
 
             db.commit()
 
+            # 🔍 LOG
+            log_action(
+                action="savings_deposit",
+                target=f"user:{user_id}",
+                details=f"{savings_type} deposit UGX {amount:,.0f} for {user['full_name']}"
+            )
+
+            flash(...)
+
             # ---- Debug ----
             print("=" * 60)
             print("DEPOSIT RECORDED")
@@ -2863,6 +3056,20 @@ def treasurer_approve_loan(loan_id):
         ))
 
         db.commit()
+
+        # For approve
+        log_action(
+            action="loan_approve",
+            target=f"loan:{loan_id}",
+            details=f"Approved & disbursed loan {loan['loan_number']} for {loan['full_name']}"
+        )
+
+        # For reject
+        log_action(
+            action="loan_reject",
+            target=f"loan:{loan_id}",
+            details=f"Rejected loan {loan['loan_number']} — Reason: {reason}"
+        )
 
         return jsonify({
             'success': True,
@@ -3496,6 +3703,13 @@ def treasurer_member_details(user_id):
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         flash('Access denied', 'danger')
         return redirect("/login")
+
+    # 🔍 LOG
+    log_action(
+        action="view_member",
+        target=f"user:{user_id}",
+        details=f"Viewed member #{user_id}"
+    )
 
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
