@@ -2122,237 +2122,262 @@ def treasurer_dashboard():
 # TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF
 # KAC SUPPORTS INSTALLMENTS UP TO 100,000
 # ============================================================
+# TREASURER — RECORD SAVINGS DEPOSIT
+# ============================================================
 @app.route("/treasurer/savings/deposit", methods=["GET", "POST"])
 def treasurer_savings_deposit():
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         flash('Access denied. Only treasurer can record deposits.', 'danger')
         return redirect("/login")
-    
+
+    PH = "%s" if DATABASE_URL else "?"
+
+    # ============================================================
+    # POST — process the deposit
+    # ============================================================
     if request.method == "POST":
-        user_id = request.form.get('user_id')
-        amount = float(request.form.get('amount', 0))
-        savings_type = request.form.get('savings_type', 'KAI')
-        deposit_date = request.form.get('deposit_date', datetime.now().strftime('%Y-%m-%d'))
+        user_id        = request.form.get('user_id')
+        amount         = float(request.form.get('amount', 0) or 0)
+        savings_type   = request.form.get('savings_type', 'KAI')
+        deposit_date   = request.form.get('deposit_date', datetime.now().strftime('%Y-%m-%d'))
         payment_method = request.form.get('payment_method', 'cash')
         receipt_number = request.form.get('receipt_number', '')
-        notes = request.form.get('notes', '')
-        
+        notes          = request.form.get('notes', '')
+
         if not user_id:
             flash('Please select a member or staff', 'danger')
             return redirect(url_for('treasurer_savings_deposit'))
-        
+
         if amount <= 0:
             flash('Amount must be greater than 0', 'danger')
             return redirect(url_for('treasurer_savings_deposit'))
-        
-        # Get settings for share prices
+
         db = get_db()
-        db.row_factory = sqlite3.Row
-        
-        # Verify user exists
-        user = db.execute("SELECT id, role, full_name FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user:
-            db.close()
-            flash('User not found', 'danger')
-            return redirect(url_for('treasurer_savings_deposit'))
-        
-        settings = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        if settings:
-            kai_share_price = settings['kai_share_price'] or 100000
-            ks_share_price = settings['ks_share_price'] or 10000
-            kac_annual_fee = settings['kac_annual_fee'] or 100000
-            registration_fee = settings['registration_fee'] or 20000
-        else:
-            kai_share_price = 100000
-            ks_share_price = 10000
-            kac_annual_fee = 100000
-            registration_fee = 20000
-        
-        # ============================================================
-        # KAC VALIDATION â€” prevent overpayment beyond remaining balance
-        # ============================================================
-        if savings_type == 'KAC':
-            current_row = db.execute(
-                "SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = ?",
+        try:
+            # ---- Verify user exists ----
+            user_row = db.execute(
+                f"SELECT id, role, full_name FROM users WHERE id = {PH}",
                 (user_id,)
             ).fetchone()
-            current_kac = float(current_row['current_kac'] or 0)
-            remaining = max(0, kac_annual_fee - current_kac)
-
-            if current_kac >= kac_annual_fee:
-                db.close()
-                flash(f'{user["full_name"]} has already fully paid KAC (UGX {kac_annual_fee:,.0f}).', 'warning')
+            if not user_row:
+                flash('User not found', 'danger')
                 return redirect(url_for('treasurer_savings_deposit'))
 
-            if amount > remaining:
-                db.close()
-                flash(
-                    f'KAC payment exceeds remaining balance. '
-                    f'Current: UGX {current_kac:,.0f} / {kac_annual_fee:,.0f} Â· '
-                    f'Remaining: UGX {remaining:,.0f}',
-                    'warning'
+            user = row_to_dict(user_row)
+
+            # ---- Load settings ----
+            settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+            if settings_row:
+                settings = row_to_dict(settings_row)
+                kai_share_price  = settings.get('kai_share_price')  or 100000
+                ks_share_price   = settings.get('ks_share_price')   or 10000
+                kac_annual_fee   = settings.get('kac_annual_fee')   or 100000
+                registration_fee = settings.get('registration_fee') or 20000
+            else:
+                kai_share_price  = 100000
+                ks_share_price   = 10000
+                kac_annual_fee   = 100000
+                registration_fee = 20000
+
+            # ============================================================
+            # KAC VALIDATION — prevent overpayment
+            # ============================================================
+            new_kac = None
+            fully_paid = 0
+
+            if savings_type == 'KAC':
+                current_row = db.execute(
+                    f"SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = {PH}",
+                    (user_id,)
+                ).fetchone()
+                current_kac = float(row_to_dict(current_row).get('current_kac') or 0)
+                remaining = max(0, kac_annual_fee - current_kac)
+
+                if current_kac >= kac_annual_fee:
+                    flash(
+                        f'{user["full_name"]} has already fully paid KAC '
+                        f'(UGX {kac_annual_fee:,.0f}).',
+                        'warning'
+                    )
+                    return redirect(url_for('treasurer_savings_deposit'))
+
+                if amount > remaining:
+                    flash(
+                        f'KAC payment exceeds remaining balance. '
+                        f'Current: UGX {current_kac:,.0f} / {kac_annual_fee:,.0f} · '
+                        f'Remaining: UGX {remaining:,.0f}',
+                        'warning'
+                    )
+                    return redirect(url_for('treasurer_savings_deposit'))
+
+            # ---- Compute shares ----
+            shares = 0
+            if savings_type == 'KAI':
+                shares = int(amount / kai_share_price) if kai_share_price > 0 else 0
+            elif savings_type == 'KS':
+                shares = int(amount / ks_share_price) if ks_share_price > 0 else 0
+            # KAC, REGISTRATION — no shares
+
+            # ---- Insert deposit ----
+            db.execute(f"""
+                INSERT INTO savings_deposits (
+                    user_id, amount, savings_type, shares, deposit_date,
+                    payment_method, receipt_number, notes, created_at
                 )
-                return redirect(url_for('treasurer_savings_deposit'))
-        
-        # Calculate shares based on savings type
-        shares = 0
-        if savings_type == 'KAI':
-            shares = int(amount / kai_share_price) if kai_share_price > 0 else 0
-        elif savings_type == 'KS':
-            shares = int(amount / ks_share_price) if ks_share_price > 0 else 0
-        elif savings_type == 'KAC':
-            shares = 0  # KAC is installment-based, no shares
-        elif savings_type == 'REGISTRATION':
-            shares = 0  # Registration is one-time, no shares
-        
-        cursor = db.cursor()
-        
-        # Insert savings deposit with type
-        cursor.execute("""
-            INSERT INTO savings_deposits (
-                user_id, amount, savings_type, shares, deposit_date, 
-                payment_method, receipt_number, notes
+                VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
+            """, (
+                user_id, amount, savings_type, shares, deposit_date,
+                payment_method, receipt_number, notes,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ))
+
+            # ============================================================
+            # UPDATE USER BALANCES
+            # ============================================================
+
+            if savings_type == 'KAI':
+                db.execute(f"""
+                    UPDATE users
+                       SET savings_balance = COALESCE(savings_balance, 0) + {PH},
+                           kai_shares      = COALESCE(kai_shares, 0) + {PH}
+                     WHERE id = {PH}
+                """, (amount, shares, user_id))
+
+            elif savings_type == 'KS':
+                db.execute(f"""
+                    UPDATE users
+                       SET savings_balance = COALESCE(savings_balance, 0) + {PH},
+                           ks_shares       = COALESCE(ks_shares, 0) + {PH}
+                     WHERE id = {PH}
+                """, (amount, shares, user_id))
+
+            elif savings_type == 'KAC':
+                # Running total of KAC, capped at annual fee
+                current_row = db.execute(
+                    f"SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = {PH}",
+                    (user_id,)
+                ).fetchone()
+                current_kac = float(row_to_dict(current_row).get('current_kac') or 0)
+
+                new_kac = current_kac + amount
+                if new_kac > kac_annual_fee:
+                    new_kac = kac_annual_fee
+
+                fully_paid = 1 if new_kac >= kac_annual_fee else 0
+                paid_date_value = deposit_date if fully_paid else None
+
+                db.execute(f"""
+                    UPDATE users
+                       SET savings_balance = COALESCE(savings_balance, 0) + {PH},
+                           kac_paid        = {PH},
+                           kac_paid_date   = COALESCE({PH}, kac_paid_date)
+                     WHERE id = {PH}
+                """, (amount, new_kac, paid_date_value, user_id))
+
+            elif savings_type == 'REGISTRATION':
+                # Does NOT touch savings_balance — marks registration as paid
+                db.execute(f"""
+                    UPDATE users
+                       SET registration_fee_paid      = 1,
+                           registration_fee_paid_date = {PH}
+                     WHERE id = {PH}
+                """, (deposit_date, user_id))
+
+            db.commit()
+
+            # ---- Debug ----
+            print("=" * 60)
+            print("DEPOSIT RECORDED")
+            print(f"User: {user['full_name']} ({user['role']})")
+            print(f"Type: {savings_type}")
+            print(f"Amount: UGX {amount:,.0f}")
+            print(f"Shares: {shares}")
+            if savings_type == 'KAC' and new_kac is not None:
+                print(f"KAC total now: UGX {new_kac:,.0f} / {kac_annual_fee:,.0f}")
+                if fully_paid:
+                    print("KAC FULLY PAID")
+            print("=" * 60)
+
+            flash(
+                f'Deposit of UGX {amount:,.0f} recorded for {user["full_name"]} ({savings_type})!',
+                'success'
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, amount, savings_type, shares, deposit_date, payment_method, receipt_number, notes))
-        
-        # ============================================================
-        # UPDATE USER'S SAVINGS BALANCE
-        # ============================================================
-        if savings_type == 'KAI':
-            cursor.execute("""
-                UPDATE users 
-                SET savings_balance = COALESCE(savings_balance, 0) + ?,
-                    kai_shares = COALESCE(kai_shares, 0) + ?
-                WHERE id = ?
-            """, (amount, shares, user_id))
+            return redirect(url_for('treasurer_dashboard') + '?panel=savings')
 
-        elif savings_type == 'KS':
-            cursor.execute("""
-                UPDATE users 
-                SET savings_balance = COALESCE(savings_balance, 0) + ?,
-                    ks_shares = COALESCE(ks_shares, 0) + ?
-                WHERE id = ?
-            """, (amount, shares, user_id))
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            flash(f'Error recording deposit: {str(e)}', 'danger')
+            return redirect(url_for('treasurer_savings_deposit'))
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
 
-        elif savings_type == 'KAC':
-            # ============================================================
-            # KAC â€” RUNNING TOTAL (installments up to 100,000)
-            # ============================================================
-            row = db.execute(
-                "SELECT COALESCE(kac_paid, 0) AS current_kac FROM users WHERE id = ?",
-                (user_id,)
-            ).fetchone()
-            current_kac = float(row['current_kac'] or 0)
-            new_kac = current_kac + amount
-            if new_kac > kac_annual_fee:
-                new_kac = kac_annual_fee
-
-            fully_paid = 1 if new_kac >= kac_annual_fee else 0
-            paid_date_value = deposit_date if fully_paid else None
-
-            cursor.execute("""
-                UPDATE users 
-                SET savings_balance = COALESCE(savings_balance, 0) + ?,
-                    kac_paid = ?,
-                    kac_paid_date = COALESCE(?, kac_paid_date)
-                WHERE id = ?
-            """, (amount, new_kac, paid_date_value, user_id))
-
-            # Clear any pending top-up notifications once fully paid
-            if fully_paid:
-                try:
-                    cursor.execute("""
-                        UPDATE topup_notifications 
-                        SET is_read = 1 
-                        WHERE user_id = ? AND is_read = 0
-                    """, (user_id,))
-                except sqlite3.OperationalError:
-                    # Table doesn't exist yet â€” ignore
-                    pass
-
-        elif savings_type == 'REGISTRATION':
-            # REGISTRATION does NOT update savings_balance - only marks as paid
-            cursor.execute("""
-                UPDATE users 
-                SET registration_fee_paid = 1,
-                    registration_fee_paid_date = ?
-                WHERE id = ?
-            """, (deposit_date, user_id))
-        
-        db.commit()
-        db.close()
-        
-        # Debug logging
-        print("=" * 60)
-        print(f"ðŸ’° DEPOSIT RECORDED")
-        print(f"ðŸ‘¤ User: {user['full_name']} ({user['role']})")
-        print(f"ðŸ“Š Type: {savings_type}")
-        print(f"ðŸ’µ Amount: UGX {amount:,.0f}")
-        print(f"ðŸ“ˆ Shares: {shares}")
-        if savings_type == 'KAC':
-            print(f"ðŸŽ¯ KAC total now: UGX {new_kac:,.0f} / {kac_annual_fee:,.0f}")
-            if fully_paid:
-                print(f"âœ… KAC FULLY PAID")
-        print("=" * 60)
-        
-        flash(f'âœ… {savings_type} deposit of UGX {amount:,.0f} recorded successfully for {user["full_name"]}!', 'success')
-        return redirect(url_for('treasurer_dashboard'))
-    
     # ============================================================
-    # GET request â€” show the form
+    # GET — show the form
     # ============================================================
     db = get_db()
-    db.row_factory = sqlite3.Row
-    
-    # Get ALL active users (members + staff)
-    all_users = db.execute("""
-        SELECT 
-            id,
-            full_name,
-            sacco_number,
-            phone,
-            email,
-            role,
-            status,
-            kai_shares,
-            ks_shares,
-            kac_paid,
-            registration_fee_paid
-        FROM users 
-        WHERE status = 'active'
-        AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
-        ORDER BY 
-            CASE 
-                WHEN LOWER(role) = 'member' THEN 1
-                WHEN LOWER(role) = 'admin' THEN 2
-                WHEN LOWER(role) = 'chairperson' THEN 3
-                WHEN LOWER(role) = 'treasurer' THEN 4
-                WHEN LOWER(role) = 'secretary' THEN 5
-                WHEN LOWER(role) = 'publicity' THEN 6
-            END,
-            full_name ASC
-    """).fetchall()
-    
-    # Separate members and staff for the dropdown
-    staff_members = []
-    regular_members = []
-    for user in all_users:
-        if user['role'] != 'member':
-            staff_members.append(user)
-        else:
-            regular_members.append(user)
-    
-    completed_loans = db.execute("SELECT COUNT(*) FROM loans WHERE status = 'completed'").fetchone()[0]
-    db.close()
-    
-    return render_template(
-        "treasurer/savings-deposit.html", 
-        members=all_users,
-        staff_members=staff_members,
-        regular_members=regular_members,
-        completed_loans=completed_loans
-    )
+    try:
+        all_users = db.execute("""
+            SELECT
+                id,
+                full_name,
+                sacco_number,
+                phone,
+                email,
+                role,
+                status,
+                kai_shares,
+                ks_shares,
+                kac_paid,
+                registration_fee_paid
+            FROM users
+            WHERE status = 'active'
+            AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+            ORDER BY
+                CASE
+                    WHEN LOWER(role) = 'member'      THEN 1
+                    WHEN LOWER(role) = 'admin'       THEN 2
+                    WHEN LOWER(role) = 'chairperson' THEN 3
+                    WHEN LOWER(role) = 'treasurer'   THEN 4
+                    WHEN LOWER(role) = 'secretary'   THEN 5
+                    WHEN LOWER(role) = 'publicity'   THEN 6
+                END,
+                full_name ASC
+        """).fetchall()
+
+        # Split for the dropdown
+        staff_members = []
+        regular_members = []
+        for u_row in all_users:
+            u = row_to_dict(u_row)
+            if (u.get('role') or '').lower() != 'member':
+                staff_members.append(u)
+            else:
+                regular_members.append(u)
+
+        completed_loans = fetchval(db,
+            "SELECT COUNT(*) FROM loans WHERE status = 'completed'"
+        ) or 0
+
+        return render_template(
+            "treasurer/savings-deposit.html",
+            members=all_users,
+            staff_members=staff_members,
+            regular_members=regular_members,
+            completed_loans=completed_loans
+        )
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 # ============================================================
 # TREASURER - GET GUARANTOR DETAILS
 # ============================================================
