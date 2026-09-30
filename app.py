@@ -16,7 +16,7 @@ load_dotenv()
 
 
 # ============================================================
-# POSTGRESQL ADAPTER â€” makes PostgreSQL look like SQLite
+# POSTGRESQL ADAPTER — makes PostgreSQL look like SQLite
 # ============================================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -28,7 +28,7 @@ if DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
     class PostgresCursorAdapter:
-        """Wraps a psycopg2 cursor. Converts ? â†’ %s and provides sqlite3.Row-like access."""
+        """Wraps a psycopg2 cursor. Converts ? → %s and provides sqlite3.Row-like access."""
         def __init__(self, real_cursor):
             self._cur = real_cursor
 
@@ -111,11 +111,11 @@ if DATABASE_URL:
     def _pg_connect():
         return PostgresConnectionAdapter(psycopg2.connect(DATABASE_URL))
 
-    print("âœ… Using PostgreSQL database")
+    print("✅ Using PostgreSQL database")
 else:
     def _pg_connect():
         return None
-    print("âœ… Using SQLite database (local dev)")
+    print("✅ Using SQLite database (local dev)")
 
 
 # ============================================================
@@ -139,28 +139,35 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def fetchval(conn, query, params=None):
-    """
-    Return the first column of the first row.
-    Works on both SQLite (row[0]) and PostgreSQL (dict).
-    Returns None if no rows.
-    """
+    """Return the first column of the first row. Works on both DBs."""
     if params is None:
         params = ()
     row = conn.execute(query, params).fetchone()
     if row is None:
         return None
-    # PostgreSQL RealDictCursor â†’ dict
     if isinstance(row, dict):
         return list(row.values())[0]
-    # SQLite Row or tuple
     return row[0]
+
+
+def row_to_dict(row):
+    """Convert a SQLite Row or PostgreSQL dict into a plain dict."""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return dict(row)
+    try:
+        return dict(row)
+    except Exception:
+        return row
+
 
 def log_action(action, target=None, details=None):
     """
     Insert an audit log entry.
-    Called from any route to record what happened.
-    Fails silently if logging breaks so it never blocks the main request.
+    Fails silently so it never blocks the main request.
     """
     try:
         user_id   = session.get("user_id")
@@ -168,7 +175,6 @@ def log_action(action, target=None, details=None):
         user_role = session.get("role") or "anonymous"
 
         ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
-        # X-Forwarded-For may contain multiple IPs; take the first
         ip = ip.split(",")[0].strip() if ip else ""
         ua = (request.headers.get("User-Agent") or "")[:300]
 
@@ -198,181 +204,16 @@ def log_action(action, target=None, details=None):
         print(f"⚠️ log_action failed: {e}")
 
 
-def row_to_dict(row):
-    """Convert a SQLite Row or PostgreSQL dict into a plain dict."""
-    if row is None:
-        return None
-    if isinstance(row, dict):
-        return dict(row)
-    try:
-        return dict(row)  # sqlite3.Row supports this
-    except Exception:
-        return row
-# ============================================================
-# ARCHIVE TABLES â€” created automatically on startup
-# ============================================================
-def ensure_archive_tables():
-    """Creates archive tables if they don't exist yet. Works with both SQLite and PostgreSQL."""
-    conn = get_db()
-    cur = conn.cursor()
-
-    # PostgreSQL uses SERIAL instead of INTEGER PRIMARY KEY AUTOINCREMENT
-    if DATABASE_URL:
-        pk_type = "SERIAL PRIMARY KEY"
-        text_type = "TEXT"
-        real_type = "REAL"
-        int_type = "INTEGER"
-    else:
-        pk_type = "INTEGER PRIMARY KEY AUTOINCREMENT"
-        text_type = "TEXT"
-        real_type = "REAL"
-        int_type = "INTEGER"
-
-    tables_sql = [
-        f"""
-        CREATE TABLE IF NOT EXISTS archived_years (
-            id {pk_type},
-            year_label {text_type} NOT NULL UNIQUE,
-            started_at {text_type} NOT NULL,
-            closed_at {text_type} NOT NULL,
-            closed_by {int_type},
-            notes {text_type},
-            total_members {int_type} DEFAULT 0,
-            total_staff_kept {int_type} DEFAULT 0,
-            total_kai_shares {int_type} DEFAULT 0,
-            total_ks_shares {int_type} DEFAULT 0,
-            total_savings {real_type} DEFAULT 0,
-            total_kac_collected {real_type} DEFAULT 0,
-            total_registration_fees {real_type} DEFAULT 0,
-            total_loans_disbursed {real_type} DEFAULT 0,
-            total_loans_repaid {real_type} DEFAULT 0,
-            total_interest_collected {real_type} DEFAULT 0,
-            total_outstanding_loans {real_type} DEFAULT 0
-        )
-        """,
-        f"""
-        CREATE TABLE IF NOT EXISTS archived_users (
-            id {pk_type},
-            archive_id {int_type} NOT NULL,
-            original_user_id {int_type} NOT NULL,
-            sacco_number {text_type},
-            full_name {text_type},
-            email {text_type},
-            phone {text_type},
-            role {text_type},
-            gender {text_type},
-            dob {text_type},
-            address {text_type},
-            next_of_kin_name {text_type},
-            next_of_kin_phone {text_type},
-            relationship {text_type},
-            kai_shares {int_type} DEFAULT 0,
-            ks_shares {int_type} DEFAULT 0,
-            kac_paid {real_type} DEFAULT 0,
-            registration_fee_paid {int_type} DEFAULT 0,
-            savings_balance {real_type} DEFAULT 0,
-            total_loans_taken {real_type} DEFAULT 0,
-            total_loans_repaid {real_type} DEFAULT 0,
-            outstanding_balance {real_type} DEFAULT 0,
-            interest_paid {real_type} DEFAULT 0,
-            status {text_type},
-            registration_date {text_type},
-            archived_at {text_type} NOT NULL
-        )
-        """,
-        f"""
-        CREATE TABLE IF NOT EXISTS archived_savings_deposits (
-            id {pk_type},
-            archive_id {int_type} NOT NULL,
-            original_deposit_id {int_type},
-            user_id {int_type},
-            sacco_number {text_type},
-            full_name {text_type},
-            savings_type {text_type},
-            amount {real_type},
-            shares {int_type},
-            deposit_date {text_type},
-            payment_method {text_type},
-            receipt_number {text_type},
-            notes {text_type},
-            created_at {text_type},
-            archived_at {text_type} NOT NULL
-        )
-        """,
-        f"""
-        CREATE TABLE IF NOT EXISTS archived_loans (
-            id {pk_type},
-            archive_id {int_type} NOT NULL,
-            original_loan_id {int_type},
-            user_id {int_type},
-            sacco_number {text_type},
-            full_name {text_type},
-            loan_number {text_type},
-            amount {real_type},
-            status {text_type},
-            application_date {text_type},
-            approval_date {text_type},
-            disbursement_date {text_type},
-            completed_date {text_type},
-            total_interest_accrued {real_type},
-            interest_paid {real_type},
-            principal_paid {real_type},
-            current_balance {real_type},
-            rejection_reason {text_type},
-            archived_at {text_type} NOT NULL
-        )
-        """,
-        f"""
-        CREATE TABLE IF NOT EXISTS archived_repayments (
-            id {pk_type},
-            archive_id {int_type} NOT NULL,
-            original_repayment_id {int_type},
-            loan_id {int_type},
-            user_id {int_type},
-            sacco_number {text_type},
-            full_name {text_type},
-            loan_number {text_type},
-            amount {real_type},
-            interest_paid {real_type},
-            principal_paid {real_type},
-            payment_date {text_type},
-            payment_method {text_type},
-            transaction_ref {text_type},
-            notes {text_type},
-            archived_at {text_type} NOT NULL
-        )
-        """
-    ]
-
-    for sql in tables_sql:
-        cur.execute(sql)
-
-    # Indexes (work in both databases)
-    indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_arch_users_archive ON archived_users(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_arch_dep_archive ON archived_savings_deposits(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_arch_loans_archive ON archived_loans(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_arch_rep_archive ON archived_repayments(archive_id)",
-    ]
-    for sql in indexes:
-        try:
-            cur.execute(sql)
-        except Exception:
-            pass
-
-    conn.commit()
-    conn.close()
-    print("âœ… Archive tables ready.")
-
 # ============================================================
 # REGISTER CHAT BLUEPRINT
 # ============================================================
 from chat_api import chat_api
-
 app.register_blueprint(chat_api)
-# NOTE: create_chat_table() is deferred until AFTER create_database()
-# (see the bottom of this file, just after create_database() is called)
 
+
+# ============================================================
+# CREATE DATABASE
+# ============================================================
 def create_database():
     conn = get_db()
     cursor = conn.cursor()
@@ -380,9 +221,6 @@ def create_database():
     is_pg = bool(DATABASE_URL)
     PH = "%s" if is_pg else "?"
 
-    # ------------------------------------------------------------
-    # Helper: get existing columns (works for both DBs)
-    # ------------------------------------------------------------
     def get_columns(table_name):
         if is_pg:
             cursor.execute(
@@ -395,9 +233,6 @@ def create_database():
             cursor.execute(f"PRAGMA table_info({table_name})")
             return [col[1] for col in cursor.fetchall()]
 
-    # ------------------------------------------------------------
-    # Helper: check if table exists
-    # ------------------------------------------------------------
     def table_exists(table_name):
         if is_pg:
             cursor.execute(
@@ -412,9 +247,7 @@ def create_database():
             )
             return cursor.fetchone() is not None
 
-    # ------------------------------------------------------------
-    # Add missing columns to `users`
-    # ------------------------------------------------------------
+    # ---- Column migrations ----
     if table_exists("users"):
         existing = get_columns("users")
         for col_name, col_type in {
@@ -434,9 +267,6 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `system_settings`
-    # ------------------------------------------------------------
     if table_exists("system_settings"):
         existing = get_columns("system_settings")
         for col_name, col_type in {
@@ -454,9 +284,6 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `savings_deposits`
-    # ------------------------------------------------------------
     if table_exists("savings_deposits"):
         existing = get_columns("savings_deposits")
         for col_name, col_type in {
@@ -472,9 +299,6 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `repayments`
-    # ------------------------------------------------------------
     if table_exists("repayments"):
         existing = get_columns("repayments")
         for col_name, col_type in {
@@ -492,9 +316,6 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `loans`
-    # ------------------------------------------------------------
     if table_exists("loans"):
         existing = get_columns("loans")
         for col_name, col_type in {
@@ -529,9 +350,6 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Backfill
-    # ------------------------------------------------------------
     if table_exists("loans"):
         try:
             cursor.execute("""
@@ -550,9 +368,6 @@ def create_database():
             conn.rollback()
             cursor = conn.cursor()
 
-    # ------------------------------------------------------------
-    # Add missing columns to `notifications`
-    # ------------------------------------------------------------
     if table_exists("notifications"):
         existing = get_columns("notifications")
         for col_name, col_type in {
@@ -765,27 +580,6 @@ def create_database():
     )
     """)
 
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS newsletters (
-        id {pk},
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        sent_date TEXT,
-        recipients INTEGER DEFAULT 0,
-        created_by INTEGER
-    )
-    """)
-
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS social_posts (
-        id {pk},
-        platform TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TEXT,
-        created_by INTEGER
-    )
-    """)
-
     # SYSTEM SETTINGS
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS system_settings (
@@ -806,9 +600,7 @@ def create_database():
     )
     """)
 
-        # ============================================================
-    # ✅ SYSTEM LOGS (audit trail)
-    # ============================================================
+    # SYSTEM LOGS
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS system_logs (
         id {pk},
@@ -837,235 +629,6 @@ def create_database():
             cursor = conn.cursor()
 
     print("✅ system_logs table ready.")
-
-    # ============================================================
-    # ✅ ARCHIVE TABLES (match year_end_execute route EXACTLY)
-    # ============================================================
-
-    # archived_years
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_years (
-        id {pk},
-        year_label TEXT NOT NULL,
-        started_at TEXT,
-        closed_at TEXT,
-        closed_by INTEGER,
-        notes TEXT,
-        total_members INTEGER DEFAULT 0,
-        total_staff_kept INTEGER DEFAULT 0,
-        total_kai_shares INTEGER DEFAULT 0,
-        total_ks_shares INTEGER DEFAULT 0,
-        total_savings REAL DEFAULT 0,
-        total_kac_collected REAL DEFAULT 0,
-        total_registration_fees REAL DEFAULT 0,
-        total_loans_disbursed REAL DEFAULT 0,
-        total_loans_repaid REAL DEFAULT 0,
-        total_interest_collected REAL DEFAULT 0,
-        total_outstanding_loans REAL DEFAULT 0
-    )
-    """)
-
-    # archived_users
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_users (
-        id {pk},
-        archive_id INTEGER NOT NULL,
-        original_user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        email TEXT,
-        phone TEXT,
-        role TEXT,
-        gender TEXT,
-        dob TEXT,
-        address TEXT,
-        next_of_kin_name TEXT,
-        next_of_kin_phone TEXT,
-        relationship TEXT,
-        kai_shares INTEGER DEFAULT 0,
-        ks_shares INTEGER DEFAULT 0,
-        kac_paid REAL DEFAULT 0,
-        registration_fee_paid INTEGER DEFAULT 0,
-        savings_balance REAL DEFAULT 0,
-        total_loans_taken REAL DEFAULT 0,
-        total_loans_repaid REAL DEFAULT 0,
-        outstanding_balance REAL DEFAULT 0,
-        interest_paid REAL DEFAULT 0,
-        status TEXT,
-        registration_date TEXT,
-        archived_at TEXT
-    )
-    """)
-
-    # archived_savings_deposits
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_savings_deposits (
-        id {pk},
-        archive_id INTEGER NOT NULL,
-        original_deposit_id INTEGER,
-        user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        savings_type TEXT,
-        amount REAL,
-        shares INTEGER,
-        deposit_date TEXT,
-        payment_method TEXT,
-        receipt_number TEXT,
-        notes TEXT,
-        created_at TEXT,
-        archived_at TEXT
-    )
-    """)
-
-    # archived_loans
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_loans (
-        id {pk},
-        archive_id INTEGER NOT NULL,
-        original_loan_id INTEGER,
-        loan_number TEXT,
-        user_id INTEGER,
-        sacco_number TEXT,
-        full_name TEXT,
-        amount REAL,
-        interest_rate REAL,
-        interest_amount REAL,
-        total_repayment REAL,
-        monthly_installment REAL,
-        tenure INTEGER,
-        purpose TEXT,
-        repayment_plan TEXT,
-        status TEXT,
-        application_date TEXT,
-        approved_date TEXT,
-        disbursed_date TEXT,
-        completed_date TEXT,
-        rejected_date TEXT,
-        rejection_reason TEXT,
-        current_balance REAL DEFAULT 0,
-        total_interest_accrued REAL DEFAULT 0,
-        principal_paid REAL DEFAULT 0,
-        interest_paid REAL DEFAULT 0,
-        due_date TEXT,
-        archived_at TEXT
-    )
-    """)
-
-    # archived_repayments
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS archived_repayments (
-        id {pk},
-        archive_id INTEGER NOT NULL,
-        original_repayment_id INTEGER,
-        loan_id INTEGER,
-        loan_number TEXT,
-        user_id INTEGER,
-        full_name TEXT,
-        amount REAL,
-        interest_paid REAL DEFAULT 0,
-        principal_paid REAL DEFAULT 0,
-        balance_after REAL DEFAULT 0,
-        payment_date TEXT,
-        payment_method TEXT,
-        transaction_ref TEXT,
-        notes TEXT,
-        status TEXT,
-        archived_at TEXT
-    )
-    """)
-
-    # ------------------------------------------------------------
-    # PATCH existing archive tables (add any missing columns)
-    # ------------------------------------------------------------
-    patch_map = {
-        "archived_years": {
-            'started_at': 'TEXT', 'closed_at': 'TEXT', 'closed_by': 'INTEGER',
-            'year_label': 'TEXT', 'notes': 'TEXT',
-            'total_members': 'INTEGER DEFAULT 0',
-            'total_staff_kept': 'INTEGER DEFAULT 0',
-            'total_kai_shares': 'INTEGER DEFAULT 0',
-            'total_ks_shares': 'INTEGER DEFAULT 0',
-            'total_savings': 'REAL DEFAULT 0',
-            'total_kac_collected': 'REAL DEFAULT 0',
-            'total_registration_fees': 'REAL DEFAULT 0',
-            'total_loans_disbursed': 'REAL DEFAULT 0',
-            'total_loans_repaid': 'REAL DEFAULT 0',
-            'total_interest_collected': 'REAL DEFAULT 0',
-            'total_outstanding_loans': 'REAL DEFAULT 0',
-        },
-        "archived_users": {
-            'archive_id': 'INTEGER', 'original_user_id': 'INTEGER',
-            'sacco_number': 'TEXT', 'full_name': 'TEXT',
-            'email': 'TEXT', 'phone': 'TEXT', 'role': 'TEXT',
-            'gender': 'TEXT', 'dob': 'TEXT', 'address': 'TEXT',
-            'next_of_kin_name': 'TEXT', 'next_of_kin_phone': 'TEXT',
-            'relationship': 'TEXT',
-            'kai_shares': 'INTEGER DEFAULT 0',
-            'ks_shares': 'INTEGER DEFAULT 0',
-            'kac_paid': 'REAL DEFAULT 0',
-            'registration_fee_paid': 'INTEGER DEFAULT 0',
-            'savings_balance': 'REAL DEFAULT 0',
-            'total_loans_taken': 'REAL DEFAULT 0',
-            'total_loans_repaid': 'REAL DEFAULT 0',
-            'outstanding_balance': 'REAL DEFAULT 0',
-            'interest_paid': 'REAL DEFAULT 0',
-            'status': 'TEXT', 'registration_date': 'TEXT',
-            'archived_at': 'TEXT',
-        },
-        "archived_savings_deposits": {
-            'archive_id': 'INTEGER', 'original_deposit_id': 'INTEGER',
-            'user_id': 'INTEGER', 'sacco_number': 'TEXT', 'full_name': 'TEXT',
-            'savings_type': 'TEXT', 'amount': 'REAL', 'shares': 'INTEGER',
-            'deposit_date': 'TEXT', 'payment_method': 'TEXT',
-            'receipt_number': 'TEXT', 'notes': 'TEXT',
-            'created_at': 'TEXT', 'archived_at': 'TEXT',
-        },
-        "archived_loans": {
-            'archive_id': 'INTEGER', 'original_loan_id': 'INTEGER',
-            'loan_number': 'TEXT', 'user_id': 'INTEGER',
-            'sacco_number': 'TEXT', 'full_name': 'TEXT',
-            'amount': 'REAL', 'interest_rate': 'REAL',
-            'interest_amount': 'REAL', 'total_repayment': 'REAL',
-            'monthly_installment': 'REAL', 'tenure': 'INTEGER',
-            'purpose': 'TEXT', 'repayment_plan': 'TEXT', 'status': 'TEXT',
-            'application_date': 'TEXT', 'approved_date': 'TEXT',
-            'disbursed_date': 'TEXT', 'completed_date': 'TEXT',
-            'rejected_date': 'TEXT', 'rejection_reason': 'TEXT',
-            'current_balance': 'REAL DEFAULT 0',
-            'total_interest_accrued': 'REAL DEFAULT 0',
-            'principal_paid': 'REAL DEFAULT 0',
-            'interest_paid': 'REAL DEFAULT 0',
-            'due_date': 'TEXT', 'archived_at': 'TEXT',
-        },
-        "archived_repayments": {
-            'archive_id': 'INTEGER', 'original_repayment_id': 'INTEGER',
-            'loan_id': 'INTEGER', 'loan_number': 'TEXT',
-            'user_id': 'INTEGER', 'full_name': 'TEXT',
-            'amount': 'REAL',
-            'interest_paid': 'REAL DEFAULT 0',
-            'principal_paid': 'REAL DEFAULT 0',
-            'balance_after': 'REAL DEFAULT 0',
-            'payment_date': 'TEXT', 'payment_method': 'TEXT',
-            'transaction_ref': 'TEXT', 'notes': 'TEXT',
-            'status': 'TEXT', 'archived_at': 'TEXT',
-        },
-    }
-
-    for table_name, columns in patch_map.items():
-        if table_exists(table_name):
-            existing = get_columns(table_name)
-            for col_name, col_type in columns.items():
-                if col_name not in existing:
-                    try:
-                        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}")
-                        print(f"✅ Added column to {table_name}: {col_name}")
-                    except Exception as e:
-                        print(f"⚠️ Could not add column {col_name} to {table_name}: {e}")
-                        conn.rollback()
-                        cursor = conn.cursor()
-
-    print("✅ Archive tables ready.")
 
     # ---- Default settings ----
     cursor.execute("SELECT COUNT(*) AS c FROM system_settings")
@@ -1115,10 +678,6 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
         "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_users_aid ON archived_users(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_savings_deposits_aid ON archived_savings_deposits(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_loans_aid ON archived_loans(archive_id)",
-        "CREATE INDEX IF NOT EXISTS idx_archived_repayments_aid ON archived_repayments(archive_id)",
     ]
     for sql in indexes:
         try:
@@ -1137,9 +696,6 @@ def create_database():
 # ============================================================
 create_database()
 
-# ============================================================
-# Now create the chat table (needs users table to exist first)
-# ============================================================
 try:
     from chat_api import create_chat_table
     create_chat_table()
@@ -1150,39 +706,34 @@ except Exception as e:
 # ============================================
 # LOAN HELPER FUNCTIONS
 # ============================================
-from datetime import datetime
-
-
 def get_start_month(application_date):
-    """Get the starting month of the loan (1-12)"""
     return datetime.strptime(application_date, '%Y-%m-%d').month
 
 
 def get_remaining_months(application_date):
-    """Calculate remaining months until December of same year"""
     start_date = datetime.strptime(application_date, '%Y-%m-%d')
     return 12 - start_date.month + 1
 
 
 def calculate_loan_end_date(application_date):
-    """Loan must end on 31st December of application year"""
     year = datetime.strptime(application_date, '%Y-%m-%d').year
     return datetime(year, 12, 31).strftime('%Y-%m-%d')
 
 
 def generate_loan_reference():
-    """Generate unique loan reference number"""
     year = datetime.now().strftime('%Y')
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT COUNT(*) as count FROM loans")
-    count = cursor.fetchone()['count'] + 1
-    db.close()
-    return f"LN-{year}-{str(count).zfill(4)}"
+    try:
+        count = fetchval(db, "SELECT COUNT(*) FROM loans") or 0
+        return f"LN-{year}-{str(count + 1).zfill(4)}"
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def get_interest_rate(amount):
-    """Interest rate according to loan amount"""
     if 10000 <= amount <= 1999999:
         return 5
     elif 2000000 <= amount <= 4999999:
@@ -1195,40 +746,40 @@ def get_interest_rate(amount):
 
 
 def check_loan_eligibility(user_id, loan_amount):
-    """Check if member is eligible for loan based on savings"""
     db = get_db()
-    total_savings = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total 
-        FROM savings_deposits 
-        WHERE user_id = ?
-    """, (user_id,)).fetchone()['total']
-    db.close()
-    
-    # 95% of savings threshold
-    threshold = total_savings * 0.95
-    return loan_amount <= threshold, threshold, total_savings
+    try:
+        total_savings = fetchval(db, """
+            SELECT COALESCE(SUM(amount), 0) as total 
+            FROM savings_deposits 
+            WHERE user_id = ?
+        """, (user_id,)) or 0
+        threshold = total_savings * 0.95
+        return loan_amount <= threshold, threshold, total_savings
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def check_guarantor_eligibility(phone, email):
-    """Check if a guarantor is eligible (has guaranteed less than 2 loans)"""
     db = get_db()
-    cursor = db.cursor()
-    
-    cursor.execute("""
-        SELECT COUNT(*) as count 
-        FROM loan_guarantors 
-        WHERE (phone = ? OR email = ?) 
-        AND status IN ('active')
-    """, (phone, email))
-    
-    count = cursor.fetchone()['count']
-    db.close()
-    
-    return count < 2, count
+    try:
+        count = fetchval(db, """
+            SELECT COUNT(*) as count 
+            FROM loan_guarantors 
+            WHERE (phone = ? OR email = ?) 
+            AND status IN ('active')
+        """, (phone, email)) or 0
+        return count < 2, count
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def send_email(to_email, subject, body, html_body=None):
-    """Send email notification - Manual sending only"""
     try:
         print(f"EMAIL TO: {to_email}")
         print(f"SUBJECT: {subject}")
@@ -1240,7 +791,6 @@ def send_email(to_email, subject, body, html_body=None):
 
 
 def send_sms(phone, message):
-    """Send SMS notification - Manual sending only"""
     try:
         print(f"SMS TO: {phone}")
         print(f"MESSAGE: {message}")
@@ -1292,70 +842,73 @@ ROLE_ROUTES = {
     "member":      "/member/dashboard",
 }
 
+
 @app.route("/")
 def splash():
     if session.get("logged_in"):
         return redirect(ROLE_ROUTES.get(session.get("role"), "/home"))
     return render_template("splash.html")
 
+
 @app.route("/home")
 def home():
     return render_template("website/home-page.html")
 
+
 @app.route("/about")
 def about():
-    """About Us page"""
     return render_template("website/about.html")
 
 
 @app.route("/contact")
 def contact():
-    """Contact page"""
     return render_template("website/contact.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         sacco_number = request.form["sacco_number"].strip().upper()
-        password = request.form["password"]  # don't strip passwords
+        password = request.form["password"]
 
         conn = get_db()
         try:
-            user = conn.execute(
+            user_row = conn.execute(
                 "SELECT * FROM users WHERE sacco_number = ?",
                 (sacco_number,)
             ).fetchone()
         finally:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
-        if user and check_password_hash(user["password"], password):
-            session.update({
-                "user_id":      user["id"],
-                "sacco_number": user["sacco_number"],
-                "full_name":    user["full_name"],
-                "role":         user["role"],
-                "logged_in":    True,
-            })
-            return redirect(ROLE_ROUTES.get(user["role"], "/member/dashboard"))
+        if user_row:
+            user = row_to_dict(user_row)
+            if check_password_hash(user["password"], password):
+                session.update({
+                    "user_id":      user["id"],
+                    "sacco_number": user["sacco_number"],
+                    "full_name":    user["full_name"],
+                    "role":         user["role"],
+                    "logged_in":    True,
+                })
+                return redirect(ROLE_ROUTES.get(user["role"], "/member/dashboard"))
 
         flash("Invalid SACCO number or password", "error")
 
     return render_template("login.html")
-# ============================================================
-# STAFF MEMBER PORTAL ACCESS ROUTE
-# ============================================================
+
+
 @app.route("/staff/member-portal")
 def staff_member_portal():
-    """Staff access to member portal"""
     if "user_id" not in session:
         return redirect("/login")
-    
-    # All staff roles can access member portal
+
     if session.get("role") not in ["admin", "chairperson", "treasurer", "secretary", "publicity"]:
         flash('Access denied. Only staff members can access this portal.', 'danger')
         return redirect("/login")
-    
-    # Redirect to member dashboard with staff_view flag
+
     return redirect(url_for('member_dashboard', staff_view=True))
 
 
@@ -1368,9 +921,6 @@ def logout():
 # ============================================
 # ADMIN DASHBOARD
 # ============================================
-# ============================================
-# ADMIN DASHBOARD
-# ============================================
 @app.route("/admin/dashboard")
 def admin_dashboard():
     if session.get("role") != "admin":
@@ -1378,7 +928,6 @@ def admin_dashboard():
 
     conn = get_db()
     try:
-        # -------- Member stats --------
         total_members = fetchval(conn, """
             SELECT COUNT(*) FROM users WHERE LOWER(role) = 'member'
         """)
@@ -1389,8 +938,6 @@ def admin_dashboard():
             WHERE LOWER(role) = 'member'
         """)
 
-        # âš ï¸ SQLite stores dates as TEXT and compares lexicographically.
-        #    PostgreSQL needs an explicit cast to timestamp.
         if DATABASE_URL:
             monthly_savings = fetchval(conn, """
                 SELECT COALESCE(SUM(amount), 0)
@@ -1404,9 +951,7 @@ def admin_dashboard():
                 WHERE deposit_date >= date('now', 'start of month')
             """)
 
-        total_deposits = fetchval(conn, """
-            SELECT COUNT(*) FROM savings_deposits
-        """)
+        total_deposits = fetchval(conn, "SELECT COUNT(*) FROM savings_deposits")
 
         recent_deposits = conn.execute("""
             SELECT sd.*, u.full_name, u.sacco_number
@@ -1429,7 +974,6 @@ def admin_dashboard():
             ORDER BY u.id DESC
         """).fetchall()
 
-        # -------- Loan stats --------
         total_loans = fetchval(conn, """
             SELECT COALESCE(SUM(amount), 0)
             FROM loans
@@ -1442,25 +986,11 @@ def admin_dashboard():
             WHERE status IN ('approved', 'disbursed', 'active')
         """)
 
-        pending_loans = fetchval(conn, """
-            SELECT COUNT(*) FROM loans WHERE status = 'pending'
-        """)
-
-        approved_loans = fetchval(conn, """
-            SELECT COUNT(*) FROM loans WHERE status = 'approved'
-        """)
-
-        rejected_loans = fetchval(conn, """
-            SELECT COUNT(*) FROM loans WHERE status = 'rejected'
-        """)
-
-        disbursed_loans = fetchval(conn, """
-            SELECT COUNT(*) FROM loans WHERE status = 'disbursed'
-        """)
-
-        completed_loans = fetchval(conn, """
-            SELECT COUNT(*) FROM loans WHERE status = 'completed'
-        """)
+        pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'")
+        approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'")
+        rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
+        disbursed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'disbursed'")
+        completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
 
         loan_applications = conn.execute("""
             SELECT
@@ -1505,7 +1035,6 @@ def admin_dashboard():
             LIMIT 10
         """).fetchall()
 
-        # -------- Staff --------
         staff_users = conn.execute("""
             SELECT
                 u.*,
@@ -1536,7 +1065,6 @@ def admin_dashboard():
 
         today = datetime.now().strftime('%Y-%m-%d')
 
-        # -------- Settings --------
         default_settings = {
             'sacco_name': 'Karacel Association',
             'registration_number': 'SACCO/REG/2024/001',
@@ -1596,6 +1124,7 @@ def admin_dashboard():
         except Exception:
             pass
 
+
 # ============================================================
 # ADMIN — SYSTEM LOGS
 # ============================================================
@@ -1609,7 +1138,6 @@ def admin_system_logs():
     PH = "%s" if DATABASE_URL else "?"
 
     try:
-        # ---- Filters ----
         filter_user   = (request.args.get("user") or "").strip()
         filter_action = (request.args.get("action") or "").strip()
         filter_target = (request.args.get("target") or "").strip()
@@ -1642,7 +1170,6 @@ def admin_system_logs():
 
         where_sql = " AND ".join(where)
 
-        # ---- Fetch logs ----
         logs = db.execute(f"""
             SELECT id, user_id, user_name, user_role,
                    action, target, details,
@@ -1653,24 +1180,21 @@ def admin_system_logs():
             LIMIT 500
         """, tuple(params)).fetchall()
 
-        # ---- Summary counts ----
         total_logs = fetchval(db, "SELECT COUNT(*) FROM system_logs") or 0
 
-        treasurer_access_count = fetchval(db, f"""
+        treasurer_access_count = fetchval(db, """
             SELECT COUNT(*) FROM system_logs
             WHERE target = 'treasurer_dashboard'
         """) or 0
 
-        # Unique users who accessed treasurer dashboard
-        unique_accessors = db.execute(f"""
-            SELECT DISTINCT user_name, user_role, COUNT(*) AS hits
+        unique_accessors = db.execute("""
+            SELECT user_name, user_role, COUNT(*) AS hits
             FROM system_logs
             WHERE target = 'treasurer_dashboard'
             GROUP BY user_name, user_role
             ORDER BY hits DESC
         """).fetchall()
 
-        # Distinct actions for filter dropdown
         actions = db.execute("""
             SELECT DISTINCT action FROM system_logs
             WHERE action IS NOT NULL
@@ -1702,7 +1226,7 @@ def admin_system_logs():
 
 
 # ============================================================
-# TREASURER DASHBOARD - FIXED RECENT ACTIVITIES
+# TREASURER DASHBOARD
 # ============================================================
 @app.route("/treasurer/dashboard")
 def treasurer_dashboard():
@@ -1710,7 +1234,6 @@ def treasurer_dashboard():
         flash('Access denied', 'danger')
         return redirect("/login")
 
-     # 🔍 LOG THIS ACCESS
     log_action(
         action="view_dashboard",
         target="treasurer_dashboard",
@@ -1719,30 +1242,12 @@ def treasurer_dashboard():
 
     conn = get_db()
     try:
-        # ============================================================
-        # GET ALL ACTIVE USERS (MEMBERS + STAFF)
-        # ============================================================
         members = conn.execute("""
             SELECT 
-                id,
-                full_name,
-                sacco_number,
-                email,
-                phone,
-                status,
-                savings_balance,
-                registration_date,
-                gender,
-                dob,
-                address,
-                role,
-                kai_shares,
-                ks_shares,
-                kac_paid,
-                registration_fee_paid,
-                next_of_kin_name,
-                next_of_kin_phone,
-                relationship
+                id, full_name, sacco_number, email, phone, status,
+                savings_balance, registration_date, gender, dob, address,
+                role, kai_shares, ks_shares, kac_paid, registration_fee_paid,
+                next_of_kin_name, next_of_kin_phone, relationship
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
@@ -1758,69 +1263,33 @@ def treasurer_dashboard():
                 full_name ASC
         """).fetchall()
 
-        # ============================================================
-        # GET STAFF MEMBERS
-        # ============================================================
         staff_members = conn.execute("""
             SELECT 
-                id,
-                full_name,
-                sacco_number,
-                email,
-                phone,
-                status,
-                savings_balance,
-                role,
-                kai_shares,
-                ks_shares,
-                kac_paid,
-                registration_fee_paid
+                id, full_name, sacco_number, email, phone, status,
+                savings_balance, role, kai_shares, ks_shares,
+                kac_paid, registration_fee_paid
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
             ORDER BY full_name ASC
         """).fetchall()
 
-        # ============================================================
-        # GET REGULAR MEMBERS ONLY
-        # ============================================================
         regular_members = conn.execute("""
             SELECT 
-                id,
-                full_name,
-                sacco_number,
-                email,
-                phone,
-                status,
-                savings_balance,
-                role,
-                kai_shares,
-                ks_shares,
-                kac_paid,
-                registration_fee_paid
+                id, full_name, sacco_number, email, phone, status,
+                savings_balance, role, kai_shares, ks_shares,
+                kac_paid, registration_fee_paid
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) = 'member'
             ORDER BY full_name ASC
         """).fetchall()
 
-        # ============================================================
-        # RECENT DEPOSITS - Include ALL users (members + staff)
-        # ============================================================
         recent_deposits = conn.execute("""
             SELECT 
-                sd.id,
-                sd.user_id,
-                sd.amount,
-                sd.savings_type,
-                sd.shares,
-                sd.deposit_date,
-                sd.payment_method,
-                sd.receipt_number,
-                sd.notes,
-                u.full_name,
-                u.sacco_number,
-                u.role
+                sd.id, sd.user_id, sd.amount, sd.savings_type, sd.shares,
+                sd.deposit_date, sd.payment_method, sd.receipt_number, sd.notes,
+                u.full_name, u.sacco_number, u.role
             FROM savings_deposits sd
             JOIN users u ON sd.user_id = u.id
             WHERE u.status = 'active'
@@ -1828,28 +1297,13 @@ def treasurer_dashboard():
             LIMIT 20
         """).fetchall()
 
-        # ============================================================
-        # RECENT REPAYMENTS - Include ALL users (members + staff)
-        # ============================================================
         recent_repayments = conn.execute("""
             SELECT 
-                r.id,
-                r.loan_id,
-                r.user_id,
-                r.amount,
-                r.interest_paid,
-                r.principal_paid,
-                r.balance_after,
-                r.payment_date,
-                r.payment_method,
-                r.transaction_ref,
-                r.notes,
-                r.status,
-                r.created_at,
-                u.full_name,
-                u.sacco_number,
-                u.role,
-                l.loan_number
+                r.id, r.loan_id, r.user_id, r.amount,
+                r.interest_paid, r.principal_paid, r.balance_after,
+                r.payment_date, r.payment_method, r.transaction_ref,
+                r.notes, r.status, r.created_at,
+                u.full_name, u.sacco_number, u.role, l.loan_number
             FROM repayments r
             JOIN users u ON r.user_id = u.id
             JOIN loans l ON r.loan_id = l.id
@@ -1859,32 +1313,17 @@ def treasurer_dashboard():
             LIMIT 20
         """).fetchall()
 
-        # ============================================================
-        # ALL DEPOSITS - Include ALL users
-        # ============================================================
         all_deposits = conn.execute("""
             SELECT 
-                sd.id,
-                sd.user_id,
-                sd.amount,
-                sd.savings_type,
-                sd.shares,
-                sd.deposit_date,
-                sd.payment_method,
-                sd.receipt_number,
-                sd.notes,
-                u.full_name,
-                u.sacco_number,
-                u.role
+                sd.id, sd.user_id, sd.amount, sd.savings_type, sd.shares,
+                sd.deposit_date, sd.payment_method, sd.receipt_number, sd.notes,
+                u.full_name, u.sacco_number, u.role
             FROM savings_deposits sd
             JOIN users u ON sd.user_id = u.id
             WHERE u.status = 'active'
             ORDER BY sd.deposit_date DESC, sd.created_at DESC
         """).fetchall()
 
-        # ============================================================
-        # STATISTICS - Include ALL users
-        # ============================================================
         total_members = len(members)
         total_regular_members = len(regular_members)
         total_staff_members = len(staff_members)
@@ -1903,7 +1342,6 @@ def treasurer_dashboard():
             WHERE u.status = 'active'
         """)
 
-        # ⚠️ SQLite uses date('now','start of month') — PostgreSQL needs date_trunc + cast
         if DATABASE_URL:
             monthly_deposits = fetchval(conn, """
                 SELECT COALESCE(SUM(sd.amount), 0) 
@@ -1921,28 +1359,15 @@ def treasurer_dashboard():
                 AND sd.deposit_date >= date('now', 'start of month')
             """)
 
-        # ============================================================
-        # LOAN STATISTICS
-        # ============================================================
         pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'")
         approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'")
         active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
         completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
         rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
 
-        # ============================================================
-        # SAVINGS BY TYPE - Include staff
-        # ============================================================
-        kai_total = 0
-        ks_total = 0
-        kac_total = 0
-        registration_fees_total = 0
-        kai_members = 0
-        ks_members = 0
-        kac_members = 0
-        registration_fees_count = 0
-        kai_shares = 0
-        ks_shares = 0
+        kai_total = ks_total = kac_total = registration_fees_total = 0
+        kai_members = ks_members = kac_members = registration_fees_count = 0
+        kai_shares = ks_shares = 0
 
         settings = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         if settings:
@@ -1986,44 +1411,18 @@ def treasurer_dashboard():
                 registration_fees_total += registration_fee
                 registration_fees_count += 1
 
-        # ============================================================
-        # LOAN APPLICATIONS - Include staff loans
-        # ============================================================
         loan_applications = conn.execute("""
             SELECT 
-                l.id,
-                l.loan_number,
-                l.amount,
-                l.interest_rate,
-                l.interest_amount,
-                l.total_repayment,
-                l.monthly_installment,
-                l.tenure,
-                l.purpose,
-                l.repayment_plan,
-                l.status,
-                l.application_date,
-                l.approved_date,
-                l.disbursed_date,
-                l.completed_date,
-                l.current_balance,
-                l.interest_accrued,
-                l.due_date,
-                l.loan_start_date,
-                l.loan_end_date,
-                l.rejection_reason,
-                l.admin_rejection_reason,
-                l.application_fee,
-                l.application_fee_paid,
-                l.net_loan_amount,
-                l.total_interest_accrued,
+                l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
+                l.total_repayment, l.monthly_installment, l.tenure, l.purpose,
+                l.repayment_plan, l.status, l.application_date, l.approved_date,
+                l.disbursed_date, l.completed_date, l.current_balance,
+                l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
+                l.rejection_reason, l.admin_rejection_reason, l.application_fee,
+                l.application_fee_paid, l.net_loan_amount, l.total_interest_accrued,
                 l.interest_paid,
-                u.full_name,
-                u.sacco_number,
-                u.phone,
-                u.email,
-                u.savings_balance,
-                u.role
+                u.full_name, u.sacco_number, u.phone, u.email,
+                u.savings_balance, u.role
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE u.status = 'active'
@@ -2031,29 +1430,16 @@ def treasurer_dashboard():
             LIMIT 50
         """).fetchall()
 
-        # Convert to dicts and attach guarantors
         all_loan_applications = []
         for loan_row in loan_applications:
             loan = row_to_dict(loan_row)
             guarantors = conn.execute("""
-                SELECT 
-                    id,
-                    guarantor_name,
-                    phone,
-                    email,
-                    relationship,
-                    status
+                SELECT id, guarantor_name, phone, email, relationship, status
                 FROM loan_guarantors 
                 WHERE loan_id = %s 
                 ORDER BY id
             """ if DATABASE_URL else """
-                SELECT 
-                    id,
-                    guarantor_name,
-                    phone,
-                    email,
-                    relationship,
-                    status
+                SELECT id, guarantor_name, phone, email, relationship, status
                 FROM loan_guarantors 
                 WHERE loan_id = ? 
                 ORDER BY id
@@ -2061,42 +1447,16 @@ def treasurer_dashboard():
             loan['guarantors'] = [row_to_dict(g) for g in guarantors] if guarantors else []
             all_loan_applications.append(loan)
 
-        # ============================================================
-        # ACTIVE LOANS LIST - Include staff
-        # ============================================================
         active_loans_list = conn.execute("""
             SELECT 
-                l.id,
-                l.loan_number,
-                l.amount,
-                l.interest_rate,
-                l.interest_amount,
-                l.total_repayment,
-                l.monthly_installment,
-                l.tenure,
-                l.purpose,
-                l.repayment_plan,
-                l.status,
-                l.application_date,
-                l.approved_date,
-                l.disbursed_date,
-                l.completed_date,
-                l.current_balance,
-                l.interest_accrued,
-                l.due_date,
-                l.loan_start_date,
-                l.loan_end_date,
-                l.disbursed_amount,
-                l.application_fee,
-                l.application_fee_paid,
-                l.net_loan_amount,
-                l.total_interest_accrued,
-                l.interest_paid,
-                u.full_name,
-                u.sacco_number,
-                u.phone,
-                u.email,
-                u.role
+                l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
+                l.total_repayment, l.monthly_installment, l.tenure, l.purpose,
+                l.repayment_plan, l.status, l.application_date, l.approved_date,
+                l.disbursed_date, l.completed_date, l.current_balance,
+                l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
+                l.disbursed_amount, l.application_fee, l.application_fee_paid,
+                l.net_loan_amount, l.total_interest_accrued, l.interest_paid,
+                u.full_name, u.sacco_number, u.phone, u.email, u.role
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.status IN ('disbursed', 'active')
@@ -2104,42 +1464,16 @@ def treasurer_dashboard():
             ORDER BY l.application_date DESC
         """).fetchall()
 
-        # ============================================================
-        # COMPLETED LOANS LIST - Include staff
-        # ============================================================
         completed_loans_list = conn.execute("""
             SELECT 
-                l.id,
-                l.loan_number,
-                l.amount,
-                l.interest_rate,
-                l.interest_amount,
-                l.total_repayment,
-                l.monthly_installment,
-                l.tenure,
-                l.purpose,
-                l.repayment_plan,
-                l.status,
-                l.application_date,
-                l.approved_date,
-                l.disbursed_date,
-                l.completed_date,
-                l.current_balance,
-                l.interest_accrued,
-                l.due_date,
-                l.loan_start_date,
-                l.loan_end_date,
-                l.disbursed_amount,
-                l.application_fee,
-                l.application_fee_paid,
-                l.net_loan_amount,
-                l.total_interest_accrued,
-                l.interest_paid,
-                u.full_name,
-                u.sacco_number,
-                u.phone,
-                u.email,
-                u.role
+                l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
+                l.total_repayment, l.monthly_installment, l.tenure, l.purpose,
+                l.repayment_plan, l.status, l.application_date, l.approved_date,
+                l.disbursed_date, l.completed_date, l.current_balance,
+                l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
+                l.disbursed_amount, l.application_fee, l.application_fee_paid,
+                l.net_loan_amount, l.total_interest_accrued, l.interest_paid,
+                u.full_name, u.sacco_number, u.phone, u.email, u.role
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.status = 'completed'
@@ -2147,16 +1481,10 @@ def treasurer_dashboard():
             ORDER BY l.completed_date DESC, l.application_date DESC
         """).fetchall()
 
-        # ============================================================
-        # INTEREST STATISTICS
-        # ============================================================
         total_interest_accrued = fetchval(conn, "SELECT COALESCE(SUM(total_interest_accrued), 0) FROM loans")
         total_interest_paid = fetchval(conn, "SELECT COALESCE(SUM(interest_paid), 0) FROM loans")
         total_interest_outstanding = (total_interest_accrued or 0) - (total_interest_paid or 0)
 
-        # ============================================================
-        # HIGHEST BORROWER - Include staff
-        # ============================================================
         highest_borrower = {'name': 'N/A', 'total': 0}
         highest_interest_borrower = {'name': 'N/A', 'interest': 0}
         total_loan_fees = 0
@@ -2164,15 +1492,11 @@ def treasurer_dashboard():
         current_year = datetime.now().year
         year_start = f"{current_year}-01-01"
         year_end = f"{current_year}-12-31"
-
-        # ⚠️ Branch ? / %s for placeholders
         placeholder = "%s" if DATABASE_URL else "?"
 
         loans_this_year = conn.execute(f"""
             SELECT 
-                l.user_id,
-                u.full_name,
-                u.role,
+                l.user_id, u.full_name, u.role,
                 COUNT(l.id) as loan_count,
                 COALESCE(SUM(l.amount), 0) as total_borrowed,
                 COALESCE(SUM(l.interest_paid), 0) as total_interest_paid,
@@ -2223,34 +1547,26 @@ def treasurer_dashboard():
                         'role': top_interest['role'] or 'member'
                     }
 
-        # Debug
         print("=" * 60)
         print("TREASURER DASHBOARD LOADED")
         print(f"Total Active Users: {total_members}")
         print(f"Regular Members: {total_regular_members}")
         print(f"Staff Members: {total_staff_members}")
-        print(f"Recent Deposits: {len(recent_deposits)}")
-        print(f"Recent Repayments: {len(recent_repayments)}")
         print("=" * 60)
 
         return render_template(
             "treasurer/treasurer-dashboard.html",
-            # Members
             members=members,
             regular_members=regular_members,
             staff_members=staff_members,
             total_members=total_members,
             total_regular_members=total_regular_members,
             total_staff_members=total_staff_members,
-
-            # Savings
             total_savings=total_savings,
             total_deposits=total_deposits,
             monthly_deposits=monthly_deposits,
             all_deposits=all_deposits,
             recent_deposits=recent_deposits,
-
-            # Savings by type
             kai_total=kai_total,
             ks_total=ks_total,
             kac_total=kac_total,
@@ -2261,8 +1577,6 @@ def treasurer_dashboard():
             registration_fees_count=registration_fees_count,
             kai_shares=kai_shares,
             ks_shares=ks_shares,
-
-            # Loans
             pending_loans=pending_loans,
             approved_loans=approved_loans,
             active_loans=active_loans,
@@ -2271,20 +1585,13 @@ def treasurer_dashboard():
             active_loans_list=active_loans_list,
             completed_loans_list=completed_loans_list,
             all_loan_applications=all_loan_applications,
-
-            # Interest
             total_interest_accrued=total_interest_accrued,
             total_interest_paid=total_interest_paid,
             total_interest_outstanding=total_interest_outstanding,
-
-            # Top borrowers
             highest_borrower=highest_borrower,
             highest_interest_borrower=highest_interest_borrower,
             total_loan_fees=total_loan_fees,
-
-            # Recent activity
             recent_repayments=recent_repayments,
-
             now=datetime.now()
         )
 
