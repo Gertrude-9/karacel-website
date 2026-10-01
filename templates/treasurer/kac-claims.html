@@ -4,325 +4,802 @@
 
 {% block content %}
 
-<div id="kac-claims-page" class="content-panel active">
+<style>
+    /* ============================================================
+       KAC CLAIMS — Clean, spacious layout
+       ============================================================ */
+    .kac-page { max-width: 1400px; margin: 0 auto; }
 
-    <!-- ============================================================
-         PAGE HEADER
-         ============================================================ -->
-    <div class="rp-header" style="margin-bottom:20px;">
-        <div class="rp-header-icon"
-             style="background: rgba(245,197,66,0.12); border-color: rgba(245,197,66,0.25); color:#f5c542;">
+    .kac-header {
+        display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+        margin-bottom: 24px; padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .kac-header-icon {
+        width: 56px; height: 56px; border-radius: 14px;
+        background: rgba(245,197,66,0.12); border: 1px solid rgba(245,197,66,0.25);
+        color: #f5c542; display: flex; align-items: center;
+        justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .kac-header-text h2 {
+        margin: 0 0 4px; font-family: 'Playfair Display', serif;
+        font-size: 1.6rem; color: #f5c542;
+    }
+    .kac-header-text p { margin: 0; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+    .kac-header-actions {
+        margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap;
+    }
+
+    .kac-tabs {
+        display: flex; gap: 4px; background: rgba(255,255,255,0.03);
+        border-radius: 12px; padding: 5px; margin-bottom: 24px;
+        overflow-x: auto;
+    }
+    .kac-tab {
+        flex: 1; min-width: 160px; padding: 12px 18px;
+        border-radius: 8px; background: transparent; border: none;
+        color: rgba(255,255,255,0.5); font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; display: flex; align-items: center;
+        justify-content: center; gap: 8px; transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .kac-tab:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.03); }
+    .kac-tab.active { background: rgba(245,197,66,0.15); color: #f5c542; }
+    .kac-pane { display: none; }
+    .kac-pane.active { display: block; }
+
+    .kac-stats {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px; margin-bottom: 24px;
+    }
+    .kac-stat {
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px; padding: 16px 18px;
+        display: flex; align-items: center; gap: 14px;
+    }
+    .kac-stat-icon {
+        width: 42px; height: 42px; border-radius: 10px;
+        background: rgba(255,255,255,0.04); display: flex;
+        align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .kac-stat-body h3 { margin: 0; font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .kac-stat-body p {
+        margin: 2px 0 0; font-size: 0.7rem; color: rgba(255,255,255,0.4);
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .kac-card {
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px; padding: 24px; margin-bottom: 20px;
+    }
+    .kac-card-head {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 20px; padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .kac-card-head i { color: #f5c542; font-size: 1.1rem; }
+    .kac-card-head h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
+    .kac-card-head .meta {
+        margin-left: auto; font-size: 0.75rem; color: rgba(255,255,255,0.4);
+    }
+
+    .kac-field { margin-bottom: 16px; }
+    .kac-field label {
+        display: block; font-size: 0.78rem; color: rgba(255,255,255,0.55);
+        margin-bottom: 6px; font-weight: 500;
+    }
+    .kac-field label .req { color: #ff6b6b; }
+    .kac-field input,
+    .kac-field select,
+    .kac-field textarea {
+        width: 100%; padding: 12px 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px; color: #fff; font-size: 0.88rem;
+        font-family: inherit; transition: all 0.15s;
+    }
+    .kac-field input:focus,
+    .kac-field select:focus,
+    .kac-field textarea:focus {
+        outline: none; border-color: rgba(245,197,66,0.4);
+        background: rgba(245,197,66,0.03);
+    }
+    .kac-field textarea { resize: vertical; min-height: 70px; }
+
+    .kac-row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 640px) { .kac-row { grid-template-columns: 1fr; } }
+
+    .kac-split {
+        display: grid; grid-template-columns: 2fr 1fr;
+        gap: 18px; align-items: stretch; margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .kac-split { grid-template-columns: 1fr; } }
+    .kac-split .kac-field { margin-bottom: 0; }
+
+    .kac-status-panel {
+        background: rgba(255,255,255,0.03);
+        border: 1px dashed rgba(255,255,255,0.08);
+        border-radius: 10px; padding: 16px 18px;
+        display: flex; flex-direction: column; justify-content: center;
+        gap: 8px; transition: all 0.2s; min-height: 100px;
+    }
+    .kac-status-panel.has-value {
+        border-style: solid; background: rgba(245,197,66,0.04);
+        border-color: rgba(245,197,66,0.25);
+    }
+    .kac-status-panel .panel-label {
+        font-size: 0.68rem; color: rgba(255,255,255,0.35);
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .kac-status-panel .panel-name {
+        font-size: 0.92rem; font-weight: 600; color: #fff;
+        line-height: 1.3;
+    }
+    .kac-status-badge-lg {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 14px; border-radius: 8px; font-size: 0.82rem;
+        font-weight: 700; letter-spacing: 0.3px; align-self: flex-start;
+        line-height: 1.3;
+    }
+    .kac-status-badge-lg.full {
+        background: rgba(74,222,128,0.15); color: #4ade80;
+        border: 1px solid rgba(74,222,128,0.25);
+    }
+    .kac-status-badge-lg.partial {
+        background: rgba(245,197,66,0.15); color: #f5c542;
+        border: 1px solid rgba(245,197,66,0.25);
+    }
+    .kac-status-badge-lg.none {
+        background: rgba(255,107,107,0.12); color: #ff6b6b;
+        border: 1px solid rgba(255,107,107,0.22);
+    }
+    .kac-status-badge-lg.empty {
+        background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35);
+        border: 1px dashed rgba(255,255,255,0.08);
+    }
+    .kac-status-panel .panel-note {
+        font-size: 0.72rem; color: rgba(255,255,255,0.5);
+        line-height: 1.5; margin-top: 2px;
+    }
+    .kac-status-panel .panel-note.charged {
+        color: #4ade80;
+    }
+    .kac-status-panel .panel-note.debt {
+        color: #f5c542;
+    }
+
+    .kac-hint {
+        font-size: 0.72rem; color: rgba(255,255,255,0.35);
+        margin-top: 8px; display: flex; align-items: flex-start;
+        gap: 6px; line-height: 1.5;
+    }
+    .kac-hint i { color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+    .kac-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 22px; border-radius: 8px; border: none;
+        font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        transition: all 0.15s; text-decoration: none;
+    }
+    .kac-btn-primary { background: #f5c542; color: #0a0a14; }
+    .kac-btn-primary:hover { background: #eab308; transform: translateY(-1px); }
+    .kac-btn-secondary {
+        background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8);
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+    .kac-btn-secondary:hover { background: rgba(255,255,255,0.09); }
+    .kac-btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+
+    .kac-preview {
+        display: none; background: rgba(245,197,66,0.05);
+        border: 1px solid rgba(245,197,66,0.15);
+        border-radius: 10px; padding: 16px 20px; margin-top: 12px;
+    }
+    .kac-preview.show { display: block; }
+    .kac-preview-row {
+        display: flex; justify-content: space-between;
+        padding: 6px 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);
+    }
+    .kac-preview-row.total {
+        border-top: 1px solid rgba(245,197,66,0.2);
+        margin-top: 6px; padding-top: 10px;
+        font-weight: 700; font-size: 1rem; color: #f5c542;
+    }
+    .kac-preview-row.alert {
+        border-top: 1px solid rgba(255,107,107,0.2);
+        color: #ff6b6b; font-size: 0.78rem; padding-top: 8px;
+        margin-top: 6px;
+    }
+
+    .kac-table-wrap { overflow-x: auto; border-radius: 10px; }
+    .kac-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .kac-table thead th {
+        text-align: left; padding: 12px 14px;
+        color: rgba(255,255,255,0.4); font-weight: 600;
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;
+        background: rgba(255,255,255,0.03);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        white-space: nowrap;
+    }
+    .kac-table tbody td {
+        padding: 12px 14px; color: rgba(255,255,255,0.8);
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .kac-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    .kac-badge {
+        display: inline-block; padding: 3px 10px; border-radius: 20px;
+        font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.3px; white-space: nowrap;
+    }
+    .kac-badge-success { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .kac-badge-warning { background: rgba(245,197,66,0.15); color: #f5c542; }
+    .kac-badge-danger  { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+    .kac-badge-info    { background: rgba(0,224,255,0.12); color: #00e0ff; }
+
+    .kac-empty {
+        text-align: center; padding: 50px 20px; color: rgba(255,255,255,0.3);
+    }
+    .kac-empty i {
+        font-size: 2.5rem; opacity: 0.2;
+        display: block; margin-bottom: 12px;
+    }
+
+    .kac-register-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 12px; margin-top: 16px;
+    }
+    .kac-slot {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px; padding: 14px 16px;
+        display: flex; align-items: flex-start; gap: 12px;
+        transition: all 0.15s;
+    }
+    .kac-slot.active { border-left: 3px solid #4ade80; }
+    .kac-slot.deceased { border-left: 3px solid #ff6b6b; opacity: 0.55; }
+    .kac-slot.empty {
+        border-left: 3px dashed rgba(245,197,66,0.3);
+        opacity: 0.65; cursor: pointer;
+    }
+    .kac-slot.empty:hover {
+        opacity: 1; border-left-color: #f5c542;
+        background: rgba(245,197,66,0.04);
+    }
+    .kac-slot-num {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.78rem; font-weight: 700;
+        color: #f5c542; flex-shrink: 0;
+    }
+    .kac-slot-body { flex: 1; min-width: 0; }
+    .kac-slot-name {
+        font-weight: 600; color: #fff; font-size: 0.9rem;
+        margin-bottom: 3px; word-break: break-word;
+    }
+    .kac-slot.deceased .kac-slot-name {
+        text-decoration: line-through; color: rgba(255,255,255,0.4);
+    }
+    .kac-slot-meta { font-size: 0.7rem; color: rgba(255,255,255,0.4); }
+    .kac-slot-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .kac-slot-actions button {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.45);
+        padding: 3px 8px; border-radius: 6px;
+        cursor: pointer; font-size: 0.65rem; transition: all 0.15s;
+    }
+    .kac-slot-actions button:hover {
+        color: #ff6b6b; border-color: rgba(255,107,107,0.3);
+    }
+
+    .kac-filter-bar {
+        display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .kac-filter-bar input,
+    .kac-filter-bar select {
+        flex: 1; min-width: 160px; padding: 9px 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px; color: #fff; font-size: 0.82rem;
+    }
+
+    .kac-modal {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85); z-index: 9999;
+        backdrop-filter: blur(8px); align-items: center;
+        justify-content: center; padding: 20px;
+    }
+    .kac-modal.show { display: flex; }
+    .kac-modal-box {
+        background: #1a1a2e; border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px; padding: 26px;
+        max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
+    }
+    .kac-modal-box.narrow { max-width: 460px; }
+    .kac-modal-head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 20px; padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .kac-modal-head h3 {
+        margin: 0; font-size: 1.05rem;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .kac-modal-close {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.5);
+        width: 34px; height: 34px; border-radius: 50%;
+        cursor: pointer; font-size: 1rem; transition: all 0.15s;
+    }
+    .kac-modal-close:hover {
+        background: rgba(255,255,255,0.08); color: #fff;
+    }
+    .kac-submodal-grid {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 14px; margin-bottom: 16px;
+    }
+    @media (max-width: 640px) { .kac-submodal-grid { grid-template-columns: 1fr; } }
+
+    /* Rule banner */
+    .kac-rule-banner {
+        background: rgba(255,107,107,0.06);
+        border-left: 3px solid #ff6b6b;
+        padding: 12px 16px; border-radius: 8px;
+        margin-bottom: 20px; font-size: 0.82rem;
+        color: rgba(255,255,255,0.75); line-height: 1.55;
+    }
+    .kac-rule-banner i { color: #ff6b6b; margin-right: 4px; }
+</style>
+
+
+<div class="kac-page">
+
+    <!-- HEADER -->
+    <div class="kac-header">
+        <div class="kac-header-icon">
             <i class="fas fa-hand-holding-heart"></i>
         </div>
-        <div class="rp-header-text">
-            <h2>KAC Condolence Claims</h2>
-            <p>Record condolence and death claims — automatic deductions from every eligible member</p>
+        <div class="kac-header-text">
+            <h2>KAC Condolence Scheme</h2>
+            <p>Every member is charged on each claim — no exceptions</p>
         </div>
-        <div style="margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a href="{{ url_for('treasurer_dashboard') }}"
-               class="tr-btn"
-               style="font-size:0.78rem; padding:8px 14px; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); text-decoration:none; border:1px solid rgba(255,255,255,0.08);">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
+        <div class="kac-header-actions">
+            <a href="{{ url_for('treasurer_dashboard') }}" class="kac-btn kac-btn-secondary">
+                <i class="fas fa-arrow-left"></i> Dashboard
             </a>
-            <button onclick="confirmYearReset()" class="tr-btn tr-btn-primary"
-                    style="font-size:0.78rem; padding:8px 14px;">
+            <button onclick="confirmYearReset()" class="kac-btn kac-btn-primary">
                 <i class="fas fa-sync-alt"></i> Year-End Reset
             </button>
         </div>
     </div>
 
-    <!-- ============================================================
-         SUMMARY STATS
-         ============================================================ -->
-    <div class="admin-stats" style="margin-bottom:20px;">
-        <div class="stat-box">
-            <i class="fas fa-users" style="color:#4ade80;"></i>
-            <h3>{{ eligible_count }}</h3>
-            <p>Eligible Members</p>
+    <!-- STATS -->
+    <div class="kac-stats">
+        <div class="kac-stat">
+            <div class="kac-stat-icon" style="color:#4ade80;"><i class="fas fa-users"></i></div>
+            <div class="kac-stat-body">
+                <h3>{{ eligible_count }}</h3>
+                <p>Fully Paid</p>
+            </div>
         </div>
-        <div class="stat-box">
-            <i class="fas fa-hand-holding-heart" style="color:#f5c542;"></i>
-            <h3>{{ total_condolences }}</h3>
-            <p>Condolence Claims</p>
+        <div class="kac-stat">
+            <div class="kac-stat-icon" style="color:#f5c542;"><i class="fas fa-hourglass-half"></i></div>
+            <div class="kac-stat-body">
+                <h3>{{ partial_count }}</h3>
+                <p>Partial Payments</p>
+            </div>
         </div>
-        <div class="stat-box">
-            <i class="fas fa-cross" style="color:#ff6b6b;"></i>
-            <h3>{{ total_deaths }}</h3>
-            <p>Death Claims</p>
+        <div class="kac-stat">
+            <div class="kac-stat-icon" style="color:#f5c542;"><i class="fas fa-dove"></i></div>
+            <div class="kac-stat-body">
+                <h3>{{ total_condolences }}</h3>
+                <p>Condolence Claims</p>
+            </div>
         </div>
-        <div class="stat-box">
-            <i class="fas fa-coins" style="color:#00e0ff;"></i>
-            <h3>UGX {{ "{:,.0f}".format(total_collected_all) }}</h3>
-            <p>Total Collected</p>
+        <div class="kac-stat">
+            <div class="kac-stat-icon" style="color:#ff6b6b;"><i class="fas fa-cross"></i></div>
+            <div class="kac-stat-body">
+                <h3>{{ total_deaths }}</h3>
+                <p>Death Claims</p>
+            </div>
+        </div>
+        <div class="kac-stat">
+            <div class="kac-stat-icon" style="color:#00e0ff;"><i class="fas fa-coins"></i></div>
+            <div class="kac-stat-body">
+                <h3>UGX {{ "{:,.0f}".format(total_collected_all) }}</h3>
+                <p>Total Collected</p>
+            </div>
         </div>
     </div>
 
-    <!-- ============================================================
-         INFO BANNER
-         ============================================================ -->
-    <div style="background:rgba(245,197,66,0.06); border-left:3px solid #f5c542;
-                padding:14px 18px; border-radius:8px; margin-bottom:20px;
-                font-size:0.85rem; color:rgba(255,255,255,0.75); line-height:1.6;">
-        <i class="fas fa-info-circle" style="color:#f5c542;"></i>
-        <strong>How it works:</strong>
-        Only members with a <strong>fully-paid KAC (UGX 100,000)</strong> are charged.
-        For a <strong>condolence</strong> claim, select the person who died from the affected member's register —
-        their slot will be permanently closed. For a <strong>death</strong> claim (the member themselves),
-        no register selection is needed.
-    </div>
-
-    <!-- ============================================================
-         NEW CLAIM FORM
-         ============================================================ -->
-    <div class="action-card" style="margin-bottom:24px;">
-        <div class="action-title">
-            <i class="fas fa-plus-circle"></i> Record New Claim
-        </div>
-
-        <form id="kacClaimForm" onsubmit="submitKacClaim(event)" class="tr-form">
-
-            <div class="tr-form-row">
-                <div class="tr-field">
-                    <label>Claim Type <span class="req">*</span></label>
-                    <select id="claimType" required onchange="onClaimTypeChange()">
-                        <option value="">— Select type —</option>
-                        <option value="condolence">
-                            Condolence — lost a loved one (UGX {{ "{:,.0f}".format(kac_condolence_amount) }} each)
-                        </option>
-                        <option value="death">
-                            Death — member has passed (UGX {{ "{:,.0f}".format(kac_death_amount) }} each)
-                        </option>
-                    </select>
-                </div>
-                <div class="tr-field">
-                    <label>Event Date <span class="req">*</span></label>
-                    <input type="date" id="eventDate" required
-                           value="{{ now.strftime('%Y-%m-%d') }}">
-                </div>
-            </div>
-
-            <div class="tr-field">
-                <label>Affected Member <span class="req">*</span></label>
-                <select id="affectedUser" required onchange="loadMemberRegister()">
-                    <option value="">— Select member —</option>
-
-                    {% if staff_members %}
-                    <optgroup label="👔 Staff Members">
-                        {% for m in staff_members %}
-                        <option value="{{ m.id }}"
-                                data-role="{{ m.role }}"
-                                data-kac="{{ (m.kac_paid or 0)|int }}">
-                            {{ m.full_name }} ({{ m.sacco_number }}) — {{ m.role|title }}
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
-
-                    {% if regular_members %}
-                    <optgroup label="👤 Members">
-                        {% for m in regular_members %}
-                        <option value="{{ m.id }}"
-                                data-role="{{ m.role }}"
-                                data-kac="{{ (m.kac_paid or 0)|int }}">
-                            {{ m.full_name }} ({{ m.sacco_number }})
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
-                </select>
-            </div>
-
-            <!-- Register entry — only for condolence -->
-            <div class="tr-field" id="registerEntryWrap" style="display:none;">
-                <label>Registered Person Who Passed <span class="req">*</span></label>
-                <select id="registerEntry" onchange="updateKacPreview()">
-                    <option value="">— Loading… —</option>
-                </select>
-                <div class="tr-field-hint">
-                    <i class="fas fa-info-circle"></i>
-                    Shows only <strong>active</strong> persons from this member's register.
-                    Once selected, they will be permanently marked as deceased.
-                </div>
-            </div>
-
-            <div class="tr-field">
-                <label>Description / Notes</label>
-                <textarea id="claimDescription" rows="2"
-                          placeholder="Optional — e.g. name of the deceased, relationship, cause..."></textarea>
-            </div>
-
-            <!-- Live preview -->
-            <div id="kacPreview" class="tr-alloc-panel" style="display:none;">
-                <div class="tr-alloc-head">
-                    <i class="fas fa-calculator"></i> Deduction Preview
-                </div>
-                <div class="tr-alloc-row">
-                    <span class="k">Amount per member</span>
-                    <span class="v gold" id="previewPerMember">UGX 0</span>
-                </div>
-                <div class="tr-alloc-row">
-                    <span class="k">Eligible members</span>
-                    <span class="v green" id="previewEligible">0</span>
-                </div>
-                <div class="tr-alloc-row total">
-                    <span class="k">Total to collect</span>
-                    <span class="v" id="previewTotal">UGX 0</span>
-                </div>
-            </div>
-
-            <div class="tr-field" style="margin-bottom:0;">
-                <button type="submit" class="tr-btn tr-btn-primary">
-                    <i class="fas fa-check"></i> Record Claim &amp; Deduct All Members
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ============================================================
-         CLAIM HISTORY
-         ============================================================ -->
-    <div class="action-card">
-        <div class="action-title">
+    <!-- TABS -->
+    <div class="kac-tabs">
+        <button class="kac-tab active" onclick="switchTab('record')" data-tab="record">
+            <i class="fas fa-plus-circle"></i> Record Claim
+        </button>
+        <button class="kac-tab" onclick="switchTab('register')" data-tab="register">
+            <i class="fas fa-address-book"></i> Manage Registers
+        </button>
+        <button class="kac-tab" onclick="switchTab('history')" data-tab="history">
             <i class="fas fa-history"></i> Claim History
-            <span style="font-size:0.72rem; color:var(--tr-muted); font-weight:400; margin-left:auto;">
-                {{ total_claims }} claim{{ 's' if total_claims != 1 else '' }} recorded
-            </span>
+        </button>
+    </div>
+
+
+    <!-- ============================================================
+         TAB 1 — RECORD CLAIM
+         ============================================================ -->
+    <div class="kac-pane active" id="pane-record">
+
+        <div class="kac-rule-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Rule:</strong> Every KAC member is charged on each claim — regardless of whether they've paid in full.
+            If their KAC balance is insufficient, they go into <strong>debt</strong> and must pay the balance to the SACCO.
+            The year-end reset clears all balances back to zero.
         </div>
 
-        <div class="tr-filter-bar" style="margin-bottom:12px;">
-            <input type="text" id="searchClaims"
-                   placeholder="Search by claim #, member, or registered person..."
-                   onkeyup="filterClaims()">
-            <select id="filterClaimType" onchange="filterClaims()">
-                <option value="all">All Types</option>
-                <option value="condolence">Condolence</option>
-                <option value="death">Death</option>
-            </select>
-            <select id="filterClaimStatus" onchange="filterClaims()">
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="reversed">Reversed</option>
-            </select>
-        </div>
+        <div class="kac-card">
+            <div class="kac-card-head">
+                <i class="fas fa-plus-circle"></i>
+                <h3>Record a New Claim</h3>
+                <span class="meta">Anyone can trigger a claim</span>
+            </div>
 
-        <div style="overflow-x:auto;">
-            <table class="styled-table" id="kacClaimsTable">
-                <thead>
-                    <tr>
-                        <th style="width:36px;">#</th>
-                        <th style="width:120px;">Claim #</th>
-                        <th style="width:110px;">Type</th>
-                        <th style="width:150px;">Affected Member</th>
-                        <th style="width:170px;">Registered Person</th>
-                        <th style="width:100px; text-align:right;">Per Member</th>
-                        <th style="width:80px; text-align:center;">Charged</th>
-                        <th style="width:110px; text-align:right;">Total</th>
-                        <th style="width:95px;">Date</th>
-                        <th style="width:90px;">Status</th>
-                        <th style="width:140px; text-align:center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in kac_claims %}
-                    <tr data-type="{{ c.claim_type }}" data-status="{{ c.status }}">
-                        <td style="color:var(--tr-dim); text-align:center;">{{ loop.index }}</td>
+            <form id="kacClaimForm" onsubmit="submitKacClaim(event)">
 
-                        <td style="color:#f5c542; font-family:monospace; font-size:0.78rem; font-weight:600;">
-                            {{ c.claim_number }}
-                        </td>
+                <div class="kac-row" style="margin-bottom:16px;">
+                    <div class="kac-field" style="margin-bottom:0;">
+                        <label>Claim Type <span class="req">*</span></label>
+                        <select id="claimType" required onchange="onClaimTypeChange()">
+                            <option value="">— Select type —</option>
+                            <option value="condolence">
+                                🕊️ Condolence — lost a loved one (UGX {{ "{:,.0f}".format(kac_condolence_amount) }})
+                            </option>
+                            <option value="death">
+                                💀 Death — member has passed (UGX {{ "{:,.0f}".format(kac_death_amount) }})
+                            </option>
+                        </select>
+                    </div>
+                    <div class="kac-field" style="margin-bottom:0;">
+                        <label>Event Date <span class="req">*</span></label>
+                        <input type="date" id="eventDate" required value="{{ now.strftime('%Y-%m-%d') }}">
+                    </div>
+                </div>
 
-                        <td>
-                            {% if c.claim_type == 'death' %}
-                                <span style="color:#ff6b6b; font-weight:600; font-size:0.75rem;">
-                                    <i class="fas fa-cross"></i> DEATH
-                                </span>
-                            {% else %}
-                                <span style="color:#f5c542; font-weight:600; font-size:0.75rem;">
-                                    <i class="fas fa-dove"></i> CONDOLENCE
-                                </span>
+                <!-- TWO COLUMNS: Affected Member | Status Badge -->
+                <div class="kac-split">
+                    <div class="kac-field" style="margin-bottom:0;">
+                        <label>Affected Member <span class="req">*</span></label>
+                        <select id="affectedUser" required onchange="onAffectedMemberChange()">
+                            <option value="">— Select member —</option>
+
+                            {% if staff_members %}
+                            <optgroup label="👔 Staff">
+                                {% for m in staff_members %}
+                                <option value="{{ m.id }}"
+                                        data-role="{{ m.role }}"
+                                        data-kac="{{ (m.kac_paid or 0)|int }}"
+                                        data-used="{{ (m.kac_used or 0)|int }}"
+                                        data-name="{{ m.full_name }}"
+                                        data-sacco="{{ m.sacco_number }}">
+                                    {{ m.full_name }} ({{ m.sacco_number }}) — {{ m.role|title }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
                             {% endif %}
-                        </td>
 
-                        <td>
-                            <strong style="color:var(--tr-text);">{{ c.affected_name }}</strong>
-                        </td>
+                            {% if regular_members %}
+                            <optgroup label="👤 Members">
+                                {% for m in regular_members %}
+                                <option value="{{ m.id }}"
+                                        data-role="{{ m.role }}"
+                                        data-kac="{{ (m.kac_paid or 0)|int }}"
+                                        data-used="{{ (m.kac_used or 0)|int }}"
+                                        data-name="{{ m.full_name }}"
+                                        data-sacco="{{ m.sacco_number }}">
+                                    {{ m.full_name }} ({{ m.sacco_number }})
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                        </select>
+                        <div class="kac-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Anyone registered in the SACCO can be an affected member.
+                        </div>
+                    </div>
 
-                        <td style="font-size:0.82rem;">
-                            {% if c.register_entry_name %}
-                                <i class="fas fa-user" style="color:rgba(255,255,255,0.3);"></i>
-                                <span style="color:rgba(255,255,255,0.75);">{{ c.register_entry_name }}</span>
-                                {% if c.register_relationship %}
-                                <div style="font-size:0.68rem; color:rgba(255,255,255,0.35); margin-top:2px;">
-                                    {{ c.register_relationship|title }}
-                                    {% if c.register_slot %}
-                                        · Slot {{ c.register_slot }}
-                                    {% endif %}
-                                </div>
+                    <div class="kac-status-panel" id="kacStatusPanel">
+                        <div class="panel-label">KAC Status</div>
+                        <div class="panel-name" id="statusName">No member selected</div>
+                        <div class="kac-status-badge-lg empty" id="statusBadge">
+                            <i class="fas fa-circle-question"></i> — Select a member —
+                        </div>
+                        <div class="panel-note" id="statusNote"></div>
+                    </div>
+                </div>
+
+                <!-- Register entry (condolence only) -->
+                <div class="kac-field" id="registerEntryWrap" style="display:none; margin-top:16px;">
+                    <label>Registered Person Who Passed <span class="req">*</span></label>
+                    <select id="registerEntry" onchange="updateKacPreview()">
+                        <option value="">— Loading… —</option>
+                    </select>
+                    <div class="kac-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Only <strong>active</strong> persons from this member's register are shown.
+                        Once selected, that slot will be permanently marked as deceased.
+                        <a href="#" onclick="switchTab('register'); return false;"
+                           style="color:#f5c542; margin-left:4px;">
+                            Manage register →
+                        </a>
+                    </div>
+                </div>
+
+                <div class="kac-field">
+                    <label>Description / Notes</label>
+                    <textarea id="claimDescription" rows="2"
+                              placeholder="Optional — name of the deceased, relationship..."></textarea>
+                </div>
+
+                <!-- Preview -->
+                <div class="kac-preview" id="kacPreview">
+                    <div class="kac-preview-row">
+                        <span>Amount per member</span>
+                        <span style="color:#f5c542; font-weight:600;" id="previewPerMember">UGX 0</span>
+                    </div>
+                    <div class="kac-preview-row">
+                        <span>Members to be charged</span>
+                        <span style="color:#4ade80; font-weight:600;" id="previewEligible">0</span>
+                    </div>
+                    <div class="kac-preview-row total">
+                        <span>Total to collect</span>
+                        <span id="previewTotal">UGX 0</span>
+                    </div>
+                    <div class="kac-preview-row alert" id="previewDebtRow" style="display:none;">
+                        <span><i class="fas fa-exclamation-circle"></i>
+                              Members going into debt</span>
+                        <span id="previewDebtCount">0</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <button type="submit" class="kac-btn kac-btn-primary">
+                        <i class="fas fa-check"></i> Record Claim &amp; Charge Everyone
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ============================================================
+         TAB 2 — MANAGE REGISTERS
+         ============================================================ -->
+    <div class="kac-pane" id="pane-register">
+
+        <div class="kac-card">
+            <div class="kac-card-head">
+                <i class="fas fa-address-book"></i>
+                <h3>Member Condolence Registers</h3>
+                <span class="meta">Each member registers up to 10 people</span>
+            </div>
+
+            <div class="kac-filter-bar">
+                <input type="text" id="registerSearch"
+                       placeholder="Search by member name or SACCO number..."
+                       onkeyup="filterRegisterList()">
+                <select id="registerFilter" onchange="filterRegisterList()">
+                    <option value="all">All Members</option>
+                    <option value="has">Has Register</option>
+                    <option value="empty">No Register Yet</option>
+                </select>
+            </div>
+
+            <div class="kac-table-wrap">
+                <table class="kac-table" id="registerMembersTable">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>SACCO No.</th>
+                            <th>KAC Status</th>
+                            <th style="text-align:center;">Register</th>
+                            <th style="text-align:center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set all_users = (staff_members or []) + (regular_members or []) %}
+                        {% for m in all_users %}
+                        <tr data-name="{{ m.full_name|lower }}"
+                            data-sacco="{{ m.sacco_number|lower }}"
+                            data-register-count="{{ register_counts.get(m.id, 0) }}"
+                            data-kac="{{ (m.kac_paid or 0)|int }}">
+                            <td>
+                                <strong>{{ m.full_name }}</strong>
+                                {% if m.role and m.role != 'member' %}
+                                <span style="font-size:0.65rem; padding:2px 8px; border-radius:10px;
+                                             background:rgba(0,224,255,0.1); color:#00e0ff; margin-left:6px;">
+                                    {{ m.role|title }}
+                                </span>
                                 {% endif %}
-                            {% else %}
-                                <span style="color:var(--tr-dim);">—</span>
-                            {% endif %}
-                        </td>
+                            </td>
+                            <td style="font-family:monospace; color:#f5c542; font-size:0.8rem;">
+                                {{ m.sacco_number }}
+                            </td>
+                            <td>
+                                {% if (m.kac_paid or 0) >= 100000 %}
+                                    <span class="kac-badge kac-badge-success">✓ Fully Paid</span>
+                                {% elif (m.kac_paid or 0) > 0 %}
+                                    <span class="kac-badge kac-badge-warning">
+                                        ⚠ Partial · UGX {{ "{:,.0f}".format(m.kac_paid or 0) }}
+                                    </span>
+                                {% else %}
+                                    <span class="kac-badge kac-badge-danger">✗ Not Paid</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="kac-badge kac-badge-info">
+                                    {{ register_counts.get(m.id, 0) }} / 10
+                                </span>
+                            </td>
+                            <td style="text-align:center;">
+                                <button class="kac-btn kac-btn-secondary kac-btn-sm"
+                                        onclick='openRegisterManager({{ m.id }}, {{ m.full_name|tojson }})'>
+                                    <i class="fas fa-edit"></i> Manage
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5">
+                                <div class="kac-empty">
+                                    <i class="fas fa-users"></i>
+                                    <p>No members registered yet</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-                        <td style="text-align:right; color:#f5c542; font-weight:600;">
-                            {{ "{:,.0f}".format(c.deduction_amount or 0) }}
-                        </td>
 
-                        <td style="text-align:center;">
-                            <span style="background:rgba(255,255,255,0.05); padding:2px 10px;
-                                         border-radius:10px; font-size:0.75rem; color:rgba(255,255,255,0.7);">
-                                {{ c.members_charged or 0 }}
-                            </span>
-                        </td>
+    <!-- ============================================================
+         TAB 3 — CLAIM HISTORY
+         ============================================================ -->
+    <div class="kac-pane" id="pane-history">
 
-                        <td style="text-align:right; color:#4ade80; font-weight:600;">
-                            {{ "{:,.0f}".format(c.total_collected or 0) }}
-                        </td>
+        <div class="kac-card">
+            <div class="kac-card-head">
+                <i class="fas fa-history"></i>
+                <h3>All Claims</h3>
+                <span class="meta">{{ total_claims }} recorded</span>
+            </div>
 
-                        <td style="color:var(--tr-muted); font-size:0.78rem; white-space:nowrap;">
-                            {{ c.event_date }}
-                        </td>
+            <div class="kac-filter-bar">
+                <input type="text" id="searchClaims"
+                       placeholder="Search by claim #, member, or person..."
+                       onkeyup="filterClaims();">
+                <select id="filterClaimType" onchange="filterClaims();">
+                    <option value="all">All Types</option>
+                    <option value="condolence">Condolence</option>
+                    <option value="death">Death</option>
+                </select>
+                <select id="filterClaimStatus" onchange="filterClaims();">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="reversed">Reversed</option>
+                </select>
+            </div>
 
-                        <td>
-                            {% if c.status == 'reversed' %}
-                                <span class="badge danger" style="font-size:0.65rem;">REVERSED</span>
-                            {% else %}
-                                <span class="badge success" style="font-size:0.65rem;">ACTIVE</span>
-                            {% endif %}
-                        </td>
-
-                        <td style="text-align:center; white-space:nowrap;">
-                            <button onclick="viewClaimDetails('{{ c.id }}')"
-                                    class="dropdown-action view"
-                                    style="padding:4px 10px; font-size:0.72rem;">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                            {% if c.status != 'reversed' %}
-                            <button onclick="openReverseClaim('{{ c.id }}')"
-                                    class="dropdown-action reject"
-                                    style="padding:4px 10px; font-size:0.72rem;">
-                                <i class="fas fa-undo-alt"></i> Reverse
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="11" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
-                            <i class="fas fa-hand-holding-heart"
-                               style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
-                            <div style="font-family:'Playfair Display', serif; font-size:1rem;
-                                        color:var(--tr-text); margin-bottom:6px;">
-                                No Claims Recorded Yet
-                            </div>
-                            <p style="font-size:0.82rem; color:var(--tr-muted); margin:0;">
-                                Claims you record will appear here.
-                            </p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="kac-table-wrap">
+                <table class="kac-table" id="kacClaimsTable">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">Claim #</th>
+                            <th style="width:110px;">Type</th>
+                            <th>Affected</th>
+                            <th>Registered Person</th>
+                            <th style="text-align:right;">Per Member</th>
+                            <th style="text-align:center;">Charged</th>
+                            <th style="text-align:right;">Total</th>
+                            <th style="width:100px;">Date</th>
+                            <th style="width:100px;">Status</th>
+                            <th style="text-align:center; width:150px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in kac_claims %}
+                        <tr data-type="{{ c.claim_type }}" data-status="{{ c.status }}">
+                            <td style="font-family:monospace; color:#f5c542; font-weight:600;">
+                                {{ c.claim_number }}
+                            </td>
+                            <td>
+                                {% if c.claim_type == 'death' %}
+                                    <span class="kac-badge kac-badge-danger">
+                                        <i class="fas fa-cross"></i> Death
+                                    </span>
+                                {% else %}
+                                    <span class="kac-badge kac-badge-warning">
+                                        <i class="fas fa-dove"></i> Condolence
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ c.affected_name }}</strong></td>
+                            <td style="font-size:0.82rem;">
+                                {% if c.register_entry_name %}
+                                    <span style="color:rgba(255,255,255,0.75);">
+                                        {{ c.register_entry_name }}
+                                    </span>
+                                    {% if c.register_relationship %}
+                                    <div style="font-size:0.68rem; color:rgba(255,255,255,0.35); margin-top:2px;">
+                                        {{ c.register_relationship|title }}
+                                        {% if c.register_slot %} · Slot {{ c.register_slot }}{% endif %}
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color:rgba(255,255,255,0.3);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:right; color:#f5c542; font-weight:600;">
+                                {{ "{:,.0f}".format(c.deduction_amount or 0) }}
+                            </td>
+                            <td style="text-align:center;">
+                                <span style="background:rgba(255,255,255,0.05);
+                                             padding:2px 10px; border-radius:10px;
+                                             font-size:0.75rem; color:rgba(255,255,255,0.7);">
+                                    {{ c.members_charged or 0 }}
+                                </span>
+                            </td>
+                            <td style="text-align:right; color:#4ade80; font-weight:600;">
+                                {{ "{:,.0f}".format(c.total_collected or 0) }}
+                            </td>
+                            <td style="color:rgba(255,255,255,0.5); font-size:0.78rem; white-space:nowrap;">
+                                {{ c.event_date }}
+                            </td>
+                            <td>
+                                {% if c.status == 'reversed' %}
+                                    <span class="kac-badge kac-badge-danger">Reversed</span>
+                                {% else %}
+                                    <span class="kac-badge kac-badge-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:center; white-space:nowrap;">
+                                <button onclick="viewClaimDetails('{{ c.id }}')"
+                                        class="kac-btn kac-btn-secondary kac-btn-sm">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                {% if c.status != 'reversed' %}
+                                <button onclick="openReverseClaim('{{ c.id }}')"
+                                        class="kac-btn kac-btn-sm"
+                                        style="background:rgba(255,107,107,0.12); color:#ff6b6b; border:1px solid rgba(255,107,107,0.2);">
+                                    <i class="fas fa-undo-alt"></i> Reverse
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10">
+                                <div class="kac-empty">
+                                    <i class="fas fa-hand-holding-heart"></i>
+                                    <p>No claims recorded yet</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -330,26 +807,39 @@
 
 
 <!-- ============================================================
+     REGISTER MANAGER MODAL
+     ============================================================ -->
+<div class="kac-modal" id="registerManagerModal">
+    <div class="kac-modal-box">
+        <div class="kac-modal-head">
+            <h3 style="color:#f5c542;">
+                <i class="fas fa-address-book"></i>
+                Register · <span id="registerManagerName">Member</span>
+            </h3>
+            <button class="kac-modal-close" onclick="closeRegisterManager()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="registerManagerBody">
+            <div style="text-align:center; padding:40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
      VIEW CLAIM DETAILS MODAL
      ============================================================ -->
-<div id="claimDetailsModal"
-     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
-            z-index:9999; backdrop-filter:blur(8px);
-            align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06);
-                border-radius:16px; padding:28px; max-width:800px; width:100%;
-                max-height:90vh; overflow-y:auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center;
-                    margin-bottom:16px; padding-bottom:12px;
-                    border-bottom:1px solid rgba(255,255,255,0.04);">
-            <h3 style="margin:0; color:#f5c542; font-size:1.1rem;
-                       display:flex; align-items:center; gap:10px;">
+<div class="kac-modal" id="claimDetailsModal">
+    <div class="kac-modal-box">
+        <div class="kac-modal-head">
+            <h3 style="color:#f5c542;">
                 <i class="fas fa-hand-holding-heart"></i> Claim Details
             </h3>
-            <button onclick="closeClaimDetails()"
-                    style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
-                           color:rgba(255,255,255,0.4); width:36px; height:36px;
-                           border-radius:50%; cursor:pointer; font-size:1.2rem;">
+            <button class="kac-modal-close" onclick="closeClaimDetails()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -365,60 +855,36 @@
 <!-- ============================================================
      REVERSE CLAIM MODAL
      ============================================================ -->
-<div id="reverseClaimModal"
-     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
-            z-index:9999; backdrop-filter:blur(8px);
-            align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.06);
-                border-radius:16px; padding:28px; max-width:500px; width:100%;">
-        <div style="display:flex; justify-content:space-between; align-items:center;
-                    margin-bottom:16px;">
-            <h3 style="margin:0; color:#ff6b6b; font-size:1.05rem;
-                       display:flex; align-items:center; gap:10px;">
+<div class="kac-modal" id="reverseClaimModal">
+    <div class="kac-modal-box narrow">
+        <div class="kac-modal-head">
+            <h3 style="color:#ff6b6b;">
                 <i class="fas fa-undo-alt"></i> Reverse Claim
             </h3>
-            <button onclick="closeReverseClaim()"
-                    style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
-                           color:rgba(255,255,255,0.4); width:34px; height:34px;
-                           border-radius:50%; cursor:pointer;">
+            <button class="kac-modal-close" onclick="closeReverseClaim()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
         <div style="background:rgba(255,107,107,0.06); border-left:3px solid #ff6b6b;
                     padding:12px 14px; border-radius:6px; margin-bottom:16px;
-                    font-size:0.8rem; color:rgba(255,255,255,0.75); line-height:1.55;">
+                    font-size:0.82rem; color:rgba(255,255,255,0.75); line-height:1.55;">
             <i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i>
-            Reversing will <strong>refund every member</strong> who was charged and
-            <strong>reopen the register slot</strong> if a person was marked as deceased.
+            Reversing will refund every member and reopen the register slot if one was marked.
         </div>
 
-        <div style="margin-bottom:16px;">
-            <label style="font-size:0.8rem; color:rgba(255,255,255,0.5);
-                          display:block; margin-bottom:6px;">
-                Reversal Reason <span style="color:#ff6b6b;">*</span>
-            </label>
+        <div class="kac-field">
+            <label>Reversal Reason <span class="req">*</span></label>
             <textarea id="reverseReason" rows="3" required
-                      placeholder="e.g. Recorded in error, wrong member selected..."
-                      style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.04);
-                             border:1px solid rgba(255,255,255,0.08); border-radius:8px;
-                             color:#fff; resize:vertical; font-family:inherit;"></textarea>
+                      placeholder="e.g. Recorded in error, wrong member selected..."></textarea>
         </div>
 
         <input type="hidden" id="reverseClaimId">
 
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button onclick="closeReverseClaim()"
-                    style="padding:10px 20px; background:rgba(255,255,255,0.04);
-                           border:1px solid rgba(255,255,255,0.08);
-                           color:rgba(255,255,255,0.5); border-radius:8px;
-                           cursor:pointer;">
-                Cancel
-            </button>
-            <button onclick="submitReverseClaim()"
-                    style="padding:10px 20px; background:#ff6b6b; color:#fff;
-                           border:none; border-radius:8px; cursor:pointer;
-                           font-weight:600;">
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+            <button onclick="closeReverseClaim()" class="kac-btn kac-btn-secondary">Cancel</button>
+            <button onclick="submitReverseClaim()" class="kac-btn"
+                    style="background:#ff6b6b; color:#fff;">
                 <i class="fas fa-undo-alt"></i> Confirm Reversal
             </button>
         </div>
@@ -430,15 +896,26 @@
      PAGE JS
      ============================================================ -->
 <script>
-// ============================================================
-// CONSTANTS (from server)
-// ============================================================
 const KAC_CONDOLENCE_AMOUNT = Number('{{ kac_condolence_amount or 20000 }}');
 const KAC_DEATH_AMOUNT       = Number('{{ kac_death_amount or 40000 }}');
-const KAC_ELIGIBLE_COUNT     = Number('{{ eligible_count or 0 }}');
+const KAC_TOTAL_CHARGED      = Number('{{ chargeable_count or 0 }}');
+const KAC_DEBT_RISK_COUNT    = Number('{{ debt_risk_count or 0 }}');
 
 // ============================================================
-// SHOW / HIDE REGISTER DROPDOWN
+// TABS
+// ============================================================
+function switchTab(name) {
+    document.querySelectorAll('.kac-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.kac-pane').forEach(p => p.classList.remove('active'));
+
+    const tab = document.querySelector(`.kac-tab[data-tab="${name}"]`);
+    const pane = document.getElementById('pane-' + name);
+    if (tab) tab.classList.add('active');
+    if (pane) pane.classList.add('active');
+}
+
+// ============================================================
+// CLAIM TYPE CHANGE
 // ============================================================
 function onClaimTypeChange() {
     const type = document.getElementById('claimType').value;
@@ -460,7 +937,63 @@ function onClaimTypeChange() {
 }
 
 // ============================================================
-// LOAD MEMBER'S CONDOLENCE REGISTER
+// AFFECTED MEMBER CHANGE → UPDATE STATUS PANEL
+// ============================================================
+function onAffectedMemberChange() {
+    const sel = document.getElementById('affectedUser');
+    const opt = sel.options[sel.selectedIndex];
+    const panel = document.getElementById('kacStatusPanel');
+    const nameEl = document.getElementById('statusName');
+    const badge = document.getElementById('statusBadge');
+    const note = document.getElementById('statusNote');
+
+    if (!opt || !opt.value) {
+        panel.classList.remove('has-value');
+        nameEl.textContent = 'No member selected';
+        badge.className = 'kac-status-badge-lg empty';
+        badge.innerHTML = '<i class="fas fa-circle-question"></i> — Select a member —';
+        note.textContent = '';
+        note.className = 'panel-note';
+        updateKacPreview();
+        return;
+    }
+
+    const kacPaid = Number(opt.dataset.kac || 0);
+    const kacUsed = Number(opt.dataset.used || 0);
+    const available = kacPaid - kacUsed;
+
+    panel.classList.add('has-value');
+    nameEl.textContent = opt.dataset.name || '';
+
+    if (kacPaid >= 100000) {
+        badge.className = 'kac-status-badge-lg full';
+        badge.innerHTML = '<i class="fas fa-check-circle"></i> Fully Paid';
+        note.textContent = `Available: UGX ${available.toLocaleString()}`;
+        note.className = 'panel-note charged';
+    } else if (kacPaid > 0) {
+        badge.className = 'kac-status-badge-lg partial';
+        badge.innerHTML = `<i class="fas fa-hourglass-half"></i> Partial — UGX ${kacPaid.toLocaleString()}`;
+        note.textContent = available > 0
+            ? `Available: UGX ${available.toLocaleString()} — will be charged`
+            : `No remaining balance — will go into debt`;
+        note.className = 'panel-note debt';
+    } else {
+        badge.className = 'kac-status-badge-lg none';
+        badge.innerHTML = '<i class="fas fa-times-circle"></i> Not Paid';
+        note.textContent = 'No KAC balance — will go into debt';
+        note.className = 'panel-note debt';
+    }
+
+    // Re-trigger condolence register load if type is condolence
+    if (document.getElementById('claimType').value === 'condolence') {
+        loadMemberRegister();
+    }
+
+    updateKacPreview();
+}
+
+// ============================================================
+// LOAD MEMBER REGISTER
 // ============================================================
 async function loadMemberRegister() {
     const userId = document.getElementById('affectedUser').value;
@@ -505,18 +1038,27 @@ async function loadMemberRegister() {
 function updateKacPreview() {
     const type = document.getElementById('claimType').value;
     const preview = document.getElementById('kacPreview');
-    if (!type) { preview.style.display = 'none'; return; }
+    if (!type) { preview.classList.remove('show'); return; }
 
     const perMember = (type === 'death') ? KAC_DEATH_AMOUNT : KAC_CONDOLENCE_AMOUNT;
 
     document.getElementById('previewPerMember').textContent = 'UGX ' + perMember.toLocaleString();
-    document.getElementById('previewEligible').textContent = KAC_ELIGIBLE_COUNT;
-    document.getElementById('previewTotal').textContent    = 'UGX ' + (perMember * KAC_ELIGIBLE_COUNT).toLocaleString();
-    preview.style.display = 'block';
+    document.getElementById('previewEligible').textContent = KAC_TOTAL_CHARGED;
+    document.getElementById('previewTotal').textContent    = 'UGX ' + (perMember * KAC_TOTAL_CHARGED).toLocaleString();
+
+    const debtRow = document.getElementById('previewDebtRow');
+    if (KAC_DEBT_RISK_COUNT > 0) {
+        debtRow.style.display = 'flex';
+        document.getElementById('previewDebtCount').textContent = KAC_DEBT_RISK_COUNT;
+    } else {
+        debtRow.style.display = 'none';
+    }
+
+    preview.classList.add('show');
 }
 
 // ============================================================
-// SUBMIT NEW CLAIM
+// SUBMIT CLAIM
 // ============================================================
 function submitKacClaim(e) {
     e.preventDefault();
@@ -535,10 +1077,10 @@ function submitKacClaim(e) {
     }
 
     const warning = type === 'death'
-        ? '⚠️ Record a DEATH claim?\n\nThis will deduct UGX ' + KAC_DEATH_AMOUNT.toLocaleString() +
-          ' from every fully-paid KAC member.'
-        : '⚠️ Record a CONDOLENCE claim?\n\nThis will deduct UGX ' + KAC_CONDOLENCE_AMOUNT.toLocaleString() +
-          ' from every fully-paid KAC member AND permanently mark the selected register slot as deceased.';
+        ? '⚠️ Record a DEATH claim?\n\nThis will charge UGX ' + KAC_DEATH_AMOUNT.toLocaleString() +
+          ' from EVERY KAC member (no exceptions).'
+        : '⚠️ Record a CONDOLENCE claim?\n\nThis will charge UGX ' + KAC_CONDOLENCE_AMOUNT.toLocaleString() +
+          ' from EVERY KAC member AND permanently close the selected register slot.';
 
     if (!confirm(warning + '\n\nContinue?')) return;
 
@@ -585,7 +1127,7 @@ function viewClaimDetails(claimId) {
     if (!claimId) return;
     const modal = document.getElementById('claimDetailsModal');
     const body = document.getElementById('claimDetailsBody');
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     body.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i></div>';
 
     fetch('/treasurer/kac/claim/' + claimId + '/details')
@@ -639,10 +1181,6 @@ function renderClaimDetails(data) {
                     </span>
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.02); padding:12px 14px; border-radius:8px; grid-column:span 2;">
-                <div style="color:rgba(255,255,255,0.35); font-size:0.68rem; text-transform:uppercase;">Event Date</div>
-                <div style="color:#fff; margin-top:3px;">${escapeHtmlTxt(c.event_date || '')}</div>
-            </div>
         </div>
 
         <h4 style="margin:0 0 12px; color:rgba(255,255,255,0.7); font-size:0.9rem;">
@@ -668,6 +1206,11 @@ function renderClaimDetails(data) {
         </td></tr>`;
     } else {
         deds.forEach(d => {
+            const after = Number(d.kac_after || 0);
+            const afterColor = after < 0 ? '#ff6b6b' : '#4ade80';
+            const afterLabel = after < 0
+                ? `${after.toLocaleString()} <span style="font-size:0.62rem; opacity:0.7;">(debt)</span>`
+                : after.toLocaleString();
             html += `
                 <tr style="border-top:1px solid rgba(255,255,255,0.03);">
                     <td style="padding:8px 12px; color:#fff;">${escapeHtmlTxt(d.full_name || 'Unknown')}</td>
@@ -677,8 +1220,8 @@ function renderClaimDetails(data) {
                     <td style="padding:8px 12px; text-align:right; color:rgba(255,255,255,0.5);">
                         ${(d.kac_before || 0).toLocaleString()}
                     </td>
-                    <td style="padding:8px 12px; text-align:right; color:#4ade80; font-weight:600;">
-                        ${(d.kac_after || 0).toLocaleString()}
+                    <td style="padding:8px 12px; text-align:right; color:${afterColor}; font-weight:600;">
+                        ${afterLabel}
                     </td>
                 </tr>
             `;
@@ -705,7 +1248,7 @@ function renderClaimDetails(data) {
 }
 
 function closeClaimDetails() {
-    document.getElementById('claimDetailsModal').style.display = 'none';
+    document.getElementById('claimDetailsModal').classList.remove('show');
 }
 
 // ============================================================
@@ -714,12 +1257,12 @@ function closeClaimDetails() {
 function openReverseClaim(claimId) {
     document.getElementById('reverseClaimId').value = claimId;
     document.getElementById('reverseReason').value = '';
-    document.getElementById('reverseClaimModal').style.display = 'flex';
+    document.getElementById('reverseClaimModal').classList.add('show');
     setTimeout(() => document.getElementById('reverseReason').focus(), 100);
 }
 
 function closeReverseClaim() {
-    document.getElementById('reverseClaimModal').style.display = 'none';
+    document.getElementById('reverseClaimModal').classList.remove('show');
 }
 
 function submitReverseClaim() {
@@ -764,7 +1307,7 @@ function confirmYearReset() {
     const ok = confirm(
         '⚠️ END OF YEAR RESET\n\n' +
         'This will reset EVERYONE\'s KAC balance (paid + used) to zero.\n' +
-        'Members will start paying towards the new UGX 100,000 target.\n\n' +
+        'Members will start the new year with a clean slate.\n\n' +
         'This cannot be undone. Continue?'
     );
     if (!ok) return;
@@ -780,14 +1323,12 @@ function confirmYearReset() {
 }
 
 // ============================================================
-// FILTER CLAIMS TABLE
+// FILTERS
 // ============================================================
 function filterClaims() {
     const term = (document.getElementById('searchClaims')?.value || '').toLowerCase().trim();
     const type = document.getElementById('filterClaimType')?.value || 'all';
     const status = document.getElementById('filterClaimStatus')?.value || 'all';
-
-    let visible = 0;
 
     document.querySelectorAll('#kacClaimsTable tbody tr').forEach(row => {
         if (row.querySelector('td[colspan]')) return;
@@ -802,12 +1343,178 @@ function filterClaims() {
         if (show && status !== 'all' && rowStatus !== status) show = false;
 
         row.style.display = show ? '' : 'none';
-        if (show) visible++;
+    });
+}
+
+function filterRegisterList() {
+    const term = (document.getElementById('registerSearch')?.value || '').toLowerCase().trim();
+    const filter = document.getElementById('registerFilter')?.value || 'all';
+
+    document.querySelectorAll('#registerMembersTable tbody tr').forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+
+        const name = row.dataset.name || '';
+        const sacco = row.dataset.sacco || '';
+        const count = parseInt(row.dataset.registerCount || '0', 10);
+
+        let show = true;
+        if (term && !(name.includes(term) || sacco.includes(term))) show = false;
+        if (show && filter === 'has' && count === 0) show = false;
+        if (show && filter === 'empty' && count > 0) show = false;
+
+        row.style.display = show ? '' : 'none';
     });
 }
 
 // ============================================================
-// SIMPLE HTML ESCAPE
+// REGISTER MANAGER MODAL
+// ============================================================
+let currentRegisterUserId = null;
+
+function openRegisterManager(userId, name) {
+    currentRegisterUserId = userId;
+    document.getElementById('registerManagerName').textContent = name || 'Member';
+    document.getElementById('registerManagerModal').classList.add('show');
+    loadRegisterManagerData();
+}
+
+function closeRegisterManager() {
+    document.getElementById('registerManagerModal').classList.remove('show');
+    currentRegisterUserId = null;
+}
+
+async function loadRegisterManagerData() {
+    const body = document.getElementById('registerManagerBody');
+    if (!currentRegisterUserId) return;
+
+    body.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#f5c542;"></i></div>';
+
+    try {
+        const res = await fetch('/treasurer/member/condolence-register/' + currentRegisterUserId);
+        const data = await res.json();
+
+        if (!data.success) {
+            body.innerHTML = `<div style="color:#ff6b6b; text-align:center; padding:30px;">${data.message || 'Error'}</div>`;
+            return;
+        }
+
+        renderRegisterManager(data.register || []);
+    } catch (err) {
+        body.innerHTML = '<div style="color:#ff6b6b; text-align:center; padding:30px;">Network error.</div>';
+    }
+}
+
+function renderRegisterManager(register) {
+    const body = document.getElementById('registerManagerBody');
+    const slots = {};
+    register.forEach(r => { slots[r.slot_number] = r; });
+
+    let html = `
+        <div style="background:rgba(245,197,66,0.05); border-left:3px solid #f5c542;
+                    padding:12px 16px; border-radius:8px; margin-bottom:16px;
+                    font-size:0.82rem; color:rgba(255,255,255,0.7); line-height:1.5;">
+            <i class="fas fa-info-circle" style="color:#f5c542;"></i>
+            This member can register up to <strong>10 people</strong>. Once a person dies,
+            their slot is closed and <strong>never replaced</strong>.
+        </div>
+        <div class="kac-register-grid">
+    `;
+
+    for (let i = 1; i <= 10; i++) {
+        const entry = slots[i];
+        if (entry) {
+            html += `
+                <div class="kac-slot ${entry.status}">
+                    <div class="kac-slot-num">${i}</div>
+                    <div class="kac-slot-body">
+                        <div class="kac-slot-name">${escapeHtmlTxt(entry.full_name)}</div>
+                        <div class="kac-slot-meta">
+                            ${entry.relationship ? '<i class="fas fa-heart"></i> ' + escapeHtmlTxt(entry.relationship) : ''}
+                            ${entry.phone ? ' · <i class="fas fa-phone"></i> ' + escapeHtmlTxt(entry.phone) : ''}
+                        </div>
+                        ${entry.status === 'deceased' && entry.deceased_date
+                            ? `<div class="kac-slot-meta" style="color:#ff6b6b; margin-top:4px;">
+                                   <i class="fas fa-cross"></i> Passed on ${escapeHtmlTxt(entry.deceased_date)}
+                               </div>` : ''}
+                        ${entry.status === 'active'
+                            ? `<div class="kac-slot-actions">
+                                   <button onclick="removeRegisterEntry(${entry.id})">
+                                       <i class="fas fa-trash"></i> Remove
+                                   </button>
+                               </div>` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="kac-slot empty" onclick="addRegisterEntry(${i})">
+                    <div class="kac-slot-num" style="opacity:0.5;">${i}</div>
+                    <div class="kac-slot-body">
+                        <div class="kac-slot-name" style="color:rgba(255,255,255,0.4); font-weight:400;">
+                            Empty slot
+                        </div>
+                        <div class="kac-slot-meta">
+                            <i class="fas fa-plus-circle"></i> Click to add
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    html += `</div>`;
+    body.innerHTML = html;
+}
+
+async function addRegisterEntry(slot) {
+    const name = prompt('Full name of the person to register:');
+    if (!name || !name.trim()) return;
+
+    const relationship = prompt('Relationship (optional — e.g. Mother, Spouse):') || '';
+    const phone = prompt('Phone number (optional):') || '';
+
+    try {
+        const res = await fetch('/treasurer/member/condolence-register/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: currentRegisterUserId,
+                full_name: name.trim(),
+                relationship: relationship.trim(),
+                phone: phone.trim()
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            loadRegisterManagerData();
+        } else {
+            alert('❌ ' + (data.message || 'Failed to add'));
+        }
+    } catch (err) {
+        alert('❌ Network error: ' + err.message);
+    }
+}
+
+async function removeRegisterEntry(entryId) {
+    if (!confirm('Remove this person from the register?')) return;
+
+    try {
+        const res = await fetch('/treasurer/member/condolence-register/' + entryId + '/remove', {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (data.success) {
+            loadRegisterManagerData();
+        } else {
+            alert('❌ ' + (data.message || 'Failed to remove'));
+        }
+    } catch (err) {
+        alert('❌ Network error: ' + err.message);
+    }
+}
+
+// ============================================================
+// UTIL
 // ============================================================
 function escapeHtmlTxt(s) {
     if (s === null || s === undefined) return '';
@@ -820,30 +1527,28 @@ function escapeHtmlTxt(s) {
 }
 
 // ============================================================
-// AUTO-INIT
+// INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // If a claim type is preselected, trigger the UI update
     const typeSel = document.getElementById('claimType');
-    if (typeSel && typeSel.value) {
-        onClaimTypeChange();
-    }
+    if (typeSel && typeSel.value) onClaimTypeChange();
 });
 
-// Close modals on Esc
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-        if (typeof closeClaimDetails === 'function') closeClaimDetails();
-        if (typeof closeReverseClaim === 'function') closeReverseClaim();
+        closeClaimDetails();
+        closeReverseClaim();
+        closeRegisterManager();
     }
 });
 
-// Close modals when clicking the backdrop
 document.addEventListener('click', e => {
-    const detailsModal = document.getElementById('claimDetailsModal');
-    const reverseModal = document.getElementById('reverseClaimModal');
-    if (detailsModal && e.target === detailsModal) closeClaimDetails();
-    if (reverseModal && e.target === reverseModal) closeReverseClaim();
+    ['claimDetailsModal', 'reverseClaimModal', 'registerManagerModal'].forEach(id => {
+        const m = document.getElementById(id);
+        if (m && e.target === m) {
+            m.classList.remove('show');
+        }
+    });
 });
 </script>
 
