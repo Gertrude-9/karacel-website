@@ -15,12 +15,12 @@
         overflow: hidden;
         transition: all 0.3s ease;
     }
-    
+
     .guarantor-card:hover {
         border-color: rgba(255,255,255,0.15);
         box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     }
-    
+
     .guarantor-header {
         background: rgba(255,255,255,0.05);
         padding: 16px 20px;
@@ -31,14 +31,14 @@
         flex-wrap: wrap;
         gap: 12px;
     }
-    
+
     .guarantor-title {
         display: flex;
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
     }
-    
+
     .loan-number-badge {
         background: rgba(0,224,255,0.15);
         color: #00e0ff;
@@ -47,40 +47,40 @@
         font-size: 0.85rem;
         font-weight: 600;
     }
-    
+
     .guarantor-badge {
         background: rgba(255,255,255,0.08);
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 0.8rem;
     }
-    
+
     .guarantor-amount {
         text-align: right;
     }
-    
+
     .guarantor-amount .amount {
         color: #4ade80;
         font-size: 1.2rem;
         font-weight: 700;
     }
-    
+
     .guarantor-amount .label {
         color: rgba(255,255,255,0.4);
         font-size: 0.75rem;
     }
-    
+
     .guarantor-table-wrapper {
         padding: 16px 20px;
         overflow-x: auto;
     }
-    
+
     .guarantor-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 0.9rem;
     }
-    
+
     .guarantor-table thead th {
         text-align: left;
         padding: 10px 12px;
@@ -91,49 +91,70 @@
         letter-spacing: 0.5px;
         border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-    
+
     .guarantor-table tbody td {
         padding: 10px 12px;
         border-bottom: 1px solid rgba(255,255,255,0.03);
         color: rgba(255,255,255,0.8);
+        vertical-align: middle;
     }
-    
+
     .guarantor-table tbody tr:hover {
         background: rgba(255,255,255,0.03);
     }
-    
+
     .guarantor-table tbody tr:last-child td {
         border-bottom: none;
     }
-    
+
     .status-badge {
         padding: 3px 10px;
         border-radius: 12px;
         font-size: 0.7rem;
         font-weight: 600;
         letter-spacing: 0.3px;
+        white-space: nowrap;
     }
-    
+
     .status-accepted {
         background: rgba(74, 222, 128, 0.15);
         color: #4ade80;
     }
-    
+
     .status-pending {
         background: rgba(245, 197, 66, 0.15);
         color: #f5c542;
     }
-    
+
     .status-rejected {
         background: rgba(255, 107, 107, 0.15);
         color: #ff6b6b;
     }
-    
+
     .status-active {
         background: rgba(0, 224, 255, 0.15);
         color: #00e0ff;
     }
-    
+
+    /* ===== ROLE BADGES ===== */
+    .role-badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        white-space: nowrap;
+        vertical-align: middle;
+        margin-left: 6px;
+    }
+    .role-member    { background: rgba(74,222,128,0.15);  color: #4ade80; }
+    .role-admin     { background: rgba(245,197,66,0.18);  color: #f5c542; }
+    .role-treasurer { background: rgba(0,224,255,0.15);   color: #00e0ff; }
+    .role-secretary { background: rgba(168,85,247,0.18);  color: #c084fc; }
+    .role-publicity { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+
     .guarantor-summary {
         display: flex;
         gap: 20px;
@@ -142,7 +163,7 @@
         border-top: 1px solid rgba(255,255,255,0.05);
         flex-wrap: wrap;
     }
-    
+
     .guarantor-summary .summary-item {
         display: flex;
         align-items: center;
@@ -150,41 +171,48 @@
         color: rgba(255,255,255,0.5);
         font-size: 0.85rem;
     }
-    
+
     .guarantor-summary .summary-item i {
         color: rgba(255,255,255,0.3);
     }
-    
+
     .guarantor-summary .summary-item strong {
         color: rgba(255,255,255,0.8);
     }
-    
+
     .empty-state {
         text-align: center;
         padding: 60px 20px;
     }
-    
+
     .empty-icon {
         font-size: 4rem;
         color: rgba(255,255,255,0.08);
         margin-bottom: 20px;
     }
-    
+
     .empty-state h4 {
         color: rgba(255,255,255,0.6);
         margin-bottom: 8px;
     }
-    
+
     .empty-state p {
         color: rgba(255,255,255,0.3);
     }
-    
+
     .no-guarantors-badge {
         background: rgba(255,255,255,0.05);
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 0.75rem;
         color: rgba(255,255,255,0.4);
+    }
+
+    /* Mobile tweak */
+    @media (max-width: 640px) {
+        .guarantor-table { font-size: 0.8rem; }
+        .guarantor-table thead th,
+        .guarantor-table tbody td { padding: 8px 8px; }
     }
 </style>
 
@@ -248,6 +276,7 @@
                                 <tr>
                                     <th>#</th>
                                     <th>Name</th>
+                                    <th>Role</th>
                                     <th>Phone</th>
                                     <th>Email</th>
                                     <th>Relationship</th>
@@ -257,6 +286,9 @@
                             </thead>
                             <tbody>
                                 {% for guarantor in loan_guarantors %}
+                                {# Normalise the type — supports both new (guarantor_type) and legacy rows #}
+                                {% set gtype = (guarantor.guarantor_type or 'member')|lower %}
+
                                 <tr>
                                     <td>{{ loop.index }}</td>
                                     <td>
@@ -266,8 +298,21 @@
                                         </strong>
                                     </td>
                                     <td>
+                                        {% if gtype == 'admin' %}
+                                            <span class="role-badge role-admin"><i class="fas fa-shield-alt"></i> Admin</span>
+                                        {% elif gtype == 'treasurer' %}
+                                            <span class="role-badge role-treasurer"><i class="fas fa-coins"></i> Treasurer</span>
+                                        {% elif gtype == 'secretary' %}
+                                            <span class="role-badge role-secretary"><i class="fas fa-pen"></i> Secretary</span>
+                                        {% elif gtype == 'publicity' %}
+                                            <span class="role-badge role-publicity"><i class="fas fa-bullhorn"></i> Publicity</span>
+                                        {% else %}
+                                            <span class="role-badge role-member"><i class="fas fa-user-friends"></i> Member</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         <i class="fas fa-phone" style="color: rgba(255,255,255,0.3); margin-right: 6px;"></i>
-                                        {{ guarantor.phone }}
+                                        {{ guarantor.phone or '-' }}
                                     </td>
                                     <td>
                                         {% if guarantor.email %}
@@ -279,13 +324,13 @@
                                     </td>
                                     <td>
                                         {% if guarantor.relationship %}
-                                            <span style="color: rgba(255,255,255,0.6);">{{ guarantor.relationship }}</span>
+                                            <span style="color: rgba(255,255,255,0.6);">{{ guarantor.relationship|title }}</span>
                                         {% else %}
                                             <span style="color: rgba(255,255,255,0.2);">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="status-badge 
+                                        <span class="status-badge
                                             {% if guarantor.status == 'accepted' %}status-accepted
                                             {% elif guarantor.status == 'pending' %}status-pending
                                             {% elif guarantor.status == 'active' %}status-active
@@ -297,7 +342,7 @@
                                             {% elif guarantor.status == 'active' %}
                                                 <i class="fas fa-check-circle"></i> ACTIVE
                                             {% else %}
-                                                <i class="fas fa-times-circle"></i> {{ guarantor.status|upper }}
+                                                <i class="fas fa-times-circle"></i> {{ (guarantor.status or 'unknown')|upper }}
                                             {% endif %}
                                         </span>
                                     </td>
@@ -319,6 +364,19 @@
                         <div class="summary-item">
                             <i class="fas fa-users"></i>
                             <strong>{{ loan_guarantors|length }}</strong> Guarantors
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-user-friends"></i>
+                            <strong>
+                                {{ loan_guarantors|selectattr('guarantor_type', 'equalto', 'member')|list|length }}
+                            </strong> Members
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-user-tie"></i>
+                            <strong>
+                                {{ loan_guarantors|rejectattr('guarantor_type', 'equalto', 'member')|rejectattr('guarantor_type', 'none')|list|length
+                                   + loan_guarantors|selectattr('guarantor_type', 'none')|list|length * 0 }}
+                            </strong> Staff
                         </div>
                         <div class="summary-item">
                             <i class="fas fa-check-circle"></i>

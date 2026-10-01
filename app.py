@@ -4204,33 +4204,34 @@ def member_guarantors():
 def search_members():
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Not logged in'}), 401
-    
+
     search_term = request.args.get('q', '').strip()
     current_user_id = session["user_id"]
-    
+
     if not search_term or len(search_term) < 2:
         return jsonify({
             'success': True,
             'members': [],
             'message': 'Please enter at least 2 characters'
         })
-    
+
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
         search_pattern = f'%{search_term}%'
-        members = db.execute("""
-            SELECT 
+        users = db.execute("""
+            SELECT
                 id,
                 full_name,
                 sacco_number,
                 phone,
                 email,
                 savings_balance,
-                status
-            FROM users 
-            WHERE LOWER(role) = 'member' 
+                status,
+                role
+            FROM users
+            WHERE LOWER(role) IN ('member', 'admin', 'secretary', 'treasurer', 'publicity')
             AND id != ?
             AND status = 'active'
             AND (
@@ -4239,37 +4240,53 @@ def search_members():
                 phone LIKE ? OR
                 email LIKE ?
             )
-            ORDER BY full_name ASC
+            ORDER BY
+                CASE LOWER(role)
+                    WHEN 'member'    THEN 1
+                    WHEN 'admin'     THEN 2
+                    WHEN 'treasurer' THEN 3
+                    WHEN 'secretary' THEN 4
+                    WHEN 'publicity' THEN 5
+                    ELSE 6
+                END,
+                full_name ASC
             LIMIT 20
         """, (current_user_id, search_pattern, search_pattern, search_pattern, search_pattern)).fetchall()
-        
-        member_list = []
-        for member in members:
-            loan_count = db.execute("""
-                SELECT COUNT(*) as count 
-                FROM loans 
-                WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
-            """, (member['id'],)).fetchone()['count']
-            
-            member_list.append({
-                'id': member['id'],
-                'full_name': member['full_name'],
-                'sacco_number': member['sacco_number'],
-                'phone': member['phone'] or '',
-                'email': member['email'] or '',
-                'savings_balance': member['savings_balance'] or 0,
+
+        user_list = []
+        for user in users:
+            role = (user['role'] or 'member').lower()
+
+            # Only members carry loan history; staff don't borrow from the SACCO
+            if role == 'member':
+                loan_count = db.execute("""
+                    SELECT COUNT(*) as count
+                    FROM loans
+                    WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
+                """, (user['id'],)).fetchone()['count']
+            else:
+                loan_count = 0
+
+            user_list.append({
+                'id': user['id'],
+                'full_name': user['full_name'],
+                'sacco_number': user['sacco_number'] or '—',
+                'phone': user['phone'] or '',
+                'email': user['email'] or '',
+                'savings_balance': user['savings_balance'] or 0,
                 'active_loans': loan_count,
-                'status': member['status']
+                'status': user['status'],
+                'type': role          # 'member' | 'admin' | 'secretary' | 'treasurer' | 'publicity'
             })
-        
+
         db.close()
-        
+
         return jsonify({
             'success': True,
-            'members': member_list,
-            'count': len(member_list)
+            'members': user_list,
+            'count': len(user_list)
         })
-        
+
     except Exception as e:
         db.close()
         print(f"Error searching members: {str(e)}")
@@ -4277,7 +4294,7 @@ def search_members():
             'success': False,
             'message': str(e)
         }), 500
-
+        
 @app.route("/treasurer/savings-reports")
 def treasurer_savings_reports():
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
