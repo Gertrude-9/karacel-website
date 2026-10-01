@@ -739,22 +739,45 @@ function checkGuarantorRequirement(amount) {
 
 function validateGuarantors() {
     const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    if (amount <= savingsThreshold) return true;
+    if (amount <= savingsThreshold) return true;   // No guarantors needed
 
-    if (!selectedGuarantors[1]) { showError('Please select Guarantor 1.'); return false; }
-    if (!selectedGuarantors[2]) { showError('Please select Guarantor 2.'); return false; }
-    if (selectedGuarantors[1].id === selectedGuarantors[2].id) {
-        showError('Guarantor 1 and Guarantor 2 cannot be the same member.'); return false;
+    // Guarantor 1 must be selected from the search dropdown
+    if (!selectedGuarantors[1] || !selectedGuarantors[1].id) {
+        showError('Please select Guarantor 1 from the search results. Only registered members can be guarantors.');
+        return false;
     }
+
+    // Guarantor 2 must be selected from the search dropdown
+    if (!selectedGuarantors[2] || !selectedGuarantors[2].id) {
+        showError('Please select Guarantor 2 from the search results. Only registered members can be guarantors.');
+        return false;
+    }
+
+    // Can't be the same person
+    if (selectedGuarantors[1].id === selectedGuarantors[2].id) {
+        showError('Guarantor 1 and Guarantor 2 cannot be the same member.');
+        return false;
+    }
+
+    // Can't be the applicant themselves
+    const applicantId = Number("{{ member.id|default(0) }}") || 0;
+    if (applicantId && (selectedGuarantors[1].id === applicantId || selectedGuarantors[2].id === applicantId)) {
+        showError('You cannot select yourself as a guarantor.');
+        return false;
+    }
+
+    // Relationship must be chosen
     if (!document.getElementById('guarantor1Relationship').value) {
-        showError('Please select a relationship for Guarantor 1.'); return false;
+        showError('Please select a relationship for Guarantor 1.');
+        return false;
     }
     if (!document.getElementById('guarantor2Relationship').value) {
-        showError('Please select a relationship for Guarantor 2.'); return false;
+        showError('Please select a relationship for Guarantor 2.');
+        return false;
     }
+
     return true;
 }
-
 // ===== SUBMIT =====
 function submitLoanApplication(e) {
     e.preventDefault();

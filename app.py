@@ -418,8 +418,8 @@ def create_database():
     """)
 
     # LOANS
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS loans (
+cursor.execute(f"""
+CREATE TABLE IF NOT EXISTS loans (
         id {pk},
         loan_number TEXT UNIQUE NOT NULL,
         user_id INTEGER NOT NULL,
@@ -473,9 +473,9 @@ def create_database():
         accrued_interest REAL DEFAULT 0,
         last_interest_applied_date TEXT,
         total_interest_charged REAL DEFAULT 0,
-        send_to_type TEXT,
-        send_to_value TEXT,
-        send_to_secondary TEXT
+        send_to_type TEXT CHECK (send_to_type IN ('phone', 'account', 'both') OR send_to_type IS NULL),
+        send_to_value TEXT CHECK (send_to_value IS NULL OR LENGTH(send_to_value) <= 50),
+        send_to_secondary TEXT CHECK (send_to_secondary IS NULL OR LENGTH(send_to_secondary) <= 50)
     )
     """)
 
@@ -1440,6 +1440,9 @@ def treasurer_dashboard():
                 registration_fees_total += registration_fee
                 registration_fees_count += 1
 
+        # ============================================================
+        # LOAN APPLICATIONS — now includes SEND-TO fields from loans table
+        # ============================================================
         loan_applications = conn.execute("""
             SELECT 
                 l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
@@ -1450,6 +1453,7 @@ def treasurer_dashboard():
                 l.rejection_reason, l.admin_rejection_reason, l.application_fee,
                 l.application_fee_paid, l.net_loan_amount, l.total_interest_accrued,
                 l.interest_paid,
+                l.send_to_type, l.send_to_value, l.send_to_secondary,
                 u.full_name, u.sacco_number, u.phone, u.email,
                 u.savings_balance, u.role
             FROM loans l
@@ -1476,6 +1480,9 @@ def treasurer_dashboard():
             loan['guarantors'] = [row_to_dict(g) for g in guarantors] if guarantors else []
             all_loan_applications.append(loan)
 
+        # ============================================================
+        # ACTIVE LOANS (for repayment dropdown) — also includes send-to
+        # ============================================================
         active_loans_list = conn.execute("""
             SELECT 
                 l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
@@ -1485,6 +1492,7 @@ def treasurer_dashboard():
                 l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
                 l.disbursed_amount, l.application_fee, l.application_fee_paid,
                 l.net_loan_amount, l.total_interest_accrued, l.interest_paid,
+                l.send_to_type, l.send_to_value, l.send_to_secondary,
                 u.full_name, u.sacco_number, u.phone, u.email, u.role
             FROM loans l
             JOIN users u ON l.user_id = u.id
@@ -1635,12 +1643,7 @@ def treasurer_dashboard():
             conn.close()
         except Exception:
             pass
-# ============================================================
-# TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF - FIXED
-# ============================================================
-# ============================================================
-# TREASURER - SAVINGS DEPOSIT (WITH SAVINGS TYPES) - INCLUDES STAFF
-# KAC SUPPORTS INSTALLMENTS UP TO 100,000
+
 # ============================================================
 # TREASURER — RECORD SAVINGS DEPOSIT
 # ============================================================
@@ -3789,37 +3792,49 @@ def member_apply_loan():
             purpose = data.get('purpose')
             repayment_plan = data.get('repayment_plan', 'monthly')
 
-            send_to_type      = (data.get('send_to_type') or 'phone').strip()
+            # ===== Send-to =====
+            send_to_type      = (data.get('send_to_type') or 'phone').strip().lower()
             send_to_value     = (data.get('send_to_value') or '').strip()
             send_to_secondary = (data.get('send_to_secondary') or '').strip()
 
-            g1_name = data.get('guarantor1_name', '')
-            g1_phone = data.get('guarantor1_phone', '')
-            g1_email = data.get('guarantor1_email', '')
+            # ===== Guarantors =====
+            g1_id = data.get('guarantor1_id')
+            g1_name = (data.get('guarantor1_name') or '').strip()
+            g1_phone = (data.get('guarantor1_phone') or '').strip()
+            g1_email = (data.get('guarantor1_email') or '').strip()
             g1_relationship = data.get('guarantor1_relationship', '')
 
-            g2_name = data.get('guarantor2_name', '')
-            g2_phone = data.get('guarantor2_phone', '')
-            g2_email = data.get('guarantor2_email', '')
+            g2_id = data.get('guarantor2_id')
+            g2_name = (data.get('guarantor2_name') or '').strip()
+            g2_phone = (data.get('guarantor2_phone') or '').strip()
+            g2_email = (data.get('guarantor2_email') or '').strip()
             g2_relationship = data.get('guarantor2_relationship', '')
         else:
             loan_amount = float(request.form.get('loan_amount'))
             purpose = request.form.get('purpose')
             repayment_plan = request.form.get('repayment_plan', 'monthly')
 
-            send_to_type      = (request.form.get('send_to_type') or 'phone').strip()
+            # ===== Send-to =====
+            send_to_type      = (request.form.get('send_to_type') or 'phone').strip().lower()
             send_to_value     = (request.form.get('send_to_value') or '').strip()
             send_to_secondary = (request.form.get('send_to_secondary') or '').strip()
 
-            g1_name = request.form.get('guarantor1_name', '')
-            g1_phone = request.form.get('guarantor1_phone', '')
-            g1_email = request.form.get('guarantor1_email', '')
+            # ===== Guarantors =====
+            g1_id = request.form.get('guarantor1_id')
+            g1_name = (request.form.get('guarantor1_name') or '').strip()
+            g1_phone = (request.form.get('guarantor1_phone') or '').strip()
+            g1_email = (request.form.get('guarantor1_email') or '').strip()
             g1_relationship = request.form.get('guarantor1_relationship', '')
 
-            g2_name = request.form.get('guarantor2_name', '')
-            g2_phone = request.form.get('guarantor2_phone', '')
-            g2_email = request.form.get('guarantor2_email', '')
+            g2_id = request.form.get('guarantor2_id')
+            g2_name = (request.form.get('guarantor2_name') or '').strip()
+            g2_phone = (request.form.get('guarantor2_phone') or '').strip()
+            g2_email = (request.form.get('guarantor2_email') or '').strip()
             g2_relationship = request.form.get('guarantor2_relationship', '')
+
+        # ---- Normalise send-to type ----
+        if send_to_type not in ('phone', 'account', 'both'):
+            send_to_type = 'phone'
 
         # ---- Validate payout destination ----
         if not send_to_value:
@@ -3833,6 +3848,9 @@ def member_apply_loan():
                 return jsonify({'success': False, 'message': 'Please enter the account number too.'}), 400
             flash('Please enter the account number too.', 'danger')
             return redirect(url_for('member_apply_loan'))
+
+        if send_to_type != 'both':
+            send_to_secondary = None
 
         if loan_amount < 10000 or loan_amount > 10000000:
             if request.is_json:
@@ -3861,30 +3879,112 @@ def member_apply_loan():
         savings_threshold = total_savings * 0.95
         guarantors_required = loan_amount > savings_threshold
 
+        # ============================================================
+        # GUARANTOR VALIDATION — only when required
+        # ============================================================
         if guarantors_required:
+            # ---------- 1. Presence check ----------
             if not g1_name or not g1_phone:
                 if request.is_json:
-                    return jsonify({'success': False, 'message': 'Guarantor 1 details are required for this loan amount'}), 400
-                flash('Guarantor 1 details are required for this loan amount', 'danger')
+                    return jsonify({'success': False, 'message': 'Guarantor 1 details are required for this loan amount.'}), 400
+                flash('Guarantor 1 details are required for this loan amount.', 'danger')
                 return redirect(url_for('member_apply_loan'))
 
             if not g2_name or not g2_phone:
                 if request.is_json:
-                    return jsonify({'success': False, 'message': 'Guarantor 2 details are required for this loan amount'}), 400
-                flash('Guarantor 2 details are required for this loan amount', 'danger')
+                    return jsonify({'success': False, 'message': 'Guarantor 2 details are required for this loan amount.'}), 400
+                flash('Guarantor 2 details are required for this loan amount.', 'danger')
                 return redirect(url_for('member_apply_loan'))
 
-            if g1_name.lower() == g2_name.lower() or g1_phone == g2_phone:
+            # ---------- 2. Must have been selected from search ----------
+            if not g1_id or not g2_id:
+                msg = 'Guarantors must be selected from the registered member list.'
                 if request.is_json:
-                    return jsonify({'success': False, 'message': 'Guarantor 1 and Guarantor 2 must be different'}), 400
-                flash('Guarantor 1 and Guarantor 2 must be different', 'danger')
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
                 return redirect(url_for('member_apply_loan'))
+
+            # ---------- 3. Convert to int ----------
+            try:
+                g1_id = int(g1_id)
+                g2_id = int(g2_id)
+            except (TypeError, ValueError):
+                msg = 'Invalid guarantor selection.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            # ---------- 4. Same person / self check ----------
+            if g1_id == g2_id:
+                msg = 'Guarantor 1 and Guarantor 2 cannot be the same member.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            if g1_id == user_id or g2_id == user_id:
+                msg = 'You cannot select yourself as a guarantor.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            # ---------- 5. Verify both exist and are active ----------
+            allowed_roles = ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+
+            g1_row = db.execute(
+                f"SELECT id, full_name, phone, email, role FROM users WHERE id = {PH} AND status = 'active'",
+                (g1_id,)
+            ).fetchone()
+
+            g2_row = db.execute(
+                f"SELECT id, full_name, phone, email, role FROM users WHERE id = {PH} AND status = 'active'",
+                (g2_id,)
+            ).fetchone()
+
+            if not g1_row:
+                msg = 'Guarantor 1 is not a registered, active member.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            if not g2_row:
+                msg = 'Guarantor 2 is not a registered, active member.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            g1_dict = row_to_dict(g1_row)
+            g2_dict = row_to_dict(g2_row)
+
+            if (g1_dict.get('role') or 'member').lower() not in allowed_roles:
+                msg = 'Guarantor 1 must be an active SACCO member or staff.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            if (g2_dict.get('role') or 'member').lower() not in allowed_roles:
+                msg = 'Guarantor 2 must be an active SACCO member or staff.'
+                if request.is_json:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, 'danger')
+                return redirect(url_for('member_apply_loan'))
+
+            # ---------- 6. Use canonical DB values ----------
+            g1_name  = g1_dict.get('full_name') or g1_name
+            g1_phone = g1_dict.get('phone') or g1_phone
+            g1_email = g1_dict.get('email') or g1_email
+
+            g2_name  = g2_dict.get('full_name') or g2_name
+            g2_phone = g2_dict.get('phone') or g2_phone
+            g2_email = g2_dict.get('email') or g2_email
 
         # ============================================================
-        # INSERT LOAN
-        # ✅ Removed next_interest_date (doesn't exist)
-        # ✅ Uses PH placeholder
-        # ✅ RETURNING id for PostgreSQL
+        # INSERT LOAN — send-to fields included for both drivers
         # ============================================================
         if DATABASE_URL:
             row = db.execute(f"""
@@ -3949,7 +4049,9 @@ def member_apply_loan():
             ))
             loan_id = cursor.lastrowid
 
+        # ============================================================
         # Insert guarantors
+        # ============================================================
         if guarantors_required:
             db.execute(f"""
                 INSERT INTO loan_guarantors (loan_id, guarantor_name, phone, email, relationship, status)
@@ -3978,12 +4080,13 @@ def member_apply_loan():
         else:
             success_message += ' No guarantors required based on your savings.'
 
+        # ---- Human-readable send-to display ----
         if send_to_type == 'phone':
             send_to_display = 'Phone: ' + send_to_value
         elif send_to_type == 'account':
             send_to_display = 'Account: ' + send_to_value
         else:
-            send_to_display = 'Phone: ' + send_to_value + ' | Account: ' + send_to_secondary
+            send_to_display = 'Phone: ' + send_to_value + ' | Account: ' + (send_to_secondary or '')
 
         if request.is_json:
             return jsonify({
@@ -4003,7 +4106,7 @@ def member_apply_loan():
                 'loan_end_date': due_date_str,
                 'send_to_type': send_to_type,
                 'send_to_value': send_to_value,
-                'send_to_secondary': send_to_secondary,
+                'send_to_secondary': send_to_secondary or '',
                 'send_to_display': send_to_display,
             })
 
@@ -4026,6 +4129,7 @@ def member_apply_loan():
             db.close()
         except Exception:
             pass
+
 # ============================================================
 # MEMBER - REPAYMENTS
 # ============================================================
@@ -4294,7 +4398,7 @@ def search_members():
             'success': False,
             'message': str(e)
         }), 500
-        
+
 @app.route("/treasurer/savings-reports")
 def treasurer_savings_reports():
     if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
