@@ -5354,3 +5354,51 @@ body::before {
     .row-amount { font-size: 0.95rem; }
     .history-section { padding: 12px; }
 }
+
+/* ===== MOBILE: Center the notification dropdown ===== */
+@media (max-width: 768px) {
+
+    /* Make the bell wrapper a positioning context that doesn't clip */
+    .notification-bell-wrapper {
+        position: static;
+    }
+
+    /* Center the dropdown on screen */
+    .notification-dropdown {
+        position: fixed !important;
+        top: 70px;                     /* adjust to sit just below your app bar */
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 24px) !important;
+        max-width: 420px;
+        max-height: 70vh;
+        overflow-y: auto;
+        margin: 0 !important;
+        z-index: 9999;
+    }
+
+    /* When opened, keep it centered */
+    .notification-dropdown.open {
+        transform: translateX(-50%) !important;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Prevent the header from hiding it */
+    .modern-app-bar,
+    .app-bar-right {
+        overflow: visible !important;
+    }
+}
+.notification-dropdown {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.notification-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
