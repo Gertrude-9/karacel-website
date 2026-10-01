@@ -536,7 +536,7 @@
         </div>
     </div>
 
-   <!-- ========== LOAN APPLICATIONS TABLE ========== -->
+<!-- ========== LOAN APPLICATIONS TABLE ========== -->
 <div class="action-card">
     <div class="action-title">
         <i class="fas fa-file-invoice"></i> Loan Applications
@@ -575,7 +575,7 @@
                     <th style="width:36px;">#</th>
                     <th style="width:110px;">Loan #</th>
                     <th style="width:130px;">Member</th>
-                    <th style="width:120px;">Send Money To</th>
+                    <th style="width:140px;">Send Money To</th>
                     <th style="width:110px; text-align:right;">Amount / Balance</th>
                     <th style="width:95px;">Status</th>
                     <th style="width:110px;">Interest</th>
@@ -597,14 +597,59 @@
                         {{ loan.full_name }}
                     </td>
 
+                    {# ============================================================
+                       SEND MONEY TO — uses the number typed during loan application
+                       ============================================================ #}
                     <td>
-                        {% if loan.phone %}
+                        {% set send_type = (loan.send_to_type or '')|lower %}
+                        {% set send_main = loan.send_to_value %}
+                        {% set send_sec  = loan.send_to_secondary %}
+
+                        {% if send_main %}
+                            {% if send_type == 'both' and send_sec %}
+                                {# ---- Both phone + account, stacked ---- #}
+                                <div style="display:flex; flex-direction:column; gap:3px;">
+                                    <span class="payout-num"
+                                          onclick='copyPayout({{ send_main|tojson }}, this)'
+                                          title="Click to copy phone">
+                                        <i class="fas fa-mobile-alt" style="font-size:0.65rem; opacity:0.55;"></i>
+                                        {{ send_main }}
+                                        <i class="fas fa-copy payout-copy"></i>
+                                    </span>
+                                    <span class="payout-num"
+                                          onclick='copyPayout({{ send_sec|tojson }}, this)'
+                                          title="Click to copy account">
+                                        <i class="fas fa-university" style="font-size:0.65rem; opacity:0.55;"></i>
+                                        {{ send_sec }}
+                                        <i class="fas fa-copy payout-copy"></i>
+                                    </span>
+                                </div>
+                            {% else %}
+                                {# ---- Single value (phone OR account) ---- #}
+                                <span class="payout-num"
+                                      onclick='copyPayout({{ send_main|tojson }}, this)'
+                                      title="Click to copy">
+                                    {% if send_type == 'account' %}
+                                        <i class="fas fa-university" style="font-size:0.65rem; opacity:0.55;"></i>
+                                    {% else %}
+                                        <i class="fas fa-mobile-alt" style="font-size:0.65rem; opacity:0.55;"></i>
+                                    {% endif %}
+                                    {{ send_main }}
+                                    <i class="fas fa-copy payout-copy"></i>
+                                </span>
+                            {% endif %}
+                        {% elif loan.phone %}
+                            {# ---- Fallback: older loans that don't have send_to yet ---- #}
                             <span class="payout-num"
-                                onclick='copyPayout({{ loan.phone|tojson }}, this)'
-                                title="Click to copy">
+                                  onclick='copyPayout({{ loan.phone|tojson }}, this)'
+                                  title="Click to copy (from profile)">
+                                <i class="fas fa-mobile-alt" style="font-size:0.65rem; opacity:0.4;"></i>
                                 {{ loan.phone }}
                                 <i class="fas fa-copy payout-copy"></i>
                             </span>
+                            <div style="font-size:0.58rem; color:var(--tr-dim); opacity:0.55; margin-top:2px;">
+                                from profile
+                            </div>
                         {% else %}
                             <span style="color:var(--tr-dim); font-size:0.8rem;">—</span>
                         {% endif %}
