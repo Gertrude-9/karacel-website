@@ -93,6 +93,12 @@
                 <span>Savings Reports</span>
             </a>
 
+           <a href="{{ url_for('treasurer_kac_claims_page') }}"
+            class="admin-nav-item {% if request.endpoint == 'treasurer_kac_claims_page' %}active{% endif %}">
+                <i class="fas fa-hand-holding-heart"></i>
+                <span>KAC Claims</span>
+            </a>
+
             <a href="{{ url_for('chat_api.treasurer_chat') }}"
                class="admin-nav-item {% if 'chat' in (request.endpoint or '') %}active{% endif %}">
                 <i class="fas fa-comments"></i>
