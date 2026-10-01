@@ -926,86 +926,121 @@ function onClaimTypeChange() {
 // ============================================================
 // AFFECTED MEMBER CHANGE → UPDATE STATUS PANEL
 // ============================================================
+// AFFECTED MEMBER CHANGE → UPDATE STATUS PANEL + REGISTER
+// ============================================================
 function onAffectedMemberChange() {
     const sel = document.getElementById('affectedUser');
+    if (!sel) return;
+
     const opt = sel.options[sel.selectedIndex];
     const panel = document.getElementById('kacStatusPanel');
     const nameEl = document.getElementById('statusName');
     const badge = document.getElementById('statusBadge');
     const note = document.getElementById('statusNote');
 
+    // ----- No member selected -----
     if (!opt || !opt.value) {
-        panel.classList.remove('has-value');
-        nameEl.textContent = 'No member selected';
-        badge.className = 'kac-status-badge-lg empty';
-        badge.innerHTML = '<i class="fas fa-circle-question"></i> — Select a member —';
-        note.textContent = '';
-        note.className = 'panel-note';
+        if (panel) panel.classList.remove('has-value');
+        if (nameEl) nameEl.textContent = 'No member selected';
+        if (badge) {
+            badge.className = 'kac-status-badge-lg empty';
+            badge.innerHTML = '<i class="fas fa-circle-question"></i> — Select a member —';
+        }
+        if (note) {
+            note.textContent = '';
+            note.className = 'panel-note';
+        }
         updateKacPreview();
         return;
     }
 
+    // ----- Read KAC data from the option -----
     const kacPaid = Number(opt.dataset.kac || 0);
     const kacUsed = Number(opt.dataset.used || 0);
     const available = kacPaid - kacUsed;
 
-    panel.classList.add('has-value');
-    nameEl.textContent = opt.dataset.name || '';
+    if (panel) panel.classList.add('has-value');
+    if (nameEl) nameEl.textContent = opt.dataset.name || opt.textContent.split('(')[0].trim();
 
-    if (kacPaid >= 100000) {
-        badge.className = 'kac-status-badge-lg full';
-        badge.innerHTML = '<i class="fas fa-check-circle"></i> Fully Paid';
-        note.textContent = `Available: UGX ${available.toLocaleString()}`;
-        note.className = 'panel-note charged';
-    } else if (kacPaid > 0) {
-        badge.className = 'kac-status-badge-lg partial';
-        badge.innerHTML = `<i class="fas fa-hourglass-half"></i> Partial — UGX ${kacPaid.toLocaleString()}`;
-        note.textContent = available > 0
-            ? `Available: UGX ${available.toLocaleString()} — will be charged`
-            : `No remaining balance — will go into debt`;
-        note.className = 'panel-note debt';
-    } else {
-        badge.className = 'kac-status-badge-lg none';
-        badge.innerHTML = '<i class="fas fa-times-circle"></i> Not Paid';
-        note.textContent = 'No KAC balance — will go into debt';
-        note.className = 'panel-note debt';
+    if (badge && note) {
+        if (kacPaid >= 100000) {
+            badge.className = 'kac-status-badge-lg full';
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Fully Paid';
+            note.textContent = `Available: UGX ${available.toLocaleString()}`;
+            note.className = 'panel-note charged';
+        } else if (kacPaid > 0) {
+            badge.className = 'kac-status-badge-lg partial';
+            badge.innerHTML = `<i class="fas fa-hourglass-half"></i> Partial — UGX ${kacPaid.toLocaleString()}`;
+            note.textContent = available > 0
+                ? `Available: UGX ${available.toLocaleString()} — will be charged`
+                : `No remaining balance — will go into debt`;
+            note.className = 'panel-note debt';
+        } else {
+            badge.className = 'kac-status-badge-lg none';
+            badge.innerHTML = '<i class="fas fa-times-circle"></i> Not Paid';
+            note.textContent = 'No KAC balance — will go into debt';
+            note.className = 'panel-note debt';
+        }
     }
 
-    // Re-trigger condolence register load if type is condolence
-    if (document.getElementById('claimType').value === 'condolence') {
+    // ----- Reload condolence register if applicable -----
+    const typeSel = document.getElementById('claimType');
+    if (typeSel && typeSel.value === 'condolence') {
         loadMemberRegister();
     }
 
     updateKacPreview();
 }
 
+
 // ============================================================
-// LOAD MEMBER REGISTER
+// LOAD MEMBER'S CONDOLENCE REGISTER (auto-refresh ready)
 // ============================================================
 async function loadMemberRegister() {
-    const userId = document.getElementById('affectedUser').value;
     const select = document.getElementById('registerEntry');
-    const type = document.getElementById('claimType').value;
+    if (!select) return;
 
-    if (!userId || type !== 'condolence') {
-        select.innerHTML = '<option value="">— Select condolence above first —</option>';
+    const userSel = document.getElementById('affectedUser');
+    const typeSel = document.getElementById('claimType');
+
+    const userId = userSel ? userSel.value : '';
+    const type = typeSel ? typeSel.value : '';
+
+    if (!userId) {
+        select.innerHTML = '<option value="">— Select a member first —</option>';
+        return;
+    }
+    if (type !== 'condolence') {
+        select.innerHTML = '<option value="">— Not required for death claims —</option>';
         return;
     }
 
     select.innerHTML = '<option value="">Loading…</option>';
 
     try {
-        const res = await fetch('/treasurer/member/condolence-register/' + userId);
+        const res = await fetch('/treasurer/member/condolence-register/' + userId, {
+            credentials: 'same-origin'
+        });
+
+        if (!res.ok) {
+            let detail = '';
+            try { detail = await res.text(); } catch (e) {}
+            console.error('Register fetch failed:', res.status, detail);
+            select.innerHTML = `<option value="">Server error (${res.status}) — check console</option>`;
+            return;
+        }
+
         const data = await res.json();
 
         if (!data.success) {
-            select.innerHTML = `<option value="">${data.message || 'Error loading register'}</option>`;
+            select.innerHTML = `<option value="">${escapeHtmlTxt(data.message || 'Error loading register')}</option>`;
             return;
         }
 
         const active = (data.register || []).filter(r => r.status === 'active');
+
         if (active.length === 0) {
-            select.innerHTML = '<option value="">This member has no active registered persons</option>';
+            select.innerHTML = '<option value="">This member has no active registered persons — click Manage register to add</option>';
             return;
         }
 
@@ -1014,11 +1049,12 @@ async function loadMemberRegister() {
                 `<option value="${r.id}">${r.slot_number}. ${escapeHtmlTxt(r.full_name)}` +
                 `${r.relationship ? ' — ' + escapeHtmlTxt(r.relationship) : ''}</option>`
             ).join('');
+
     } catch (err) {
-        select.innerHTML = '<option value="">Error loading register</option>';
+        console.error('Register fetch error:', err);
+        select.innerHTML = '<option value="">Network error — check console</option>';
     }
 }
-
 // ============================================================
 // LIVE PREVIEW
 // ============================================================

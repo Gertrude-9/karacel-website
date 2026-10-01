@@ -2311,7 +2311,7 @@ def treasurer_kac_claims_page():
         except Exception:
             pass
 
-        # ---- Dropdowns: EVERYONE (member or staff, any KAC status) ----
+        # ---- Dropdowns: ONLY KAC-registered (paid > 0) ----
         staff_members = conn.execute("""
             SELECT id, full_name, sacco_number, role,
                    COALESCE(kac_paid, 0) AS kac_paid,
@@ -2319,6 +2319,7 @@ def treasurer_kac_claims_page():
             FROM users
             WHERE status = 'active'
               AND LOWER(role) IN ('admin','chairperson','treasurer','secretary','publicity')
+              AND COALESCE(kac_paid, 0) > 0
             ORDER BY full_name ASC
         """).fetchall()
 
@@ -2329,6 +2330,7 @@ def treasurer_kac_claims_page():
             FROM users
             WHERE status = 'active'
               AND LOWER(role) = 'member'
+              AND COALESCE(kac_paid, 0) > 0
             ORDER BY full_name ASC
         """).fetchall()
 
@@ -2348,14 +2350,14 @@ def treasurer_kac_claims_page():
               AND COALESCE(kac_paid, 0) < 100000
         """) or 0
 
-        # Everyone is chargeable
+        # Everyone is chargeable (all active roles)
         chargeable_count = fetchval(conn, """
             SELECT COUNT(*) FROM users
             WHERE status = 'active'
               AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
         """) or 0
 
-        # Anyone whose current balance < 20k will go negative (debt risk)
+        # Anyone whose current balance < 20k will go negative
         debt_risk_count = fetchval(conn, """
             SELECT COUNT(*) FROM users
             WHERE status = 'active'
@@ -2788,7 +2790,7 @@ def treasurer_get_member_register(user_id):
             try:
                 register.append(row_to_dict(r))
             except Exception:
-                register.append(dict(r) if hasattr(r, 'keys') else {
+                register.append({
                     'id': r[0], 'slot_number': r[1], 'full_name': r[2],
                     'relationship': r[3], 'phone': r[4], 'status': r[5],
                     'deceased_date': r[6] if len(r) > 6 else None
@@ -2796,6 +2798,8 @@ def treasurer_get_member_register(user_id):
 
         return jsonify({'success': True, 'register': register})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         try:
@@ -2824,7 +2828,6 @@ def treasurer_add_register_entry():
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
     try:
-        # Lifetime cap of 10
         total = fetchval(db, f"""
             SELECT COUNT(*) FROM member_condolence_register WHERE user_id = {PH}
         """, (user_id,)) or 0
@@ -2834,7 +2837,6 @@ def treasurer_add_register_entry():
                 'message': 'Member has used all 10 slots. Deceased persons are not replaced.'
             }), 400
 
-        # Next slot number
         max_slot = fetchval(db, f"""
             SELECT COALESCE(MAX(slot_number), 0) FROM member_condolence_register
             WHERE user_id = {PH}
@@ -2873,6 +2875,8 @@ def treasurer_add_register_entry():
         })
     except Exception as e:
         db.rollback()
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         try:
@@ -2914,6 +2918,8 @@ def treasurer_remove_register_entry(entry_id):
         return jsonify({'success': True, 'message': 'Removed.'})
     except Exception as e:
         db.rollback()
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         try:
