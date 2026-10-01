@@ -8,6 +8,56 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='website.css') }}">
+
+  <!-- ===== MISSION · VISION · MOTTO GRID ===== -->
+  <style>
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    @media (max-width: 900px) {
+      .mission-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Motto card — highlighted with navy + gold */
+    .mv-card.motto-card {
+      background: linear-gradient(135deg, #0d1b3e 0%, #1a2a5c 100%);
+      color: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+    .mv-card.motto-card::before {
+      content: "";
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(245,197,24,0.18) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .mv-card.motto-card h2,
+    .mv-card.motto-card p {
+      color: #ffffff;
+      position: relative;
+      z-index: 1;
+    }
+    .mv-card.motto-card p {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.25rem;
+      line-height: 1.5;
+    }
+    .mv-card.motto-card .mv-icon {
+      background: rgba(245, 197, 24, 0.15);
+      color: #f5c518;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
 </head>
 <body>
 
@@ -49,7 +99,7 @@
       <div class="section-label">Who We Are</div>
       <h2>A community built on trust, unity, and shared prosperity</h2>
       <p>Karacel Association is a member-owned savings and credit association founded in <strong>2017</strong> by the personnel of <strong>Sukhoi Squadron, Entebbe Air Force Wing</strong>. What began as a self-help initiative among monthly earners has grown into a disciplined savings and credit cooperative serving our community.</p>
-      <p>Originally named <em>Sukhoi Association</em>, we were renamed <strong>Karacel Association (KA)</strong> during our 2nd AGM on <strong>17th January 2025</strong>. Our financial year runs from <strong>January to December</strong>, with monthly savings contributions.</p>
+      <p>Originally named <em>Sukhoi Association</em>, we were renamed <strong>Karacel Association (KA)</strong> during our 2nd AGM on <strong>17th January 2025</strong>. Our financial year runs from <strong>January to December</strong>, with savings contributions that have no period.</p>
     </div>
     <div class="intro-image-wrapper">
       <img src="{{ url_for('static', filename='images/karacel community.jpg') }}" alt="Karacel community">
@@ -61,7 +111,7 @@
   </div>
 </section>
 
-<!-- ========== MISSION & VISION ========== -->
+<!-- ========== MISSION · VISION · MOTTO ========== -->
 <section class="mission-section">
   <div class="container mission-grid">
 
@@ -75,6 +125,12 @@
       <div class="mv-icon"><i class="fas fa-eye"></i></div>
       <h2>Our Vision</h2>
       <p>To grow into a self-sustained financial reservoir that uses its own generated funds to mitigate financial constraints within its members.</p>
+    </div>
+
+    <div class="mv-card motto-card">
+      <div class="mv-icon"><i class="fas fa-quote-left"></i></div>
+      <h2>Our Motto</h2>
+      <p>"Always There For You."</p>
     </div>
 
   </div>
@@ -140,7 +196,7 @@
     <div class="section-label">Governance</div>
     <h2 class="section-title">Guided by Two Committees</h2>
     <p class="section-description">
-      Karacel is governed by a <strong>Management Committee</strong> (Chairperson, Vice Chairperson, Secretary, Treasurer, and Publicity ) and a <strong>Supervisory Committee</strong> drawn from squadron command. The three highest shareholders of a closing financial year form the succeeding year's <strong>Committee of Trustees</strong>.
+      Karacel is governed by a <strong>Management Committee</strong> (Chairperson, Vice Chairperson, Secretary, Treasurer, and Publicity) and a <strong>Supervisory Committee</strong> drawn from squadron command. The three highest shareholders of a closing financial year form the succeeding year's <strong>Committee of Trustees</strong>.
     </p>
   </div>
 </section>
