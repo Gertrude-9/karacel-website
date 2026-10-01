@@ -418,8 +418,8 @@ def create_database():
     """)
 
     # LOANS
-cursor.execute(f"""
-CREATE TABLE IF NOT EXISTS loans (
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS loans (
         id {pk},
         loan_number TEXT UNIQUE NOT NULL,
         user_id INTEGER NOT NULL,
