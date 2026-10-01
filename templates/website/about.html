@@ -9,8 +9,30 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='website.css') }}">
 
-  <!-- ===== MISSION · VISION · MOTTO GRID ===== -->
+  <!-- ===== GOLD HEADERS + MISSION · VISION · MOTTO GRID ===== -->
   <style>
+    /* ===== Gold headers across the page ===== */
+    .page-header h1,
+    .intro-text h2,
+    .mv-card h2,
+    .objectives-header h2,
+    .values-header h2,
+    .section-title {
+      color: #f5c518;   /* Karacel gold — change here if your gold differs */
+    }
+
+    /* Motto card: keep white text so it stays readable on navy */
+    .mv-card.motto-card h2,
+    .mv-card.motto-card p {
+      color: #ffffff;
+    }
+
+    /* Optional: gold underline under section labels stays as-is */
+    .section-label {
+      color: #f5c518;
+    }
+
+    /* ===== Mission · Vision · Motto grid ===== */
     .mission-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -22,7 +44,7 @@
       }
     }
 
-    /* Motto card — highlighted with navy + gold */
+    /* Motto card — navy background, gold icon */
     .mv-card.motto-card {
       background: linear-gradient(135deg, #0d1b3e 0%, #1a2a5c 100%);
       color: #ffffff;
@@ -41,7 +63,6 @@
     }
     .mv-card.motto-card h2,
     .mv-card.motto-card p {
-      color: #ffffff;
       position: relative;
       z-index: 1;
     }
