@@ -32,6 +32,7 @@
       --wf-blue:       #00e0ff;
       --wf-pink:       #ff8fb1;
       --wf-purple:     #a78bfa;
+      --wf-red:        #ff6b6b;
 
       --wf-radius:     18px;
       --wf-shadow:     0 8px 30px rgba(0, 0, 0, 0.35);
@@ -50,7 +51,6 @@
       min-height: 100vh;
     }
 
-    /* Ambient gradient background */
     body::before {
       content: '';
       position: fixed;
@@ -64,7 +64,6 @@
       pointer-events: none;
     }
 
-    /* Subtle dot grid overlay */
     body::after {
       content: '';
       position: fixed;
@@ -127,7 +126,6 @@
       margin: 0 0 36px;
     }
 
-    /* Floating stat pills */
     .wf-hero-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -160,12 +158,9 @@
       transition: opacity 0.35s ease;
     }
 
-    .wf-stat-pill:nth-child(2)::before {
-      background: linear-gradient(180deg, var(--wf-green), #10a76b);
-    }
-    .wf-stat-pill:nth-child(3)::before {
-      background: linear-gradient(180deg, var(--wf-pink), #e83e8c);
-    }
+    .wf-stat-pill:nth-child(2)::before { background: linear-gradient(180deg, var(--wf-green), #10a76b); }
+    .wf-stat-pill:nth-child(3)::before { background: linear-gradient(180deg, var(--wf-pink), #e83e8c); }
+    .wf-stat-pill:nth-child(4)::before { background: linear-gradient(180deg, var(--wf-red), #c92a2a); }
 
     .wf-stat-pill:hover {
       transform: translateY(-4px);
@@ -185,6 +180,7 @@
     }
     .wf-stat-pill:nth-child(2) i { color: var(--wf-green); }
     .wf-stat-pill:nth-child(3) i { color: var(--wf-pink); }
+    .wf-stat-pill:nth-child(4) i { color: var(--wf-red); }
 
     .wf-stat-pill strong {
       display: block;
@@ -203,7 +199,7 @@
       margin-top: 3px;
     }
 
-    /* ---------- KEY HIGHLIGHT (Floating Card) ---------- */
+    /* ---------- KEY HIGHLIGHT ---------- */
     .wf-highlight-wrap {
       margin-top: -60px;
       position: relative;
@@ -272,15 +268,11 @@
       color: var(--wf-muted);
     }
 
-    .wf-highlight p strong {
-      color: var(--wf-gold);
-      font-weight: 700;
-    }
+    .wf-highlight p strong { color: var(--wf-gold); font-weight: 700; }
+    .wf-highlight p strong.red { color: var(--wf-red); }
 
     /* ---------- SECTIONS ---------- */
-    .wf-section {
-      padding: 80px 0;
-    }
+    .wf-section { padding: 80px 0; }
 
     .wf-section-label {
       display: inline-block;
@@ -343,12 +335,9 @@
       transition: transform 0.4s ease;
     }
 
-    .wf-plan-card:nth-child(2)::before {
-      background: linear-gradient(90deg, var(--wf-green), #10a76b);
-    }
-    .wf-plan-card:nth-child(3)::before {
-      background: linear-gradient(90deg, var(--wf-pink), #e83e8c);
-    }
+    .wf-plan-card:nth-child(2)::before { background: linear-gradient(90deg, var(--wf-green), #10a76b); }
+    .wf-plan-card:nth-child(3)::before { background: linear-gradient(90deg, var(--wf-pink), #e83e8c); }
+    .wf-plan-card:nth-child(4)::before { background: linear-gradient(90deg, var(--wf-red), #c92a2a); }
 
     .wf-plan-card:hover {
       transform: translateY(-6px);
@@ -384,6 +373,11 @@
       color: var(--wf-pink);
       border-color: rgba(255, 143, 177, 0.2);
     }
+    .wf-plan-card:nth-child(4) .wf-plan-icon {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(201, 42, 42, 0.05));
+      color: var(--wf-red);
+      border-color: rgba(255, 107, 107, 0.2);
+    }
 
     .wf-plan-card:hover .wf-plan-icon {
       transform: scale(1.1) rotate(-4deg);
@@ -407,6 +401,7 @@
 
     .wf-plan-card:nth-child(2) .wf-plan-value { color: var(--wf-green); }
     .wf-plan-card:nth-child(3) .wf-plan-value { color: var(--wf-pink); }
+    .wf-plan-card:nth-child(4) .wf-plan-value { color: var(--wf-red); }
 
     .wf-plan-value small {
       display: block;
@@ -439,7 +434,7 @@
       top: 10px;
       bottom: 10px;
       width: 2px;
-      background: linear-gradient(180deg, var(--wf-gold), var(--wf-green), var(--wf-blue));
+      background: linear-gradient(180deg, var(--wf-gold), var(--wf-green), var(--wf-blue), var(--wf-red));
       opacity: 0.4;
       border-radius: 2px;
     }
@@ -479,14 +474,19 @@
       box-shadow: 0 0 0 6px #0a0e1a, 0 4px 14px rgba(74, 222, 128, 0.25);
     }
     .wf-timeline-item:nth-child(3) .wf-timeline-num {
-      border-color: var(--wf-blue);
-      color: var(--wf-blue);
-      box-shadow: 0 0 0 6px #0a0e1a, 0 4px 14px rgba(0, 224, 255, 0.25);
-    }
-    .wf-timeline-item:nth-child(4) .wf-timeline-num {
       border-color: var(--wf-pink);
       color: var(--wf-pink);
       box-shadow: 0 0 0 6px #0a0e1a, 0 4px 14px rgba(255, 143, 177, 0.25);
+    }
+    .wf-timeline-item:nth-child(4) .wf-timeline-num {
+      border-color: var(--wf-red);
+      color: var(--wf-red);
+      box-shadow: 0 0 0 6px #0a0e1a, 0 4px 14px rgba(255, 107, 107, 0.25);
+    }
+    .wf-timeline-item:nth-child(5) .wf-timeline-num {
+      border-color: var(--wf-blue);
+      color: var(--wf-blue);
+      box-shadow: 0 0 0 6px #0a0e1a, 0 4px 14px rgba(0, 224, 255, 0.25);
     }
 
     .wf-timeline-item:hover .wf-timeline-num {
@@ -494,19 +494,10 @@
       background: var(--wf-gold);
       color: #0a0e1a;
     }
-
-    .wf-timeline-item:nth-child(2):hover .wf-timeline-num {
-      background: var(--wf-green);
-      color: #0a0e1a;
-    }
-    .wf-timeline-item:nth-child(3):hover .wf-timeline-num {
-      background: var(--wf-blue);
-      color: #0a0e1a;
-    }
-    .wf-timeline-item:nth-child(4):hover .wf-timeline-num {
-      background: var(--wf-pink);
-      color: #0a0e1a;
-    }
+    .wf-timeline-item:nth-child(2):hover .wf-timeline-num { background: var(--wf-green); color: #0a0e1a; }
+    .wf-timeline-item:nth-child(3):hover .wf-timeline-num { background: var(--wf-pink); color: #0a0e1a; }
+    .wf-timeline-item:nth-child(4):hover .wf-timeline-num { background: var(--wf-red); color: #0a0e1a; }
+    .wf-timeline-item:nth-child(5):hover .wf-timeline-num { background: var(--wf-blue); color: #0a0e1a; }
 
     .wf-timeline-content {
       background: var(--wf-surface);
@@ -541,250 +532,125 @@
       margin: 0;
     }
 
-    .wf-timeline-content p strong {
-      color: var(--wf-gold);
-      font-weight: 700;
-    }
+    .wf-timeline-content p strong { color: var(--wf-gold); font-weight: 700; }
+    .wf-timeline-content p strong.red { color: var(--wf-red); }
 
-    /* ---------- TOP-UP DIAGRAM ---------- */
-    .wf-topup-box {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
-      border-radius: 22px;
-      padding: 44px 40px;
-      border: 1px solid var(--wf-line);
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .wf-topup-box::after {
-      content: '';
-      position: absolute;
-      top: -100px; right: -100px;
-      width: 320px; height: 320px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(245, 197, 66, 0.08), transparent 70%);
-      pointer-events: none;
-    }
-
-    .wf-topup-box h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #fff;
-      margin: 0 0 10px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .wf-topup-box h3 i { color: var(--wf-gold); }
-
-    .wf-topup-box > p {
-      color: var(--wf-muted);
-      font-size: 0.95rem;
-      line-height: 1.7;
-      margin: 0 0 32px;
-      max-width: 620px;
-    }
-
-    .wf-topup-flow {
+    /* ---------- TWO-TIER GRID ---------- */
+    .wf-tier-grid {
       display: grid;
-      grid-template-columns: 1fr auto 1fr auto 1fr;
-      align-items: center;
-      gap: 16px;
-      position: relative;
-      z-index: 1;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 32px;
     }
 
-    .wf-topup-item {
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 16px;
-      padding: 26px 20px;
-      text-align: center;
+    @media (max-width: 780px) {
+      .wf-tier-grid { grid-template-columns: 1fr; }
+    }
+
+    .wf-tier-card {
+      border-radius: var(--wf-radius);
+      padding: 32px 28px;
       border: 1px solid var(--wf-line);
-      transition: all 0.35s ease;
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
       position: relative;
       overflow: hidden;
+      transition: all 0.35s ease;
     }
 
-    .wf-topup-item::before {
+    .wf-tier-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 3px;
     }
 
-    .wf-topup-item:nth-child(1)::before { background: linear-gradient(90deg, var(--wf-blue), #2c7be5); }
-    .wf-topup-item:nth-child(3)::before { background: linear-gradient(90deg, var(--wf-pink), #e83e8c); }
-    .wf-topup-item:nth-child(5)::before { background: linear-gradient(90deg, var(--wf-green), #10a76b); }
+    .wf-tier-card.condolence::before { background: linear-gradient(90deg, var(--wf-pink), #e83e8c); }
+    .wf-tier-card.death::before { background: linear-gradient(90deg, var(--wf-red), #c92a2a); }
 
-    .wf-topup-item:hover {
-      transform: translateY(-6px);
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    .wf-tier-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,255,255,0.15);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
 
-    .wf-topup-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--wf-muted);
-      margin-bottom: 12px;
+    .wf-tier-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .wf-tier-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      font-size: 1.3rem;
+      flex-shrink: 0;
     }
 
-    .wf-topup-item:nth-child(1) .wf-topup-label i { color: var(--wf-blue); }
-    .wf-topup-item:nth-child(3) .wf-topup-label i { color: var(--wf-pink); }
-    .wf-topup-item:nth-child(5) .wf-topup-label i { color: var(--wf-green); }
+    .wf-tier-card.condolence .wf-tier-icon {
+      background: linear-gradient(135deg, rgba(255,143,177,0.15), rgba(232,62,140,0.05));
+      color: var(--wf-pink);
+      border: 1px solid rgba(255,143,177,0.2);
+    }
+    .wf-tier-card.death .wf-tier-icon {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(201,42,42,0.05));
+      color: var(--wf-red);
+      border: 1px solid rgba(255,107,107,0.2);
+    }
 
-    .wf-topup-value {
-      font-size: 1.25rem;
-      font-weight: 800;
+    .wf-tier-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--wf-dim);
+      font-weight: 700;
+    }
+
+    .wf-tier-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700;
       color: #fff;
-      line-height: 1.2;
+      margin: 2px 0 0;
     }
 
-    .wf-topup-item:nth-child(1) .wf-topup-value { color: var(--wf-blue); }
-    .wf-topup-item:nth-child(3) .wf-topup-value { color: var(--wf-pink); }
-    .wf-topup-item:nth-child(5) .wf-topup-value { color: var(--wf-green); }
+    .wf-tier-amount {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
 
-    .wf-topup-value small {
+    .wf-tier-card.condolence .wf-tier-amount { color: var(--wf-pink); }
+    .wf-tier-card.death .wf-tier-amount { color: var(--wf-red); }
+
+    .wf-tier-amount small {
       display: block;
       font-size: 0.7rem;
       font-weight: 500;
       color: var(--wf-dim);
-      text-transform: none;
-      letter-spacing: 0;
-      margin-top: 8px;
-      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 6px;
     }
 
-    .wf-topup-arrow {
-      color: rgba(255, 255, 255, 0.2);
-      font-size: 1.3rem;
-      text-align: center;
-    }
-
-    /* ---------- SCENARIO ---------- */
-    .wf-scenario {
-      background: linear-gradient(145deg, rgba(245, 197, 66, 0.06), rgba(245, 197, 66, 0.02));
-      border-radius: 22px;
-      padding: 48px 44px;
-      border: 1px solid rgba(245, 197, 66, 0.15);
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .wf-scenario::before {
-      content: '';
-      position: absolute;
-      top: -80px; right: -80px;
-      width: 280px; height: 280px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(245, 197, 66, 0.15), transparent 70%);
-      pointer-events: none;
-    }
-
-    .wf-scenario h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #fff;
-      margin: 0 0 10px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .wf-scenario h3 i { color: var(--wf-gold); }
-
-    .wf-scenario > p {
+    .wf-tier-card p {
+      font-size: 0.9rem;
+      line-height: 1.7;
       color: var(--wf-muted);
-      font-size: 0.95rem;
-      line-height: 1.7;
-      margin: 0 0 32px;
-      max-width: 620px;
-    }
-
-    .wf-scenario-steps {
-      display: grid;
-      gap: 14px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .wf-scenario-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 18px;
-      padding: 18px 22px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--wf-line);
-      border-radius: 14px;
-      transition: all 0.3s ease;
-    }
-
-    .wf-scenario-step:hover {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(245, 197, 66, 0.3);
-      transform: translateX(6px);
-    }
-
-    .wf-step-badge {
-      flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--wf-gold), var(--wf-gold-dark));
-      color: #0a0e1a;
-      font-weight: 800;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px rgba(245, 197, 66, 0.35);
-    }
-
-    .wf-scenario-step p {
-      margin: 4px 0 0;
-      font-size: 0.92rem;
-      line-height: 1.7;
-      color: var(--wf-text);
-    }
-
-    .wf-scenario-step p strong {
-      color: var(--wf-gold);
-      font-weight: 700;
+      margin: 0;
     }
 
     /* ---------- RESPONSIVE ---------- */
-    @media (max-width: 900px) {
-      .wf-topup-flow {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      .wf-topup-arrow {
-        transform: rotate(90deg);
-        padding: 4px 0;
-      }
-    }
-
     @media (max-width: 640px) {
       .wf-hero { padding: 70px 0 90px; }
       .wf-highlight { flex-direction: column; padding: 24px; gap: 16px; }
       .wf-highlight-icon { width: 48px; height: 48px; font-size: 1.2rem; }
       .wf-section { padding: 60px 0; }
-      .wf-topup-box { padding: 28px 22px; }
-      .wf-scenario { padding: 32px 22px; }
       .wf-timeline { padding-left: 34px; }
       .wf-timeline-item { gap: 16px; }
       .wf-timeline-num { left: -34px; width: 30px; height: 30px; font-size: 0.72rem; }
@@ -793,7 +659,6 @@
       .container { padding: 0 18px; }
     }
 
-    /* Reduced motion preference */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -842,7 +707,7 @@
         <i class="fas fa-money-bill-wave"></i>
         <div>
           <strong>UGX 100,000</strong>
-          <span>Annual contribution</span>
+          <span>Paid every year</span>
         </div>
       </div>
       <div class="wf-stat-pill">
@@ -856,7 +721,14 @@
         <i class="fas fa-hand-holding-heart"></i>
         <div>
           <strong>UGX 20,000</strong>
-          <span>Per member, per loss</span>
+          <span>Per registered loss</span>
+        </div>
+      </div>
+      <div class="wf-stat-pill">
+        <i class="fas fa-cross"></i>
+        <div>
+          <strong>UGX 40,000</strong>
+          <span>Per member passing</span>
         </div>
       </div>
     </div>
@@ -872,7 +744,7 @@
       </div>
       <div>
         <h4>How KAC Works at a Glance</h4>
-        <p>Pay <strong>UGX 100,000 per year</strong> and register <strong>up to 10 family members</strong> as beneficiaries. When a registered member passes away, each association member contributes <strong>UGX 20,000</strong> to support the bereaved family.</p>
+        <p>Every member pays <strong>UGX 100,000 each year</strong> — with or without a loss. You may register <strong>up to 10 family members</strong> as beneficiaries. When a registered family member passes away, each member contributes <strong>UGX 20,000</strong>. When the <strong class="red">account owner (the member) passes away</strong>, each member contributes <strong class="red">UGX 40,000</strong>.</p>
       </div>
     </div>
   </div>
@@ -882,7 +754,7 @@
 <section class="wf-section">
   <div class="container">
     <div class="wf-section-label">Plan overview</div>
-    <h2>The Three Numbers That Matter</h2>
+    <h2>The Numbers That Matter</h2>
     <p class="wf-section-sub">Everything you need to know about the Karacel Condolences (KAC) plan, at a glance.</p>
 
     <div class="wf-plan-grid">
@@ -892,9 +764,9 @@
         <h3>Annual Contribution</h3>
         <div class="wf-plan-value">
           UGX 100,000
-          <small>per member, per year</small>
+          <small>every year — mandatory</small>
         </div>
-        <p>Your yearly contribution keeps you and your registered family members covered for condolence support throughout the year.</p>
+        <p>Your yearly contribution keeps you and your registered family members covered for condolence and death support throughout the year. This is paid regardless of whether a claim is made.</p>
       </div>
 
       <div class="wf-plan-card">
@@ -904,17 +776,27 @@
           Up to 10
           <small>beneficiaries of your choice</small>
         </div>
-        <p>Choose up to 10 family members whose passing would make you eligible for support from the association's condolence fund.</p>
+        <p>Choose up to 10 family members whose passing would make you eligible for condolence support from the association's fund.</p>
       </div>
 
       <div class="wf-plan-card">
         <div class="wf-plan-icon"><i class="fas fa-hand-holding-heart"></i></div>
-        <h3>Contribution per Loss</h3>
+        <h3>Contribution — Registered Loss</h3>
         <div class="wf-plan-value">
           UGX 20,000
           <small>from each member</small>
         </div>
-        <p>When a registered member loses a loved one, every member contributes UGX 20,000 — pooled together to give the bereaved family meaningful support.</p>
+        <p>When a registered family member of any member passes away, every member contributes UGX 20,000 — pooled together to give the bereaved family meaningful condolence support.</p>
+      </div>
+
+      <div class="wf-plan-card">
+        <div class="wf-plan-icon"><i class="fas fa-cross"></i></div>
+        <h3>Contribution — Member Passing</h3>
+        <div class="wf-plan-value">
+          UGX 40,000
+          <small>from each member</small>
+        </div>
+        <p>When the account owner (the member) themselves passes away, every member contributes UGX 40,000 — a larger contribution that reflects the gravity of losing a member of the SACCO family.</p>
       </div>
 
     </div>
@@ -926,15 +808,15 @@
   <div class="container">
     <div class="wf-section-label">Step by step</div>
     <h2>How the Fund Works</h2>
-    <p class="wf-section-sub">From registration to payout — here's the full journey of your condolence cover.</p>
+    <p class="wf-section-sub">From registration to payout — here's the full journey of your cover.</p>
 
     <div class="wf-timeline">
 
       <div class="wf-timeline-item">
         <div class="wf-timeline-num">01</div>
         <div class="wf-timeline-content">
-          <h3>Register &amp; Pay Your Annual Contribution</h3>
-          <p>Pay <strong>UGX 100,000</strong> per year to activate your condolence cover. This amount is held in the association's condolence fund for the entire year.</p>
+          <h3>Pay Your Annual Contribution</h3>
+          <p>Pay <strong>UGX 100,000 every year</strong>. This is required whether or not a loss occurs — the pool must always remain healthy to support any member in their time of grief.</p>
         </div>
       </div>
 
@@ -942,23 +824,31 @@
         <div class="wf-timeline-num">02</div>
         <div class="wf-timeline-content">
           <h3>Register Up to 10 Family Members</h3>
-          <p>Submit the names of <strong>up to 10 family members</strong> you wish to be covered. These are the beneficiaries whose passing would make you eligible for support from the fund.</p>
+          <p>Submit the names of <strong>up to 10 family members</strong> you wish to be covered. These are the beneficiaries whose passing would make you eligible for condolence support from the fund.</p>
         </div>
       </div>
 
       <div class="wf-timeline-item">
         <div class="wf-timeline-num">03</div>
         <div class="wf-timeline-content">
-          <h3>When a Loss Occurs</h3>
-          <p>If any registered member loses one of their listed family members, the association is notified. Every member then contributes <strong>UGX 20,000</strong> to support the bereaved family.</p>
+          <h3>When a Registered Member Passes Away</h3>
+          <p>If a member loses one of their listed family members, the association is notified. Every member then contributes <strong>UGX 20,000</strong> to support the bereaved family with condolence.</p>
         </div>
       </div>
 
       <div class="wf-timeline-item">
         <div class="wf-timeline-num">04</div>
         <div class="wf-timeline-content">
-          <h3>Top-Up Rule — Keeping the Fund Intact</h3>
-          <p>If the year ends with <strong>no loss</strong>, your <strong>UGX 100,000 remains intact</strong> for the next year. If a loss occurs and the fund is used, each member simply <strong>tops up</strong> their account back to UGX 100,000 — ensuring the fund is always ready for the next need.</p>
+          <h3>When the Account Owner Passes Away</h3>
+          <p>If a member themselves passes away, every other member contributes <strong class="red">UGX 40,000</strong> — a larger amount, because the loss is felt by the entire SACCO family and the member's household loses its anchor.</p>
+        </div>
+      </div>
+
+      <div class="wf-timeline-item">
+        <div class="wf-timeline-num">05</div>
+        <div class="wf-timeline-content">
+          <h3>Annual Renewal — Every Year</h3>
+          <p>The <strong>UGX 100,000 annual contribution is paid every year</strong> by every member. This is a fixed yearly obligation — the fund is not a one-off payment, and it does not depend on whether a claim was made.</p>
         </div>
       </div>
 
@@ -966,80 +856,86 @@
   </div>
 </section>
 
-<!-- ========== TOP-UP EXPLANATION ========== -->
+<!-- ========== TWO-TIER CONTRIBUTION COMPARISON ========== -->
 <section class="wf-section">
   <div class="container">
-    <div class="wf-topup-box">
-      <h3><i class="fas fa-sync-alt"></i> The Top-Up Rule Explained</h3>
-      <p>Unlike traditional insurance, your contribution is not "lost" if unused. Here's how the fund stays healthy year after year.</p>
+    <div class="wf-section-label">Two contribution tiers</div>
+    <h2>Who Passed Away Determines the Contribution</h2>
+    <p class="wf-section-sub">Every loss touches the SACCO family, but the amount each member contributes depends on who the loss is.</p>
 
-      <div class="wf-topup-flow">
+    <div class="wf-tier-grid">
 
-        <div class="wf-topup-item">
-          <div class="wf-topup-label"><i class="fas fa-calendar-check"></i> Year with no loss</div>
-          <div class="wf-topup-value">
-            UGX 100,000
-            <small>stays with you for next year</small>
+      <!-- Condolence tier -->
+      <div class="wf-tier-card condolence">
+        <div class="wf-tier-head">
+          <div class="wf-tier-icon"><i class="fas fa-dove"></i></div>
+          <div>
+            <div class="wf-tier-label">Tier 1 — Condolence</div>
+            <div class="wf-tier-title">A registered family member passes away</div>
           </div>
         </div>
-
-        <div class="wf-topup-arrow"><i class="fas fa-arrow-right"></i></div>
-
-        <div class="wf-topup-item">
-          <div class="wf-topup-label"><i class="fas fa-bolt"></i> Year with a loss</div>
-          <div class="wf-topup-value">
-            UGX 20,000
-            <small>contributed per member</small>
-          </div>
+        <div class="wf-tier-amount">
+          UGX 20,000
+          <small>contributed by every member</small>
         </div>
-
-        <div class="wf-topup-arrow"><i class="fas fa-arrow-right"></i></div>
-
-        <div class="wf-topup-item">
-          <div class="wf-topup-label"><i class="fas fa-redo"></i> After the loss</div>
-          <div class="wf-topup-value">
-            Top-Up
-            <small>back to UGX 100,000</small>
-          </div>
-        </div>
-
+        <p>The affected member's registered beneficiary has passed away. Every other member contributes UGX 20,000 to give the bereaved family condolence support. The selected register slot is permanently closed and never replaced.</p>
       </div>
+
+      <!-- Death tier -->
+      <div class="wf-tier-card death">
+        <div class="wf-tier-head">
+          <div class="wf-tier-icon"><i class="fas fa-cross"></i></div>
+          <div>
+            <div class="wf-tier-label">Tier 2 — Death of a Member</div>
+            <div class="wf-tier-title">The account owner passes away</div>
+          </div>
+        </div>
+        <div class="wf-tier-amount">
+          UGX 40,000
+          <small>contributed by every member</small>
+        </div>
+        <p>A SACCO member has passed away. Every other member contributes UGX 40,000 to support the member's household. The contribution is larger because the loss strikes at the core of the SACCO family.</p>
+      </div>
+
     </div>
   </div>
 </section>
 
 <!-- ========== EXAMPLE SCENARIO ========== -->
 <section class="wf-section">
-  <div class="container">
-    <div class="wf-scenario">
-      <h3><i class="fas fa-lightbulb"></i> A Real-World Example</h3>
-      <p>Let's walk through a full year to see exactly how the KAC fund moves.</p>
+  <div class="container" style="padding: 0;">
+    <div style="background: linear-gradient(145deg, rgba(245, 197, 66, 0.06), rgba(245, 197, 66, 0.02)); border-radius: 22px; padding: 48px 44px; border: 1px solid rgba(245, 197, 66, 0.15); position: relative; overflow: hidden;">
+      <div style="position: absolute; top: -80px; right: -80px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(245, 197, 66, 0.15), transparent 70%); pointer-events: none;"></div>
+      <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: #fff; margin: 0 0 10px; display: flex; align-items: center; gap: 12px;">
+        <i class="fas fa-lightbulb" style="color: #f5c542;"></i> A Real-World Example
+      </h3>
+      <p style="color: var(--wf-muted); font-size: 0.95rem; line-height: 1.7; margin: 0 0 32px; max-width: 620px;">Let's walk through a full year to see exactly how the KAC fund moves.</p>
 
-      <div class="wf-scenario-steps">
+      <div style="display: grid; gap: 14px; position: relative; z-index: 1;">
 
-        <div class="wf-scenario-step">
-          <div class="wf-step-badge">1</div>
-          <p><strong>January:</strong> Amina pays her UGX 100,000 annual contribution and registers 10 family members — her parents, siblings, and children.</p>
+        <div style="display: flex; align-items: flex-start; gap: 18px; padding: 18px 22px; background: rgba(255,255,255,0.03); border: 1px solid var(--wf-line); border-radius: 14px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #f5c542, #d4a020); color: #0a0e1a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">1</div>
+          <p style="margin: 4px 0 0; font-size: 0.92rem; line-height: 1.7; color: var(--wf-text);"><strong style="color:#f5c542;">January:</strong> Amina pays her <strong style="color:#f5c542;">UGX 100,000</strong> annual contribution and registers 10 family members — her parents, siblings, and children.</p>
         </div>
 
-        <div class="wf-scenario-step">
-          <div class="wf-step-badge">2</div>
-          <p><strong>June:</strong> Sadly, one of Amina's registered family members passes away. The association is notified, and the bereaved family receives condolence support.</p>
+        <div style="display: flex; align-items: flex-start; gap: 18px; padding: 18px 22px; background: rgba(255,255,255,0.03); border: 1px solid var(--wf-line); border-radius: 14px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #f5c542, #d4a020); color: #0a0e1a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">2</div>
+          <p style="margin: 4px 0 0; font-size: 0.92rem; line-height: 1.7; color: var(--wf-text);"><strong style="color:#ff8fb1;">June:</strong> Sadly, one of Amina's registered family members passes away. The association is notified. Every member contributes <strong style="color:#ff8fb1;">UGX 20,000</strong> — the condolence tier.</p>
         </div>
 
-        <div class="wf-scenario-step">
-          <div class="wf-step-badge">3</div>
-          <p><strong>July:</strong> Every member contributes <strong>UGX 20,000</strong>. This pooled amount is delivered to the bereaved family as condolence.</p>
+        <div style="display: flex; align-items: flex-start; gap: 18px; padding: 18px 22px; background: rgba(255,255,255,0.03); border: 1px solid var(--wf-line); border-radius: 14px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #f5c542, #d4a020); color: #0a0e1a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">3</div>
+          <p style="margin: 4px 0 0; font-size: 0.92rem; line-height: 1.7; color: var(--wf-text);"><strong style="color:#ff6b6b;">October:</strong> In the same year, a member of the SACCO passes away. Every member contributes <strong style="color:#ff6b6b;">UGX 40,000</strong> — the death tier. The member's household receives the pooled condolence.</p>
         </div>
 
-        <div class="wf-scenario-step">
-          <div class="wf-step-badge">4</div>
-          <p><strong>After payout:</strong> Because the fund was used, each member simply <strong>tops up UGX 100,000</strong> — restoring the fund to full strength for any future losses.</p>
+        <div style="display: flex; align-items: flex-start; gap: 18px; padding: 18px 22px; background: rgba(255,255,255,0.03); border: 1px solid var(--wf-line); border-radius: 14px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #f5c542, #d4a020); color: #0a0e1a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">4</div>
+          <p style="margin: 4px 0 0; font-size: 0.92rem; line-height: 1.7; color: var(--wf-text);"><strong style="color:#00e0ff;">December:</strong> The year ends. Amina's <strong style="color:#00e0ff;">UGX 100,000 has been paid for the year</strong> — this was mandatory, regardless of any claims. Next year, she pays the same amount again.</p>
         </div>
 
-        <div class="wf-scenario-step">
-          <div class="wf-step-badge">5</div>
-          <p><strong>December:</strong> The year ends. No further losses occurred, so Amina's UGX 100,000 remains intact and rolls over into the next year automatically.</p>
+        <div style="display: flex; align-items: flex-start; gap: 18px; padding: 18px 22px; background: rgba(245,197,66,0.05); border: 1px solid rgba(245,197,66,0.2); border-radius: 14px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4ade80, #10a76b); color: #0a0e1a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">✓</div>
+          <p style="margin: 4px 0 0; font-size: 0.92rem; line-height: 1.7; color: var(--wf-text);"><strong style="color:#4ade80;">Summary for the year:</strong> Amina paid <strong>UGX 100,000</strong> annual contribution, and — through the pool — contributed <strong>UGX 20,000</strong> for the registered loss and <strong>UGX 40,000</strong> for the member's passing. Her registered cover remains active for the rest of the year.</p>
         </div>
 
       </div>
