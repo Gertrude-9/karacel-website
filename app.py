@@ -2318,7 +2318,7 @@ def admin_view_loan(loan_id):
         return redirect(url_for('admin_dashboard'))
 
 # ============================================================
-# ADMIN — APPROVE / REJECT LOAN (final approval + disburse)
+# ADMIN — APPROVE / REJECT LOAN (deducts savings on approval)
 # ============================================================
 @app.route("/admin/loan/approve/<int:loan_id>", methods=["POST"])
 def admin_approve_loan(loan_id):
@@ -2337,15 +2337,18 @@ def admin_approve_loan(loan_id):
 
     PH = "%s" if DATABASE_URL else "?"
     db = get_db()
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    today   = datetime.now().strftime('%Y-%m-%d')
+
     try:
         loan_row = db.execute(f"""
             SELECT
                 l.*,
                 u.id AS applicant_id,
+                COALESCE(u.savings_balance, 0) AS current_savings,
                 u.full_name,
                 u.email,
-                u.phone,
-                u.savings_balance
+                u.phone
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.id = {PH}
@@ -2355,113 +2358,169 @@ def admin_approve_loan(loan_id):
             return jsonify({"success": False, "message": "Loan not found"}), 404
 
         loan = row_to_dict(loan_row)
-        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # ---- REJECT ----
+        # ============================================================
+        # REJECT — no money moves
+        # ============================================================
         if action == "reject":
             if not reason:
                 return jsonify({"success": False, "message": "Rejection reason required"}), 400
 
             db.execute(f"""
                 UPDATE loans
-                   SET status = 'rejected',
-                       rejected_date = {PH},
-                       rejection_reason = {PH},
-                       rejected_by = {PH}
-                 WHERE id = {PH}
+                SET status = 'rejected',
+                    rejected_date = {PH},
+                    rejection_reason = {PH},
+                    rejected_by = {PH}
+                WHERE id = {PH}
             """, (now_str, reason, session.get('full_name', 'Admin'), loan_id))
 
-            db.execute(f"""
-                INSERT INTO notifications (
-                    user_id, type, title, message, link, is_read, created_at
-                )
-                VALUES ({PH}, 'loan_rejection', {PH}, {PH}, '/member/dashboard', 0, {PH})
-            """, (
-                loan['applicant_id'],
-                'Loan Application Rejected',
-                f"Your loan {loan['loan_number']} has been rejected.\n\nReason: {reason}",
-                now_str
-            ))
+            try:
+                db.execute(f"""
+                    INSERT INTO notifications
+                        (user_id, type, title, message, link, is_read, created_at)
+                    VALUES ({PH}, 'loan_rejection', {PH}, {PH}, '/member/dashboard', 0, {PH})
+                """, (
+                    loan['applicant_id'],
+                    'Loan Application Rejected',
+                    f"Your loan {loan['loan_number']} has been rejected.\n\nReason: {reason}",
+                    now_str
+                ))
+            except Exception as e:
+                print(f"⚠️ Notification insert failed: {e}")
 
             db.commit()
-            print(f"✅ Admin rejected loan {loan_id}")
             return jsonify({
                 "success": True,
                 "message": "Loan rejected successfully. The applicant has been notified."
             })
 
-        # ---- APPROVE ----
+        # ============================================================
+        # APPROVE — DEDUCT SAVINGS HERE
+        # ============================================================
         if loan.get("status") != "approved":
             return jsonify({
                 "success": False,
                 "message": f"Loan is '{loan.get('status')}', not awaiting final approval."
             }), 400
 
-        required = float(loan.get('amount') or 0) * 0.10
-        savings = float(loan.get('savings_balance') or 0)
-        if savings < required:
+        loan_principal  = float(loan['amount'] or 0)
+        current_savings = float(loan['current_savings'] or 0)
+
+        # 10% savings requirement
+        required = loan_principal * 0.10
+        if current_savings < required:
             return jsonify({
                 "success": False,
-                "message": f"Member needs 10% savings (UGX {required:,.0f}). Current: UGX {savings:,.0f}"
+                "message": (
+                    f"Member needs at least 10% savings "
+                    f"(UGX {required:,.0f}). Current: UGX {current_savings:,.0f}"
+                )
             }), 400
 
-        today = datetime.now().strftime('%Y-%m-%d')
+        # Deduct principal from savings
+        new_savings = current_savings - loan_principal
         end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        balance = loan.get('total_repayment') or loan.get('amount') or 0
+        balance  = float(loan.get('total_repayment') or loan.get('amount') or 0)
 
+        db.execute("BEGIN TRANSACTION")
+
+        # 1) Deduct from savings
+        db.execute(f"""
+            UPDATE users
+            SET savings_balance = COALESCE(savings_balance, 0) - {PH}
+            WHERE id = {PH}
+        """, (loan_principal, loan['applicant_id']))
+
+        # 2) Audit row
+        try:
+            db.execute(f"""
+                INSERT INTO savings_deposits
+                    (user_id, amount, savings_type, deposit_date,
+                     payment_method, receipt_number, notes)
+                VALUES ({PH}, {PH}, 'LOAN_DISBURSEMENT', {PH}, 'internal', {PH}, {PH})
+            """, (
+                loan['applicant_id'],
+                -loan_principal,
+                today,
+                f"DISB-{loan['loan_number']}",
+                f"Loan {loan['loan_number']} approved & disbursed by Admin — deducted from savings"
+            ))
+        except Exception as e:
+            print(f"⚠️ Could not log disbursement: {e}")
+
+        # 3) Mark as disbursed
         db.execute(f"""
             UPDATE loans
-               SET status = 'disbursed',
-                   approved_date = {PH},
-                   disbursed_date = {PH},
-                   loan_start_date = {PH},
-                   loan_end_date = {PH},
-                   current_balance = {PH},
-                   approved_by = {PH},
-                   approved_by_role = 'admin',
-                   disbursed_by = {PH},
-                   disbursed_by_role = 'admin'
-             WHERE id = {PH}
+            SET status = 'disbursed',
+                approved_date = {PH},
+                disbursed_date = {PH},
+                disbursement_date = {PH},
+                disbursed_amount = {PH},
+                loan_start_date = {PH},
+                loan_end_date = {PH},
+                due_date = {PH},
+                current_balance = {PH},
+                approved_by = {PH},
+                approved_by_role = 'admin',
+                disbursed_by = {PH},
+                disbursed_by_role = 'admin'
+            WHERE id = {PH}
         """, (
-            today, today, today, end_date, balance,
+            today, today, today, loan_principal,
+            today, end_date, end_date,
+            balance,
             session.get('full_name', 'Admin'),
             session.get('full_name', 'Admin'),
             loan_id
         ))
 
-        db.execute(f"""
-            INSERT INTO notifications (
-                user_id, type, title, message, link, is_read, created_at
-            )
-            VALUES ({PH}, 'loan_disbursed', {PH}, {PH}, '/member/dashboard', 0, {PH})
-        """, (
-            loan['applicant_id'],
-            'Loan Approved & Disbursed',
-            f"Your loan {loan['loan_number']} has been approved and disbursed. Please repay by {end_date}.",
-            now_str
-        ))
+        # 4) Notify member
+        try:
+            db.execute(f"""
+                INSERT INTO notifications
+                    (user_id, type, title, message, link, is_read, created_at)
+                VALUES ({PH}, 'loan_disbursed', {PH}, {PH}, '/member/dashboard', 0, {PH})
+            """, (
+                loan['applicant_id'],
+                'Loan Approved & Disbursed',
+                (
+                    f"Your loan {loan['loan_number']} has been approved and disbursed. "
+                    f"UGX {loan_principal:,.0f} was deducted from your savings. "
+                    f"Please repay by {end_date}."
+                ),
+                now_str
+            ))
+        except Exception as e:
+            print(f"⚠️ Notification insert failed: {e}")
 
         db.commit()
-        print(f"✅ Admin approved & disbursed loan {loan_id}")
+
         return jsonify({
             "success": True,
-            "message": "Loan approved and marked as disbursed. The applicant has been notified."
+            "message": (
+                f"Loan approved & disbursed. "
+                f"UGX {loan_principal:,.0f} deducted from savings. "
+                f"New savings: UGX {new_savings:,.0f}."
+            ),
+            "deducted": loan_principal,
+            "new_savings": new_savings
         })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        try: db.rollback()
-        except Exception: pass
+        try:
+            db.rollback()
+        except Exception:
+            pass
         return jsonify({"success": False, "message": str(e)}), 500
     finally:
-        try: db.close()
-        except Exception: pass
-
-# ============================================================
-# KAC CLAIMS (Condolence Scheme)
-# ============================================================
-
+        try:
+            db.close()
+        except Exception:
+            pass
+        
 # ============================================================
 # TREASURER — KAC CLAIMS PAGE
 # ============================================================
@@ -3259,7 +3318,7 @@ def treasurer_view_loan(loan_id):
 
 
 # ============================================================
-# TREASURER - APPROVE / REJECT LOAN
+# TREASURER - APPROVE / REJECT LOAN (deducts savings on approval)
 # ============================================================
 @app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
@@ -3268,11 +3327,10 @@ def treasurer_approve_loan(loan_id):
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
 
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+    if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
 
     data = request.get_json(silent=True)
-
     if not data:
         return jsonify({'success': False, 'message': 'Invalid request'}), 400
 
@@ -3285,13 +3343,15 @@ def treasurer_approve_loan(loan_id):
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    today   = datetime.now().strftime('%Y-%m-%d')
 
     try:
+        # ---- Load loan + applicant + current savings ----
         loan_row = db.execute(f"""
             SELECT
                 l.*,
                 u.id AS applicant_id,
-                u.savings_balance,
+                COALESCE(u.savings_balance, 0) AS current_savings,
                 u.full_name,
                 u.email,
                 u.phone
@@ -3306,7 +3366,7 @@ def treasurer_approve_loan(loan_id):
         loan = row_to_dict(loan_row)
 
         # ============================================================
-        # REJECT LOAN
+        # REJECT LOAN — no money moves
         # ============================================================
         if action == 'reject':
             if not reason:
@@ -3322,25 +3382,30 @@ def treasurer_approve_loan(loan_id):
                 WHERE id = {PH}
             """, (now_str, reason, session.get('full_name', 'Treasurer'), loan_id))
 
-            db.execute(f"""
-                INSERT INTO notifications (
-                    user_id,
-                    title,
-                    message,
-                    notification_type,
-                    is_read,
-                    created_at
-                )
-                VALUES ({PH}, {PH}, {PH}, {PH}, 0, {PH})
-            """, (
-                loan['applicant_id'],
-                'Loan Application Rejected',
-                f"Your loan application {loan['loan_number']} has been rejected.\n\nReason: {reason}",
-                'loan_rejection',
-                now_str
-            ))
+            try:
+                db.execute(f"""
+                    INSERT INTO notifications
+                        (user_id, title, message, notification_type, is_read, created_at)
+                    VALUES ({PH}, {PH}, {PH}, 'loan_rejection', 0, {PH})
+                """, (
+                    loan['applicant_id'],
+                    'Loan Application Rejected',
+                    f"Your loan application {loan['loan_number']} has been rejected.\n\nReason: {reason}",
+                    now_str
+                ))
+            except Exception as e:
+                print(f"⚠️ Notification insert failed: {e}")
 
             db.commit()
+
+            try:
+                log_action(
+                    action="loan_reject",
+                    target=f"loan:{loan_id}",
+                    details=f"Rejected loan {loan['loan_number']} — Reason: {reason}"
+                )
+            except Exception:
+                pass
 
             return jsonify({
                 'success': True,
@@ -3348,77 +3413,136 @@ def treasurer_approve_loan(loan_id):
             })
 
         # ============================================================
-        # APPROVE LOAN
+        # APPROVE LOAN — DEDUCT SAVINGS HERE
         # ============================================================
         if loan['status'] != 'pending':
             return jsonify({
                 'success': False,
-                'message': f'Loan is {loan["status"]}, not pending'
+                'message': f"Loan is '{loan['status']}', not pending"
             }), 400
 
-        required = float(loan['amount']) * 0.10
-        savings = float(loan['savings_balance'] or 0)
+        loan_principal  = float(loan['amount'] or 0)
+        current_savings = float(loan['current_savings'] or 0)
 
-        if savings < required:
+        # 10% savings requirement (existing rule)
+        required = loan_principal * 0.10
+        if current_savings < required:
             return jsonify({
                 'success': False,
-                'message': f'Member needs 10% savings (UGX {required:,.0f}). Current: UGX {savings:,.0f}'
+                'message': (
+                    f"Member needs at least 10% savings "
+                    f"(UGX {required:,.0f}). Current: UGX {current_savings:,.0f}"
+                )
             }), 400
 
-        today = datetime.now().strftime('%Y-%m-%d')
-        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        balance = loan['total_repayment'] if loan['total_repayment'] is not None else loan['amount']
+        # ============================================================
+        # The SACCO model: the loan PRINCIPAL is deducted from savings.
+        # Interest is charged on the balance and repaid separately.
+        # If savings < principal → member goes into a saving debt.
+        # ============================================================
+        new_savings = current_savings - loan_principal
 
+        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        balance  = float(loan['total_repayment'] or loan['amount'] or 0)
+
+        db.execute("BEGIN TRANSACTION")
+
+        # 1) DEDUCT principal from member's savings
+        db.execute(f"""
+            UPDATE users
+            SET savings_balance = COALESCE(savings_balance, 0) - {PH}
+            WHERE id = {PH}
+        """, (loan_principal, loan['applicant_id']))
+
+        # 2) Audit trail — negative savings_deposits row
+        try:
+            db.execute(f"""
+                INSERT INTO savings_deposits
+                    (user_id, amount, savings_type, deposit_date,
+                     payment_method, receipt_number, notes)
+                VALUES ({PH}, {PH}, 'LOAN_DISBURSEMENT', {PH}, 'internal', {PH}, {PH})
+            """, (
+                loan['applicant_id'],
+                -loan_principal,
+                today,
+                f"DISB-{loan['loan_number']}",
+                f"Loan {loan['loan_number']} approved & disbursed — deducted from savings"
+            ))
+        except Exception as e:
+            print(f"⚠️ Could not log disbursement to savings_deposits: {e}")
+
+        # 3) Flip the loan to approved + disbursed in one shot
         db.execute(f"""
             UPDATE loans
             SET
-                status = 'approved',
+                status = 'disbursed',
                 approved_date = {PH},
+                disbursed_date = {PH},
+                disbursement_date = {PH},
+                disbursed_amount = {PH},
                 loan_start_date = {PH},
                 loan_end_date = {PH},
+                due_date = {PH},
                 current_balance = {PH},
                 approved_by = {PH},
-                approved_by_role = 'treasurer'
+                approved_by_role = {PH},
+                disbursed_by = {PH},
+                disbursed_by_role = {PH}
             WHERE id = {PH}
-        """, (today, today, end_date, balance, session.get('full_name', 'Treasurer'), loan_id))
-
-        db.execute(f"""
-            INSERT INTO notifications (
-                user_id,
-                title,
-                message,
-                notification_type,
-                is_read,
-                created_at
-            )
-            VALUES ({PH}, {PH}, {PH}, {PH}, 0, {PH})
         """, (
-            loan['applicant_id'],
-            'Loan Application Approved',
-            f"Your loan application {loan['loan_number']} has been approved. Please wait for disbursement.",
-            'loan_approval',
-            now_str
+            today, today, today, loan_principal,
+            today, end_date, end_date,
+            balance,
+            session.get('full_name', 'Treasurer'),
+            session.get('role', 'treasurer'),
+            session.get('full_name', 'Treasurer'),
+            session.get('role', 'treasurer'),
+            loan_id
         ))
+
+        # 4) Notify the member
+        try:
+            db.execute(f"""
+                INSERT INTO notifications
+                    (user_id, title, message, notification_type, is_read, created_at)
+                VALUES ({PH}, {PH}, {PH}, 'loan_disbursed', 0, {PH})
+            """, (
+                loan['applicant_id'],
+                'Loan Approved & Disbursed',
+                (
+                    f"Your loan {loan['loan_number']} has been approved and disbursed. "
+                    f"UGX {loan_principal:,.0f} was deducted from your savings. "
+                    f"Please repay by {end_date}."
+                ),
+                now_str
+            ))
+        except Exception as e:
+            print(f"⚠️ Notification insert failed: {e}")
 
         db.commit()
 
-        # For approve
-        log_action(
-            action="loan_approve",
-            target=f"loan:{loan_id}",
-            details=f"Approved & disbursed loan {loan['loan_number']} for {loan['full_name']}"
-        )
-
-        # For reject
-        log_action(
-            action="loan_reject",
-            target=f"loan:{loan_id}",
-            details=f"Rejected loan {loan['loan_number']} — Reason: {reason}"
-        )
+        try:
+            log_action(
+                action="loan_approve",
+                target=f"loan:{loan_id}",
+                details=(
+                    f"Approved & disbursed loan {loan['loan_number']} for {loan['full_name']}. "
+                    f"Deducted UGX {loan_principal:,.0f} from savings. "
+                    f"New savings: UGX {new_savings:,.0f}."
+                )
+            )
+        except Exception:
+            pass
 
         return jsonify({
             'success': True,
-            'message': 'Loan approved! Waiting for Chairman disbursement.'
+            'message': (
+                f"Loan approved & disbursed. "
+                f"UGX {loan_principal:,.0f} deducted from savings. "
+                f"New savings: UGX {new_savings:,.0f}."
+            ),
+            'deducted': loan_principal,
+            'new_savings': new_savings
         })
 
     except Exception as e:
@@ -3435,6 +3559,7 @@ def treasurer_approve_loan(loan_id):
             db.close()
         except Exception:
             pass
+
 # ============================================================
 # TREASURER - DISBURSE LOAN (deducts from member's savings)
 # ============================================================
