@@ -49,14 +49,38 @@
                 <span><i class="fas fa-layer-group"></i> {{ ks_shares|default(0) }} shares</span>
             </div>
         </div>
+
+        <!-- ===== KAC — NET BALANCE (auto-reduces on claims) ===== -->
         <div class="savings-type-card kac">
-            <div class="stc-label"><i class="fas fa-hand-holding-heart"></i> KAC — Condolence</div>
-            <div class="stc-value">UGX {{ "{:,.0f}".format(kac_total|default(0)) }}</div>
-            <div class="stc-meta">
-                <span><i class="fas fa-users"></i> {{ kac_members|default(0) }}</span>
-                <span><i class="fas fa-tag"></i> UGX 100,000/yr</span>
+            <div class="stc-label">
+                <i class="fas fa-hand-holding-heart"></i> KAC — Net Balance
+            </div>
+            <div class="stc-value"
+                 style="color: {% if (kac_total|default(0)) < 0 %}#ff6b6b{% else %}#4ade80{% endif %};">
+                UGX {{ "{:,.0f}".format(kac_total|default(0)) }}
+            </div>
+            <div class="stc-meta" style="flex-direction:column; align-items:flex-start; gap:4px; font-size:0.72rem;">
+                <span>
+                    <i class="fas fa-users"></i>
+                    {{ kac_members|default(0) }} KAC members
+                </span>
+                <span style="color:#4ade80;">
+                    <i class="fas fa-arrow-down"></i>
+                    Contributed: UGX {{ "{:,.0f}".format(kac_total_paid|default(0)) }}
+                </span>
+                <span style="color:#ff6b6b;">
+                    <i class="fas fa-arrow-up"></i>
+                    Paid in claims: UGX {{ "{:,.0f}".format(kac_total_used|default(0)) }}
+                </span>
+                {% if kac_debt_count and kac_debt_count > 0 %}
+                <span style="color:#ff6b6b; font-weight:600;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {{ kac_debt_count }} debtor(s): UGX {{ "{:,.0f}".format(kac_debt_total|default(0)) }}
+                </span>
+                {% endif %}
             </div>
         </div>
+
         <div class="savings-type-card reg">
             <div class="stc-label"><i class="fas fa-file-invoice"></i> Registration</div>
             <div class="stc-value">UGX {{ "{:,.0f}".format(registration_fees_total|default(0)) }}</div>
@@ -601,9 +625,6 @@
                         {{ loan.full_name }}
                     </td>
 
-                    {# ============================================================
-                       SEND MONEY TO — uses the number typed during loan application
-                       ============================================================ #}
                     <td>
                         {% set send_type = (loan.send_to_type or '')|lower %}
                         {% set send_main = loan.send_to_value %}
@@ -611,7 +632,6 @@
 
                         {% if send_main %}
                             {% if send_type == 'both' and send_sec %}
-                                {# ---- Both phone + account, stacked ---- #}
                                 <div style="display:flex; flex-direction:column; gap:3px;">
                                     <span class="payout-num"
                                           onclick='copyPayout({{ send_main|tojson }}, this)'
@@ -629,7 +649,6 @@
                                     </span>
                                 </div>
                             {% else %}
-                                {# ---- Single value (phone OR account) ---- #}
                                 <span class="payout-num"
                                       onclick='copyPayout({{ send_main|tojson }}, this)'
                                       title="Click to copy">
@@ -643,7 +662,6 @@
                                 </span>
                             {% endif %}
                         {% elif loan.phone %}
-                            {# ---- Fallback: older loans that don't have send_to yet ---- #}
                             <span class="payout-num"
                                   onclick='copyPayout({{ loan.phone|tojson }}, this)'
                                   title="Click to copy (from profile)">
@@ -1135,6 +1153,9 @@
                 <tbody>
                     {% if members %}
                         {% for member in members %}
+                        {% set kac_paid = (member.kac_paid or 0)|int %}
+                        {% set kac_used = (member.kac_used or 0)|int %}
+                        {% set kac_net  = kac_paid - kac_used %}
                         <tr data-member-id="{{ member.id }}">
                             <td>{{ loop.index }}</td>
                             <td style="color:#f5c542; font-family:monospace;">{{ member.sacco_number }}</td>
@@ -1143,13 +1164,24 @@
                             <td style="color:#4ade80;">{{ member.kai_shares or 0 }}</td>
                             <td style="color:#00e0ff;">{{ member.ks_shares or 0 }}</td>
 
-                            <!-- ===== KAC: installment progress ===== -->
+                            <!-- ===== KAC: net balance ===== -->
                             <td style="color:#f5c542;">
-                                {% set kac = (member.kac_paid or 0) | int %}
-                                {% if kac >= 100000 %}
+                                {% if kac_net < 0 %}
+                                    <span style="color:#ff6b6b; font-weight:600;">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        -{{ "{:,.0f}".format(-kac_net) }}
+                                    </span>
+                                {% elif kac_paid >= 100000 and kac_used == 0 %}
                                     <span style="color:#4ade80;">✓ 100K</span>
-                                {% elif kac > 0 %}
-                                    <span style="color:#f5c542;">{{ (kac / 1000)|round(0, 'floor')|int }}K / 100K</span>
+                                {% elif kac_used > 0 %}
+                                    <span style="color:#f5c542;">
+                                        {{ "{:,.0f}".format(kac_net) }} left
+                                    </span>
+                                    <div style="font-size:0.6rem; color:rgba(255,255,255,0.35); margin-top:2px;">
+                                        Paid: {{ "{:,.0f}".format(kac_paid) }} · Used: {{ "{:,.0f}".format(kac_used) }}
+                                    </div>
+                                {% elif kac_paid > 0 %}
+                                    <span style="color:#f5c542;">{{ (kac_paid / 1000)|int }}K / 100K</span>
                                 {% else %}
                                     <span style="color:rgba(255,255,255,0.2);">0 / 100K</span>
                                 {% endif %}
@@ -1563,7 +1595,6 @@
                 </div>
             </div>
 
-            <!-- Personal Information -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-user" style="color:#4ade80;"></i> Personal Information
@@ -1619,7 +1650,6 @@
                 </div>
             </div>
 
-            <!-- Next of Kin -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-users" style="color:#00e0ff;"></i> Next of Kin
@@ -1645,7 +1675,6 @@
                 </div>
             </div>
 
-            <!-- Savings & Shares -->
             <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:12px; margin-bottom:14px;">
                 <div style="color:rgba(255,255,255,0.2); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
                     <i class="fas fa-piggy-bank" style="color:#f5c542;"></i> Savings & Shares
@@ -1667,7 +1696,6 @@
                            style="width:100%; padding:10px 14px; background:rgba(0,224,255,0.03); border:1px solid rgba(0,224,255,0.1); border-radius:8px; color:white;">
                 </div>
 
-                <!-- KAC INSTALLMENT INPUT -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <label style="color:rgba(245,197,66,0.6); font-size:0.8rem; display:block; margin-bottom:4px;">
                         <i class="fas fa-hand-holding-heart"></i> KAC Paid (UGX 100,000/year target — installments allowed)
@@ -1809,7 +1837,7 @@
 
 <script>
 // ============================================================
-// PANEL HISTORY — fallback if base template didn't declare them
+// PANEL HISTORY — fallback
 // ============================================================
 if (typeof window.treasurerPanelHistory === 'undefined') {
     window.treasurerPanelHistory = [];
@@ -1819,7 +1847,7 @@ if (typeof window.treasurerCurrentPanel === 'undefined') {
 }
 
 // ============================================================
-// KAC TARGET — single source of truth (integer)
+// KAC TARGET
 // ============================================================
 const KAC_TARGET = 100000;
 
@@ -1982,7 +2010,7 @@ function updateSavingsTypeInfo() {
 }
 
 // ============================================================
-// VALIDATE SAVINGS AMOUNT (integer math, called on input)
+// VALIDATE SAVINGS AMOUNT
 // ============================================================
 function validateSavingsAmount() {
     const amountInput = document.getElementById('amountInput');
@@ -2052,13 +2080,13 @@ function getCurrentKacPaid() {
     if (!memberSelect || !memberSelect.value) return 0;
     const opt = memberSelect.options[memberSelect.selectedIndex];
     if (!opt) return 0;
-
-    // Annual target = 100k CONTRIBUTED per year (claims reduce net balance,
-    // but do NOT reduce the annual contribution target)
     const grossPaid = parseInt(opt.dataset.kac, 10) || 0;
     return Math.max(0, Math.min(100000, grossPaid));
 }
 
+// ============================================================
+// UPDATE MEMBER SAVINGS DISPLAY (uses kac_paid − kac_used)
+// ============================================================
 function updateMemberSavings(memberId) {
     const select = document.querySelector('select[name="user_id"]');
     const displayDiv = document.getElementById('memberSavingsDisplay');
@@ -2078,25 +2106,20 @@ function updateMemberSavings(memberId) {
     const kacUsed = parseInt(option.dataset.kacUsed, 10) || 0;
     const kacNet  = kacPaid - kacUsed;
     const reg     = parseInt(option.dataset.reg, 10) || 0;
-    const KAC_TARGET = 100000;
 
-    // KAI / KS
     const kaiEl = document.getElementById('displayKAI');
     const ksEl  = document.getElementById('displayKS');
     if (kaiEl) kaiEl.textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
     if (ksEl)  ksEl.textContent  = ks  + ' shares (UGX ' + (ks  * 10000).toLocaleString() + ')';
 
-    // KAC — show NET balance (contributions minus claims)
     const kacText = document.getElementById('displayKAC');
     const kacFill = document.getElementById('displayKACFill');
     const usedEl  = document.getElementById('displayKACUsed');
     const debtEl  = document.getElementById('displayKACDebt');
 
-    // Progress bar tracks how much of the year's 100k target has been CONTRIBUTED
     const contribPct = Math.min(100, (kacPaid / KAC_TARGET) * 100);
     if (kacFill) kacFill.style.width = contribPct + '%';
 
-    // Big number shows the REMAINING net balance
     if (kacText) {
         if (kacPaid === 0) {
             kacText.textContent = 'Not enrolled';
@@ -2113,7 +2136,6 @@ function updateMemberSavings(memberId) {
         }
     }
 
-    // Show breakdown: contributed / used
     if (usedEl) {
         if (kacPaid > 0) {
             usedEl.innerHTML =
@@ -2125,7 +2147,6 @@ function updateMemberSavings(memberId) {
         }
     }
 
-    // Show debt warning if negative
     if (debtEl) {
         if (kacNet < 0) {
             debtEl.innerHTML =
@@ -2137,13 +2158,11 @@ function updateMemberSavings(memberId) {
         }
     }
 
-    // Registration
     const regEl = document.getElementById('displayREG');
     if (regEl) regEl.textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
 
     displayDiv.style.display = 'block';
 
-    // Re-validate KAC amount if KAC type already selected
     const savingsType = document.getElementById('savingsType');
     if (savingsType && savingsType.value === 'KAC') {
         const amountInput = document.getElementById('amountInput');
@@ -2291,7 +2310,7 @@ function confirmReject() {
 }
 function disburseLoan(loanId) {
     if (!loanId) return;
-    if (confirm('💰 Disburse this loan to the member?')) {
+    if (confirm('💰 Disburse this loan?\n\nThis will DEDUCT the loan principal from the member\'s savings balance.')) {
         fetch('/treasurer/loan/disburse/' + loanId, {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}

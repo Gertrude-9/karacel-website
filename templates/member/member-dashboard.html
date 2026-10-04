@@ -168,13 +168,23 @@ DASHBOARD PANEL
                 </div>
             </div>
 
-            {# KAC Row #}
-            {% set kac_raw = (kac_amount or 0)|float %}
-            {% set kac_val = ((kac_raw / 1000)|round(0, 'floor') * 1000)|int %}
+            {# ============================================================
+               KAC ROW — shows NET balance (paid − used).
+               Auto-reduces whenever a claim is recorded.
+               ============================================================ #}
+            {% set kac_paid = ((kac_paid or 0)|float) %}
+            {% if kac_paid > 0 and kac_paid < 1 %}
+                {% set kac_paid = 100000 %}   {# legacy: boolean 1 = full payment #}
+            {% endif %}
+            {% set kac_used = ((kac_used or 0)|float) %}
+            {% if kac_used < 0 %}{% set kac_used = 0 %}{% endif %}
+
+            {% set kac_net = kac_paid - kac_used %}
             {% set kac_target = (kac_annual_fee or 100000)|int %}
-            {% if kac_val > kac_target %}{% set kac_val = kac_target %}{% endif %}
-            {% set kac_remaining = kac_target - kac_val %}
-            {% set kac_pct = (kac_val / kac_target * 100) if kac_target > 0 else 0 %}
+            {% set kac_remaining = kac_target - kac_paid %}
+            {% if kac_remaining < 0 %}{% set kac_remaining = 0 %}{% endif %}
+            {% set kac_pct = (kac_paid / kac_target * 100) if kac_target > 0 else 0 %}
+            {% if kac_pct > 100 %}{% set kac_pct = 100 %}{% endif %}
 
             <div class="savings-row savings-row-muted">
                 <div class="row-left">
@@ -187,28 +197,70 @@ DASHBOARD PANEL
                         <div class="type-meta">
                             Annual cover • Target UGX {{ "{:,.0f}".format(kac_target) }} / year
                         </div>
-                        {% if kac_val > 0 and kac_val < kac_target %}
+
+                        {# Progress bar tracks CONTRIBUTION, not net balance #}
+                        {% if kac_paid > 0 and kac_paid < kac_target %}
                         <div class="progress-bar">
-                            <progress value="{{ kac_val }}" max="{{ kac_target }}" aria-label="KAC payment progress"></progress>
+                            <progress value="{{ kac_paid|int }}" max="{{ kac_target }}" aria-label="KAC payment progress"></progress>
                         </div>
                         <div class="progress-hint">
                             Remaining: UGX {{ "{:,.0f}".format(kac_remaining) }}
                         </div>
                         {% endif %}
+
+                        {# Show breakdown when claims have reduced the balance #}
+                        {% if kac_used > 0 %}
+                        <div class="progress-hint" style="margin-top:6px;">
+                            <span style="color: rgba(255,255,255,0.5);">
+                                Contributed: UGX {{ "{:,.0f}".format(kac_paid) }}
+                            </span>
+                            &nbsp;·&nbsp;
+                            <span style="color:#ff6b6b;">
+                                Used in claims: UGX {{ "{:,.0f}".format(kac_used) }}
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        {# Debt warning if claims exceeded contributions #}
+                        {% if kac_net < 0 %}
+                        <div class="progress-hint" style="margin-top:6px; color:#ff6b6b; font-weight:600;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            You owe the SACCO UGX {{ "{:,.0f}".format(-kac_net) }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row-right">
-                    <div class="row-amount amount-pink">
-                        UGX {{ "{:,.0f}".format(kac_val) }}
-                        {% if kac_val > 0 and kac_val < kac_target %}
-                        <span class="row-amount-sub">of {{ "{:,.0f}".format(kac_target) }}</span>
+                    {# Big number = NET balance (paid − used) #}
+                    <div class="row-amount amount-pink"
+                         style="{% if kac_net < 0 %}color:#ff6b6b;{% endif %}">
+                        {% if kac_net < 0 %}
+                            -UGX {{ "{:,.0f}".format(-kac_net) }}
+                            <span class="row-amount-sub" style="color:#ff6b6b;">debt</span>
+                        {% else %}
+                            UGX {{ "{:,.0f}".format(kac_net) }}
+                            {% if kac_used > 0 %}
+                            <span class="row-amount-sub">remaining</span>
+                            {% elif kac_paid < kac_target %}
+                            <span class="row-amount-sub">of {{ "{:,.0f}".format(kac_target) }}</span>
+                            {% endif %}
                         {% endif %}
                     </div>
-                    {% if kac_val >= kac_target %}
+
+                    {# Status pill reflects the true state #}
+                    {% if kac_net < 0 %}
+                        <span class="status-pill" style="background:rgba(255,107,107,0.15); color:#ff6b6b;">
+                            <i class="fas fa-exclamation-triangle"></i> In debt
+                        </span>
+                    {% elif kac_paid >= kac_target and kac_used == 0 %}
                         <span class="status-pill status-active">
                             <i class="fas fa-shield-alt"></i> Covered
                         </span>
-                    {% elif kac_val > 0 %}
+                    {% elif kac_paid >= kac_target and kac_used > 0 %}
+                        <span class="status-pill status-warning">
+                            <i class="fas fa-hourglass-half"></i> Reduced
+                        </span>
+                    {% elif kac_paid > 0 %}
                         <span class="status-pill status-warning">
                             <i class="fas fa-hourglass-half"></i> {{ kac_pct|round(0, 'floor')|int }}%
                         </span>
@@ -250,7 +302,7 @@ DASHBOARD PANEL
 
         <div class="savings-breakdown-footer">
             <i class="fas fa-info-circle"></i>
-            <span><strong>Savings = KAI + KS.</strong> KAC (condolence cover) and Registration Fee are separate and not counted as savings.</span>
+            <span><strong>Savings = KAI + KS.</strong> KAC (condolence cover) and Registration Fee are separate and not counted as savings. KAC balance is reduced whenever a condolence or death claim is processed.</span>
         </div>
     </div>
 
@@ -306,6 +358,104 @@ SAVINGS PANEL
             {% endif %}
         </div>
     </div>
+
+    <!-- ============================================
+         KAC ACTIVITY — CLAIM DEDUCTIONS
+         Shown when KAC has been reduced by claims.
+         ============================================ -->
+    {% if kac_used and kac_used > 0 %}
+    <div class="history-section" style="margin-top:24px;">
+        <div class="history-title">
+            <i class="fas fa-hand-holding-heart" style="color:#f5c542;"></i> My KAC Activity
+            <span class="history-total" style="color:#f5c542;">
+                Net: UGX {{ "{:,.0f}".format((kac_paid or 0) - (kac_used or 0)) }}
+            </span>
+        </div>
+
+        <div class="transaction-list">
+            {# Summary rows #}
+            <div class="transaction-item">
+                <div class="transaction-left">
+                    <div class="tx-icon" style="background:rgba(74,222,128,0.12); color:#4ade80;">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div>
+                        <div class="recipient">KAC Contributions</div>
+                        <div class="meta">
+                            Total amount you have contributed to KAC
+                        </div>
+                    </div>
+                </div>
+                <div class="tx-amount text-green">
+                    + UGX {{ "{:,.0f}".format(kac_paid or 0) }}
+                </div>
+            </div>
+
+            <div class="transaction-item">
+                <div class="transaction-left">
+                    <div class="tx-icon" style="background:rgba(255,107,107,0.12); color:#ff6b6b;">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div>
+                        <div class="recipient">KAC Claims Deducted</div>
+                        <div class="meta">
+                            Amount deducted for condolence &amp; death claims
+                        </div>
+                    </div>
+                </div>
+                <div class="tx-amount text-red">
+                    − UGX {{ "{:,.0f}".format(kac_used) }}
+                </div>
+            </div>
+
+            {# Individual claim deductions if the route passes them #}
+            {% if kac_deductions %}
+                {% for d in kac_deductions %}
+                <div class="transaction-item" style="background:rgba(255,107,107,0.03);">
+                    <div class="transaction-left">
+                        <div class="tx-icon" style="background:rgba(245,197,66,0.12); color:#f5c542;">
+                            <i class="fas fa-{{ 'cross' if d.claim_type == 'death' else 'dove' }}"></i>
+                        </div>
+                        <div>
+                            <div class="recipient">
+                                {{ d.claim_type|title }} Claim — {{ d.claim_number }}
+                            </div>
+                            <div class="meta">
+                                <i class="fas fa-calendar-alt"></i> {{ d.event_date }}
+                                {% if d.affected_name %}
+                                <br><i class="fas fa-user"></i> Affected: {{ d.affected_name }}
+                                {% endif %}
+                                {% if d.register_entry_name %}
+                                <br><i class="fas fa-heart"></i> {{ d.register_entry_name }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tx-amount text-red">
+                        − UGX {{ "{:,.0f}".format(d.amount_deducted) }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {# Final net balance summary #}
+            <div class="transaction-item" style="background:rgba(245,197,66,0.06); border-left:3px solid #f5c542;">
+                <div class="transaction-left">
+                    <div class="tx-icon" style="background:rgba(245,197,66,0.15); color:#f5c542;">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div>
+                        <div class="recipient" style="color:#f5c542;">KAC Net Balance</div>
+                        <div class="meta">Contributed − Used</div>
+                    </div>
+                </div>
+                <div class="tx-amount" style="color:#f5c542; font-weight:700;">
+                    UGX {{ "{:,.0f}".format((kac_paid or 0) - (kac_used or 0)) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- ============================================

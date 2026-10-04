@@ -56,7 +56,7 @@
             </div>
         </div>
         
-        <!-- KAC -->
+        <!-- KAC — NET BALANCE (auto-reduces on claims) -->
         <div class="stat-card-filter" id="statKAC" onclick="filterByType('KAC')" 
              style="background: rgba(245,197,66,0.04); border: 2px solid rgba(245,197,66,0.08); border-radius: 12px; padding: 16px 18px; cursor: pointer; transition: all 0.3s;"
              onmouseover="this.style.background='rgba(245,197,66,0.08)'" 
@@ -67,7 +67,13 @@
             </div>
             <div style="font-size: 1.3rem; font-weight: 700; color: #f5c542;">{{ kac_members|default(0) }}</div>
             <div style="font-size: 0.6rem; color: rgba(255,255,255,0.3);">
-                UGX {{ "{:,.0f}".format(kac_total|default(0)) }} collected
+                Net: UGX {{ "{:,.0f}".format(kac_total|default(0)) }}
+            </div>
+            <div style="font-size: 0.55rem; color: rgba(255,255,255,0.25); margin-top:2px;">
+                Contributed: UGX {{ "{:,.0f}".format(kac_total_paid|default(0)) }}
+                {% if kac_total_used and kac_total_used > 0 %}
+                · Used: UGX {{ "{:,.0f}".format(kac_total_used) }}
+                {% endif %}
             </div>
         </div>
         
@@ -118,6 +124,7 @@
                 <option value="KAI">KAI - Investment</option>
                 <option value="KS">KS - Savings</option>
                 <option value="KAC">KAC - Condolence</option>
+                <option value="KAC_DEBT">KAC - In Debt</option>
                 <option value="REGISTRATION">Registration Fee</option>
                 <option value="multiple">Multiple Types</option>
                 <option value="staff">Staff Only</option>
@@ -179,7 +186,7 @@
                         <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Phone</th>
                         <th style="padding: 10px 12px; text-align: center; color: #4ade80; font-weight: 600; white-space: nowrap; background: rgba(74,222,128,0.03);">KAI</th>
                         <th style="padding: 10px 12px; text-align: center; color: #00e0ff; font-weight: 600; white-space: nowrap; background: rgba(0,224,255,0.03);">KS</th>
-                        <th style="padding: 10px 12px; text-align: center; color: #f5c542; font-weight: 600; white-space: nowrap; background: rgba(245,197,66,0.03);">KAC</th>
+                        <th style="padding: 10px 12px; text-align: center; color: #f5c542; font-weight: 600; white-space: nowrap; background: rgba(245,197,66,0.03);">KAC (Net)</th>
                         <th style="padding: 10px 12px; text-align: center; color: #ff6b6b; font-weight: 600; white-space: nowrap; background: rgba(255,107,107,0.03);">Reg Fee</th>
                         <th style="padding: 10px 12px; text-align: left; color: rgba(255,255,255,0.4); font-weight: 500; white-space: nowrap;">Status</th>
                     </tr>
@@ -188,24 +195,34 @@
                     {% if members %}
                         {% for member in members %}
                         {# ============================================================
-                           KAC VALUE — coerce boolean/1 to 100,000, else numeric
+                           KAC NET BALANCE = kac_paid − kac_used
+                           This is what auto-reduces when a claim is recorded.
                            ============================================================ #}
                         {% set kp_raw = member.kac_paid %}
                         {% if kp_raw == 1 or kp_raw == True %}
-                            {% set kac_val = 100000 %}
+                            {% set kac_paid = 100000 %}
                         {% else %}
-                            {% set kac_val = (kp_raw or 0)|float %}
+                            {% set kac_paid = (kp_raw or 0)|float %}
                         {% endif %}
-                        {% if kac_val > 100000 %}{% set kac_val = 100000 %}{% endif %}
-                        {% set kac_pct = (kac_val / 100000 * 100) if kac_val < 100000 else 100 %}
-                        {% set kac_int = kac_val|int %}
+                        {% if kac_paid > 100000 %}{% set kac_paid = 100000 %}{% endif %}
+
+                        {% set kac_used = (member.kac_used or 0)|float %}
+                        {% if kac_used < 0 %}{% set kac_used = 0 %}{% endif %}
+
+                        {% set kac_net = kac_paid - kac_used %}
+                        {% set kac_pct = (kac_paid / 100000 * 100) if kac_paid < 100000 else 100 %}
+                        {% set kac_paid_int = kac_paid|int %}
+                        {% set kac_used_int = kac_used|int %}
+                        {% set kac_net_int  = kac_net|int %}
 
                         <tr data-member-id="{{ member.id }}" 
                             data-status="{{ member.status }}"
                             data-role="{{ member.role or 'member' }}"
                             data-kai="{{ member.kai_shares or 0 }}"
                             data-ks="{{ member.ks_shares or 0 }}"
-                            data-kac="{{ kac_int }}"
+                            data-kac="{{ kac_paid_int }}"
+                            data-kac-used="{{ kac_used_int }}"
+                            data-kac-net="{{ kac_net_int }}"
                             data-reg="{{ member.registration_fee_paid or 0 }}">
                             <td style="padding: 8px 12px; color: rgba(255,255,255,0.3);">{{ loop.index }}</td>
                             <td style="padding: 8px 12px; color: #f5c542; font-family: monospace; font-weight: 600;">{{ member.sacco_number }}</td>
@@ -251,22 +268,53 @@
                                 {% endif %}
                             </td>
                             
-                            <!-- KAC (INSTALLMENTS) -->
+                            <!-- KAC — NET BALANCE (reduces on every claim) -->
                             <td style="padding: 8px 12px; text-align: center; background: rgba(245,197,66,0.03);">
-                                {% if kac_val >= 100000 %}
+                                {% if kac_net < 0 %}
+                                    {# Debt: claims exceeded contributions #}
+                                    <span style="color: #ff6b6b; font-weight: 700; font-size: 0.85rem;">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        -{{ "{:,.0f}".format(-kac_net) }}
+                                    </span>
+                                    <span style="font-size: 0.55rem; color: rgba(255,107,107,0.6); display: block;">
+                                        in debt
+                                    </span>
+                                    <span style="font-size: 0.5rem; color: rgba(255,255,255,0.3); display: block;">
+                                        Paid: {{ "{:,.0f}".format(kac_paid) }} · Used: {{ "{:,.0f}".format(kac_used) }}
+                                    </span>
+                                {% elif kac_paid >= 100000 and kac_used == 0 %}
+                                    {# Fully paid, no claims yet #}
                                     <span style="color: #4ade80; font-weight: 700; font-size: 0.85rem;">✓ 100K</span>
                                     <span style="font-size: 0.55rem; color: rgba(74,222,128,0.5); display: block;">fully paid</span>
-                                {% elif kac_val > 0 %}
+                                {% elif kac_paid >= 100000 %}
+                                    {# Fully paid, some used by claims #}
+                                    <span style="color: #f5c542; font-weight: 700; font-size: 0.85rem;">
+                                        {{ "{:,.0f}".format(kac_net) }} left
+                                    </span>
+                                    <span style="font-size: 0.55rem; color: rgba(245,197,66,0.5); display: block;">
+                                        Paid: {{ "{:,.0f}".format(kac_paid) }}
+                                    </span>
+                                    <span style="font-size: 0.55rem; color: rgba(255,107,107,0.55); display: block;">
+                                        Used: {{ "{:,.0f}".format(kac_used) }}
+                                    </span>
+                                {% elif kac_paid > 0 %}
+                                    {# Partial contribution #}
                                     <span style="color: #f5c542; font-weight: 700; font-size: 0.8rem;">
-                                        {{ (kac_val / 1000)|int }}K / 100K
+                                        {{ (kac_paid / 1000)|int }}K / 100K
                                     </span>
                                     <div style="margin-top: 4px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;">
-                                        <div data-width="{{ kac_pct|default(0)|int }}%" style="height: 100%; width: attr(data-width percentage); background: linear-gradient(90deg, #f5c542, #eab308); transition: width 0.3s;"></div>
+                                        <div style="height: 100%; width: {{ kac_pct|int }}%; background: linear-gradient(90deg, #f5c542, #eab308); transition: width 0.3s;"></div>
                                     </div>
                                     <span style="font-size: 0.55rem; color: rgba(245,197,66,0.4); display: block; margin-top: 2px;">
-                                        remaining {{ "{:,.0f}".format(100000 - kac_val) }}
+                                        remaining {{ "{:,.0f}".format(100000 - kac_paid) }}
                                     </span>
+                                    {% if kac_used > 0 %}
+                                    <span style="font-size: 0.55rem; color: rgba(255,107,107,0.55); display: block; margin-top: 2px;">
+                                        Used: {{ "{:,.0f}".format(kac_used) }}
+                                    </span>
+                                    {% endif %}
                                 {% else %}
+                                    {# Not enrolled #}
                                     <span style="color: rgba(255,255,255,0.15); font-size: 0.75rem;">0K / 100K</span>
                                     <div style="margin-top: 4px; height: 4px; background: rgba(255,255,255,0.04); border-radius: 4px;"></div>
                                 {% endif %}
@@ -380,7 +428,7 @@ function filterByType(type) {
 }
 
 // ============================================================
-// FILTER TABLE — parses data-kac as integer (no 99999 drift)
+// FILTER TABLE — uses kac_net (kac_paid − kac_used)
 // ============================================================
 function filterTable() {
     const searchTerm = document.getElementById('searchMember').value.toLowerCase().trim();
@@ -401,11 +449,14 @@ function filterTable() {
         const kaiShares = parseInt(row.getAttribute('data-kai'), 10) || 0;
         const ksShares = parseInt(row.getAttribute('data-ks'), 10) || 0;
         const kacPaid = Math.max(0, Math.min(KAC_TARGET, parseInt(row.getAttribute('data-kac'), 10) || 0));
+        const kacUsed = Math.max(0, parseInt(row.getAttribute('data-kac-used'), 10) || 0);
+        const kacNet  = parseInt(row.getAttribute('data-kac-net'), 10) || (kacPaid - kacUsed);
         const regPaid = parseInt(row.getAttribute('data-reg'), 10) || 0;
         
         const hasKAI = kaiShares > 0;
         const hasKS = ksShares > 0;
         const hasKAC = kacPaid > 0;
+        const hasKACDebt = kacNet < 0;
         const hasREG = regPaid > 0;
         const isStaff = role !== 'member';
         
@@ -430,6 +481,8 @@ function filterTable() {
             } else if (filterType === 'KS' && !hasKS) {
                 show = false;
             } else if (filterType === 'KAC' && !hasKAC) {
+                show = false;
+            } else if (filterType === 'KAC_DEBT' && !hasKACDebt) {
                 show = false;
             } else if (filterType === 'REGISTRATION' && !hasREG) {
                 show = false;
@@ -465,6 +518,8 @@ function filterTable() {
         summaryText.textContent = `Showing ${visibleCount} regular members`;
     } else if (filterType === 'multiple') {
         summaryText.textContent = `Showing ${visibleCount} users with multiple savings types`;
+    } else if (filterType === 'KAC_DEBT') {
+        summaryText.textContent = `Showing ${visibleCount} users who owe KAC`;
     } else if (filterType !== 'all') {
         const typeNames = {
             'KAI': 'KAI (Investment)',
@@ -496,7 +551,7 @@ function resetFilters() {
 }
 
 // ============================================================
-// EXPORT FILTERED DATA TO CSV
+// EXPORT FILTERED DATA TO CSV — includes Paid / Used / Net
 // ============================================================
 function exportFilteredData() {
     const rows = document.querySelectorAll('#membersTableBody tr:not([style*="display: none"])');
@@ -506,17 +561,27 @@ function exportFilteredData() {
     }
     
     let csv = [];
-    csv.push(['SACCO No.', 'Full Name', 'Phone', 'KAI Shares', 'KAI Amount', 'KS Shares', 'KS Amount', 'KAC Paid', 'KAC Remaining', 'KAC Status', 'Reg Fee Paid', 'Status'].join(','));
+    csv.push([
+        'SACCO No.', 'Full Name', 'Phone',
+        'KAI Shares', 'KAI Amount',
+        'KS Shares', 'KS Amount',
+        'KAC Paid', 'KAC Used', 'KAC Net',
+        'KAC Status', 'Reg Fee Paid', 'Status'
+    ].join(','));
     
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         if (cells.length < 9) return;
         
         const kacPaid = Math.max(0, Math.min(KAC_TARGET, parseInt(row.getAttribute('data-kac'), 10) || 0));
-        const kacStatus = kacPaid >= KAC_TARGET ? 'Fully Paid'
-                        : kacPaid > 0 ? 'Partial'
-                        : 'Not Started';
-        const kacRemaining = Math.max(0, KAC_TARGET - kacPaid);
+        const kacUsed = Math.max(0, parseInt(row.getAttribute('data-kac-used'), 10) || 0);
+        const kacNet  = parseInt(row.getAttribute('data-kac-net'), 10) || (kacPaid - kacUsed);
+        
+        let kacStatus = 'Not Started';
+        if (kacNet < 0) kacStatus = 'In Debt';
+        else if (kacPaid >= KAC_TARGET && kacUsed === 0) kacStatus = 'Fully Paid';
+        else if (kacPaid >= KAC_TARGET) kacStatus = 'Fully Paid (reduced by claims)';
+        else if (kacPaid > 0) kacStatus = 'Partial';
         
         const data = [
             cells[1].textContent.trim(),
@@ -527,7 +592,8 @@ function exportFilteredData() {
             cells[5].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
             cells[5].querySelector('span') ? cells[5].querySelector('span').textContent.replace('UGX ', '').replace(/,/g, '') : '0',
             kacPaid.toString(),
-            kacRemaining.toString(),
+            kacUsed.toString(),
+            kacNet.toString(),
             kacStatus,
             cells[7].textContent.trim().replace(/\n/g, ' ').replace(/,/g, ' '),
             cells[8].textContent.trim()
