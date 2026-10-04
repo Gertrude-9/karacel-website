@@ -26,7 +26,7 @@
     <!-- Sidebar Overlay (Mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- ============================================
+       <!-- ============================================
     SIDEBAR
     ============================================ -->
     <aside class="admin-sidebar" id="adminSidebar">
@@ -93,34 +93,29 @@
                 <span>Savings Reports</span>
             </a>
 
-           <a href="{{ url_for('treasurer_kac_claims_page') }}"
-            class="admin-nav-item {% if request.endpoint == 'treasurer_kac_claims_page' %}active{% endif %}">
+            {% if session.role in ['treasurer', 'admin', 'chairperson', 'secretary'] %}
+            <a href="{{ url_for('treasurer_kac_claims_page') }}"
+               class="admin-nav-item {% if request.endpoint == 'treasurer_kac_claims_page' %}active{% endif %}">
                 <i class="fas fa-hand-holding-heart"></i>
                 <span>KAC Claims</span>
             </a>
+            {% endif %}
 
             <a href="{{ url_for('chat_api.treasurer_chat') }}"
                class="admin-nav-item {% if 'chat' in (request.endpoint or '') %}active{% endif %}">
                 <i class="fas fa-comments"></i>
                 <span>Chat Center</span>
             </a>
-        </div>
 
-        <li class="nav-item staff-member-portal-item" style="list-style: none;">
-            <a href="{{ url_for('member_dashboard', staff_view=True) }}" class="nav-link staff-member-portal-link">
-                <span class="nav-icon-wrapper">
-                    <i class="fas fa-user-circle"></i>
-                    <span class="icon-pulse"></span>
-                </span>
-                <span class="nav-text">My Portal</span>
-                <span class="badge staff-badge">
+            <a href="{{ url_for('member_dashboard', staff_view=True) }}"
+               class="admin-nav-item staff-member-portal-item">
+                <i class="fas fa-user-circle"></i>
+                <span>My Portal</span>
+                <span class="badge staff-badge" style="margin-left:auto;">
                     <i class="fas fa-star"></i> Staff
                 </span>
-                <span class="nav-arrow">
-                    <i class="fas fa-chevron-right"></i>
-                </span>
             </a>
-        </li>
+        </div>
 
         <div class="sidebar-footer">
             <a href="{{ url_for('logout') }}" class="logout-sidebar">
@@ -130,7 +125,6 @@
         </div>
 
     </aside>
-
     <!-- ============================================
     MAIN CONTENT AREA (topbar + content)
     ============================================ -->
