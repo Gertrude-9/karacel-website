@@ -2425,7 +2425,7 @@ def admin_approve_loan(loan_id):
 # ============================================================
 
 # ============================================================
-# TREASURER — KAC CLAIMS PAGE (renders the template)
+# TREASURER — KAC CLAIMS PAGE
 # ============================================================
 @app.route("/treasurer/kac-claims")
 def treasurer_kac_claims_page():
@@ -2440,11 +2440,8 @@ def treasurer_kac_claims_page():
     )
 
     conn = get_db()
-
     try:
-        # ------------------------------------------------------------
-        # Load settings for amounts
-        # ------------------------------------------------------------
+        # Settings
         settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         settings = row_to_dict(settings_row) if settings_row else {}
         kac_condolence_amount = int(settings.get('kac_condolence_amount') or 20000)
@@ -2452,7 +2449,7 @@ def treasurer_kac_claims_page():
         kac_annual_fee        = int(settings.get('kac_annual_fee') or 100000)
 
         # ------------------------------------------------------------
-        # Staff + regular member lists (for the affected-member dropdown)
+        # KAC MEMBERS ONLY (paid at least once)
         # ------------------------------------------------------------
         staff_members = conn.execute("""
             SELECT 
@@ -2462,6 +2459,7 @@ def treasurer_kac_claims_page():
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+            AND COALESCE(kac_paid, 0) > 0
             ORDER BY full_name ASC
         """).fetchall()
 
@@ -2473,12 +2471,11 @@ def treasurer_kac_claims_page():
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) = 'member'
+            AND COALESCE(kac_paid, 0) > 0
             ORDER BY full_name ASC
         """).fetchall()
 
-        # ------------------------------------------------------------
-        # KAC stats — fully-paid / partial / debt risk counts
-        # ------------------------------------------------------------
+        # Stats
         eligible_count  = 0
         partial_count   = 0
         debt_risk_count = 0
@@ -2487,27 +2484,17 @@ def treasurer_kac_claims_page():
             m = row_to_dict(m_row)
             kac_paid = int(m.get('kac_paid') or 0)
             kac_used = int(m.get('kac_used') or 0)
-
             if kac_paid >= kac_annual_fee and kac_paid >= kac_used:
                 eligible_count += 1
             elif kac_paid > 0:
                 partial_count += 1
-
             if (kac_paid - kac_used) < kac_death_amount:
                 debt_risk_count += 1
 
-        # ------------------------------------------------------------
-        # Chargeable count — only KAC members get charged
-        # ------------------------------------------------------------
-        chargeable_count = fetchval(conn, """
-            SELECT COUNT(*) FROM users
-            WHERE status = 'active'
-            AND COALESCE(kac_paid, 0) > 0
-        """) or 0
+        # Chargeable = same as KAC members count
+        chargeable_count = len(staff_members) + len(regular_members)
 
-        # ------------------------------------------------------------
-        # KAC claims list (history tab)
-        # ------------------------------------------------------------
+        # Claims list
         claims_rows = conn.execute("""
             SELECT 
                 c.*,
@@ -2521,18 +2508,14 @@ def treasurer_kac_claims_page():
 
         kac_claims = [row_to_dict(c) for c in claims_rows]
         total_claims = len(kac_claims)
-
         total_condolences = sum(1 for c in kac_claims if c.get('claim_type') == 'condolence')
         total_deaths      = sum(1 for c in kac_claims if c.get('claim_type') == 'death')
-
         total_collected_all = sum(
             float(c.get('total_collected') or 0) for c in kac_claims
             if c.get('status') != 'reversed'
         )
 
-        # ------------------------------------------------------------
-        # Register counts for the Manage Registers tab
-        # ------------------------------------------------------------
+        # Register counts (KAC members only for consistency)
         register_count_rows = conn.execute("""
             SELECT user_id, COUNT(*) AS cnt
             FROM member_condolence_register
@@ -2570,19 +2553,7 @@ def treasurer_kac_claims_page():
         print("KAC CLAIMS PAGE ERROR")
         print(tb)
         print("=" * 70)
-
-        # Return error to browser instead of hiding behind redirect
-        from flask import Response
-        return Response(
-            f"<html><body style='background:#0a0a14;color:#f5c542;"
-            f"font-family:monospace;padding:24px;'>"
-            f"<h2 style='color:#ff6b6b;'>KAC Claims Page Error</h2>"
-            f"<pre style='white-space:pre-wrap;background:#1a1a2e;"
-            f"padding:16px;border-radius:8px;color:#fff;'>{tb}</pre>"
-            f"</body></html>",
-            status=500,
-            mimetype='text/html'
-        )
+        return f"<pre>KAC page error:\n\n{tb}</pre>", 500
     finally:
         try:
             conn.close()
