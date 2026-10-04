@@ -4482,6 +4482,277 @@ def treasurer_user_delete(user_id):
     """Alias for treasurer_delete_member - works for all users"""
     return treasurer_delete_member(user_id)
 
+
+# ============================================================
+# MEMBER DASHBOARD - UPDATED FOR STAFF ACCESS
+# ============================================================
+@app.route("/member/dashboard")
+def member_dashboard():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
+    user_role = session.get("role", "member")
+    is_staff_view = request.args.get('staff_view', False)
+
+    db = get_db()
+    try:
+        # ⚠️ Placeholder char differs per DB
+        PH = "%s" if DATABASE_URL else "?"
+
+        member = db.execute(
+            f"SELECT * FROM users WHERE id = {PH}",
+            (user_id,)
+        ).fetchone()
+
+        if not member:
+            flash("Member not found", "danger")
+            return redirect(url_for("login"))
+
+        member_dict = row_to_dict(member)
+
+        # ============================================================
+        # TOTAL SAVINGS — KAI + KS only (exclude KAC & Registration)
+        # ============================================================
+        total_savings = fetchval(db, f"""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM savings_deposits
+            WHERE user_id = {PH}
+              AND savings_type IN ('KAI', 'KS')
+        """, (user_id,)) or 0
+
+        loans_data = db.execute(f"""
+            SELECT
+                l.*,
+                COALESCE((
+                    SELECT SUM(amount)
+                    FROM repayments
+                    WHERE loan_id = l.id
+                    AND status = 'completed'
+                ), 0) as total_paid
+            FROM loans l
+            WHERE l.user_id = {PH}
+            ORDER BY l.application_date DESC
+        """, (user_id,)).fetchall()
+
+        loans = []
+        active_loans_count = 0
+        active_loans_balance = 0
+        total_loans_taken = 0
+
+        for loan_row in loans_data:
+            loan = row_to_dict(loan_row)
+            total_loans_taken += float(loan.get('amount', 0) or 0)
+            loan_total = float(loan.get('total_repayment') or loan.get('amount', 0) or 0)
+            total_paid = float(loan.get('total_paid', 0) or 0)
+            remaining_balance = max(0, loan_total - total_paid)
+            loan['remaining_balance'] = remaining_balance
+
+            if loan.get('status') in ['approved', 'disbursed', 'active']:
+                active_loans_count += 1
+                active_loans_balance += remaining_balance
+
+            loans.append(loan)
+
+        savings_deposits = db.execute(f"""
+            SELECT
+                id,
+                amount,
+                savings_type,
+                shares,
+                deposit_date,
+                payment_method,
+                receipt_number,
+                notes,
+                created_at
+            FROM savings_deposits
+            WHERE user_id = {PH}
+            ORDER BY deposit_date DESC
+        """, (user_id,)).fetchall()
+
+        repayments = db.execute(f"""
+            SELECT
+                r.id,
+                r.loan_id,
+                r.user_id,
+                r.amount,
+                r.interest_paid,
+                r.principal_paid,
+                r.balance_after,
+                r.payment_date,
+                r.payment_method,
+                r.transaction_ref,
+                r.status,
+                r.created_at,
+                l.loan_number
+            FROM repayments r
+            JOIN loans l ON r.loan_id = l.id
+            WHERE l.user_id = {PH}
+            ORDER BY r.payment_date DESC
+        """, (user_id,)).fetchall()
+
+        guarantors = db.execute(f"""
+            SELECT
+                lg.id,
+                lg.loan_id,
+                lg.guarantor_name,
+                lg.phone,
+                lg.email,
+                lg.relationship,
+                lg.status,
+                lg.created_at,
+                l.loan_number,
+                l.amount,
+                l.status as loan_status
+            FROM loan_guarantors lg
+            JOIN loans l ON lg.loan_id = l.id
+            WHERE l.user_id = {PH}
+            ORDER BY lg.id DESC
+        """, (user_id,)).fetchall()
+
+        # ✅ Removed `notification_type` — it doesn't exist
+        notifications = db.execute(f"""
+            SELECT
+                id,
+                user_id,
+                title,
+                message,
+                type,
+                link,
+                is_read,
+                created_at
+            FROM notifications
+            WHERE user_id = {PH}
+            ORDER BY created_at DESC
+        """, (user_id,)).fetchall()
+
+        unread_notifications_count = fetchval(db, f"""
+            SELECT COUNT(*) AS count
+            FROM notifications
+            WHERE user_id = {PH}
+            AND is_read = 0
+        """, (user_id,)) or 0
+
+        # ============================================================
+        # SAVINGS BY TYPE (KAI, KS, KAC, Registration)
+        # ============================================================
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        if settings_row:
+            settings_dict = row_to_dict(settings_row)
+            kai_share_price  = settings_dict.get('kai_share_price')  or 100000
+            ks_share_price   = settings_dict.get('ks_share_price')   or 10000
+            kac_annual_fee   = settings_dict.get('kac_annual_fee')   or 100000
+            registration_fee = settings_dict.get('registration_fee') or 20000
+        else:
+            kai_share_price  = 100000
+            ks_share_price   = 10000
+            kac_annual_fee   = 100000
+            registration_fee = 20000
+
+        kai_shares   = member_dict.get('kai_shares') or 0
+        ks_shares    = member_dict.get('ks_shares') or 0
+        reg_fee_paid = member_dict.get('registration_fee_paid') or 0
+
+        # ============================================================
+        # KAC — INSTALLMENT-AWARE
+        # ============================================================
+        kac_paid_raw = member_dict.get('kac_paid', 0)
+
+        if kac_paid_raw is None:
+            kac_paid = 0.0
+        elif isinstance(kac_paid_raw, bool):
+            kac_paid = float(kac_annual_fee) if kac_paid_raw else 0.0
+        else:
+            try:
+                kac_paid = float(kac_paid_raw)
+            except (TypeError, ValueError):
+                kac_paid = 0.0
+
+        if kac_paid > kac_annual_fee:
+            kac_paid = float(kac_annual_fee)
+
+        kac_amount = kac_paid
+        kac_fully_paid = (kac_paid >= kac_annual_fee)
+
+        kai_amount = kai_shares * kai_share_price
+        ks_amount  = ks_shares  * ks_share_price
+        reg_amount = registration_fee if reg_fee_paid else 0
+
+        # Check if user is staff (has a staff role)
+        is_staff = user_role in ["admin", "chairperson", "treasurer", "secretary", "publicity"]
+
+        # Role dashboard URLs for navigation back
+        role_dashboards = {
+            "admin": "/admin/dashboard",
+            "chairperson": "/admin/dashboard",
+            "treasurer": "/treasurer/dashboard",
+            "secretary": "/secretary/dashboard",
+            "publicity": "/publicity/dashboard",
+            "member": "/member/dashboard"
+        }
+        role_dashboard_url = role_dashboards.get(user_role, "/member/dashboard")
+
+        role_display_names = {
+            "admin": "Admin",
+            "chairperson": "Chairperson",
+            "treasurer": "Treasurer",
+            "secretary": "Secretary",
+            "publicity": "Publicity",
+            "member": "Member"
+        }
+        role_display = role_display_names.get(user_role, "Member")
+
+        return render_template(
+            "member/member-dashboard.html",
+            member=member_dict,
+            user=member_dict,
+            total_savings=total_savings,
+            active_loans_count=active_loans_count,
+            active_loans_balance=active_loans_balance,
+            total_loans_taken=total_loans_taken,
+            savings_deposits=savings_deposits,
+            loans=loans,
+            repayments=repayments,
+            guarantors=guarantors,
+            notifications=notifications,
+            unread_notifications_count=unread_notifications_count,
+            # Staff related variables
+            is_staff=is_staff,
+            user_role=user_role,
+            role_display=role_display,
+            role_dashboard_url=role_dashboard_url,
+            staff_view=is_staff_view,
+            # Savings by type
+            kai_shares=kai_shares,
+            ks_shares=ks_shares,
+            kac_paid=kac_paid,
+            kac_fully_paid=kac_fully_paid,
+            reg_fee_paid=reg_fee_paid,
+            kai_amount=kai_amount,
+            ks_amount=ks_amount,
+            kac_amount=kac_amount,
+            reg_amount=reg_amount,
+            kai_share_price=kai_share_price,
+            ks_share_price=ks_share_price,
+            kac_annual_fee=kac_annual_fee,
+            registration_fee=registration_fee,
+            now=datetime.now()
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f"Error loading dashboard: {str(e)}", "danger")
+        return redirect(url_for("login"))
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+# ============================================================
+# MEMBER - APPLY LOAN
+# ============================================================
 @app.route("/member/apply-loan", methods=["GET", "POST"])
 def member_apply_loan():
     if "user_id" not in session:
@@ -4491,9 +4762,6 @@ def member_apply_loan():
     PH = "%s" if DATABASE_URL else "?"
     db = get_db()
 
-    # ============================================================
-    # GET — render the loan application form
-    # ============================================================
     if request.method == "GET":
         try:
             member = db.execute(
@@ -4501,27 +4769,13 @@ def member_apply_loan():
                 (user_id,)
             ).fetchone()
 
-            if not member:
-                flash("Member not found", "danger")
-                return redirect("/login")
+            total_savings = fetchval(db, f"""
+                SELECT COALESCE(SUM(amount), 0) as total
+                FROM savings_deposits
+                WHERE user_id = {PH}
+            """, (user_id,)) or 0
 
             member_dict = row_to_dict(member)
-
-            # ---- Share prices from settings ----
-            settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-            settings = row_to_dict(settings_row) if settings_row else {}
-            kai_share_price = int(settings.get('kai_share_price') or 100000)
-            ks_share_price  = int(settings.get('ks_share_price') or 10000)
-
-            # ============================================================
-            # ELIGIBLE SAVINGS = KAI + KS ONLY
-            # ------------------------------------------------------------
-            # Registration Fee and KAC are NOT savings — they cannot be
-            # used for loan eligibility, guarantor threshold, or loan cap.
-            # ============================================================
-            kai_shares = int(member_dict.get('kai_shares') or 0)
-            ks_shares  = int(member_dict.get('ks_shares') or 0)
-            total_savings = (kai_shares * kai_share_price) + (ks_shares * ks_share_price)
 
             from datetime import datetime, timedelta
             now = datetime.now()
@@ -4535,10 +4789,6 @@ def member_apply_loan():
                 "member/apply-loan.html",
                 member=member_dict,
                 total_savings=total_savings,
-                kai_shares=kai_shares,
-                ks_shares=ks_shares,
-                kai_share_price=kai_share_price,
-                ks_share_price=ks_share_price,
                 max_loan_amount=10000000,
                 loan_interest_rate=12,
                 current_year=current_year,
@@ -4554,9 +4804,7 @@ def member_apply_loan():
             except Exception:
                 pass
 
-    # ============================================================
-    # POST — submit loan application
-    # ============================================================
+    # ============ POST - Submit loan application ============
     try:
         if request.is_json:
             data = request.get_json()
@@ -4564,10 +4812,12 @@ def member_apply_loan():
             purpose = data.get('purpose')
             repayment_plan = data.get('repayment_plan', 'monthly')
 
+            # ===== Send-to =====
             send_to_type      = (data.get('send_to_type') or 'phone').strip().lower()
             send_to_value     = (data.get('send_to_value') or '').strip()
             send_to_secondary = (data.get('send_to_secondary') or '').strip()
 
+            # ===== Guarantors =====
             g1_id = data.get('guarantor1_id')
             g1_name = (data.get('guarantor1_name') or '').strip()
             g1_phone = (data.get('guarantor1_phone') or '').strip()
@@ -4584,10 +4834,12 @@ def member_apply_loan():
             purpose = request.form.get('purpose')
             repayment_plan = request.form.get('repayment_plan', 'monthly')
 
+            # ===== Send-to =====
             send_to_type      = (request.form.get('send_to_type') or 'phone').strip().lower()
             send_to_value     = (request.form.get('send_to_value') or '').strip()
             send_to_secondary = (request.form.get('send_to_secondary') or '').strip()
 
+            # ===== Guarantors =====
             g1_id = request.form.get('guarantor1_id')
             g1_name = (request.form.get('guarantor1_name') or '').strip()
             g1_phone = (request.form.get('guarantor1_phone') or '').strip()
@@ -4638,26 +4890,11 @@ def member_apply_loan():
         due_date_str = due_date.strftime('%Y-%m-%d')
         loan_ref = generate_loan_reference()
 
-        # ============================================================
-        # ELIGIBLE SAVINGS = KAI + KS ONLY  (Registration & KAC excluded)
-        # ------------------------------------------------------------
-        # This determines the guarantor threshold. Only real savings
-        # (KAI shares + KS shares) count toward the loan cap.
-        # ============================================================
-        member_row = db.execute(
-            f"SELECT kai_shares, ks_shares FROM users WHERE id = {PH}",
-            (user_id,)
-        ).fetchone()
-        m = row_to_dict(member_row)
-
-        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        settings = row_to_dict(settings_row) if settings_row else {}
-        kai_share_price = int(settings.get('kai_share_price') or 100000)
-        ks_share_price  = int(settings.get('ks_share_price') or 10000)
-
-        kai_shares = int(m.get('kai_shares') or 0)
-        ks_shares  = int(m.get('ks_shares') or 0)
-        total_savings = (kai_shares * kai_share_price) + (ks_shares * ks_share_price)
+        total_savings = fetchval(db, f"""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM savings_deposits
+            WHERE user_id = {PH}
+        """, (user_id,)) or 0
 
         savings_threshold = total_savings * 0.95
         guarantors_required = loan_amount > savings_threshold
@@ -4666,6 +4903,7 @@ def member_apply_loan():
         # GUARANTOR VALIDATION — only when required
         # ============================================================
         if guarantors_required:
+            # ---------- 1. Presence check ----------
             if not g1_name or not g1_phone:
                 if request.is_json:
                     return jsonify({'success': False, 'message': 'Guarantor 1 details are required for this loan amount.'}), 400
@@ -4678,6 +4916,7 @@ def member_apply_loan():
                 flash('Guarantor 2 details are required for this loan amount.', 'danger')
                 return redirect(url_for('member_apply_loan'))
 
+            # ---------- 2. Must have been selected from search ----------
             if not g1_id or not g2_id:
                 msg = 'Guarantors must be selected from the registered member list.'
                 if request.is_json:
@@ -4685,6 +4924,7 @@ def member_apply_loan():
                 flash(msg, 'danger')
                 return redirect(url_for('member_apply_loan'))
 
+            # ---------- 3. Convert to int ----------
             try:
                 g1_id = int(g1_id)
                 g2_id = int(g2_id)
@@ -4695,6 +4935,7 @@ def member_apply_loan():
                 flash(msg, 'danger')
                 return redirect(url_for('member_apply_loan'))
 
+            # ---------- 4. Same person / self check ----------
             if g1_id == g2_id:
                 msg = 'Guarantor 1 and Guarantor 2 cannot be the same member.'
                 if request.is_json:
@@ -4709,6 +4950,7 @@ def member_apply_loan():
                 flash(msg, 'danger')
                 return redirect(url_for('member_apply_loan'))
 
+            # ---------- 5. Verify both exist and are active ----------
             allowed_roles = ('member', 'admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
 
             g1_row = db.execute(
@@ -4752,6 +4994,7 @@ def member_apply_loan():
                 flash(msg, 'danger')
                 return redirect(url_for('member_apply_loan'))
 
+            # ---------- 6. Use canonical DB values ----------
             g1_name  = g1_dict.get('full_name') or g1_name
             g1_phone = g1_dict.get('phone') or g1_phone
             g1_email = g1_dict.get('email') or g1_email
@@ -4761,7 +5004,7 @@ def member_apply_loan():
             g2_email = g2_dict.get('email') or g2_email
 
         # ============================================================
-        # INSERT LOAN
+        # INSERT LOAN — send-to fields included for both drivers
         # ============================================================
         if DATABASE_URL:
             row = db.execute(f"""
@@ -4827,7 +5070,7 @@ def member_apply_loan():
             loan_id = cursor.lastrowid
 
         # ============================================================
-        # Insert guarantors (or placeholder)
+        # Insert guarantors
         # ============================================================
         if guarantors_required:
             db.execute(f"""
@@ -4855,8 +5098,9 @@ def member_apply_loan():
         if guarantors_required:
             success_message += ' Guarantors will be contacted manually by the SACCO team.'
         else:
-            success_message += ' No guarantors required based on your KAI + KS savings.'
+            success_message += ' No guarantors required based on your savings.'
 
+        # ---- Human-readable send-to display ----
         if send_to_type == 'phone':
             send_to_display = 'Phone: ' + send_to_value
         elif send_to_type == 'account':
@@ -4875,8 +5119,6 @@ def member_apply_loan():
                 'total_repayment': total_repayment,
                 'total_interest': interest_amount,
                 'guarantors_required': guarantors_required,
-                'eligible_savings': total_savings,        # ← KAI + KS only
-                'savings_threshold': savings_threshold,
                 'monthly_rate': monthly_rate,
                 'repayment_plan': repayment_plan,
                 'due_date': due_date_str,
@@ -4907,7 +5149,6 @@ def member_apply_loan():
             db.close()
         except Exception:
             pass
-
 
 # ============================================================
 # MEMBER - REPAYMENTS
