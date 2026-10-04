@@ -107,6 +107,14 @@
                 <span>Chat Center</span>
             </a>
 
+            {% if session.role in ['treasurer', 'admin', 'chairperson', 'secretary'] %}
+                <a href="{{ url_for('admin_dashboard') }}"
+                class="admin-nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Admin Overview</span>
+                </a>
+                {% endif %}
+
             <a href="{{ url_for('member_dashboard', staff_view=True) }}"
                class="admin-nav-item staff-member-portal-item">
                 <i class="fas fa-user-circle"></i>

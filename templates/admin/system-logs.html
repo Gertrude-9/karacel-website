@@ -60,6 +60,68 @@
     white-space: nowrap;
 }
 
+/* ── Access summary cards ─────────────────── */
+.syslog-access-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.syslog-access-card {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.syslog-access-card .icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.syslog-access-card .text-wrap {
+    min-width: 0;
+    flex: 1;
+}
+
+.syslog-access-card .label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.syslog-access-card .value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+}
+
+.syslog-access-card .meta {
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+}
+
+/* Card accent colours */
+.accent-cyan   { background: rgba(0,224,255,0.1);  color: #00e0ff; }
+.accent-green  { background: rgba(74,222,128,0.1); color: #4ade80; }
+.accent-gold   { background: rgba(245,197,66,0.1); color: #f5c542; }
+.accent-pink   { background: rgba(255,107,107,0.1);color: #ff6b6b; }
+
 /* ── Unified Filter Bar ─────────────────────── */
 .syslog-filterbar {
     display: flex;
@@ -188,13 +250,11 @@
     white-space: nowrap;
 }
 
-/* Rebalanced column widths */
-.syslog-table thead th:nth-child(1) { width: 180px; }  /* Time — full date + time */
-.syslog-table thead th:nth-child(2) { width: 130px; }  /* User — tighter */
-.syslog-table thead th:nth-child(3) { width: 100px; }  /* Role — compact */
-.syslog-table thead th:nth-child(4) { width: 150px; }  /* Action */
-.syslog-table thead th:nth-child(5) { width: 170px; }  /* Target */
-.syslog-table thead th:nth-child(6) { }                 /* Details — flexible */
+.syslog-table thead th:nth-child(1) { width: 180px; }
+.syslog-table thead th:nth-child(2) { width: 130px; }
+.syslog-table thead th:nth-child(3) { width: 100px; }
+.syslog-table thead th:nth-child(4) { width: 150px; }
+.syslog-table thead th:nth-child(5) { width: 170px; }
 
 .syslog-table tbody td {
     padding: 12px 16px;
@@ -204,13 +264,8 @@
     text-overflow: ellipsis;
 }
 
-.syslog-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.syslog-table tbody tr:hover {
-    background: rgba(255,255,255,0.02);
-}
+.syslog-table tbody tr:last-child td { border-bottom: none; }
+.syslog-table tbody tr:hover { background: rgba(255,255,255,0.02); }
 
 .syslog-time {
     font-family: 'Courier New', monospace;
@@ -275,16 +330,8 @@
     padding: 60px 20px;
     color: rgba(255,255,255,0.3);
 }
-.syslog-empty i {
-    font-size: 2.2rem;
-    display: block;
-    margin-bottom: 12px;
-    opacity: 0.35;
-}
-.syslog-empty p {
-    margin: 0;
-    font-size: 0.85rem;
-}
+.syslog-empty i { font-size: 2.2rem; display: block; margin-bottom: 12px; opacity: 0.35; }
+.syslog-empty p { margin: 0; font-size: 0.85rem; }
 
 /* Mobile */
 @media (max-width: 900px) {
@@ -323,6 +370,60 @@
             <p>Who accessed what, and when</p>
         </div>
         <span class="syslog-head-count">{{ total_logs }} entries</span>
+    </div>
+
+    <!-- ============================================================
+         ACCESS SUMMARY — Treasurer & Secretary on Admin Dashboard
+         ============================================================ -->
+    <div class="syslog-access-grid">
+
+        <!-- Admin dashboard total visits -->
+        <div class="syslog-access-card">
+            <div class="icon-wrap accent-cyan">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <div class="text-wrap">
+                <div class="label">Admin Dashboard Access</div>
+                <div class="value">{{ admin_dashboard_access_count|default(0) }}</div>
+                <div class="meta">Total visits (all roles)</div>
+            </div>
+        </div>
+
+        <!-- Treasurer → admin dashboard -->
+        <div class="syslog-access-card">
+            <div class="icon-wrap accent-green">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="text-wrap">
+                <div class="label">Treasurer → Admin</div>
+                <div class="value">{{ admin_dashboard_treasurer_count|default(0) }}</div>
+                <div class="meta">Treasurer visits</div>
+            </div>
+        </div>
+
+        <!-- Secretary → admin dashboard -->
+        <div class="syslog-access-card">
+            <div class="icon-wrap accent-gold">
+                <i class="fas fa-user-cog"></i>
+            </div>
+            <div class="text-wrap">
+                <div class="label">Secretary → Admin</div>
+                <div class="value">{{ admin_dashboard_secretary_count|default(0) }}</div>
+                <div class="meta">Secretary visits</div>
+            </div>
+        </div>
+
+        <!-- Treasurer dashboard total -->
+        <div class="syslog-access-card">
+            <div class="icon-wrap accent-pink">
+                <i class="fas fa-hand-holding-usd"></i>
+            </div>
+            <div class="text-wrap">
+                <div class="label">Treasurer Dashboard</div>
+                <div class="value">{{ treasurer_access_count|default(0) }}</div>
+                <div class="meta">Total visits</div>
+            </div>
+        </div>
     </div>
 
     <!-- Unified Filter Bar -->

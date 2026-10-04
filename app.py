@@ -1094,11 +1094,27 @@ def logout():
 
 # ============================================
 # ADMIN DASHBOARD
+# ------------------------------------------------------------
+# Accessible by: admin, chairperson, treasurer, secretary
+# Every visit is recorded in system_logs
 # ============================================
 @app.route("/admin/dashboard")
 def admin_dashboard():
-    if session.get("role") != "admin":
+    # ---- Access control ----
+    allowed_roles = ("admin", "chairperson", "treasurer", "secretary")
+    if session.get("role") not in allowed_roles:
+        flash('Access denied', 'danger')
         return redirect("/login")
+
+    # ---- Audit log (appears under /admin/logs) ----
+    log_action(
+        action="view_dashboard",
+        target="admin_dashboard",
+        details=(
+            f"Accessed by {session.get('role', 'unknown')} "
+            f"({session.get('full_name', 'unknown')})"
+        )
+    )
 
     conn = get_db()
     try:
@@ -1268,6 +1284,9 @@ def admin_dashboard():
         except Exception as e:
             print(f"Error loading settings: {e}")
 
+        # ---- Flag for the template so it can hide admin-only widgets ----
+        is_full_admin = session.get("role") in ("admin", "chairperson")
+
         return render_template(
             "admin/admin-dashboard.html",
             members=members,
@@ -1290,6 +1309,7 @@ def admin_dashboard():
             today=today,
             now=datetime.now(),
             settings=settings,
+            is_full_admin=is_full_admin,   # ← new
         )
 
     except Exception as e:
@@ -1311,6 +1331,9 @@ def admin_dashboard():
 
 # ============================================================
 # ADMIN — SYSTEM LOGS
+# ------------------------------------------------------------
+# Accessible by: admin, chairperson (treasurer & secretary
+# still cannot view logs — only their access is recorded).
 # ============================================================
 @app.route("/admin/logs")
 def admin_system_logs():
@@ -1322,6 +1345,7 @@ def admin_system_logs():
     PH = "%s" if DATABASE_URL else "?"
 
     try:
+        # ---------------- Filters ----------------
         filter_user   = (request.args.get("user") or "").strip()
         filter_action = (request.args.get("action") or "").strip()
         filter_target = (request.args.get("target") or "").strip()
@@ -1354,7 +1378,7 @@ def admin_system_logs():
 
         where_sql = " AND ".join(where)
 
-        # ---- Fetch logs ----
+        # ---------------- Fetch logs ----------------
         logs = db.execute(f"""
             SELECT id, user_id, user_name, user_role,
                    action, target, details,
@@ -1366,25 +1390,57 @@ def admin_system_logs():
         """, tuple(params)).fetchall()
         logs = logs or []
 
-        # ---- Summary counts ----
+        # ---------------- Summary counts ----------------
         total_logs = fetchval(db, "SELECT COUNT(*) FROM system_logs") or 0
 
+        # Treasurer dashboard visits
         treasurer_access_count = fetchval(db, """
             SELECT COUNT(*) FROM system_logs
             WHERE target = 'treasurer_dashboard'
         """) or 0
 
-        # ---- Unique accessors ----
-        unique_accessors = db.execute("""
+        # Admin dashboard visits (from treasurer + secretary + admin)
+        admin_dashboard_access_count = fetchval(db, """
+            SELECT COUNT(*) FROM system_logs
+            WHERE target = 'admin_dashboard'
+        """) or 0
+
+        # Secretary-only accesses to admin_dashboard
+        admin_dashboard_secretary_count = fetchval(db, """
+            SELECT COUNT(*) FROM system_logs
+            WHERE target = 'admin_dashboard'
+              AND user_role = 'secretary'
+        """) or 0
+
+        # Treasurer-only accesses to admin_dashboard
+        admin_dashboard_treasurer_count = fetchval(db, """
+            SELECT COUNT(*) FROM system_logs
+            WHERE target = 'admin_dashboard'
+              AND user_role = 'treasurer'
+        """) or 0
+
+        # ---------------- Unique accessors per dashboard ----------------
+        # Treasurer dashboard
+        treasurer_accessors = db.execute("""
             SELECT user_name, user_role, COUNT(*) AS hits
             FROM system_logs
             WHERE target = 'treasurer_dashboard'
             GROUP BY user_name, user_role
             ORDER BY hits DESC
         """).fetchall()
-        unique_accessors = unique_accessors or []
+        treasurer_accessors = treasurer_accessors or []
 
-        # ---- Distinct actions ----
+        # Admin dashboard — every role that opened it
+        admin_dashboard_accessors = db.execute("""
+            SELECT user_name, user_role, COUNT(*) AS hits
+            FROM system_logs
+            WHERE target = 'admin_dashboard'
+            GROUP BY user_name, user_role
+            ORDER BY hits DESC
+        """).fetchall()
+        admin_dashboard_accessors = admin_dashboard_accessors or []
+
+        # ---------------- Distinct actions ----------------
         actions_rows = db.execute("""
             SELECT DISTINCT action FROM system_logs
             WHERE action IS NOT NULL
@@ -1402,8 +1458,18 @@ def admin_system_logs():
             "admin/system-logs.html",
             logs=logs,
             total_logs=total_logs,
+
+            # Treasurer dashboard
             treasurer_access_count=treasurer_access_count,
-            unique_accessors=unique_accessors,
+            unique_accessors=treasurer_accessors,
+
+            # Admin dashboard
+            admin_dashboard_access_count=admin_dashboard_access_count,
+            admin_dashboard_secretary_count=admin_dashboard_secretary_count,
+            admin_dashboard_treasurer_count=admin_dashboard_treasurer_count,
+            admin_dashboard_accessors=admin_dashboard_accessors,
+
+            # Filters + dropdowns
             actions=actions_list,
             filter_user=filter_user,
             filter_action=filter_action,
@@ -1427,7 +1493,7 @@ def admin_system_logs():
             db.close()
         except Exception:
             pass
-
+        
 # ============================================================
 # TREASURER DASHBOARD
 # ============================================================
