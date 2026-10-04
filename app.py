@@ -1623,6 +1623,12 @@ def treasurer_dashboard():
         active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
         completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
         rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
+                # ---- Total amount disbursed (all-time principal of disbursed/active/completed loans) ----
+        total_disbursed_amount = fetchval(conn, """
+            SELECT COALESCE(SUM(amount), 0)
+            FROM loans
+            WHERE status IN ('disbursed', 'active', 'completed')
+        """) or 0
 
         # ============================================================
         # KAC AGGREGATES (NET BALANCE MODEL)
@@ -1888,6 +1894,7 @@ def treasurer_dashboard():
             active_loans=active_loans,
             completed_loans=completed_loans,
             rejected_loans=rejected_loans,
+            total_disbursed_amount=total_disbursed_amount,
             active_loans_list=active_loans_list,
             completed_loans_list=completed_loans_list,
             all_loan_applications=all_loan_applications,
@@ -2520,7 +2527,7 @@ def admin_approve_loan(loan_id):
             db.close()
         except Exception:
             pass
-        
+
 # ============================================================
 # TREASURER — KAC CLAIMS PAGE
 # ============================================================

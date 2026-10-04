@@ -455,7 +455,7 @@
 <!-- ========== LOAN APPLICATIONS PANEL ========== -->
 <div id="loan_applications-panel" class="content-panel">
 
-    <div class="admin-stats">
+        <div class="admin-stats">
         <div class="stat-box">
             <i class="fas fa-clock"></i>
             <h3>{{ pending_loans }}</h3>
@@ -481,8 +481,16 @@
             <h3>{{ rejected_loans }}</h3>
             <p>Rejected</p>
         </div>
-    </div>
 
+        <!-- ===== Total Disbursed Amount (all-time) ===== -->
+        <div class="stat-box" style="border-left:3px solid #f5c542;">
+            <i class="fas fa-file-invoice-dollar" style="color:#f5c542;"></i>
+            <h3 style="color:#f5c542; font-size:1.05rem;">
+                UGX {{ "{:,.0f}".format(total_disbursed_amount|default(0)) }}
+            </h3>
+            <p>Total Disbursed</p>
+        </div>
+    </div>
     <!-- ========== INTEREST & FEE SUMMARY ========== -->
     <div class="savings-overview">
         <div class="savings-type-card">
