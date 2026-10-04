@@ -130,6 +130,44 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'receipts'), exist_ok=True)
 
+# ============================================================
+# ROW / FETCH HELPERS — robust for SQLite AND Postgres
+# ============================================================
+def row_to_dict(row):
+    """Convert a DB row to a plain dict — works with sqlite3.Row,
+    psycopg2 RealDictRow, dict, or fallback tuple."""
+    if row is None:
+        return {}
+    if isinstance(row, dict):
+        return dict(row)
+    try:
+        return {k: row[k] for k in row.keys()}
+    except AttributeError:
+        pass
+    try:
+        return dict(row)
+    except Exception:
+        return {}
+
+
+def fetchval(db, sql, params=()):
+    """Return the first column of the first row of a query."""
+    cur = db.execute(sql, params)
+    row = cur.fetchone()
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return list(row.values())[0]
+    try:
+        return row[0]
+    except (TypeError, KeyError):
+        return None
+
+
+def is_kac_member_clause():
+    """SQL fragment identifying KAC-enrolled members."""
+    return "status = 'active' AND COALESCE(kac_paid, 0) > 0"
+
 
 def get_db():
     """Returns SQLite locally, PostgreSQL on Render."""
@@ -2444,6 +2482,8 @@ def treasurer_kac_claims_page():
         # Settings
         settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         settings = row_to_dict(settings_row) if settings_row else {}
+        if not isinstance(settings, dict):
+            settings = {}
         kac_condolence_amount = int(settings.get('kac_condolence_amount') or 20000)
         kac_death_amount      = int(settings.get('kac_death_amount') or 40000)
         kac_annual_fee        = int(settings.get('kac_annual_fee') or 100000)
@@ -2491,7 +2531,6 @@ def treasurer_kac_claims_page():
             if (kac_paid - kac_used) < kac_death_amount:
                 debt_risk_count += 1
 
-        # Chargeable = same as KAC members count
         chargeable_count = len(staff_members) + len(regular_members)
 
         # Claims list
@@ -2515,16 +2554,16 @@ def treasurer_kac_claims_page():
             if c.get('status') != 'reversed'
         )
 
-        # Register counts (KAC members only for consistency)
+        # Register counts
         register_count_rows = conn.execute("""
             SELECT user_id, COUNT(*) AS cnt
             FROM member_condolence_register
             GROUP BY user_id
         """).fetchall()
-        register_counts = {
-            row_to_dict(r)['user_id']: row_to_dict(r)['cnt']
-            for r in register_count_rows
-        }
+        register_counts = {}
+        for r in register_count_rows:
+            rd = row_to_dict(r)
+            register_counts[rd['user_id']] = rd['cnt']
 
         return render_template(
             "treasurer/treasurer-kac.html",
@@ -2562,6 +2601,214 @@ def treasurer_kac_claims_page():
 
 
 # ------------------------------------------------------------
+# RECORD A CLAIM — charges ONLY KAC members (may go negative)
+# ------------------------------------------------------------
+@app.route("/treasurer/kac/claim", methods=["POST"])
+def treasurer_kac_claim():
+    print("=" * 60)
+    print("[KAC CLAIM] route entered")
+    print("[KAC CLAIM] session role:", session.get("role"))
+
+    if session.get("role") not in ["treasurer", "admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    data = request.get_json(silent=True) or {}
+    print("[KAC CLAIM] payload:", data)
+
+    claim_type = (data.get('claim_type') or '').lower()
+    affected_user_id = data.get('affected_user_id')
+    event_date = data.get('event_date') or datetime.now().strftime('%Y-%m-%d')
+    register_entry_id = data.get('register_entry_id')
+    description = (data.get('description') or '').strip()
+
+    if claim_type not in ('condolence', 'death'):
+        return jsonify({'success': False, 'message': 'Invalid claim type'}), 400
+    if not affected_user_id:
+        return jsonify({'success': False, 'message': 'Affected member is required'}), 400
+
+    db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
+    try:
+        # ---- Load deduction amount from settings ----
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        s = row_to_dict(settings_row) if settings_row else {}
+        if not isinstance(s, dict):
+            s = {}
+        deduction = int(s.get('kac_death_amount') or 40000) if claim_type == 'death' \
+                    else int(s.get('kac_condolence_amount') or 20000)
+        print("[KAC CLAIM] deduction:", deduction)
+
+        # ---- Load affected user ----
+        affected_row = db.execute(
+            f"SELECT id, full_name FROM users WHERE id = {PH}",
+            (affected_user_id,)
+        ).fetchone()
+        if not affected_row:
+            return jsonify({'success': False, 'message': 'Affected member not found'}), 404
+        affected = row_to_dict(affected_row)
+        print("[KAC CLAIM] affected:", affected)
+
+        # ---- Generate claim number ----
+        year = datetime.now().year
+        count = fetchval(db, f"""
+            SELECT COUNT(*) FROM kac_claims WHERE claim_number LIKE {PH}
+        """, (f"KAC-{year}-%",)) or 0
+        claim_number = f"KAC-{year}-{int(count) + 1:04d}"
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # ---- Insert the claim ----
+        if DATABASE_URL:
+            row = db.execute(f"""
+                INSERT INTO kac_claims (
+                    claim_number, claim_type, affected_user_id, affected_name,
+                    register_entry_id, deduction_amount, event_date, description,
+                    created_by, created_at, status
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},'active')
+                RETURNING id
+            """, (claim_number, claim_type, affected_user_id, affected['full_name'],
+                  register_entry_id, deduction, event_date, description,
+                  session['user_id'], now_str)).fetchone()
+            claim_id = row['id'] if isinstance(row, dict) else row[0]
+        else:
+            cur = db.cursor()
+            cur.execute("""
+                INSERT INTO kac_claims (
+                    claim_number, claim_type, affected_user_id, affected_name,
+                    register_entry_id, deduction_amount, event_date, description,
+                    created_by, created_at, status
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,'active')
+            """, (claim_number, claim_type, affected_user_id, affected['full_name'],
+                  register_entry_id, deduction, event_date, description,
+                  session['user_id'], now_str))
+            claim_id = cur.lastrowid
+        print("[KAC CLAIM] inserted claim id:", claim_id)
+
+        # ============================================================
+        # Charge ONLY KAC members
+        # ============================================================
+        everyone = db.execute(f"""
+            SELECT id,
+                   COALESCE(kac_paid, 0) AS kac_paid,
+                   COALESCE(kac_used, 0) AS kac_used
+            FROM users
+            WHERE {is_kac_member_clause()}
+        """).fetchall()
+        print("[KAC CLAIM] KAC members to charge:", len(everyone))
+
+        charged = 0
+        total = 0
+        debt_count = 0
+        current_year = datetime.now().year
+
+        for m_row in everyone:
+            m = row_to_dict(m_row)
+
+            before = int(m.get('kac_paid') or 0) - int(m.get('kac_used') or 0)
+            deduct_now = deduction
+            after = before - deduct_now
+
+            if after < 0:
+                debt_count += 1
+
+            # 1) Lifetime used
+            db.execute(f"""
+                UPDATE users
+                SET kac_used = COALESCE(kac_used, 0) + {PH}
+                WHERE id = {PH}
+            """, (deduct_now, m['id']))
+
+            # 2) Year tracker
+            existing = db.execute(f"""
+                SELECT id FROM kac_year_contributions
+                WHERE user_id = {PH} AND year = {PH}
+            """, (m['id'], current_year)).fetchone()
+
+            if existing:
+                db.execute(f"""
+                    UPDATE kac_year_contributions
+                    SET used = COALESCE(used, 0) + {PH},
+                        updated_at = {PH}
+                    WHERE user_id = {PH} AND year = {PH}
+                """, (deduct_now, now_str, m['id'], current_year))
+            else:
+                db.execute(f"""
+                    INSERT INTO kac_year_contributions
+                        (user_id, year, paid, used, target, created_at, updated_at)
+                    VALUES ({PH},{PH},{PH},{PH},100000,{PH},{PH})
+                """, (m['id'], current_year, m.get('kac_paid') or 0,
+                      deduct_now, now_str, now_str))
+
+            # 3) Audit row
+            db.execute(f"""
+                INSERT INTO kac_claim_deductions (
+                    claim_id, user_id, amount_deducted, kac_before, kac_after, created_at
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH})
+            """, (claim_id, m['id'], deduct_now, before, after, now_str))
+
+            charged += 1
+            total += deduct_now
+
+        # ---- Update claim totals ----
+        db.execute(f"""
+            UPDATE kac_claims SET members_charged = {PH}, total_collected = {PH}
+            WHERE id = {PH}
+        """, (charged, total, claim_id))
+
+        # ---- Mark register slot as deceased (condolence only) ----
+        if claim_type == 'condolence' and register_entry_id:
+            db.execute(f"""
+                UPDATE member_condolence_register
+                SET status = 'deceased',
+                    deceased_date = {PH},
+                    deceased_claim_id = {PH},
+                    updated_at = {PH}
+                WHERE id = {PH} AND user_id = {PH}
+            """, (event_date, claim_id, now_str, register_entry_id, affected_user_id))
+
+        db.commit()
+        print(f"[KAC CLAIM] SUCCESS — charged {charged}, total {total}, debt {debt_count}")
+
+        message = (
+            f'{claim_type.title()} claim recorded — '
+            f'{charged} KAC member(s) charged, UGX {total:,.0f} total.'
+        )
+        if debt_count > 0:
+            message += f' {debt_count} member(s) now owe the SACCO.'
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'claim_number': claim_number,
+            'claim_id': claim_id,
+            'charged': charged,
+            'total_collected': total,
+            'debt_count': debt_count
+        })
+
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        import traceback
+        tb = traceback.format_exc()
+        print("=" * 70)
+        print("KAC CLAIM ERROR")
+        print(tb)
+        print("=" * 70)
+        return jsonify({
+            'success': False,
+            'message': f'{type(e).__name__}: {str(e)}'
+        }), 500
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+# ------------------------------------------------------------
 # REVERSE A CLAIM
 # ------------------------------------------------------------
 @app.route("/treasurer/kac/claim/<int:claim_id>/reverse", methods=["POST"])
@@ -2569,7 +2816,7 @@ def treasurer_kac_reverse(claim_id):
     if session.get("role") not in ["treasurer", "admin", "chairperson"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     reason = (data.get('reason') or '').strip()
     if not reason:
         return jsonify({'success': False, 'message': 'Reversal reason is required'}), 400
@@ -2589,13 +2836,11 @@ def treasurer_kac_reverse(claim_id):
 
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Determine which year the deduction hit
         try:
             claim_year = datetime.strptime(str(claim['event_date'])[:10], '%Y-%m-%d').year
         except Exception:
             claim_year = datetime.now().year
 
-        # Refund every charged member
         deds = db.execute(
             f"SELECT * FROM kac_claim_deductions WHERE claim_id = {PH}", (claim_id,)
         ).fetchall()
@@ -2603,13 +2848,11 @@ def treasurer_kac_reverse(claim_id):
         for d_row in deds:
             d = row_to_dict(d_row)
 
-            # 1) Lifetime refund
             db.execute(f"""
                 UPDATE users SET kac_used = COALESCE(kac_used, 0) - {PH}
                 WHERE id = {PH}
             """, (d['amount_deducted'], d['user_id']))
 
-            # 2) Year tracker refund
             db.execute(f"""
                 UPDATE kac_year_contributions
                 SET used = COALESCE(used, 0) - {PH},
@@ -2617,7 +2860,6 @@ def treasurer_kac_reverse(claim_id):
                 WHERE user_id = {PH} AND year = {PH}
             """, (d['amount_deducted'], now_str, d['user_id'], claim_year))
 
-        # Reopen register slot if condolence
         if claim['claim_type'] == 'condolence' and claim.get('register_entry_id'):
             db.execute(f"""
                 UPDATE member_condolence_register
@@ -2628,7 +2870,6 @@ def treasurer_kac_reverse(claim_id):
                 WHERE id = {PH}
             """, (now_str, claim['register_entry_id']))
 
-        # Mark claim reversed
         db.execute(f"""
             UPDATE kac_claims
             SET status = 'reversed',
@@ -2645,7 +2886,10 @@ def treasurer_kac_reverse(claim_id):
         })
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2655,10 +2899,9 @@ def treasurer_kac_reverse(claim_id):
         except Exception:
             pass
 
+
 # ------------------------------------------------------------
-# YEAR ROLLOVER — starts a fresh year for KAC contributions.
-# Lifetime savings (kac_paid / kac_used) are NEVER touched.
-# Each KAC member gets a new 100,000/year obligation.
+# YEAR ROLLOVER — starts a fresh year for KAC contributions
 # ------------------------------------------------------------
 @app.route("/treasurer/kac/year-rollover", methods=["POST"])
 def treasurer_kac_year_rollover():
@@ -2672,10 +2915,6 @@ def treasurer_kac_year_rollover():
         current_year = datetime.now().year
         new_year = current_year + 1
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # Every active KAC member gets a new yearly tracker
-        def is_kac_member_clause():
-            ...
 
         members = db.execute(f"""
             SELECT id, COALESCE(kac_paid, 0) AS kac_paid
@@ -2700,8 +2939,6 @@ def treasurer_kac_year_rollover():
                 VALUES ({PH},{PH},0,0,100000,{PH},{PH})
             """, (m['id'], new_year, now_str, now_str))
 
-            # Point user at new year; kac_year_paid starts at 0
-            # (lifetime kac_paid is untouched)
             db.execute(f"""
                 UPDATE users
                 SET kac_year = {PH}, kac_year_paid = 0
@@ -2730,7 +2967,10 @@ def treasurer_kac_year_rollover():
         })
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2741,10 +2981,11 @@ def treasurer_kac_year_rollover():
             pass
 
 
-# Backwards-compatible alias so the old button/URL still works
+# Backwards-compatible alias
 @app.route("/treasurer/kac/year-reset", methods=["POST"])
 def treasurer_kac_year_reset_alias():
     return treasurer_kac_year_rollover()
+
 
 # ------------------------------------------------------------
 # CLAIM DETAILS (JSON for the View modal)
@@ -2798,7 +3039,8 @@ def treasurer_kac_claim_details(claim_id):
         except Exception:
             pass
 
-## ------------------------------------------------------------
+
+# ------------------------------------------------------------
 # MEMBER'S CONDOLENCE REGISTER — read
 # ------------------------------------------------------------
 @app.route("/treasurer/member/condolence-register/<int:user_id>", methods=["GET"])
@@ -2816,17 +3058,7 @@ def treasurer_get_member_register(user_id):
             ORDER BY slot_number ASC
         """, (user_id,)).fetchall()
 
-        register = []
-        for r in rows:
-            try:
-                register.append(row_to_dict(r))
-            except Exception:
-                register.append({
-                    'id': r[0], 'slot_number': r[1], 'full_name': r[2],
-                    'relationship': r[3], 'phone': r[4], 'status': r[5],
-                    'deceased_date': r[6] if len(r) > 6 else None
-                })
-
+        register = [row_to_dict(r) for r in rows]
         return jsonify({'success': True, 'register': register})
     except Exception as e:
         import traceback
@@ -2847,7 +3079,7 @@ def treasurer_add_register_entry():
     if session.get("role") not in ["treasurer", "admin", "chairperson", "secretary"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     user_id = data.get('user_id')
     full_name = (data.get('full_name') or '').strip()
     relationship = (data.get('relationship') or '').strip()
@@ -2862,7 +3094,7 @@ def treasurer_add_register_entry():
         total = fetchval(db, f"""
             SELECT COUNT(*) FROM member_condolence_register WHERE user_id = {PH}
         """, (user_id,)) or 0
-        if total >= 10:
+        if int(total) >= 10:
             return jsonify({
                 'success': False,
                 'message': 'Member has used all 10 slots. Deceased persons are not replaced.'
@@ -2872,7 +3104,7 @@ def treasurer_add_register_entry():
             SELECT COALESCE(MAX(slot_number), 0) FROM member_condolence_register
             WHERE user_id = {PH}
         """, (user_id,)) or 0
-        next_slot = max_slot + 1
+        next_slot = int(max_slot) + 1
 
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -2905,7 +3137,10 @@ def treasurer_add_register_entry():
             'slot_number': next_slot
         })
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2948,7 +3183,10 @@ def treasurer_remove_register_entry(entry_id):
         db.commit()
         return jsonify({'success': True, 'message': 'Removed.'})
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
