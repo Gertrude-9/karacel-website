@@ -717,7 +717,7 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
     ]
-        for sql in indexes:
+    for sql in indexes:
         try:
             cursor.execute(sql)
         except Exception:
@@ -838,7 +838,7 @@ try:
     create_chat_table()
 except Exception as e:
     print(f"⚠️ Could not create chat table: {e}")
-    
+
 # ============================================
 # LOAN HELPER FUNCTIONS
 # ============================================
