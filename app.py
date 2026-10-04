@@ -624,7 +624,7 @@ def create_database():
     )
     """)
 
-    # KAC CLAIMS
+        # KAC CLAIMS
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS kac_claims (
         id {pk},
@@ -677,6 +677,23 @@ def create_database():
     )
     """)
 
+    # ============================================================
+    # KAC YEAR CONTRIBUTIONS — per-year tracking (100k/yr target)
+    # ============================================================
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS kac_year_contributions (
+        id {pk},
+        user_id INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        paid REAL DEFAULT 0,
+        used REAL DEFAULT 0,
+        target REAL DEFAULT 100000,
+        created_at TEXT,
+        updated_at TEXT,
+        UNIQUE (user_id, year)
+    )
+    """)
+
     # ---- Indexes ----
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_logs_user_id ON system_logs(user_id)",
@@ -688,6 +705,8 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_kac_claims_status ON kac_claims(status)",
         "CREATE INDEX IF NOT EXISTS idx_kac_deductions_claim ON kac_claim_deductions(claim_id)",
         "CREATE INDEX IF NOT EXISTS idx_kac_deductions_user ON kac_claim_deductions(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_kac_year_user ON kac_year_contributions(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_kac_year_year ON kac_year_contributions(year)",
         "CREATE INDEX IF NOT EXISTS idx_condolence_register_user ON member_condolence_register(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_condolence_register_status ON member_condolence_register(status)",
         "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
@@ -698,12 +717,71 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
     ]
-    for sql in indexes:
+        for sql in indexes:
         try:
             cursor.execute(sql)
         except Exception:
             conn.rollback()
             cursor = conn.cursor()
+
+    # ============================================================
+    # BACKFILL this year's KAC tracker rows for existing KAC members
+    # ------------------------------------------------------------
+    # For every active user who has ever contributed to KAC,
+    # ensure a row exists in kac_year_contributions for the
+    # current year. Safe to run repeatedly — only inserts missing.
+    # ============================================================
+    try:
+        current_year = datetime.now().year
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        existing_kac_users = cursor.execute("""
+            SELECT id,
+                   COALESCE(kac_paid, 0) AS paid,
+                   COALESCE(kac_used, 0) AS used
+            FROM users
+            WHERE status = 'active'
+              AND COALESCE(kac_paid, 0) > 0
+        """).fetchall()
+
+        inserted = 0
+        for u in existing_kac_users:
+            u_dict = dict(u) if not isinstance(u, dict) else u
+            uid = u_dict.get('id')
+            if uid is None:
+                continue
+
+            already = cursor.execute(f"""
+                SELECT 1 FROM kac_year_contributions
+                WHERE user_id = {PH} AND year = {PH}
+            """, (uid, current_year)).fetchone()
+
+            if already:
+                continue
+
+            cursor.execute(f"""
+                INSERT INTO kac_year_contributions
+                    (user_id, year, paid, used, target, created_at, updated_at)
+                VALUES ({PH},{PH},{PH},{PH},100000,{PH},{PH})
+            """, (
+                uid,
+                current_year,
+                u_dict.get('paid') or 0,
+                u_dict.get('used') or 0,
+                now_str,
+                now_str
+            ))
+            inserted += 1
+
+        if inserted > 0:
+            print(f"✅ Backfilled {inserted} KAC year contribution row(s) for {current_year}")
+        else:
+            print(f"✅ KAC year contributions already up to date for {current_year}")
+
+    except Exception as e:
+        print(f"⚠️ KAC year backfill warning: {e}")
+        conn.rollback()
+        cursor = conn.cursor()
 
     # ---- Default settings ----
     cursor.execute("SELECT COUNT(*) AS c FROM system_settings")
@@ -760,7 +838,7 @@ try:
     create_chat_table()
 except Exception as e:
     print(f"⚠️ Could not create chat table: {e}")
-
+    
 # ============================================
 # LOAN HELPER FUNCTIONS
 # ============================================
@@ -2346,190 +2424,153 @@ def admin_approve_loan(loan_id):
 # KAC CLAIMS (Condolence Scheme)
 # ============================================================
 
-# ------------------------------------------------------------
-# RECORD A CLAIM — charges ONLY KAC members (may go negative)
-# ------------------------------------------------------------
-@app.route("/treasurer/kac/claim", methods=["POST"])
-def treasurer_kac_claim():
-    if session.get("role") not in ["treasurer", "admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
+# ============================================================
+# TREASURER — KAC CLAIMS PAGE (renders the template)
+# ============================================================
+@app.route("/treasurer/kac-claims")
+def treasurer_kac_claims_page():
+    if session.get("role") not in ["treasurer", "admin", "chairperson", "secretary"]:
+        flash('Access denied', 'danger')
+        return redirect("/login")
 
-    data = request.get_json() or {}
-    claim_type = (data.get('claim_type') or '').lower()
-    affected_user_id = data.get('affected_user_id')
-    event_date = data.get('event_date') or datetime.now().strftime('%Y-%m-%d')
-    register_entry_id = data.get('register_entry_id')
-    description = (data.get('description') or '').strip()
+    log_action(
+        action="view_kac_claims",
+        target="treasurer_kac_claims",
+        details=f"Accessed by {session.get('role', 'unknown')}"
+    )
 
-    if claim_type not in ('condolence', 'death'):
-        return jsonify({'success': False, 'message': 'Invalid claim type'}), 400
-    if not affected_user_id:
-        return jsonify({'success': False, 'message': 'Affected member is required'}), 400
-
-    db = get_db()
-    PH = "%s" if DATABASE_URL else "?"
+    conn = get_db()
 
     try:
-        # ---- Load deduction amount from settings ----
-        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        s = row_to_dict(settings_row) if settings_row else {}
-        deduction = (s.get('kac_death_amount') or 40000) if claim_type == 'death' \
-                    else (s.get('kac_condolence_amount') or 20000)
+        # ------------------------------------------------------------
+        # Load settings for amounts
+        # ------------------------------------------------------------
+        settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        settings = row_to_dict(settings_row) if settings_row else {}
+        kac_condolence_amount = int(settings.get('kac_condolence_amount') or 20000)
+        kac_death_amount      = int(settings.get('kac_death_amount') or 40000)
+        kac_annual_fee        = int(settings.get('kac_annual_fee') or 100000)
 
-        # ---- Load affected user ----
-        affected_row = db.execute(
-            f"SELECT id, full_name FROM users WHERE id = {PH}",
-            (affected_user_id,)
-        ).fetchone()
-        if not affected_row:
-            return jsonify({'success': False, 'message': 'Affected member not found'}), 404
-        affected = row_to_dict(affected_row)
-
-        # ---- Generate claim number ----
-        year = datetime.now().year
-        count = fetchval(db, f"""
-            SELECT COUNT(*) FROM kac_claims WHERE claim_number LIKE {PH}
-        """, (f"KAC-{year}-%",)) or 0
-        claim_number = f"KAC-{year}-{count + 1:04d}"
-
-        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # ---- Insert the claim ----
-        if DATABASE_URL:
-            row = db.execute(f"""
-                INSERT INTO kac_claims (
-                    claim_number, claim_type, affected_user_id, affected_name,
-                    register_entry_id, deduction_amount, event_date, description,
-                    created_by, created_at, status
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},'active')
-                RETURNING id
-            """, (claim_number, claim_type, affected_user_id, affected['full_name'],
-                  register_entry_id, deduction, event_date, description,
-                  session['user_id'], now_str)).fetchone()
-            claim_id = row['id'] if isinstance(row, dict) else row[0]
-        else:
-            cur = db.cursor()
-            cur.execute("""
-                INSERT INTO kac_claims (
-                    claim_number, claim_type, affected_user_id, affected_name,
-                    register_entry_id, deduction_amount, event_date, description,
-                    created_by, created_at, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,'active')
-            """, (claim_number, claim_type, affected_user_id, affected['full_name'],
-                  register_entry_id, deduction, event_date, description,
-                  session['user_id'], now_str))
-            claim_id = cur.lastrowid
-
-        # ============================================================
-        # Charge ONLY KAC members (those who have ever paid into KAC).
-        # Each member's lifetime balance is reduced by `deduction`.
-        # Their per-year tracker is also reduced.
-        # ============================================================
-        everyone = db.execute(f"""
-            SELECT id,
-                   COALESCE(kac_paid, 0) AS kac_paid,
-                   COALESCE(kac_used, 0) AS kac_used
-            FROM users
-            WHERE {is_kac_member_clause()}
+        # ------------------------------------------------------------
+        # Staff + regular member lists (for the affected-member dropdown)
+        # ------------------------------------------------------------
+        staff_members = conn.execute("""
+            SELECT 
+                id, full_name, sacco_number, role,
+                COALESCE(kac_paid, 0) AS kac_paid,
+                COALESCE(kac_used, 0) AS kac_used
+            FROM users 
+            WHERE status = 'active'
+            AND LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
+            ORDER BY full_name ASC
         """).fetchall()
 
-        charged = 0
-        total = 0
-        debt_count = 0
-        current_year = datetime.now().year
+        regular_members = conn.execute("""
+            SELECT 
+                id, full_name, sacco_number, role,
+                COALESCE(kac_paid, 0) AS kac_paid,
+                COALESCE(kac_used, 0) AS kac_used
+            FROM users 
+            WHERE status = 'active'
+            AND LOWER(role) = 'member'
+            ORDER BY full_name ASC
+        """).fetchall()
 
-        for m_row in everyone:
+        # ------------------------------------------------------------
+        # KAC stats — fully-paid / partial / debt risk counts
+        # ------------------------------------------------------------
+        eligible_count  = 0
+        partial_count   = 0
+        debt_risk_count = 0
+
+        for m_row in list(staff_members) + list(regular_members):
             m = row_to_dict(m_row)
+            kac_paid = int(m.get('kac_paid') or 0)
+            kac_used = int(m.get('kac_used') or 0)
 
-            before = (m['kac_paid'] or 0) - (m['kac_used'] or 0)
-            deduct_now = deduction
-            after = before - deduct_now   # may go negative → debt
+            if kac_paid >= kac_annual_fee and kac_paid >= kac_used:
+                eligible_count += 1
+            elif kac_paid > 0:
+                partial_count += 1
 
-            if after < 0:
-                debt_count += 1
+            if (kac_paid - kac_used) < kac_death_amount:
+                debt_risk_count += 1
 
-            # 1) Lifetime used — this is what gets refunded on reversal
-            db.execute(f"""
-                UPDATE users
-                SET kac_used = COALESCE(kac_used, 0) + {PH}
-                WHERE id = {PH}
-            """, (deduct_now, m['id']))
+        # ------------------------------------------------------------
+        # Chargeable count — only KAC members get charged
+        # ------------------------------------------------------------
+        chargeable_count = fetchval(conn, """
+            SELECT COUNT(*) FROM users
+            WHERE status = 'active'
+            AND COALESCE(kac_paid, 0) > 0
+        """) or 0
 
-            # 2) This year's tracker (create row if missing)
-            existing = db.execute(f"""
-                SELECT id FROM kac_year_contributions
-                WHERE user_id = {PH} AND year = {PH}
-            """, (m['id'], current_year)).fetchone()
+        # ------------------------------------------------------------
+        # KAC claims list (history tab)
+        # ------------------------------------------------------------
+        claims_rows = conn.execute("""
+            SELECT 
+                c.*,
+                r.full_name AS register_entry_name,
+                r.relationship AS register_relationship,
+                r.slot_number AS register_slot
+            FROM kac_claims c
+            LEFT JOIN member_condolence_register r ON r.id = c.register_entry_id
+            ORDER BY c.created_at DESC
+        """).fetchall()
 
-            if existing:
-                db.execute(f"""
-                    UPDATE kac_year_contributions
-                    SET used = COALESCE(used, 0) + {PH},
-                        updated_at = {PH}
-                    WHERE user_id = {PH} AND year = {PH}
-                """, (deduct_now, now_str, m['id'], current_year))
-            else:
-                db.execute(f"""
-                    INSERT INTO kac_year_contributions
-                        (user_id, year, paid, used, target, created_at, updated_at)
-                    VALUES ({PH},{PH},{PH},{PH},100000,{PH},{PH})
-                """, (m['id'], current_year, m['kac_paid'] or 0,
-                      deduct_now, now_str, now_str))
+        kac_claims = [row_to_dict(c) for c in claims_rows]
+        total_claims = len(kac_claims)
 
-            # 3) Audit row
-            db.execute(f"""
-                INSERT INTO kac_claim_deductions (
-                    claim_id, user_id, amount_deducted, kac_before, kac_after, created_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH})
-            """, (claim_id, m['id'], deduct_now, before, after, now_str))
+        total_condolences = sum(1 for c in kac_claims if c.get('claim_type') == 'condolence')
+        total_deaths      = sum(1 for c in kac_claims if c.get('claim_type') == 'death')
 
-            charged += 1
-            total += deduct_now
-
-        # ---- Update claim with totals ----
-        db.execute(f"""
-            UPDATE kac_claims SET members_charged = {PH}, total_collected = {PH}
-            WHERE id = {PH}
-        """, (charged, total, claim_id))
-
-        # ---- Mark register slot as deceased (condolence only) ----
-        if claim_type == 'condolence' and register_entry_id:
-            db.execute(f"""
-                UPDATE member_condolence_register
-                SET status = 'deceased',
-                    deceased_date = {PH},
-                    deceased_claim_id = {PH},
-                    updated_at = {PH}
-                WHERE id = {PH} AND user_id = {PH}
-            """, (event_date, claim_id, now_str, register_entry_id, affected_user_id))
-
-        db.commit()
-
-        message = (
-            f'{claim_type.title()} claim recorded — '
-            f'{charged} KAC member(s) charged, UGX {total:,.0f} total.'
+        total_collected_all = sum(
+            float(c.get('total_collected') or 0) for c in kac_claims
+            if c.get('status') != 'reversed'
         )
-        if debt_count > 0:
-            message += f' {debt_count} member(s) now owe the SACCO.'
 
-        return jsonify({
-            'success': True,
-            'message': message,
-            'claim_number': claim_number,
-            'claim_id': claim_id,
-            'charged': charged,
-            'total_collected': total,
-            'debt_count': debt_count
-        })
+        # ------------------------------------------------------------
+        # Register counts for the Manage Registers tab
+        # ------------------------------------------------------------
+        register_count_rows = conn.execute("""
+            SELECT user_id, COUNT(*) AS cnt
+            FROM member_condolence_register
+            GROUP BY user_id
+        """).fetchall()
+        register_counts = {
+            row_to_dict(r)['user_id']: row_to_dict(r)['cnt']
+            for r in register_count_rows
+        }
+
+        return render_template(
+            "treasurer/treasurer-kac.html",
+            staff_members=staff_members,
+            regular_members=regular_members,
+            kac_claims=kac_claims,
+            total_claims=total_claims,
+            total_condolences=total_condolences,
+            total_deaths=total_deaths,
+            total_collected_all=total_collected_all,
+            eligible_count=eligible_count,
+            partial_count=partial_count,
+            chargeable_count=chargeable_count,
+            debt_risk_count=debt_risk_count,
+            register_counts=register_counts,
+            kac_condolence_amount=kac_condolence_amount,
+            kac_death_amount=kac_death_amount,
+            kac_annual_fee=kac_annual_fee,
+            now=datetime.now()
+        )
 
     except Exception as e:
-        db.rollback()
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Error loading KAC page: {str(e)}', 'danger')
+        return redirect(url_for('treasurer_dashboard'))
     finally:
         try:
-            db.close()
+            conn.close()
         except Exception:
             pass
 
