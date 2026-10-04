@@ -152,277 +152,281 @@
     </div>
 
     <!-- ========== RECORD DEPOSIT FORM ========== -->
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-piggy-bank"></i> Record Savings Deposit
-            <span style="font-size:0.72rem; color:var(--tr-muted); font-weight:400; margin-left:auto;">
-                Staff members included
-            </span>
+<div class="action-card">
+    <div class="action-title">
+        <i class="fas fa-piggy-bank"></i> Record Savings Deposit
+        <span style="font-size:0.72rem; color:var(--tr-muted); font-weight:400; margin-left:auto;">
+            Staff members included
+        </span>
+    </div>
+
+    <form method="POST" action="{{ url_for('treasurer_savings_deposit') }}" class="tr-form">
+
+        <!-- Select member -->
+        <div class="tr-field">
+            <label>Select Member <span class="req">*</span></label>
+            <select name="user_id" required onchange="updateMemberSavings(this.value)">
+                <option value="">— Select a member or staff —</option>
+
+                {% if staff_members %}
+                <optgroup label="👔 Staff Members">
+                    {% for member in staff_members %}
+                    <option value="{{ member.id }}"
+                            data-kai="{{ (member.kai_shares or 0) | int }}"
+                            data-ks="{{ (member.ks_shares or 0) | int }}"
+                            data-kac="{{ (member.kac_paid or 0) | int }}"
+                            data-kac-used="{{ (member.kac_used or 0) | int }}"
+                            data-reg="{{ (member.registration_fee_paid or 0) | int }}"
+                            data-role="{{ member.role }}">
+                        {{ member.full_name }} ({{ member.sacco_number }}) — {{ member.role|title }}
+                    </option>
+                    {% endfor %}
+                </optgroup>
+                {% endif %}
+
+                {% if regular_members %}
+                <optgroup label="👤 Members">
+                    {% for member in regular_members %}
+                    <option value="{{ member.id }}"
+                            data-kai="{{ (member.kai_shares or 0) | int }}"
+                            data-ks="{{ (member.ks_shares or 0) | int }}"
+                            data-kac="{{ (member.kac_paid or 0) | int }}"
+                            data-kac-used="{{ (member.kac_used or 0) | int }}"
+                            data-reg="{{ (member.registration_fee_paid or 0) | int }}"
+                            data-role="{{ member.role }}">
+                        {{ member.full_name }} ({{ member.sacco_number }})
+                    </option>
+                    {% endfor %}
+                </optgroup>
+                {% endif %}
+            </select>
+            <div class="tr-field-hint">
+                <i class="fas fa-info-circle"></i> Staff members are also SACCO members
+            </div>
         </div>
 
-        <form method="POST" action="{{ url_for('treasurer_savings_deposit') }}" class="tr-form">
+        <!-- Current member savings summary -->
+        <div id="memberSavingsDisplay" class="member-summary">
+            <div class="member-summary-head">
+                <div class="member-summary-title">Current Savings</div>
+                <div id="memberRoleDisplay" class="role-pill member">Member</div>
+            </div>
+            <div class="member-summary-grid">
+                <div>
+                    <span class="type-kai">KAI</span>
+                    <span id="displayKAI" class="member-summary-value">0 shares</span>
+                </div>
+                <div>
+                    <span class="type-ks">KS</span>
+                    <span id="displayKS" class="member-summary-value">0 shares</span>
+                </div>
+                <div>
+                    <span class="type-kac">KAC</span>
+                    <span id="displayKAC" class="member-summary-value">UGX 0 / 100,000</span>
+                    <div id="displayKACBar" style="margin-top:4px; height:4px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
+                        <div id="displayKACFill" style="height:100%; width:0%; background:linear-gradient(90deg,#f5c542,#eab308); transition:width 0.3s;"></div>
+                    </div>
+                    <div id="displayKACUsed" style="font-size:0.68rem; color:rgba(255,255,255,0.4); margin-top:4px;"></div>
+                    <div id="displayKACDebt" style="font-size:0.68rem; color:#ff6b6b; font-weight:600; margin-top:2px; display:none;"></div>
+                </div>
+                <div>
+                    <span class="type-reg">REG</span>
+                    <span id="displayREG" class="member-summary-value">Not paid</span>
+                </div>
+            </div>
+        </div>
 
-            <!-- Select member -->
+        <!-- Savings type + amount -->
+        <div class="tr-form-row">
             <div class="tr-field">
-                <label>Select Member <span class="req">*</span></label>
-                <select name="user_id" required onchange="updateMemberSavings(this.value)">
-                    <option value="">— Select a member or staff —</option>
-
-                    {% if staff_members %}
-                    <optgroup label="👔 Staff Members">
-                        {% for member in staff_members %}
-                        <option value="{{ member.id }}"
-                                data-kai="{{ (member.kai_shares or 0) | int }}"
-                                data-ks="{{ (member.ks_shares or 0) | int }}"
-                                data-kac="{{ (member.kac_paid or 0) | int }}"
-                                data-reg="{{ (member.registration_fee_paid or 0) | int }}"
-                                data-role="{{ member.role }}">
-                            {{ member.full_name }} ({{ member.sacco_number }}) — {{ member.role|title }}
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
-
-                    {% if regular_members %}
-                    <optgroup label="👤 Members">
-                        {% for member in regular_members %}
-                        <option value="{{ member.id }}"
-                                data-kai="{{ (member.kai_shares or 0) | int }}"
-                                data-ks="{{ (member.ks_shares or 0) | int }}"
-                                data-kac="{{ (member.kac_paid or 0) | int }}"
-                                data-reg="{{ (member.registration_fee_paid or 0) | int }}"
-                                data-role="{{ member.role }}">
-                            {{ member.full_name }} ({{ member.sacco_number }})
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
+                <label>Savings Type <span class="req">*</span></label>
+                <select name="savings_type" id="savingsType" required onchange="updateSavingsTypeInfo()">
+                    <option value="">— Choose a savings type —</option>
+                    <option value="KAI">KAI — Investment (UGX 100,000/share)</option>
+                    <option value="KS">KS — Savings (UGX 10,000/share)</option>
+                    <option value="KAC">KAC — Condolence (UGX 100,000/year — installments allowed)</option>
+                    <option value="REGISTRATION">Registration Fee (UGX 20,000)</option>
                 </select>
-                <div class="tr-field-hint">
-                    <i class="fas fa-info-circle"></i> Staff members are also SACCO members
-                </div>
             </div>
-
-            <!-- Current member savings summary -->
-            <div id="memberSavingsDisplay" class="member-summary">
-                <div class="member-summary-head">
-                    <div class="member-summary-title">Current Savings</div>
-                    <div id="memberRoleDisplay" class="role-pill member">Member</div>
-                </div>
-                <div class="member-summary-grid">
-                    <div>
-                        <span class="type-kai">KAI</span>
-                        <span id="displayKAI" class="member-summary-value">0 shares</span>
-                    </div>
-                    <div>
-                        <span class="type-ks">KS</span>
-                        <span id="displayKS" class="member-summary-value">0 shares</span>
-                    </div>
-                    <div>
-                        <span class="type-kac">KAC</span>
-                        <span id="displayKAC" class="member-summary-value">UGX 0 / 100,000</span>
-                        <div id="displayKACBar" style="margin-top:4px; height:4px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
-                            <div id="displayKACFill" style="height:100%; width:0%; background:linear-gradient(90deg,#f5c542,#eab308); transition:width 0.3s;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="type-reg">REG</span>
-                        <span id="displayREG" class="member-summary-value">Not paid</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Savings type + amount -->
-            <div class="tr-form-row">
-                <div class="tr-field">
-                    <label>Savings Type <span class="req">*</span></label>
-                    <select name="savings_type" id="savingsType" required onchange="updateSavingsTypeInfo()">
-                        <option value="">— Choose a savings type —</option>
-                        <option value="KAI">KAI — Investment (UGX 100,000/share)</option>
-                        <option value="KS">KS — Savings (UGX 10,000/share)</option>
-                        <option value="KAC">KAC — Condolence (UGX 100,000/year — installments allowed)</option>
-                        <option value="REGISTRATION">Registration Fee (UGX 20,000)</option>
-                    </select>
-                </div>
-                <div class="tr-field">
-                    <label>Amount (UGX) <span class="req">*</span></label>
-                    <input type="number" step="1" name="amount" id="amountInput" required
-                           placeholder="Enter amount" oninput="validateSavingsAmount()">
-                </div>
-            </div>
-
-            <!-- Savings type info -->
-            <div id="savingsTypeInfo" class="type-info-panel">
-                <div id="savingsTypeDetails"></div>
-            </div>
-
-            <!-- Amount validation -->
-            <div id="savingsAmountValidation" class="tr-field-hint" style="display:none;"></div>
-
-            <!-- Number of shares -->
-            <div class="tr-field" id="sharesGroup">
-                <label>Number of Shares</label>
-                <input type="number" id="numberOfShares" placeholder="Auto-calculated from amount" readonly>
-            </div>
-
-            <!-- Payment method + receipt -->
-            <div class="tr-form-row">
-                <div class="tr-field">
-                    <label>Payment Method</label>
-                    <select name="payment_method">
-                        <option value="cash">💵 Cash</option>
-                        <option value="bank_transfer">🏦 Bank Transfer</option>
-                        <option value="mobile_money">📱 Mobile Money</option>
-                        <option value="cheque">📄 Cheque</option>
-                    </select>
-                </div>
-                <div class="tr-field">
-                    <label>Receipt Number</label>
-                    <input type="text" name="receipt_number" placeholder="Optional">
-                </div>
-            </div>
-
-            <!-- Notes -->
             <div class="tr-field">
-                <label>Notes</label>
-                <textarea name="notes" placeholder="Optional notes..."></textarea>
+                <label>Amount (UGX) <span class="req">*</span></label>
+                <input type="number" step="1" name="amount" id="amountInput" required
+                       placeholder="Enter amount" oninput="validateSavingsAmount()">
             </div>
+        </div>
 
-            <!-- Submit -->
-            <div class="tr-field" style="margin-bottom:0;">
-                <button type="submit" class="tr-btn tr-btn-primary">
-                    <i class="fas fa-check"></i> Record Deposit
-                </button>
+        <!-- Savings type info -->
+        <div id="savingsTypeInfo" class="type-info-panel">
+            <div id="savingsTypeDetails"></div>
+        </div>
+
+        <!-- Amount validation -->
+        <div id="savingsAmountValidation" class="tr-field-hint" style="display:none;"></div>
+
+        <!-- Number of shares -->
+        <div class="tr-field" id="sharesGroup">
+            <label>Number of Shares</label>
+            <input type="number" id="numberOfShares" placeholder="Auto-calculated from amount" readonly>
+        </div>
+
+        <!-- Payment method + receipt -->
+        <div class="tr-form-row">
+            <div class="tr-field">
+                <label>Payment Method</label>
+                <select name="payment_method">
+                    <option value="cash">💵 Cash</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="mobile_money">📱 Mobile Money</option>
+                    <option value="cheque">📄 Cheque</option>
+                </select>
             </div>
-        </form>
-    </div>
-
-    <!-- ========== ALL DEPOSITS TABLE ========== -->
-    <div class="action-card">
-        <div class="action-title">
-            <i class="fas fa-list"></i> All Savings Deposits
-            <span style="font-size:0.72rem; color:var(--tr-muted); font-weight:400; margin-left:auto;">
-                Total: UGX {{ "{:,.0f}".format(total_deposits) }}
-            </span>
-            <span class="role-pill" style="background:rgba(74,222,128,0.1); color:#4ade80;">
-                <i class="fas fa-user-tie"></i> Includes Staff
-            </span>
+            <div class="tr-field">
+                <label>Receipt Number</label>
+                <input type="text" name="receipt_number" placeholder="Optional">
+            </div>
         </div>
 
-        <!-- Filters -->
-        <div class="tr-filter-bar">
-            <input type="text" id="searchSavingsMember"
-                   placeholder="Search by member name or SACCO number..."
-                   onkeyup="filterSavingsByMember()">
-            <select id="filterSavingsType" onchange="filterSavingsByMember()">
-                <option value="all">All Types</option>
-                <option value="KAI">KAI — Investment</option>
-                <option value="KS">KS — Savings</option>
-                <option value="KAC">KAC — Condolence</option>
-                <option value="REGISTRATION">Registration</option>
-            </select>
-            <select id="filterSavingsMethod" onchange="filterSavingsByMember()">
-                <option value="all">All Methods</option>
-                <option value="cash">Cash</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="cheque">Cheque</option>
-            </select>
-            <select id="filterSavingsRole" onchange="filterSavingsByMember()">
-                <option value="all">All Users</option>
-                <option value="member">Members Only</option>
-                <option value="staff">Staff Only</option>
-            </select>
+        <!-- Notes -->
+        <div class="tr-field">
+            <label>Notes</label>
+            <textarea name="notes" placeholder="Optional notes..."></textarea>
         </div>
 
-        <!-- Table -->
-        <div style="overflow-x:auto;">
-            <table class="styled-table" id="savingsTable">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Member</th>
-                        <th>SACCO No.</th>
-                        <th>Type</th>
-                        <th style="text-align:right;">Amount (UGX)</th>
-                        <th style="text-align:right;">Shares</th>
-                        <th>Date</th>
-                        <th>Method</th>
-                        <th>Receipt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if all_deposits %}
-                        {% for deposit in all_deposits %}
-                        <tr data-member-id="{{ deposit.user_id }}"
-                            data-member-name="{{ deposit.full_name|lower }}"
-                            data-sacco="{{ deposit.sacco_number|lower }}"
-                            data-type="{{ deposit.savings_type }}"
-                            data-method="{{ deposit.payment_method }}"
-                            data-role="{{ deposit.role or 'member' }}">
-
-                            <td style="color:var(--tr-dim);">{{ loop.index }}</td>
-                            <td><strong>{{ deposit.full_name }}</strong></td>
-
-                            <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
-                                {{ deposit.sacco_number }}
-                            </td>
-                            <td>
-                                <span class="
-                                    {% if deposit.savings_type == 'KAI' %}type-kai
-                                    {% elif deposit.savings_type == 'KS' %}type-ks
-                                    {% elif deposit.savings_type == 'KAC' %}type-kac
-                                    {% elif deposit.savings_type == 'REGISTRATION' %}type-reg
-                                    {% endif %}">
-                                    {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type }}{% endif %}
-                                </span>
-                            </td>
-                            <td style="text-align:right; color:var(--tr-green); font-weight:600;">
-                                {{ "{:,.0f}".format(deposit.amount) }}
-                            </td>
-                            <td style="text-align:right; color:var(--tr-muted);">
-                                {% if deposit.savings_type == 'KAI' or deposit.savings_type == 'KS' %}
-                                    {% if deposit.shares %}{{ deposit.shares }}{% else %}—{% endif %}
-                                {% elif deposit.savings_type == 'KAC' %}
-                                    <span style="color:var(--tr-yellow); font-size:0.72rem;">
-                                        <i class="fas fa-hand-holding-heart"></i> installment
-                                    </span>
-                                {% else %}
-                                    <span style="color:var(--tr-dim);">N/A</span>
-                                {% endif %}
-                            </td>
-                            <td style="color:var(--tr-muted);">{{ deposit.deposit_date }}</td>
-                            <td style="color:var(--tr-muted);">{{ deposit.payment_method|capitalize }}</td>
-                            <td>
-                                {% if deposit.receipt_number %}
-                                    <span style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
-                                        {{ deposit.receipt_number }}
-                                    </span>
-                                {% else %}
-                                    <span style="color:var(--tr-dim);">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="9" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
-                                <i class="fas fa-piggy-bank" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
-                                <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
-                                    No Deposits Yet
-                                </div>
-                                <p style="font-size:0.82rem; color:var(--tr-muted); margin:0;">
-                                    Recorded savings deposits will appear here
-                                </p>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+        <!-- Submit -->
+        <div class="tr-field" style="margin-bottom:0;">
+            <button type="submit" class="tr-btn tr-btn-primary">
+                <i class="fas fa-check"></i> Record Deposit
+            </button>
         </div>
-    </div>
-
+    </form>
 </div>
+
+<!-- ========== ALL DEPOSITS TABLE ========== -->
+<div class="action-card">
+    <div class="action-title">
+        <i class="fas fa-list"></i> All Savings Deposits
+        <span style="font-size:0.72rem; color:var(--tr-muted); font-weight:400; margin-left:auto;">
+            Total: UGX {{ "{:,.0f}".format(total_deposits) }}
+        </span>
+        <span class="role-pill" style="background:rgba(74,222,128,0.1); color:#4ade80;">
+            <i class="fas fa-user-tie"></i> Includes Staff
+        </span>
+    </div>
+
+    <!-- Filters -->
+    <div class="tr-filter-bar">
+        <input type="text" id="searchSavingsMember"
+               placeholder="Search by member name or SACCO number..."
+               onkeyup="filterSavingsByMember()">
+        <select id="filterSavingsType" onchange="filterSavingsByMember()">
+            <option value="all">All Types</option>
+            <option value="KAI">KAI — Investment</option>
+            <option value="KS">KS — Savings</option>
+            <option value="KAC">KAC — Condolence</option>
+            <option value="REGISTRATION">Registration</option>
+        </select>
+        <select id="filterSavingsMethod" onchange="filterSavingsByMember()">
+            <option value="all">All Methods</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="cheque">Cheque</option>
+        </select>
+        <select id="filterSavingsRole" onchange="filterSavingsByMember()">
+            <option value="all">All Users</option>
+            <option value="member">Members Only</option>
+            <option value="staff">Staff Only</option>
+        </select>
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto;">
+        <table class="styled-table" id="savingsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Member</th>
+                    <th>SACCO No.</th>
+                    <th>Type</th>
+                    <th style="text-align:right;">Amount (UGX)</th>
+                    <th style="text-align:right;">Shares</th>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Receipt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if all_deposits %}
+                    {% for deposit in all_deposits %}
+                    <tr data-member-id="{{ deposit.user_id }}"
+                        data-member-name="{{ deposit.full_name|lower }}"
+                        data-sacco="{{ deposit.sacco_number|lower }}"
+                        data-type="{{ deposit.savings_type }}"
+                        data-method="{{ deposit.payment_method }}"
+                        data-role="{{ deposit.role or 'member' }}">
+
+                        <td style="color:var(--tr-dim);">{{ loop.index }}</td>
+                        <td><strong>{{ deposit.full_name }}</strong></td>
+
+                        <td style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
+                            {{ deposit.sacco_number }}
+                        </td>
+                        <td>
+                            <span class="
+                                {% if deposit.savings_type == 'KAI' %}type-kai
+                                {% elif deposit.savings_type == 'KS' %}type-ks
+                                {% elif deposit.savings_type == 'KAC' %}type-kac
+                                {% elif deposit.savings_type == 'REGISTRATION' %}type-reg
+                                {% endif %}">
+                                {% if deposit.savings_type == 'REGISTRATION' %}REG{% else %}{{ deposit.savings_type }}{% endif %}
+                            </span>
+                        </td>
+                        <td style="text-align:right; color:var(--tr-green); font-weight:600;">
+                            {{ "{:,.0f}".format(deposit.amount) }}
+                        </td>
+                        <td style="text-align:right; color:var(--tr-muted);">
+                            {% if deposit.savings_type == 'KAI' or deposit.savings_type == 'KS' %}
+                                {% if deposit.shares %}{{ deposit.shares }}{% else %}—{% endif %}
+                            {% elif deposit.savings_type == 'KAC' %}
+                                <span style="color:var(--tr-yellow); font-size:0.72rem;">
+                                    <i class="fas fa-hand-holding-heart"></i> installment
+                                </span>
+                            {% else %}
+                                <span style="color:var(--tr-dim);">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--tr-muted);">{{ deposit.deposit_date }}</td>
+                        <td style="color:var(--tr-muted);">{{ deposit.payment_method|capitalize }}</td>
+                        <td>
+                            {% if deposit.receipt_number %}
+                                <span style="color:var(--tr-yellow); font-family:monospace; font-size:0.78rem;">
+                                    {{ deposit.receipt_number }}
+                                </span>
+                            {% else %}
+                                <span style="color:var(--tr-dim);">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align:center; padding:60px 20px; color:var(--tr-dim);">
+                            <i class="fas fa-piggy-bank" style="font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.25;"></i>
+                            <div style="font-family:'Playfair Display', serif; font-size:1rem; color:var(--tr-text); margin-bottom:6px;">
+                                No Deposits Yet
+                            </div>
+                            <p style="font-size:0.82rem; color:var(--tr-muted); margin:0;">
+                                Recorded savings deposits will appear here
+                            </p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div><!-- end savings-panel -->
 
 <!-- ========== LOAN APPLICATIONS PANEL ========== -->
 <div id="loan_applications-panel" class="content-panel">
@@ -2048,13 +2052,13 @@ function getCurrentKacPaid() {
     if (!memberSelect || !memberSelect.value) return 0;
     const opt = memberSelect.options[memberSelect.selectedIndex];
     if (!opt) return 0;
-    const raw = parseInt(opt.dataset.kac, 10) || 0;
-    return Math.max(0, Math.min(KAC_TARGET, raw));
+
+    // Annual target = 100k CONTRIBUTED per year (claims reduce net balance,
+    // but do NOT reduce the annual contribution target)
+    const grossPaid = parseInt(opt.dataset.kac, 10) || 0;
+    return Math.max(0, Math.min(100000, grossPaid));
 }
 
-// ============================================================
-// UPDATE MEMBER SAVINGS DISPLAY
-// ============================================================
 function updateMemberSavings(memberId) {
     const select = document.querySelector('select[name="user_id"]');
     const displayDiv = document.getElementById('memberSavingsDisplay');
@@ -2067,36 +2071,85 @@ function updateMemberSavings(memberId) {
         if (displayDiv) displayDiv.style.display = 'none';
         return;
     }
-    const kai = parseInt(option.dataset.kai, 10) || 0;
-    const ks  = parseInt(option.dataset.ks, 10) || 0;
-    const kac = parseInt(option.dataset.kac, 10) || 0;
-    const reg = parseInt(option.dataset.reg, 10) || 0;
 
-    document.getElementById('displayKAI').textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
-    document.getElementById('displayKS').textContent  = ks  + ' shares (UGX ' + (ks  * 10000).toLocaleString() + ')';
+    const kai     = parseInt(option.dataset.kai, 10) || 0;
+    const ks      = parseInt(option.dataset.ks, 10) || 0;
+    const kacPaid = parseInt(option.dataset.kac, 10) || 0;
+    const kacUsed = parseInt(option.dataset.kacUsed, 10) || 0;
+    const kacNet  = kacPaid - kacUsed;
+    const reg     = parseInt(option.dataset.reg, 10) || 0;
+    const KAC_TARGET = 100000;
 
-    const kacPct = Math.min(100, (kac / KAC_TARGET) * 100);
+    // KAI / KS
+    const kaiEl = document.getElementById('displayKAI');
+    const ksEl  = document.getElementById('displayKS');
+    if (kaiEl) kaiEl.textContent = kai + ' shares (UGX ' + (kai * 100000).toLocaleString() + ')';
+    if (ksEl)  ksEl.textContent  = ks  + ' shares (UGX ' + (ks  * 10000).toLocaleString() + ')';
+
+    // KAC — show NET balance (contributions minus claims)
     const kacText = document.getElementById('displayKAC');
     const kacFill = document.getElementById('displayKACFill');
-    if (kac >= KAC_TARGET) {
-        kacText.textContent = '✓ UGX 100,000 / 100,000';
-        kacText.style.color = '#4ade80';
-    } else if (kac > 0) {
-        kacText.textContent = 'UGX ' + kac.toLocaleString() + ' / 100,000';
-        kacText.style.color = '#f5c542';
-    } else {
-        kacText.textContent = 'UGX 0 / 100,000';
-        kacText.style.color = 'rgba(255,255,255,0.4)';
-    }
-    if (kacFill) kacFill.style.width = kacPct + '%';
+    const usedEl  = document.getElementById('displayKACUsed');
+    const debtEl  = document.getElementById('displayKACDebt');
 
-    document.getElementById('displayREG').textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
+    // Progress bar tracks how much of the year's 100k target has been CONTRIBUTED
+    const contribPct = Math.min(100, (kacPaid / KAC_TARGET) * 100);
+    if (kacFill) kacFill.style.width = contribPct + '%';
+
+    // Big number shows the REMAINING net balance
+    if (kacText) {
+        if (kacPaid === 0) {
+            kacText.textContent = 'Not enrolled';
+            kacText.style.color = 'rgba(255,255,255,0.4)';
+        } else if (kacNet < 0) {
+            kacText.textContent = 'UGX ' + kacNet.toLocaleString() + ' (debt)';
+            kacText.style.color = '#ff6b6b';
+        } else if (kacNet === 0) {
+            kacText.textContent = 'UGX 0 remaining';
+            kacText.style.color = '#f5c542';
+        } else {
+            kacText.textContent = 'UGX ' + kacNet.toLocaleString() + ' remaining';
+            kacText.style.color = kacPaid >= KAC_TARGET ? '#4ade80' : '#f5c542';
+        }
+    }
+
+    // Show breakdown: contributed / used
+    if (usedEl) {
+        if (kacPaid > 0) {
+            usedEl.innerHTML =
+                'Contributed: UGX ' + kacPaid.toLocaleString() +
+                ' · Used: UGX ' + kacUsed.toLocaleString();
+            usedEl.style.display = 'block';
+        } else {
+            usedEl.style.display = 'none';
+        }
+    }
+
+    // Show debt warning if negative
+    if (debtEl) {
+        if (kacNet < 0) {
+            debtEl.innerHTML =
+                '<i class="fas fa-exclamation-triangle"></i> Owes SACCO: UGX ' +
+                (-kacNet).toLocaleString();
+            debtEl.style.display = 'block';
+        } else {
+            debtEl.style.display = 'none';
+        }
+    }
+
+    // Registration
+    const regEl = document.getElementById('displayREG');
+    if (regEl) regEl.textContent = reg > 0 ? '✓ Paid (UGX 20,000)' : 'Not paid';
+
     displayDiv.style.display = 'block';
 
+    // Re-validate KAC amount if KAC type already selected
     const savingsType = document.getElementById('savingsType');
     if (savingsType && savingsType.value === 'KAC') {
         const amountInput = document.getElementById('amountInput');
-        if (amountInput && amountInput.value) amountInput.dispatchEvent(new Event('input'));
+        if (amountInput && amountInput.value) {
+            amountInput.dispatchEvent(new Event('input'));
+        }
     }
 }
 

@@ -4,366 +4,10 @@
 
 {% block content %}
 
-<style>
-    /* ============================================================
-       KAC CLAIMS — Clean, spacious layout
-       ============================================================ */
-    .kac-page { max-width: 1400px; margin: 0 auto; }
-
-    .kac-header {
-        display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-        margin-bottom: 24px; padding-bottom: 20px;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .kac-header-icon {
-        width: 56px; height: 56px; border-radius: 14px;
-        background: rgba(245,197,66,0.12); border: 1px solid rgba(245,197,66,0.25);
-        color: #f5c542; display: flex; align-items: center;
-        justify-content: center; font-size: 1.4rem; flex-shrink: 0;
-    }
-    .kac-header-text h2 {
-        margin: 0 0 4px; font-family: 'Playfair Display', serif;
-        font-size: 1.6rem; color: #f5c542;
-    }
-    .kac-header-text p { margin: 0; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
-    .kac-header-actions {
-        margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap;
-    }
-
-    .kac-tabs {
-        display: flex; gap: 4px; background: rgba(255,255,255,0.03);
-        border-radius: 12px; padding: 5px; margin-bottom: 24px;
-        overflow-x: auto;
-    }
-    .kac-tab {
-        flex: 1; min-width: 160px; padding: 12px 18px;
-        border-radius: 8px; background: transparent; border: none;
-        color: rgba(255,255,255,0.5); font-size: 0.85rem; font-weight: 600;
-        cursor: pointer; display: flex; align-items: center;
-        justify-content: center; gap: 8px; transition: all 0.2s;
-        white-space: nowrap;
-    }
-    .kac-tab:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.03); }
-    .kac-tab.active { background: rgba(245,197,66,0.15); color: #f5c542; }
-    .kac-pane { display: none; }
-    .kac-pane.active { display: block; }
-
-    .kac-stats {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 14px; margin-bottom: 24px;
-    }
-    .kac-stat {
-        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 12px; padding: 16px 18px;
-        display: flex; align-items: center; gap: 14px;
-    }
-    .kac-stat-icon {
-        width: 42px; height: 42px; border-radius: 10px;
-        background: rgba(255,255,255,0.04); display: flex;
-        align-items: center; justify-content: center;
-        font-size: 1.1rem; flex-shrink: 0;
-    }
-    .kac-stat-body h3 { margin: 0; font-size: 1.3rem; font-weight: 700; color: #fff; }
-    .kac-stat-body p {
-        margin: 2px 0 0; font-size: 0.7rem; color: rgba(255,255,255,0.4);
-        text-transform: uppercase; letter-spacing: 0.5px;
-    }
-
-    .kac-card {
-        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 14px; padding: 24px; margin-bottom: 20px;
-    }
-    .kac-card-head {
-        display: flex; align-items: center; gap: 10px;
-        margin-bottom: 20px; padding-bottom: 14px;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .kac-card-head i { color: #f5c542; font-size: 1.1rem; }
-    .kac-card-head h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
-    .kac-card-head .meta {
-        margin-left: auto; font-size: 0.75rem; color: rgba(255,255,255,0.4);
-    }
-
-    .kac-field { margin-bottom: 16px; }
-    .kac-field label {
-        display: block; font-size: 0.78rem; color: rgba(255,255,255,0.55);
-        margin-bottom: 6px; font-weight: 500;
-    }
-    .kac-field label .req { color: #ff6b6b; }
-    .kac-field input,
-    .kac-field select,
-    .kac-field textarea {
-        width: 100%; padding: 12px 14px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 8px; color: #fff; font-size: 0.88rem;
-        font-family: inherit; transition: all 0.15s;
-    }
-    .kac-field input:focus,
-    .kac-field select:focus,
-    .kac-field textarea:focus {
-        outline: none; border-color: rgba(245,197,66,0.4);
-        background: rgba(245,197,66,0.03);
-    }
-    .kac-field textarea { resize: vertical; min-height: 70px; }
-
-    .kac-row {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-    }
-    @media (max-width: 640px) { .kac-row { grid-template-columns: 1fr; } }
-
-    .kac-split {
-        display: grid; grid-template-columns: 2fr 1fr;
-        gap: 18px; align-items: stretch; margin-bottom: 16px;
-    }
-    @media (max-width: 900px) { .kac-split { grid-template-columns: 1fr; } }
-    .kac-split .kac-field { margin-bottom: 0; }
-
-    .kac-status-panel {
-        background: rgba(255,255,255,0.03);
-        border: 1px dashed rgba(255,255,255,0.08);
-        border-radius: 10px; padding: 16px 18px;
-        display: flex; flex-direction: column; justify-content: center;
-        gap: 8px; transition: all 0.2s; min-height: 100px;
-    }
-    .kac-status-panel.has-value {
-        border-style: solid; background: rgba(245,197,66,0.04);
-        border-color: rgba(245,197,66,0.25);
-    }
-    .kac-status-panel .panel-label {
-        font-size: 0.68rem; color: rgba(255,255,255,0.35);
-        text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .kac-status-panel .panel-name {
-        font-size: 0.92rem; font-weight: 600; color: #fff;
-        line-height: 1.3;
-    }
-    .kac-status-badge-lg {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 8px 14px; border-radius: 8px; font-size: 0.82rem;
-        font-weight: 700; letter-spacing: 0.3px; align-self: flex-start;
-        line-height: 1.3;
-    }
-    .kac-status-badge-lg.full {
-        background: rgba(74,222,128,0.15); color: #4ade80;
-        border: 1px solid rgba(74,222,128,0.25);
-    }
-    .kac-status-badge-lg.partial {
-        background: rgba(245,197,66,0.15); color: #f5c542;
-        border: 1px solid rgba(245,197,66,0.25);
-    }
-    .kac-status-badge-lg.none {
-        background: rgba(255,107,107,0.12); color: #ff6b6b;
-        border: 1px solid rgba(255,107,107,0.22);
-    }
-    .kac-status-badge-lg.empty {
-        background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35);
-        border: 1px dashed rgba(255,255,255,0.08);
-    }
-    .kac-status-panel .panel-note {
-        font-size: 0.72rem; color: rgba(255,255,255,0.5);
-        line-height: 1.5; margin-top: 2px;
-    }
-    .kac-status-panel .panel-note.charged {
-        color: #4ade80;
-    }
-    .kac-status-panel .panel-note.debt {
-        color: #f5c542;
-    }
-
-    .kac-hint {
-        font-size: 0.72rem; color: rgba(255,255,255,0.35);
-        margin-top: 8px; display: flex; align-items: flex-start;
-        gap: 6px; line-height: 1.5;
-    }
-    .kac-hint i { color: rgba(255,255,255,0.3); margin-top: 2px; }
-
-    .kac-btn {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 11px 22px; border-radius: 8px; border: none;
-        font-size: 0.85rem; font-weight: 600; cursor: pointer;
-        transition: all 0.15s; text-decoration: none;
-    }
-    .kac-btn-primary { background: #f5c542; color: #0a0a14; }
-    .kac-btn-primary:hover { background: #eab308; transform: translateY(-1px); }
-    .kac-btn-secondary {
-        background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8);
-        border: 1px solid rgba(255,255,255,0.08);
-    }
-    .kac-btn-secondary:hover { background: rgba(255,255,255,0.09); }
-    .kac-btn-sm { padding: 6px 12px; font-size: 0.75rem; }
-
-    .kac-preview {
-        display: none; background: rgba(245,197,66,0.05);
-        border: 1px solid rgba(245,197,66,0.15);
-        border-radius: 10px; padding: 16px 20px; margin-top: 12px;
-    }
-    .kac-preview.show { display: block; }
-    .kac-preview-row {
-        display: flex; justify-content: space-between;
-        padding: 6px 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);
-    }
-    .kac-preview-row.total {
-        border-top: 1px solid rgba(245,197,66,0.2);
-        margin-top: 6px; padding-top: 10px;
-        font-weight: 700; font-size: 1rem; color: #f5c542;
-    }
-    .kac-preview-row.alert {
-        border-top: 1px solid rgba(255,107,107,0.2);
-        color: #ff6b6b; font-size: 0.78rem; padding-top: 8px;
-        margin-top: 6px;
-    }
-
-    .kac-table-wrap { overflow-x: auto; border-radius: 10px; }
-    .kac-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .kac-table thead th {
-        text-align: left; padding: 12px 14px;
-        color: rgba(255,255,255,0.4); font-weight: 600;
-        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;
-        background: rgba(255,255,255,0.03);
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        white-space: nowrap;
-    }
-    .kac-table tbody td {
-        padding: 12px 14px; color: rgba(255,255,255,0.8);
-        border-bottom: 1px solid rgba(255,255,255,0.03);
-    }
-    .kac-table tbody tr:hover { background: rgba(255,255,255,0.02); }
-
-    .kac-badge {
-        display: inline-block; padding: 3px 10px; border-radius: 20px;
-        font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.3px; white-space: nowrap;
-    }
-    .kac-badge-success { background: rgba(74,222,128,0.15); color: #4ade80; }
-    .kac-badge-warning { background: rgba(245,197,66,0.15); color: #f5c542; }
-    .kac-badge-danger  { background: rgba(255,107,107,0.15); color: #ff6b6b; }
-    .kac-badge-info    { background: rgba(0,224,255,0.12); color: #00e0ff; }
-
-    .kac-empty {
-        text-align: center; padding: 50px 20px; color: rgba(255,255,255,0.3);
-    }
-    .kac-empty i {
-        font-size: 2.5rem; opacity: 0.2;
-        display: block; margin-bottom: 12px;
-    }
-
-    .kac-register-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 12px; margin-top: 16px;
-    }
-    .kac-slot {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 10px; padding: 14px 16px;
-        display: flex; align-items: flex-start; gap: 12px;
-        transition: all 0.15s;
-    }
-    .kac-slot.active { border-left: 3px solid #4ade80; }
-    .kac-slot.deceased { border-left: 3px solid #ff6b6b; opacity: 0.55; }
-    .kac-slot.empty {
-        border-left: 3px dashed rgba(245,197,66,0.3);
-        opacity: 0.65; cursor: pointer;
-    }
-    .kac-slot.empty:hover {
-        opacity: 1; border-left-color: #f5c542;
-        background: rgba(245,197,66,0.04);
-    }
-    .kac-slot-num {
-        width: 32px; height: 32px; border-radius: 50%;
-        background: rgba(255,255,255,0.05);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.78rem; font-weight: 700;
-        color: #f5c542; flex-shrink: 0;
-    }
-    .kac-slot-body { flex: 1; min-width: 0; }
-    .kac-slot-name {
-        font-weight: 600; color: #fff; font-size: 0.9rem;
-        margin-bottom: 3px; word-break: break-word;
-    }
-    .kac-slot.deceased .kac-slot-name {
-        text-decoration: line-through; color: rgba(255,255,255,0.4);
-    }
-    .kac-slot-meta { font-size: 0.7rem; color: rgba(255,255,255,0.4); }
-    .kac-slot-actions { display: flex; gap: 6px; margin-top: 8px; }
-    .kac-slot-actions button {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.06);
-        color: rgba(255,255,255,0.45);
-        padding: 3px 8px; border-radius: 6px;
-        cursor: pointer; font-size: 0.65rem; transition: all 0.15s;
-    }
-    .kac-slot-actions button:hover {
-        color: #ff6b6b; border-color: rgba(255,107,107,0.3);
-    }
-
-    .kac-filter-bar {
-        display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
-    }
-    .kac-filter-bar input,
-    .kac-filter-bar select {
-        flex: 1; min-width: 160px; padding: 9px 14px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 8px; color: #fff; font-size: 0.82rem;
-    }
-
-    .kac-modal {
-        display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,0.85); z-index: 9999;
-        backdrop-filter: blur(8px); align-items: center;
-        justify-content: center; padding: 20px;
-    }
-    .kac-modal.show { display: flex; }
-    .kac-modal-box {
-        background: #1a1a2e; border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 16px; padding: 26px;
-        max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
-    }
-    .kac-modal-box.narrow { max-width: 460px; }
-    .kac-modal-head {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 20px; padding-bottom: 14px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .kac-modal-head h3 {
-        margin: 0; font-size: 1.05rem;
-        display: flex; align-items: center; gap: 10px;
-    }
-    .kac-modal-close {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        color: rgba(255,255,255,0.5);
-        width: 34px; height: 34px; border-radius: 50%;
-        cursor: pointer; font-size: 1rem; transition: all 0.15s;
-    }
-    .kac-modal-close:hover {
-        background: rgba(255,255,255,0.08); color: #fff;
-    }
-    .kac-submodal-grid {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 14px; margin-bottom: 16px;
-    }
-    @media (max-width: 640px) { .kac-submodal-grid { grid-template-columns: 1fr; } }
-
-    /* Rule banner */
-    .kac-rule-banner {
-        background: rgba(255,107,107,0.06);
-        border-left: 3px solid #ff6b6b;
-        padding: 12px 16px; border-radius: 8px;
-        margin-bottom: 20px; font-size: 0.82rem;
-        color: rgba(255,255,255,0.75); line-height: 1.55;
-    }
-    .kac-rule-banner i { color: #ff6b6b; margin-right: 4px; }
-</style>
-
-
-
    <!-- HEADER -->
 <div class="kac-header">
-    <button onclick="confirmYearReset()" class="kac-btn kac-btn-primary">
-        <i class="fas fa-sync-alt"></i> Year-End Reset
+    <button onclick="confirmYearRollover()" class="kac-btn kac-btn-primary">
+        <i class="fas fa-sync-alt"></i> Roll Over to New Year
     </button>
 </div>
 
@@ -373,14 +17,14 @@
             <div class="kac-stat-icon" style="color:#4ade80;"><i class="fas fa-users"></i></div>
             <div class="kac-stat-body">
                 <h3>{{ eligible_count }}</h3>
-                <p>Fully Paid</p>
+                <p>KAC Fully Paid (100k)</p>
             </div>
         </div>
         <div class="kac-stat">
             <div class="kac-stat-icon" style="color:#f5c542;"><i class="fas fa-hourglass-half"></i></div>
             <div class="kac-stat-body">
                 <h3>{{ partial_count }}</h3>
-                <p>Partial Payments</p>
+                <p>KAC Partial Payments</p>
             </div>
         </div>
         <div class="kac-stat">
@@ -427,16 +71,18 @@
 
         <div class="kac-rule-banner">
             <i class="fas fa-exclamation-triangle"></i>
-            <strong>Rule:</strong> Every KAC member is charged on each claim — regardless of whether they've paid in full.
-            If their KAC balance is insufficient, they go into <strong>debt</strong> and must pay the balance to the SACCO.
-            The year-end reset clears all balances back to zero.
+            <strong>Rule:</strong> Only members who have contributed to KAC are charged on each claim.
+            Every KAC member is required to contribute <strong>UGX 100,000 per year</strong>.
+            When a claim is recorded, each KAC member's balance is reduced by the claim amount.
+            If their balance is insufficient, they go into <strong>debt</strong> and must pay the balance.
+            The year rollover starts a fresh annual target — <em>savings are never erased</em>.
         </div>
 
         <div class="kac-card">
             <div class="kac-card-head">
                 <i class="fas fa-plus-circle"></i>
                 <h3>Record a New Claim</h3>
-                <span class="meta">Anyone can trigger a claim</span>
+                <span class="meta">Charges all KAC members only</span>
             </div>
 
             <form id="kacClaimForm" onsubmit="submitKacClaim(event)">
@@ -499,7 +145,7 @@
                         </select>
                         <div class="kac-hint">
                             <i class="fas fa-info-circle"></i>
-                            Anyone registered in the SACCO can be an affected member.
+                            Any registered SACCO member can be the affected member.
                         </div>
                     </div>
 
@@ -539,27 +185,31 @@
                 <!-- Preview -->
                 <div class="kac-preview" id="kacPreview">
                     <div class="kac-preview-row">
-                        <span>Amount per member</span>
+                        <span>Amount per KAC member</span>
                         <span style="color:#f5c542; font-weight:600;" id="previewPerMember">UGX 0</span>
                     </div>
                     <div class="kac-preview-row">
-                        <span>Members to be charged</span>
+                        <span>KAC members to be charged</span>
                         <span style="color:#4ade80; font-weight:600;" id="previewEligible">0</span>
                     </div>
                     <div class="kac-preview-row total">
-                        <span>Total to collect</span>
+                        <span>Total to be collected</span>
                         <span id="previewTotal">UGX 0</span>
                     </div>
                     <div class="kac-preview-row alert" id="previewDebtRow" style="display:none;">
                         <span><i class="fas fa-exclamation-circle"></i>
-                              Members going into debt</span>
+                              Members who will fall into debt</span>
                         <span id="previewDebtCount">0</span>
+                    </div>
+                    <div class="kac-preview-row" style="font-size:0.72rem; color:rgba(255,255,255,0.45);">
+                        <span><i class="fas fa-info-circle"></i> Each member's KAC balance will drop by the amount above.</span>
+                        <span></span>
                     </div>
                 </div>
 
                 <div style="margin-top:20px;">
                     <button type="submit" class="kac-btn kac-btn-primary">
-                        <i class="fas fa-check"></i> Record Claim &amp; Charge Everyone
+                        <i class="fas fa-check"></i> Record Claim &amp; Charge KAC Members
                     </button>
                 </div>
             </form>
@@ -621,6 +271,7 @@
                                 {{ m.sacco_number }}
                             </td>
                             <td>
+                                {% set kac_net = (m.kac_paid or 0) - (m.kac_used or 0) %}
                                 {% if (m.kac_paid or 0) >= 100000 %}
                                     <span class="kac-badge kac-badge-success">✓ Fully Paid</span>
                                 {% elif (m.kac_paid or 0) > 0 %}
@@ -628,7 +279,13 @@
                                         ⚠ Partial · UGX {{ "{:,.0f}".format(m.kac_paid or 0) }}
                                     </span>
                                 {% else %}
-                                    <span class="kac-badge kac-badge-danger">✗ Not Paid</span>
+                                    <span class="kac-badge kac-badge-danger">✗ Not Enrolled</span>
+                                {% endif %}
+                                {% if kac_net < 0 %}
+                                    <div style="font-size:0.65rem; color:#ff6b6b; margin-top:3px;">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Owes UGX {{ "{:,.0f}".format(-kac_net) }}
+                                    </div>
                                 {% endif %}
                             </td>
                             <td style="text-align:center;">
@@ -857,7 +514,7 @@
                     padding:12px 14px; border-radius:6px; margin-bottom:16px;
                     font-size:0.82rem; color:rgba(255,255,255,0.75); line-height:1.55;">
             <i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i>
-            Reversing will refund every member and reopen the register slot if one was marked.
+            Reversing will refund every charged KAC member and reopen the register slot if one was marked.
         </div>
 
         <div class="kac-field">
@@ -924,8 +581,6 @@ function onClaimTypeChange() {
 }
 
 // ============================================================
-// AFFECTED MEMBER CHANGE → UPDATE STATUS PANEL
-// ============================================================
 // AFFECTED MEMBER CHANGE → UPDATE STATUS PANEL + REGISTER
 // ============================================================
 function onAffectedMemberChange() {
@@ -963,23 +618,23 @@ function onAffectedMemberChange() {
     if (nameEl) nameEl.textContent = opt.dataset.name || opt.textContent.split('(')[0].trim();
 
     if (badge && note) {
-        if (kacPaid >= 100000) {
+        if (kacPaid >= 100000 && available >= 0) {
             badge.className = 'kac-status-badge-lg full';
             badge.innerHTML = '<i class="fas fa-check-circle"></i> Fully Paid';
-            note.textContent = `Available: UGX ${available.toLocaleString()}`;
+            note.textContent = `Available balance: UGX ${available.toLocaleString()}`;
             note.className = 'panel-note charged';
         } else if (kacPaid > 0) {
             badge.className = 'kac-status-badge-lg partial';
             badge.innerHTML = `<i class="fas fa-hourglass-half"></i> Partial — UGX ${kacPaid.toLocaleString()}`;
             note.textContent = available > 0
-                ? `Available: UGX ${available.toLocaleString()} — will be charged`
-                : `No remaining balance — will go into debt`;
+                ? `Available: UGX ${available.toLocaleString()}`
+                : `Owes UGX ${(-available).toLocaleString()} — new claim adds to debt`;
             note.className = 'panel-note debt';
         } else {
             badge.className = 'kac-status-badge-lg none';
-            badge.innerHTML = '<i class="fas fa-times-circle"></i> Not Paid';
-            note.textContent = 'No KAC balance — will go into debt';
-            note.className = 'panel-note debt';
+            badge.innerHTML = '<i class="fas fa-times-circle"></i> Not Enrolled in KAC';
+            note.textContent = 'This member is NOT enrolled in KAC and will NOT be charged.';
+            note.className = 'panel-note';
         }
     }
 
@@ -994,7 +649,7 @@ function onAffectedMemberChange() {
 
 
 // ============================================================
-// LOAD MEMBER'S CONDOLENCE REGISTER (auto-refresh ready)
+// LOAD MEMBER'S CONDOLENCE REGISTER
 // ============================================================
 async function loadMemberRegister() {
     const select = document.getElementById('registerEntry');
@@ -1055,6 +710,7 @@ async function loadMemberRegister() {
         select.innerHTML = '<option value="">Network error — check console</option>';
     }
 }
+
 // ============================================================
 // LIVE PREVIEW
 // ============================================================
@@ -1099,13 +755,23 @@ function submitKacClaim(e) {
         return alert('Please select the registered person who passed away.');
     }
 
-    const warning = type === 'death'
-        ? '⚠️ Record a DEATH claim?\n\nThis will charge UGX ' + KAC_DEATH_AMOUNT.toLocaleString() +
-          ' from EVERY KAC member (no exceptions).'
-        : '⚠️ Record a CONDOLENCE claim?\n\nThis will charge UGX ' + KAC_CONDOLENCE_AMOUNT.toLocaleString() +
-          ' from EVERY KAC member AND permanently close the selected register slot.';
+    const amount = type === 'death' ? KAC_DEATH_AMOUNT : KAC_CONDOLENCE_AMOUNT;
+    const typeLabel = type === 'death' ? 'DEATH' : 'CONDOLENCE';
 
-    if (!confirm(warning + '\n\nContinue?')) return;
+    const warning =
+        `⚠️ Record a ${typeLabel} claim?\n\n` +
+        `• UGX ${amount.toLocaleString()} will be deducted from EVERY KAC member.\n` +
+        `• ${KAC_TOTAL_CHARGED} KAC member(s) will be charged.\n` +
+        `• Total to be collected: UGX ${(amount * KAC_TOTAL_CHARGED).toLocaleString()}.\n` +
+        (KAC_DEBT_RISK_COUNT > 0
+            ? `• ${KAC_DEBT_RISK_COUNT} member(s) will fall into debt.\n`
+            : '') +
+        (type === 'condolence'
+            ? '\nThe selected register slot will be permanently marked as deceased.\n'
+            : '') +
+        '\nContinue?';
+
+    if (!confirm(warning)) return;
 
     const payload = {
         claim_type: type,
@@ -1208,7 +874,7 @@ function renderClaimDetails(data) {
 
         <h4 style="margin:0 0 12px; color:rgba(255,255,255,0.7); font-size:0.9rem;">
             <i class="fas fa-list" style="color:#f5c542;"></i>
-            Members Charged (${deds.length})
+            KAC Members Charged (${deds.length})
         </h4>
         <div style="max-height:340px; overflow-y:auto; border:1px solid rgba(255,255,255,0.04); border-radius:8px;">
             <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
@@ -1324,19 +990,22 @@ function submitReverseClaim() {
 }
 
 // ============================================================
-// YEAR-END RESET
+// YEAR ROLLOVER
 // ============================================================
-function confirmYearReset() {
+function confirmYearRollover() {
     const ok = confirm(
-        '⚠️ END OF YEAR RESET\n\n' +
-        'This will reset EVERYONE\'s KAC balance (paid + used) to zero.\n' +
-        'Members will start the new year with a clean slate.\n\n' +
+        '⚠️ YEAR ROLLOVER\n\n' +
+        'This starts a fresh contribution year for KAC:\n\n' +
+        '• Every KAC member gets a NEW UGX 100,000 annual target.\n' +
+        '• Lifetime savings are NOT erased — they keep accumulating.\n' +
+        '• Previous years remain on record.\n' +
+        '• Members who owed the SACCO still owe.\n\n' +
         'This cannot be undone. Continue?'
     );
     if (!ok) return;
-    if (!confirm('Are you REALLY sure? This affects ALL members.')) return;
+    if (!confirm('Are you REALLY sure? This affects ALL KAC members.')) return;
 
-    fetch('/treasurer/kac/year-reset', {method: 'POST'})
+    fetch('/treasurer/kac/year-rollover', {method: 'POST'})
         .then(r => r.json())
         .then(res => {
             alert(res.success ? '✅ ' + res.message : '❌ ' + res.message);
@@ -1344,6 +1013,9 @@ function confirmYearReset() {
         })
         .catch(err => alert('❌ ' + err.message));
 }
+
+// Backwards-compat: if old code calls confirmYearReset(), route to new one
+function confirmYearReset() { confirmYearRollover(); }
 
 // ============================================================
 // FILTERS

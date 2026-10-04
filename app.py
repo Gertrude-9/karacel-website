@@ -254,7 +254,7 @@ def create_database():
             'kai_shares': 'INTEGER DEFAULT 0',
             'ks_shares': 'INTEGER DEFAULT 0',
             'kac_paid': 'REAL DEFAULT 0',
-            'kac_used': 'REAL DEFAULT 0',                       # ← NEW
+            'kac_used': 'REAL DEFAULT 0',
             'kac_paid_date': 'TEXT',
             'registration_fee_paid': 'INTEGER DEFAULT 0',
             'registration_fee_paid_date': 'TEXT'
@@ -274,8 +274,8 @@ def create_database():
             'kai_share_price': 'INTEGER DEFAULT 100000',
             'ks_share_price': 'INTEGER DEFAULT 10000',
             'kac_annual_fee': 'INTEGER DEFAULT 100000',
-            'kac_condolence_amount': 'INTEGER DEFAULT 20000',   # ← NEW
-            'kac_death_amount': 'INTEGER DEFAULT 40000',        # ← NEW
+            'kac_condolence_amount': 'INTEGER DEFAULT 20000',
+            'kac_death_amount': 'INTEGER DEFAULT 40000',
             'registration_fee': 'INTEGER DEFAULT 20000'
         }.items():
             if col_name not in existing:
@@ -353,18 +353,7 @@ def create_database():
                     conn.rollback()
                     cursor = conn.cursor()
 
-    # Add kac_used column to users if missing (in case users table already existed)
-    if table_exists("users"):
-        existing = get_columns("users")
-        if 'kac_used' not in existing:
-            try:
-                cursor.execute("ALTER TABLE users ADD COLUMN kac_used REAL DEFAULT 0")
-                print("✅ Added column to users: kac_used")
-            except Exception as e:
-                print(f"⚠️ Could not add column kac_used: {e}")
-                conn.rollback()
-                cursor = conn.cursor()
-
+    # ---- Backfill last_interest_applied_date ----
     if table_exists("loans"):
         try:
             cursor.execute("""
@@ -489,9 +478,9 @@ def create_database():
         accrued_interest REAL DEFAULT 0,
         last_interest_applied_date TEXT,
         total_interest_charged REAL DEFAULT 0,
-        send_to_type TEXT CHECK (send_to_type IN ('phone', 'account', 'both') OR send_to_type IS NULL),
-        send_to_value TEXT CHECK (send_to_value IS NULL OR LENGTH(send_to_value) <= 50),
-        send_to_secondary TEXT CHECK (send_to_secondary IS NULL OR LENGTH(send_to_secondary) <= 50)
+        send_to_type TEXT,
+        send_to_value TEXT,
+        send_to_secondary TEXT
     )
     """)
 
@@ -543,6 +532,7 @@ def create_database():
     """)
 
     # SAVINGS DEPOSITS
+    # NOTE: no CHECK on savings_type — allows LOAN_DISBURSEMENT / LOAN_REPAYMENT
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS savings_deposits (
         id {pk},
@@ -634,9 +624,7 @@ def create_database():
     )
     """)
 
-    # ============================================================
-    # KAC CLAIMS — tracks each condolence / death event
-    # ============================================================
+    # KAC CLAIMS
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS kac_claims (
         id {pk},
@@ -659,9 +647,7 @@ def create_database():
     )
     """)
 
-    # ============================================================
-    # KAC CLAIM DEDUCTIONS — audit trail per member
-    # ============================================================
+    # KAC CLAIM DEDUCTIONS
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS kac_claim_deductions (
         id {pk},
@@ -674,9 +660,7 @@ def create_database():
     )
     """)
 
-    # ============================================================
-    # MEMBER CONDOLENCE REGISTER — 10 named persons per member
-    # ============================================================
+    # MEMBER CONDOLENCE REGISTER
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS member_condolence_register (
         id {pk},
@@ -693,23 +677,12 @@ def create_database():
     )
     """)
 
-    # ---- system_logs indexes ----
-    for sql in [
+    # ---- Indexes ----
+    indexes = [
         "CREATE INDEX IF NOT EXISTS idx_logs_user_id ON system_logs(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_logs_action ON system_logs(action)",
         "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON system_logs(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_logs_target ON system_logs(target)",
-    ]:
-        try:
-            cursor.execute(sql)
-        except Exception:
-            conn.rollback()
-            cursor = conn.cursor()
-
-    print("✅ system_logs table ready.")
-
-    # ---- KAC indexes ----
-    for sql in [
         "CREATE INDEX IF NOT EXISTS idx_kac_claims_user ON kac_claims(affected_user_id)",
         "CREATE INDEX IF NOT EXISTS idx_kac_claims_type ON kac_claims(claim_type)",
         "CREATE INDEX IF NOT EXISTS idx_kac_claims_status ON kac_claims(status)",
@@ -717,14 +690,20 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_kac_deductions_user ON kac_claim_deductions(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_condolence_register_user ON member_condolence_register(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_condolence_register_status ON member_condolence_register(status)",
-    ]:
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)",
+        "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
+        "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
+    ]
+    for sql in indexes:
         try:
             cursor.execute(sql)
         except Exception:
             conn.rollback()
             cursor = conn.cursor()
-
-    print("✅ KAC claims + condolence register tables ready.")
 
     # ---- Default settings ----
     cursor.execute("SELECT COUNT(*) AS c FROM system_settings")
@@ -765,23 +744,6 @@ def create_database():
             "admin", "active", 0, None, None, None,
             datetime.now().strftime('%Y-%m-%d')
         ))
-
-    # ---- Indexes ----
-    indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)",
-        "CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)",
-        "CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id)",
-        "CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_savings_deposits_user_id ON savings_deposits(user_id)",
-    ]
-    for sql in indexes:
-        try:
-            cursor.execute(sql)
-        except Exception:
-            conn.rollback()
-            cursor = conn.cursor()
 
     conn.commit()
     conn.close()
@@ -1367,11 +1329,17 @@ def treasurer_dashboard():
 
     conn = get_db()
     try:
+        # ============================================================
+        # MEMBER LIST QUERIES
+        # ============================================================
         members = conn.execute("""
             SELECT 
                 id, full_name, sacco_number, email, phone, status,
                 savings_balance, registration_date, gender, dob, address,
-                role, kai_shares, ks_shares, kac_paid, registration_fee_paid,
+                role, kai_shares, ks_shares,
+                COALESCE(kac_paid, 0) AS kac_paid,
+                COALESCE(kac_used, 0) AS kac_used,
+                registration_fee_paid,
                 next_of_kin_name, next_of_kin_phone, relationship
             FROM users 
             WHERE status = 'active'
@@ -1392,7 +1360,9 @@ def treasurer_dashboard():
             SELECT 
                 id, full_name, sacco_number, email, phone, status,
                 savings_balance, role, kai_shares, ks_shares,
-                kac_paid, registration_fee_paid
+                COALESCE(kac_paid, 0) AS kac_paid,
+                COALESCE(kac_used, 0) AS kac_used,
+                registration_fee_paid
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) IN ('admin', 'chairperson', 'treasurer', 'secretary', 'publicity')
@@ -1403,7 +1373,9 @@ def treasurer_dashboard():
             SELECT 
                 id, full_name, sacco_number, email, phone, status,
                 savings_balance, role, kai_shares, ks_shares,
-                kac_paid, registration_fee_paid
+                COALESCE(kac_paid, 0) AS kac_paid,
+                COALESCE(kac_used, 0) AS kac_used,
+                registration_fee_paid
             FROM users 
             WHERE status = 'active'
             AND LOWER(role) = 'member'
@@ -1453,6 +1425,13 @@ def treasurer_dashboard():
         total_regular_members = len(regular_members)
         total_staff_members = len(staff_members)
 
+        # ============================================================
+        # CORE SAVINGS FIGURES
+        # ------------------------------------------------------------
+        # total_savings = money currently in member savings accounts.
+        # This DROPS when a loan is disbursed (money leaves the pool)
+        # and RISES on deposits + repayment principal.
+        # ============================================================
         total_savings = fetchval(conn, """
             SELECT COALESCE(SUM(savings_balance), 0) 
             FROM users 
@@ -1484,15 +1463,62 @@ def treasurer_dashboard():
                 AND sd.deposit_date >= date('now', 'start of month')
             """)
 
+        # ============================================================
+        # LOAN ↔ SAVINGS RECONCILIATION
+        # ------------------------------------------------------------
+        # Since loans come OUT of savings:
+        #   Total Savings + Outstanding Loans ≈ constant pool
+        #   (deposits add to pool, disbursements move pool → loans,
+        #    repayments move loans → pool)
+        # ============================================================
+        total_loan_outstanding = fetchval(conn, """
+            SELECT COALESCE(SUM(current_balance), 0)
+            FROM loans
+            WHERE status IN ('disbursed', 'active')
+        """) or 0
+
+        total_principal_disbursed = fetchval(conn, """
+            SELECT COALESCE(SUM(amount), 0)
+            FROM loans
+            WHERE status IN ('disbursed', 'active', 'completed')
+        """) or 0
+
+        total_principal_repaid = fetchval(conn, """
+            SELECT COALESCE(SUM(principal_paid), 0)
+            FROM loans
+            WHERE status IN ('disbursed', 'active', 'completed')
+        """) or 0
+
+        # What was paid OUT of members' savings for loans (all time)
+        total_loan_disbursed_from_savings = total_principal_disbursed
+
+        # Net effect on savings from loan activity so far
+        # (negative = money still out; positive = fully returned)
+        net_loan_impact_on_savings = total_principal_repaid - total_principal_disbursed
+
+        # The "pool" view: savings + what's still out on loans
+        pool_balance = (total_savings or 0) + total_loan_outstanding
+
+        # ============================================================
+        # LOAN STATUS COUNTS
+        # ============================================================
         pending_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'pending'")
         approved_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'approved'")
         active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
         completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
         rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
 
+        # ============================================================
+        # KAC AGGREGATES (NET BALANCE MODEL)
+        # ============================================================
         kai_total = ks_total = kac_total = registration_fees_total = 0
         kai_members = ks_members = kac_members = registration_fees_count = 0
         kai_shares = ks_shares = 0
+
+        kac_total_paid = 0
+        kac_total_used = 0
+        kac_debt_count = 0
+        kac_debt_total = 0
 
         settings = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         if settings:
@@ -1528,16 +1554,25 @@ def treasurer_dashboard():
                 ks_total += shares * ks_share_price
                 ks_members += 1
 
-            if user_dict.get('kac_paid'):
-                kac_total += kac_annual_fee
+            kac_paid = int(user_dict.get('kac_paid') or 0)
+            kac_used = int(user_dict.get('kac_used') or 0)
+
+            if kac_paid > 0:
                 kac_members += 1
+                kac_total_paid += kac_paid
+                kac_total_used += kac_used
+                if kac_paid < kac_used:
+                    kac_debt_count += 1
+                    kac_debt_total += (kac_used - kac_paid)
 
             if user_dict.get('registration_fee_paid'):
                 registration_fees_total += registration_fee
                 registration_fees_count += 1
 
+        kac_total = kac_total_paid - kac_total_used
+
         # ============================================================
-        # LOAN APPLICATIONS — now includes SEND-TO fields from loans table
+        # LOAN APPLICATIONS
         # ============================================================
         loan_applications = conn.execute("""
             SELECT 
@@ -1577,7 +1612,7 @@ def treasurer_dashboard():
             all_loan_applications.append(loan)
 
         # ============================================================
-        # ACTIVE LOANS (for repayment dropdown) — also includes send-to
+        # ACTIVE LOANS (for repayment dropdown)
         # ============================================================
         active_loans_list = conn.execute("""
             SELECT 
@@ -1683,8 +1718,12 @@ def treasurer_dashboard():
         print("=" * 60)
         print("TREASURER DASHBOARD LOADED")
         print(f"Total Active Users: {total_members}")
-        print(f"Regular Members: {total_regular_members}")
-        print(f"Staff Members: {total_staff_members}")
+        print(f"Total Savings (in pool): {total_savings:,.0f}")
+        print(f"Out on Loans: {total_loan_outstanding:,.0f}")
+        print(f"Pool (savings + loans): {pool_balance:,.0f}")
+        print(f"Principal Disbursed (all-time): {total_principal_disbursed:,.0f}")
+        print(f"Principal Repaid (all-time): {total_principal_repaid:,.0f}")
+        print(f"KAC Net Balance: {kac_total:,.0f}")
         print("=" * 60)
 
         return render_template(
@@ -1700,9 +1739,25 @@ def treasurer_dashboard():
             monthly_deposits=monthly_deposits,
             all_deposits=all_deposits,
             recent_deposits=recent_deposits,
+
+            # ============================================================
+            # LOAN ↔ SAVINGS FIGURES
+            # ============================================================
+            total_loan_outstanding=total_loan_outstanding,
+            total_principal_disbursed=total_principal_disbursed,
+            total_principal_repaid=total_principal_repaid,
+            net_loan_impact_on_savings=net_loan_impact_on_savings,
+            pool_balance=pool_balance,
+
+            # KAC
             kai_total=kai_total,
             ks_total=ks_total,
             kac_total=kac_total,
+            kac_total_paid=kac_total_paid,
+            kac_total_used=kac_total_used,
+            kac_debt_count=kac_debt_count,
+            kac_debt_total=kac_debt_total,
+            kac_annual_fee=kac_annual_fee,
             registration_fees_total=registration_fees_total,
             kai_members=kai_members,
             ks_members=ks_members,
@@ -1710,6 +1765,8 @@ def treasurer_dashboard():
             registration_fees_count=registration_fees_count,
             kai_shares=kai_shares,
             ks_shares=ks_shares,
+
+            # Loans
             pending_loans=pending_loans,
             approved_loans=approved_loans,
             active_loans=active_loans,
@@ -2290,160 +2347,7 @@ def admin_approve_loan(loan_id):
 # ============================================================
 
 # ------------------------------------------------------------
-# 1. PAGE — renders the KAC Claims screen
-# ------------------------------------------------------------
-@app.route("/treasurer/kac-claims")
-def treasurer_kac_claims_page():
-    if session.get("role") not in ["treasurer", "admin", "chairperson", "secretary"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
-
-    log_action(
-        action="view_kac_claims",
-        target="kac_claims_page",
-        details=f"Accessed by {session.get('role', 'unknown')}"
-    )
-
-    conn = get_db()
-    try:
-        try:
-            conn.row_factory = sqlite3.Row
-        except Exception:
-            pass
-
-        # ---- Dropdowns: ONLY KAC-registered (paid > 0) ----
-        staff_members = conn.execute("""
-            SELECT id, full_name, sacco_number, role,
-                   COALESCE(kac_paid, 0) AS kac_paid,
-                   COALESCE(kac_used, 0) AS kac_used
-            FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('admin','chairperson','treasurer','secretary','publicity')
-              AND COALESCE(kac_paid, 0) > 0
-            ORDER BY full_name ASC
-        """).fetchall()
-
-        regular_members = conn.execute("""
-            SELECT id, full_name, sacco_number, role,
-                   COALESCE(kac_paid, 0) AS kac_paid,
-                   COALESCE(kac_used, 0) AS kac_used
-            FROM users
-            WHERE status = 'active'
-              AND LOWER(role) = 'member'
-              AND COALESCE(kac_paid, 0) > 0
-            ORDER BY full_name ASC
-        """).fetchall()
-
-        # ---- Stat counts ----
-        eligible_count = fetchval(conn, """
-            SELECT COUNT(*) FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-              AND COALESCE(kac_paid, 0) >= 100000
-        """) or 0
-
-        partial_count = fetchval(conn, """
-            SELECT COUNT(*) FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-              AND COALESCE(kac_paid, 0) > 0
-              AND COALESCE(kac_paid, 0) < 100000
-        """) or 0
-
-        # Everyone is chargeable (all active roles)
-        chargeable_count = fetchval(conn, """
-            SELECT COUNT(*) FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-        """) or 0
-
-        # Anyone whose current balance < 20k will go negative
-        debt_risk_count = fetchval(conn, """
-            SELECT COUNT(*) FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-              AND (COALESCE(kac_paid, 0) - COALESCE(kac_used, 0)) < 20000
-        """) or 0
-
-        # ---- Register counts per user ----
-        reg_rows = conn.execute("""
-            SELECT user_id, COUNT(*) AS cnt
-            FROM member_condolence_register
-            GROUP BY user_id
-        """).fetchall()
-        register_counts = {}
-        for r in reg_rows:
-            d = row_to_dict(r)
-            register_counts[d['user_id']] = d['cnt']
-
-        # ---- Claim history ----
-        kac_claims_rows = conn.execute("""
-            SELECT
-                c.id, c.claim_number, c.claim_type, c.affected_user_id,
-                c.affected_name, c.deduction_amount, c.members_charged,
-                c.total_collected, c.description, c.event_date,
-                c.status, c.created_at, c.reversed_at, c.reversal_reason,
-                r.full_name AS register_entry_name,
-                r.relationship AS register_relationship,
-                r.slot_number AS register_slot
-            FROM kac_claims c
-            LEFT JOIN member_condolence_register r ON r.id = c.register_entry_id
-            ORDER BY c.id DESC
-            LIMIT 200
-        """).fetchall()
-        kac_claims = [row_to_dict(r) for r in kac_claims_rows]
-
-        # ---- Settings ----
-        settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        settings_dict = row_to_dict(settings_row) if settings_row else {}
-        kac_condolence_amount = settings_dict.get('kac_condolence_amount') or 20000
-        kac_death_amount      = settings_dict.get('kac_death_amount') or 40000
-
-        # ---- Summary stats ----
-        total_claims        = len(kac_claims)
-        active_claims       = sum(1 for c in kac_claims if c.get('status') == 'active')
-        reversed_claims     = sum(1 for c in kac_claims if c.get('status') == 'reversed')
-        total_collected_all = sum((c.get('total_collected') or 0)
-                                  for c in kac_claims if c.get('status') == 'active')
-        total_condolences   = sum(1 for c in kac_claims
-                                  if c.get('claim_type') == 'condolence' and c.get('status') == 'active')
-        total_deaths        = sum(1 for c in kac_claims
-                                  if c.get('claim_type') == 'death' and c.get('status') == 'active')
-
-        return render_template(
-            "treasurer/kac-claims.html",
-            staff_members=staff_members,
-            regular_members=regular_members,
-            eligible_count=eligible_count,
-            partial_count=partial_count,
-            chargeable_count=chargeable_count,
-            debt_risk_count=debt_risk_count,
-            register_counts=register_counts,
-            kac_claims=kac_claims,
-            kac_condolence_amount=kac_condolence_amount,
-            kac_death_amount=kac_death_amount,
-            total_claims=total_claims,
-            active_claims=active_claims,
-            reversed_claims=reversed_claims,
-            total_collected_all=total_collected_all,
-            total_condolences=total_condolences,
-            total_deaths=total_deaths,
-            now=datetime.now()
-        )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        flash(f'Error loading KAC Claims: {str(e)}', 'danger')
-        return redirect(url_for('treasurer_dashboard'))
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-
-# ------------------------------------------------------------
-# 2. RECORD A CLAIM — charges EVERYONE (may go negative)
+# RECORD A CLAIM — charges ONLY KAC members (may go negative)
 # ------------------------------------------------------------
 @app.route("/treasurer/kac/claim", methods=["POST"])
 def treasurer_kac_claim():
@@ -2517,37 +2421,62 @@ def treasurer_kac_claim():
             claim_id = cur.lastrowid
 
         # ============================================================
-        # Charge EVERYONE — no filter, no exemption, may go negative
+        # Charge ONLY KAC members (those who have ever paid into KAC).
+        # Each member's lifetime balance is reduced by `deduction`.
+        # Their per-year tracker is also reduced.
         # ============================================================
-        everyone = db.execute("""
+        everyone = db.execute(f"""
             SELECT id,
                    COALESCE(kac_paid, 0) AS kac_paid,
                    COALESCE(kac_used, 0) AS kac_used
             FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+            WHERE {is_kac_member_clause()}
         """).fetchall()
 
         charged = 0
         total = 0
         debt_count = 0
+        current_year = datetime.now().year
 
         for m_row in everyone:
             m = row_to_dict(m_row)
 
             before = (m['kac_paid'] or 0) - (m['kac_used'] or 0)
-            deduct_now = deduction        # always the full amount
-            after = before - deduct_now   # may go negative — that's the debt
+            deduct_now = deduction
+            after = before - deduct_now   # may go negative → debt
 
             if after < 0:
                 debt_count += 1
 
+            # 1) Lifetime used — this is what gets refunded on reversal
             db.execute(f"""
                 UPDATE users
                 SET kac_used = COALESCE(kac_used, 0) + {PH}
                 WHERE id = {PH}
             """, (deduct_now, m['id']))
 
+            # 2) This year's tracker (create row if missing)
+            existing = db.execute(f"""
+                SELECT id FROM kac_year_contributions
+                WHERE user_id = {PH} AND year = {PH}
+            """, (m['id'], current_year)).fetchone()
+
+            if existing:
+                db.execute(f"""
+                    UPDATE kac_year_contributions
+                    SET used = COALESCE(used, 0) + {PH},
+                        updated_at = {PH}
+                    WHERE user_id = {PH} AND year = {PH}
+                """, (deduct_now, now_str, m['id'], current_year))
+            else:
+                db.execute(f"""
+                    INSERT INTO kac_year_contributions
+                        (user_id, year, paid, used, target, created_at, updated_at)
+                    VALUES ({PH},{PH},{PH},{PH},100000,{PH},{PH})
+                """, (m['id'], current_year, m['kac_paid'] or 0,
+                      deduct_now, now_str, now_str))
+
+            # 3) Audit row
             db.execute(f"""
                 INSERT INTO kac_claim_deductions (
                     claim_id, user_id, amount_deducted, kac_before, kac_after, created_at
@@ -2578,7 +2507,7 @@ def treasurer_kac_claim():
 
         message = (
             f'{claim_type.title()} claim recorded — '
-            f'{charged} members charged, UGX {total:,.0f} collected.'
+            f'{charged} KAC member(s) charged, UGX {total:,.0f} total.'
         )
         if debt_count > 0:
             message += f' {debt_count} member(s) now owe the SACCO.'
@@ -2604,6 +2533,100 @@ def treasurer_kac_claim():
         except Exception:
             pass
 
+
+# ------------------------------------------------------------
+# REVERSE A CLAIM
+# ------------------------------------------------------------
+@app.route("/treasurer/kac/claim/<int:claim_id>/reverse", methods=["POST"])
+def treasurer_kac_reverse(claim_id):
+    if session.get("role") not in ["treasurer", "admin", "chairperson"]:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    data = request.get_json() or {}
+    reason = (data.get('reason') or '').strip()
+    if not reason:
+        return jsonify({'success': False, 'message': 'Reversal reason is required'}), 400
+
+    db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
+    try:
+        claim_row = db.execute(
+            f"SELECT * FROM kac_claims WHERE id = {PH}", (claim_id,)
+        ).fetchone()
+        if not claim_row:
+            return jsonify({'success': False, 'message': 'Claim not found'}), 404
+        claim = row_to_dict(claim_row)
+        if claim['status'] == 'reversed':
+            return jsonify({'success': False, 'message': 'Already reversed'}), 400
+
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # Determine which year the deduction hit
+        try:
+            claim_year = datetime.strptime(str(claim['event_date'])[:10], '%Y-%m-%d').year
+        except Exception:
+            claim_year = datetime.now().year
+
+        # Refund every charged member
+        deds = db.execute(
+            f"SELECT * FROM kac_claim_deductions WHERE claim_id = {PH}", (claim_id,)
+        ).fetchall()
+
+        for d_row in deds:
+            d = row_to_dict(d_row)
+
+            # 1) Lifetime refund
+            db.execute(f"""
+                UPDATE users SET kac_used = COALESCE(kac_used, 0) - {PH}
+                WHERE id = {PH}
+            """, (d['amount_deducted'], d['user_id']))
+
+            # 2) Year tracker refund
+            db.execute(f"""
+                UPDATE kac_year_contributions
+                SET used = COALESCE(used, 0) - {PH},
+                    updated_at = {PH}
+                WHERE user_id = {PH} AND year = {PH}
+            """, (d['amount_deducted'], now_str, d['user_id'], claim_year))
+
+        # Reopen register slot if condolence
+        if claim['claim_type'] == 'condolence' and claim.get('register_entry_id'):
+            db.execute(f"""
+                UPDATE member_condolence_register
+                SET status = 'active',
+                    deceased_date = NULL,
+                    deceased_claim_id = NULL,
+                    updated_at = {PH}
+                WHERE id = {PH}
+            """, (now_str, claim['register_entry_id']))
+
+        # Mark claim reversed
+        db.execute(f"""
+            UPDATE kac_claims
+            SET status = 'reversed',
+                reversed_at = {PH},
+                reversed_by = {PH},
+                reversal_reason = {PH}
+            WHERE id = {PH}
+        """, (now_str, session['user_id'], reason, claim_id))
+
+        db.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Claim reversed and members refunded.'
+        })
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 # ------------------------------------------------------------
 # 3. REVERSE A CLAIM
@@ -2682,30 +2705,80 @@ def treasurer_kac_reverse(claim_id):
 
 
 # ------------------------------------------------------------
-# 4. YEAR-END RESET — clears paid + used for everyone
+# YEAR ROLLOVER — starts a fresh year for KAC contributions.
+# Lifetime savings (kac_paid / kac_used) are NEVER touched.
+# Each KAC member gets a new 100,000/year obligation.
 # ------------------------------------------------------------
-@app.route("/treasurer/kac/year-reset", methods=["POST"])
-def treasurer_kac_year_reset():
+@app.route("/treasurer/kac/year-rollover", methods=["POST"])
+def treasurer_kac_year_rollover():
     if session.get("role") not in ["treasurer", "admin", "chairperson"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
 
     db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
     try:
-        db.execute("UPDATE users SET kac_paid = 0, kac_used = 0")
+        current_year = datetime.now().year
+        new_year = current_year + 1
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # Every active KAC member gets a new yearly tracker
+        members = db.execute(f"""
+            SELECT id, COALESCE(kac_paid, 0) AS kac_paid
+            FROM users
+            WHERE {is_kac_member_clause()}
+        """).fetchall()
+
+        created = 0
+        for m_row in members:
+            m = row_to_dict(m_row)
+
+            existing = db.execute(f"""
+                SELECT id FROM kac_year_contributions
+                WHERE user_id = {PH} AND year = {PH}
+            """, (m['id'], new_year)).fetchone()
+            if existing:
+                continue
+
+            db.execute(f"""
+                INSERT INTO kac_year_contributions
+                    (user_id, year, paid, used, target, created_at, updated_at)
+                VALUES ({PH},{PH},0,0,100000,{PH},{PH})
+            """, (m['id'], new_year, now_str, now_str))
+
+            # Point user at new year; kac_year_paid starts at 0
+            # (lifetime kac_paid is untouched)
+            db.execute(f"""
+                UPDATE users
+                SET kac_year = {PH}, kac_year_paid = 0
+                WHERE id = {PH}
+            """, (new_year, m['id']))
+
+            created += 1
+
         db.commit()
 
-        log_action(
-            action="kac_year_reset",
-            target="all_users",
-            details=f"Year reset by {session.get('role')}"
-        )
+        try:
+            log_action(
+                action="kac_year_rollover",
+                target="all_users",
+                details=(f"Rolled over to {new_year} by {session.get('role')}. "
+                         f"Savings preserved; 100,000/year obligation set.")
+            )
+        except Exception:
+            pass
 
         return jsonify({
             'success': True,
-            'message': 'All KAC balances reset to zero. Members start the new year fresh.'
+            'message': (f'Rolled over to {new_year}. {created} KAC member(s) '
+                        f'now have a fresh UGX 100,000 target. '
+                        f'Savings from previous years were NOT affected.')
         })
+
     except Exception as e:
         db.rollback()
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         try:
@@ -2714,8 +2787,13 @@ def treasurer_kac_year_reset():
             pass
 
 
+# Backwards-compatible alias so the old button/URL still works
+@app.route("/treasurer/kac/year-reset", methods=["POST"])
+def treasurer_kac_year_reset_alias():
+    return treasurer_kac_year_rollover()
+
 # ------------------------------------------------------------
-# 5. CLAIM DETAILS (JSON for the View modal)
+# CLAIM DETAILS (JSON for the View modal)
 # ------------------------------------------------------------
 @app.route("/treasurer/kac/claim/<int:claim_id>/details")
 def treasurer_kac_claim_details(claim_id):
@@ -2766,9 +2844,8 @@ def treasurer_kac_claim_details(claim_id):
         except Exception:
             pass
 
-
-# ------------------------------------------------------------
-# 6. MEMBER'S CONDOLENCE REGISTER (JSON) — read
+## ------------------------------------------------------------
+# MEMBER'S CONDOLENCE REGISTER — read
 # ------------------------------------------------------------
 @app.route("/treasurer/member/condolence-register/<int:user_id>", methods=["GET"])
 def treasurer_get_member_register(user_id):
@@ -2809,7 +2886,7 @@ def treasurer_get_member_register(user_id):
 
 
 # ------------------------------------------------------------
-# 7. ADD REGISTER ENTRY (max 10 lifetime)
+# ADD REGISTER ENTRY (max 10 lifetime)
 # ------------------------------------------------------------
 @app.route("/treasurer/member/condolence-register/add", methods=["POST"])
 def treasurer_add_register_entry():
@@ -2886,7 +2963,7 @@ def treasurer_add_register_entry():
 
 
 # ------------------------------------------------------------
-# 8. REMOVE REGISTER ENTRY (only if not deceased)
+# REMOVE REGISTER ENTRY (only if not deceased)
 # ------------------------------------------------------------
 @app.route("/treasurer/member/condolence-register/<int:entry_id>/remove", methods=["POST"])
 def treasurer_remove_register_entry(entry_id):
@@ -3167,40 +3244,111 @@ def treasurer_approve_loan(loan_id):
         except Exception:
             pass
 # ============================================================
-# TREASURER - DISBURSE LOAN
+# TREASURER - DISBURSE LOAN (deducts from member's savings)
 # ============================================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
-    print(f"ðŸ’° Disburse called for loan {loan_id}")
-    
+    print(f"💰 Disburse called for loan {loan_id}")
+
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
-    
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
+
+    if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
+
     db = get_db()
     db.row_factory = sqlite3.Row
-    
+
     try:
-        loan = db.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
-        
+        # ----- Load the loan + member savings -----
+        loan = db.execute("""
+            SELECT l.*, u.id AS member_id, u.full_name AS member_name,
+                   COALESCE(u.savings_balance, 0) AS member_savings
+            FROM loans l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.id = ?
+        """, (loan_id,)).fetchone()
+
         if not loan:
             db.close()
             return jsonify({'success': False, 'message': 'Loan not found'}), 404
-        
+
         if loan['status'] != 'approved':
             db.close()
-            return jsonify({'success': False, 'message': f'Loan must be approved first. Status: {loan["status"]}'}), 400
-        
+            return jsonify({
+                'success': False,
+                'message': f'Loan must be approved first. Current status: {loan["status"]}'
+            }), 400
+
+        # ----- Determine loan amount to deduct -----
+        # We deduct the PRINCIPAL (loan['amount']) from savings.
+        # (total_repayment includes interest — interest is NOT taken from savings.)
+        loan_principal = float(loan['amount'] or 0)
+        member_savings = float(loan['member_savings'] or 0)
+
+        if loan_principal <= 0:
+            db.close()
+            return jsonify({'success': False, 'message': 'Loan amount is invalid'}), 400
+
+        # ----- Check sufficient savings -----
+        if member_savings < loan_principal:
+            db.close()
+            return jsonify({
+                'success': False,
+                'message': (
+                    f"Insufficient savings. {loan['member_name']} has "
+                    f"UGX {member_savings:,.0f} but this loan requires "
+                    f"UGX {loan_principal:,.0f}."
+                )
+            }), 400
+
+        # ----- Compute dates + balance -----
         today = datetime.now().strftime('%Y-%m-%d')
         end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        balance = loan['total_repayment'] or loan['amount']
-        
+        balance = float(loan['total_repayment'] or loan['amount'] or 0)
+        new_savings = member_savings - loan_principal
+
+        db.execute("BEGIN TRANSACTION")
+
+        # ============================================================
+        # 1) DEDUCT from member's savings (money leaves the pool)
+        # ============================================================
         db.execute("""
-            UPDATE loans 
+            UPDATE users
+            SET savings_balance = COALESCE(savings_balance, 0) - ?
+            WHERE id = ?
+        """, (loan_principal, loan['member_id']))
+
+        # ============================================================
+        # 2) Log the outflow as a savings transaction for audit trail
+        #    (Negative amount = money leaving savings)
+        # ============================================================
+        try:
+            db.execute("""
+                INSERT INTO savings_deposits
+                    (user_id, amount, savings_type, deposit_date,
+                     payment_method, receipt_number, notes)
+                VALUES (?, ?, 'LOAN_DISBURSEMENT', ?, 'internal', ?, ?)
+            """, (
+                loan['member_id'],
+                -loan_principal,
+                today,
+                f"DISB-{loan['loan_number']}",
+                f"Loan {loan['loan_number']} disbursed — deducted from savings"
+            ))
+        except Exception as e:
+            # If LOAN_DISBURSEMENT isn't a recognised savings_type,
+            # skip the log but keep the deduction above
+            print(f"⚠️ Could not log disbursement to savings_deposits: {e}")
+
+        # ============================================================
+        # 3) Mark loan as disbursed
+        # ============================================================
+        db.execute("""
+            UPDATE loans
             SET status = 'disbursed',
                 disbursement_date = ?,
+                disbursed_date = ?,
                 loan_start_date = ?,
                 loan_end_date = ?,
                 due_date = ?,
@@ -3208,168 +3356,39 @@ def treasurer_disburse_loan(loan_id):
                 disbursed_by = ?,
                 disbursed_by_role = ?
             WHERE id = ?
-        """, (today, today, end_date, end_date, balance, session.get('full_name', 'Treasurer'), session.get('role', 'treasurer'), loan_id))
-        
+        """, (
+            today, today, today, end_date, end_date,
+            balance,
+            session.get('full_name', 'Treasurer'),
+            session.get('role', 'treasurer'),
+            loan_id
+        ))
+
         db.commit()
         db.close()
-        
+
         return jsonify({
             'success': True,
-            'message': 'ðŸ’° Loan disbursed successfully!'
+            'message': (
+                f"💰 Loan {loan['loan_number']} disbursed. "
+                f"UGX {loan_principal:,.0f} deducted from savings. "
+                f"New savings balance: UGX {new_savings:,.0f}."
+            ),
+            'deducted': loan_principal,
+            'new_savings': new_savings
         })
-        
+
     except Exception as e:
         db.rollback()
         db.close()
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ============================================================
-# TREASURER - RECORD PAYMENT (FIXED & ENHANCED)
-# ============================================================
-@app.route("/treasurer/loan/pay", methods=['POST'])
-def treasurer_record_payment():
-    if session.get("role") not in ["treasurer", "admin", "secretary"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid request data'}), 400
-    
-    loan_id = data.get('loan_id')
-    amount_str = data.get('amount', 0)
-    payment_method = data.get('payment_method', 'cash')
-    
-    try:
-        if isinstance(amount_str, str):
-            amount = float(amount_str.replace(',', ''))
-        else:
-            amount = float(amount_str)
-    except (ValueError, TypeError):
-        return jsonify({'success': False, 'message': 'Invalid amount format'}), 400
-    
-    if not loan_id or amount <= 0:
-        return jsonify({'success': False, 'message': 'Loan ID and valid amount are required'}), 400
-    
-    conn = get_db()
-    conn.row_factory = sqlite3.Row
-    
-    try:
-        loan = conn.execute("""
-            SELECT l.*, u.full_name, u.sacco_number, u.id as member_id
-            FROM loans l
-            JOIN users u ON l.user_id = u.id
-            WHERE l.id = ?
-        """, (loan_id,)).fetchone()
-        
-        if not loan:
-            conn.close()
-            return jsonify({'success': False, 'message': 'Loan not found'}), 404
-        
-        if loan['status'] not in ['approved', 'disbursed', 'active']:
-            conn.close()
-            return jsonify({
-                'success': False, 
-                'message': f'Cannot make payment on loan with status: {loan["status"]}'
-            }), 400
-        
-        if loan['status'] == 'completed':
-            conn.close()
-            return jsonify({'success': False, 'message': 'Loan is already fully paid'}), 400
-        
-        current_balance = float(loan['current_balance'] or loan['amount'] or 0)
-        
-        if amount > current_balance:
-            conn.close()
-            return jsonify({
-                'success': False, 
-                'message': f'Payment amount (UGX {amount:,.0f}) exceeds current balance (UGX {current_balance:,.0f})'
-            }), 400
-        
-        conn.execute("BEGIN TRANSACTION")
-        
-        # Calculate interest and principal
-        total_interest = float(loan['total_interest_accrued'] or 0)
-        interest_paid_so_far = float(loan['interest_paid'] or 0)
-        interest_remaining = max(0, total_interest - interest_paid_so_far)
-        
-        if amount >= interest_remaining:
-            interest_paid = interest_remaining
-            principal_paid = amount - interest_remaining
-        else:
-            interest_paid = amount
-            principal_paid = 0
-        
-        # Record the repayment
-        conn.execute("""
-            INSERT INTO repayments (
-                loan_id, user_id, amount, interest_paid, principal_paid,
-                balance_after, payment_date, payment_method, status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, date('now'), ?, 'completed')
-        """, (loan_id, loan['member_id'], amount, interest_paid, principal_paid, current_balance - amount, payment_method))
-        
-        new_balance = current_balance - amount
-        COMPLETION_THRESHOLD = 50
-        is_completed = new_balance <= COMPLETION_THRESHOLD
-        
-        if is_completed:
-            conn.execute("""
-                UPDATE loans 
-                SET current_balance = 0,
-                    status = 'completed',
-                    completed_date = date('now'),
-                    last_payment_date = date('now'),
-                    last_payment_amount = ?,
-                    interest_paid = COALESCE(interest_paid, 0) + ?,
-                    principal_paid = COALESCE(principal_paid, 0) + ?
-                WHERE id = ?
-            """, (amount, interest_paid, principal_paid, loan_id))
-            status = 'completed'
-            message = f'âœ… LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.'
-        else:
-            conn.execute("""
-                UPDATE loans 
-                SET current_balance = ?,
-                    status = 'active',
-                    last_payment_date = date('now'),
-                    last_payment_amount = ?,
-                    interest_paid = COALESCE(interest_paid, 0) + ?,
-                    principal_paid = COALESCE(principal_paid, 0) + ?
-                WHERE id = ?
-            """, (new_balance, amount, interest_paid, principal_paid, loan_id))
-            status = 'active'
-            message = f'âœ… Payment of UGX {amount:,.0f} recorded successfully! Remaining: UGX {new_balance:,.0f}'
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            'success': True, 
-            'message': message,
-            'new_balance': new_balance,
-            'status': status,
-            'is_completed': is_completed,
-            'interest_paid': interest_paid,
-            'principal_paid': principal_paid
-        })
-        
-    except sqlite3.Error as e:
-        conn.rollback()
-        conn.close()
-        print(f"âŒ Database Error in payment: {str(e)}")
-        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
-    except Exception as e:
-        conn.rollback()
-        conn.close()
-        print(f"âŒ Error in payment: {str(e)}")
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
-
 
 # ============================================================
 # TREASURER - ENTER REPAYMENT
-# GET  â†’ redirect to dashboard (the repayments panel is inside it)
-# POST â†’ save the repayment, then redirect back to dashboard
+# GET  → redirect to dashboard (the repayments panel is inside it)
+# POST → save the repayment, credit principal back to savings
 # ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
@@ -3378,14 +3397,13 @@ def treasurer_enter_repayment():
         return redirect("/login")
 
     # ============================================================
-    # GET â€” the dashboard already contains the repayments panel.
-    # Send the user there with a hash to auto-open that panel.
+    # GET — the dashboard already contains the repayments panel.
     # ============================================================
     if request.method == "GET":
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
     # ============================================================
-    # POST â€” process repayment
+    # POST — process repayment
     # ============================================================
     db = get_db()
     db.row_factory = sqlite3.Row
@@ -3404,12 +3422,14 @@ def treasurer_enter_repayment():
             flash('Amount must be greater than 0', 'danger')
             return redirect(url_for('treasurer_dashboard') + '#repayments')
 
+        # ----- Load loan + member's current savings -----
         loan = db.execute("""
             SELECT 
                 l.*, 
-                u.id as member_id, 
+                u.id AS member_id, 
                 u.full_name, 
-                u.sacco_number
+                u.sacco_number,
+                COALESCE(u.savings_balance, 0) AS member_savings
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.id = ?
@@ -3423,7 +3443,7 @@ def treasurer_enter_repayment():
             flash(f'Cannot make payment on loan with status: {loan["status"]}', 'danger')
             return redirect(url_for('treasurer_dashboard') + '#repayments')
 
-        # Integer-safe current balance
+        # ----- Integer-safe current balance -----
         raw_balance = loan['current_balance'] if loan['current_balance'] is not None else loan['amount']
         current_balance = int(round(float(raw_balance or 0)))
 
@@ -3449,10 +3469,49 @@ def treasurer_enter_repayment():
 
         new_balance = max(0, current_balance - amount)
 
+        # ----- New member savings after principal returns -----
+        member_savings_before = int(round(float(loan['member_savings'] or 0)))
+        member_savings_after = member_savings_before + principal_paid
+
         db.execute("BEGIN TRANSACTION")
 
         current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_date = datetime.now().strftime('%Y-%m-%d')
 
+        # ============================================================
+        # 1) RETURN THE PRINCIPAL TO MEMBER'S SAVINGS
+        #    (Interest is NOT returned — it stays as SACCO income.)
+        # ============================================================
+        if principal_paid > 0:
+            db.execute("""
+                UPDATE users
+                SET savings_balance = COALESCE(savings_balance, 0) + ?
+                WHERE id = ?
+            """, (principal_paid, loan['member_id']))
+
+            # Audit trail — positive amount = money returning to savings
+            try:
+                db.execute("""
+                    INSERT INTO savings_deposits
+                        (user_id, amount, savings_type, deposit_date,
+                         payment_method, receipt_number, notes)
+                    VALUES (?, ?, 'LOAN_REPAYMENT', ?, ?, ?, ?)
+                """, (
+                    loan['member_id'],
+                    principal_paid,
+                    current_date,
+                    payment_method,
+                    transaction_ref or f"REPAY-{loan['loan_number']}",
+                    f"Principal repayment for loan {loan['loan_number']} — credited to savings"
+                ))
+            except Exception as e:
+                # If savings_deposits schema doesn't allow LOAN_REPAYMENT type,
+                # skip the log — the savings credit above still works
+                print(f"⚠️ Could not log repayment to savings_deposits: {e}")
+
+        # ============================================================
+        # 2) Record the repayment row
+        # ============================================================
         db.execute("""
             INSERT INTO repayments (
                 loan_id, user_id, amount, interest_paid, principal_paid,
@@ -3473,7 +3532,9 @@ def treasurer_enter_repayment():
             notes
         ))
 
-        # Treat tiny leftovers as complete (avoid perpetual 1-shilling balances)
+        # ============================================================
+        # 3) Update the loan
+        # ============================================================
         COMPLETION_THRESHOLD = 50
         is_completed = new_balance <= COMPLETION_THRESHOLD
 
@@ -3496,9 +3557,24 @@ def treasurer_enter_repayment():
                 principal_paid,
                 loan_id
             ))
+
             db.commit()
             db.close()
-            flash(f'âœ… LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
+
+            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
+            flash(
+                f'📊 Interest paid: UGX {interest_paid:,.0f} | '
+                f'Principal paid: UGX {principal_paid:,.0f}',
+                'info'
+            )
+            if principal_paid > 0:
+                flash(
+                    f'💰 UGX {principal_paid:,.0f} returned to '
+                    f'{loan["full_name"]}\'s savings. '
+                    f'New savings: UGX {member_savings_after:,.0f}',
+                    'success'
+                )
+
         else:
             db.execute("""
                 UPDATE loans 
@@ -3517,20 +3593,35 @@ def treasurer_enter_repayment():
                 principal_paid,
                 loan_id
             ))
+
             db.commit()
             db.close()
-            flash(f'âœ… Payment of UGX {amount:,.0f} recorded successfully!', 'success')
-            flash(f'ðŸ“Š Interest paid: UGX {interest_paid:,.0f} | Principal paid: UGX {principal_paid:,.0f}', 'info')
-            flash(f'ðŸ’° Remaining balance: UGX {new_balance:,.0f}', 'info')
+
+            flash(f'✅ Payment of UGX {amount:,.0f} recorded successfully!', 'success')
+            flash(
+                f'📊 Interest paid: UGX {interest_paid:,.0f} | '
+                f'Principal paid: UGX {principal_paid:,.0f}',
+                'info'
+            )
+            if principal_paid > 0:
+                flash(
+                    f'💰 UGX {principal_paid:,.0f} returned to '
+                    f'{loan["full_name"]}\'s savings. '
+                    f'New savings: UGX {member_savings_after:,.0f}',
+                    'success'
+                )
+            flash(f'💳 Remaining loan balance: UGX {new_balance:,.0f}', 'info')
 
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
     except Exception as e:
         db.rollback()
         db.close()
+        import traceback
+        traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard') + '#repayments')
-
+    
 ## ============================================================
 # TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT) - INCLUDES STAFF
 # ============================================================
