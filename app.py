@@ -2629,82 +2629,6 @@ def treasurer_kac_reverse(claim_id):
             pass
 
 # ------------------------------------------------------------
-# 3. REVERSE A CLAIM
-# ------------------------------------------------------------
-@app.route("/treasurer/kac/claim/<int:claim_id>/reverse", methods=["POST"])
-def treasurer_kac_reverse(claim_id):
-    if session.get("role") not in ["treasurer", "admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-
-    data = request.get_json() or {}
-    reason = (data.get('reason') or '').strip()
-    if not reason:
-        return jsonify({'success': False, 'message': 'Reversal reason is required'}), 400
-
-    db = get_db()
-    PH = "%s" if DATABASE_URL else "?"
-
-    try:
-        claim_row = db.execute(
-            f"SELECT * FROM kac_claims WHERE id = {PH}", (claim_id,)
-        ).fetchone()
-        if not claim_row:
-            return jsonify({'success': False, 'message': 'Claim not found'}), 404
-        claim = row_to_dict(claim_row)
-        if claim['status'] == 'reversed':
-            return jsonify({'success': False, 'message': 'Already reversed'}), 400
-
-        # Refund every charged member
-        deds = db.execute(
-            f"SELECT * FROM kac_claim_deductions WHERE claim_id = {PH}", (claim_id,)
-        ).fetchall()
-
-        for d_row in deds:
-            d = row_to_dict(d_row)
-            db.execute(f"""
-                UPDATE users SET kac_used = COALESCE(kac_used, 0) - {PH}
-                WHERE id = {PH}
-            """, (d['amount_deducted'], d['user_id']))
-
-        # Reopen register slot if condolence
-        if claim['claim_type'] == 'condolence' and claim.get('register_entry_id'):
-            db.execute(f"""
-                UPDATE member_condolence_register
-                SET status = 'active',
-                    deceased_date = NULL,
-                    deceased_claim_id = NULL,
-                    updated_at = {PH}
-                WHERE id = {PH}
-            """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                  claim['register_entry_id']))
-
-        # Mark claim reversed
-        db.execute(f"""
-            UPDATE kac_claims
-            SET status = 'reversed',
-                reversed_at = {PH},
-                reversed_by = {PH},
-                reversal_reason = {PH}
-            WHERE id = {PH}
-        """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-              session['user_id'], reason, claim_id))
-
-        db.commit()
-        return jsonify({'success': True, 'message': 'Claim reversed and members refunded.'})
-
-    except Exception as e:
-        db.rollback()
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        try:
-            db.close()
-        except Exception:
-            pass
-
-
-# ------------------------------------------------------------
 # YEAR ROLLOVER — starts a fresh year for KAC contributions.
 # Lifetime savings (kac_paid / kac_used) are NEVER touched.
 # Each KAC member gets a new 100,000/year obligation.
@@ -2723,6 +2647,9 @@ def treasurer_kac_year_rollover():
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         # Every active KAC member gets a new yearly tracker
+        def is_kac_member_clause():
+            ...
+
         members = db.execute(f"""
             SELECT id, COALESCE(kac_paid, 0) AS kac_paid
             FROM users
