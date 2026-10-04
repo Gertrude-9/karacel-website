@@ -5456,6 +5456,12 @@ def member_guarantors():
 # ============================================================
 # MEMBER SEARCH FOR GUARANTORS
 # ============================================================
+# ============================================================
+# MEMBER SEARCH FOR GUARANTORS
+# ------------------------------------------------------------
+# Returns: id, full_name, phone, status, type
+# (sacco_number, email, account number NOT returned)
+# ============================================================
 @app.route("/member/search-members", methods=["GET"])
 def search_members():
     if "user_id" not in session:
@@ -5472,30 +5478,28 @@ def search_members():
         })
 
     db = get_db()
-    db.row_factory = sqlite3.Row
+    PH = "%s" if DATABASE_URL else "?"
 
     try:
         search_pattern = f'%{search_term}%'
-        users = db.execute("""
+
+        users = db.execute(f"""
             SELECT
                 id,
                 full_name,
-                sacco_number,
                 phone,
-                email,
-                savings_balance,
                 status,
                 role
             FROM users
             WHERE LOWER(role) IN ('member', 'admin', 'secretary', 'treasurer', 'publicity')
-            AND id != ?
-            AND status = 'active'
-            AND (
-                LOWER(full_name) LIKE LOWER(?) OR
-                sacco_number LIKE ? OR
-                phone LIKE ? OR
-                email LIKE ?
-            )
+              AND id != {PH}
+              AND status = 'active'
+              AND (
+                  LOWER(full_name) LIKE LOWER({PH}) OR
+                  sacco_number LIKE {PH} OR
+                  phone LIKE {PH} OR
+                  email LIKE {PH}
+              )
             ORDER BY
                 CASE LOWER(role)
                     WHEN 'member'    THEN 1
@@ -5507,35 +5511,38 @@ def search_members():
                 END,
                 full_name ASC
             LIMIT 20
-        """, (current_user_id, search_pattern, search_pattern, search_pattern, search_pattern)).fetchall()
+        """, (
+            current_user_id,
+            search_pattern,
+            search_pattern,
+            search_pattern,
+            search_pattern
+        )).fetchall()
 
         user_list = []
         for user in users:
-            role = (user['role'] or 'member').lower()
+            user_dict = row_to_dict(user)
+            role = (user_dict.get('role') or 'member').lower()
 
-            # Only members carry loan history; staff don't borrow from the SACCO
             if role == 'member':
-                loan_count = db.execute("""
-                    SELECT COUNT(*) as count
+                loan_count = fetchval(db, f"""
+                    SELECT COUNT(*)
                     FROM loans
-                    WHERE user_id = ? AND status IN ('approved', 'disbursed', 'active')
-                """, (user['id'],)).fetchone()['count']
+                    WHERE user_id = {PH}
+                      AND status IN ('approved', 'disbursed', 'active')
+                """, (user_dict['id'],)) or 0
             else:
                 loan_count = 0
 
+            # ---- Return ONLY name + phone + status info ----
             user_list.append({
-                'id': user['id'],
-                'full_name': user['full_name'],
-                'sacco_number': user['sacco_number'] or '—',
-                'phone': user['phone'] or '',
-                'email': user['email'] or '',
-                'savings_balance': user['savings_balance'] or 0,
+                'id': user_dict['id'],
+                'full_name': user_dict['full_name'],
+                'phone': user_dict.get('phone') or '',
                 'active_loans': loan_count,
-                'status': user['status'],
-                'type': role          # 'member' | 'admin' | 'secretary' | 'treasurer' | 'publicity'
+                'status': user_dict.get('status') or 'active',
+                'type': role,
             })
-
-        db.close()
 
         return jsonify({
             'success': True,
@@ -5544,12 +5551,18 @@ def search_members():
         })
 
     except Exception as e:
-        db.close()
+        import traceback
+        traceback.print_exc()
         print(f"Error searching members: {str(e)}")
         return jsonify({
             'success': False,
             'message': str(e)
         }), 500
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 @app.route("/treasurer/savings-reports")
 def treasurer_savings_reports():

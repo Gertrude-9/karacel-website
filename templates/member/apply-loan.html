@@ -627,7 +627,6 @@ function searchGuarantorMembers(term, num) {
                                 <span style="font-size: 0.65rem; padding: 2px 10px; background: rgba(74,222,128,0.12); color: #4ade80; border-radius: 12px;">Active</span>
                             </div>
                             <div style="margin-top: 4px; color: rgba(255,255,255,0.4); font-size: 0.75rem;">
-                                <span><i class="fas fa-id-card"></i> ${m.sacco_number}</span>
                                 <span style="margin-left: 12px;"><i class="fas fa-phone"></i> ${m.phone || 'No phone'}</span>
                             </div>
                         </div>
@@ -660,27 +659,26 @@ function setupSearchListeners() {
     });
 }
 
-function selectGuarantor(num, id, name, sacco, phone, email) {
+function selectGuarantor(num, id, name, phone) {
     const other = num === 1 ? 2 : 1;
     if (selectedGuarantors[other] && selectedGuarantors[other].id === id) {
         showError('This member is already selected as Guarantor ' + other + '.');
         return;
     }
 
-    selectedGuarantors[num] = { id, name, phone, email };
+    selectedGuarantors[num] = { id, name, phone };
 
     document.getElementById('guarantor' + num + 'Id').value = id;
     document.getElementById('guarantor' + num + 'Name').value = name;
     document.getElementById('guarantor' + num + 'Phone').value = phone || '';
-    document.getElementById('guarantor' + num + 'Email').value = email || '';
+    // email stays empty; backend will pull it from the DB.
 
     document.getElementById('guarantor' + num + 'Search').style.display = 'none';
     document.getElementById('guarantor' + num + 'Results').classList.remove('show');
 
     document.getElementById('g' + num + 'DisplayName').textContent = name;
     document.getElementById('g' + num + 'DisplayDetails').innerHTML =
-        `<span><i class="fas fa-id-card"></i> ${sacco}</span>
-         <span><i class="fas fa-phone"></i> ${phone || 'No phone'}</span>`;
+        `<span><i class="fas fa-phone"></i> ${phone || 'No phone on file'}</span>`;
 
     document.getElementById('guarantor' + num + 'Selected').style.display = 'flex';
     document.getElementById('guarantor' + num + 'Relationship').disabled = false;
