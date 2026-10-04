@@ -2565,9 +2565,24 @@ def treasurer_kac_claims_page():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        flash(f'Error loading KAC page: {str(e)}', 'danger')
-        return redirect(url_for('treasurer_dashboard'))
+        tb = traceback.format_exc()
+        print("=" * 70)
+        print("KAC CLAIMS PAGE ERROR")
+        print(tb)
+        print("=" * 70)
+
+        # Return error to browser instead of hiding behind redirect
+        from flask import Response
+        return Response(
+            f"<html><body style='background:#0a0a14;color:#f5c542;"
+            f"font-family:monospace;padding:24px;'>"
+            f"<h2 style='color:#ff6b6b;'>KAC Claims Page Error</h2>"
+            f"<pre style='white-space:pre-wrap;background:#1a1a2e;"
+            f"padding:16px;border-radius:8px;color:#fff;'>{tb}</pre>"
+            f"</body></html>",
+            status=500,
+            mimetype='text/html'
+        )
     finally:
         try:
             conn.close()
