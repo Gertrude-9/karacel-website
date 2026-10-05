@@ -1555,8 +1555,7 @@ def admin_system_logs():
             db.close()
         except Exception:
             pass
-        
-# ============================================================
+     # ============================================================
 # TREASURER DASHBOARD
 # ============================================================
 @app.route("/treasurer/dashboard")
@@ -1671,10 +1670,6 @@ def treasurer_dashboard():
 
         # ============================================================
         # CORE SAVINGS FIGURES
-        # ------------------------------------------------------------
-        # total_savings = money currently in member savings accounts.
-        # This DROPS when a loan is disbursed (money leaves the pool)
-        # and RISES on deposits + repayment principal.
         # ============================================================
         total_savings = fetchval(conn, """
             SELECT COALESCE(SUM(savings_balance), 0) 
@@ -1709,11 +1704,6 @@ def treasurer_dashboard():
 
         # ============================================================
         # LOAN ↔ SAVINGS RECONCILIATION
-        # ------------------------------------------------------------
-        # Since loans come OUT of savings:
-        #   Total Savings + Outstanding Loans ≈ constant pool
-        #   (deposits add to pool, disbursements move pool → loans,
-        #    repayments move loans → pool)
         # ============================================================
         total_loan_outstanding = fetchval(conn, """
             SELECT COALESCE(SUM(current_balance), 0)
@@ -1733,14 +1723,8 @@ def treasurer_dashboard():
             WHERE status IN ('disbursed', 'active', 'completed')
         """) or 0
 
-        # What was paid OUT of members' savings for loans (all time)
         total_loan_disbursed_from_savings = total_principal_disbursed
-
-        # Net effect on savings from loan activity so far
-        # (negative = money still out; positive = fully returned)
         net_loan_impact_on_savings = total_principal_repaid - total_principal_disbursed
-
-        # The "pool" view: savings + what's still out on loans
         pool_balance = (total_savings or 0) + total_loan_outstanding
 
         # ============================================================
@@ -1751,7 +1735,7 @@ def treasurer_dashboard():
         active_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')")
         completed_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'completed'")
         rejected_loans = fetchval(conn, "SELECT COUNT(*) FROM loans WHERE status = 'rejected'")
-                # ---- Total amount disbursed (all-time principal of disbursed/active/completed loans) ----
+
         total_disbursed_amount = fetchval(conn, """
             SELECT COALESCE(SUM(amount), 0)
             FROM loans
@@ -1823,6 +1807,9 @@ def treasurer_dashboard():
 
         # ============================================================
         # LOAN APPLICATIONS
+        # ------------------------------------------------------------
+        # total_interest_accrued uses a COALESCE fallback so older
+        # rows that stored NULL still display correctly
         # ============================================================
         loan_applications = conn.execute("""
             SELECT 
@@ -1832,8 +1819,12 @@ def treasurer_dashboard():
                 l.disbursed_date, l.completed_date, l.current_balance,
                 l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
                 l.rejection_reason, l.admin_rejection_reason, l.application_fee,
-                l.application_fee_paid, l.net_loan_amount, l.total_interest_accrued,
-                l.interest_paid,
+                l.application_fee_paid, l.net_loan_amount,
+                COALESCE(
+                    l.total_interest_accrued,
+                    l.amount * (l.interest_rate / 100.0)
+                ) AS total_interest_accrued,
+                COALESCE(l.interest_paid, 0) AS interest_paid,
                 l.send_to_type, l.send_to_value, l.send_to_secondary,
                 u.full_name, u.sacco_number, u.phone, u.email,
                 u.savings_balance, u.role
@@ -1872,7 +1863,12 @@ def treasurer_dashboard():
                 l.disbursed_date, l.completed_date, l.current_balance,
                 l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
                 l.disbursed_amount, l.application_fee, l.application_fee_paid,
-                l.net_loan_amount, l.total_interest_accrued, l.interest_paid,
+                l.net_loan_amount,
+                COALESCE(
+                    l.total_interest_accrued,
+                    l.amount * (l.interest_rate / 100.0)
+                ) AS total_interest_accrued,
+                COALESCE(l.interest_paid, 0) AS interest_paid,
                 l.send_to_type, l.send_to_value, l.send_to_secondary,
                 u.full_name, u.sacco_number, u.phone, u.email, u.role
             FROM loans l
@@ -1882,6 +1878,9 @@ def treasurer_dashboard():
             ORDER BY l.application_date DESC
         """).fetchall()
 
+        # ============================================================
+        # COMPLETED LOANS
+        # ============================================================
         completed_loans_list = conn.execute("""
             SELECT 
                 l.id, l.loan_number, l.amount, l.interest_rate, l.interest_amount,
@@ -1890,7 +1889,12 @@ def treasurer_dashboard():
                 l.disbursed_date, l.completed_date, l.current_balance,
                 l.interest_accrued, l.due_date, l.loan_start_date, l.loan_end_date,
                 l.disbursed_amount, l.application_fee, l.application_fee_paid,
-                l.net_loan_amount, l.total_interest_accrued, l.interest_paid,
+                l.net_loan_amount,
+                COALESCE(
+                    l.total_interest_accrued,
+                    l.amount * (l.interest_rate / 100.0)
+                ) AS total_interest_accrued,
+                COALESCE(l.interest_paid, 0) AS interest_paid,
                 u.full_name, u.sacco_number, u.phone, u.email, u.role
             FROM loans l
             JOIN users u ON l.user_id = u.id
@@ -1899,8 +1903,24 @@ def treasurer_dashboard():
             ORDER BY l.completed_date DESC, l.application_date DESC
         """).fetchall()
 
-        total_interest_accrued = fetchval(conn, "SELECT COALESCE(SUM(total_interest_accrued), 0) FROM loans")
-        total_interest_paid = fetchval(conn, "SELECT COALESCE(SUM(interest_paid), 0) FROM loans")
+        # ============================================================
+        # INTEREST TOTALS (with COALESCE fallback)
+        # ============================================================
+        total_interest_accrued = fetchval(conn, """
+            SELECT COALESCE(SUM(
+                COALESCE(
+                    total_interest_accrued,
+                    amount * (interest_rate / 100.0)
+                )
+            ), 0)
+            FROM loans
+        """) or 0
+
+        total_interest_paid = fetchval(conn, """
+            SELECT COALESCE(SUM(COALESCE(interest_paid, 0)), 0)
+            FROM loans
+        """) or 0
+
         total_interest_outstanding = (total_interest_accrued or 0) - (total_interest_paid or 0)
 
         highest_borrower = {'name': 'N/A', 'total': 0}
@@ -1917,8 +1937,13 @@ def treasurer_dashboard():
                 l.user_id, u.full_name, u.role,
                 COUNT(l.id) as loan_count,
                 COALESCE(SUM(l.amount), 0) as total_borrowed,
-                COALESCE(SUM(l.interest_paid), 0) as total_interest_paid,
-                COALESCE(SUM(l.total_interest_accrued), 0) as total_interest_accrued
+                COALESCE(SUM(COALESCE(l.interest_paid, 0)), 0) as total_interest_paid,
+                COALESCE(SUM(
+                    COALESCE(
+                        l.total_interest_accrued,
+                        l.amount * (l.interest_rate / 100.0)
+                    )
+                ), 0) as total_interest_accrued
             FROM loans l
             JOIN users u ON l.user_id = u.id
             WHERE l.application_date >= {placeholder} AND l.application_date <= {placeholder}
@@ -1973,6 +1998,8 @@ def treasurer_dashboard():
         print(f"Pool (savings + loans): {pool_balance:,.0f}")
         print(f"Principal Disbursed (all-time): {total_principal_disbursed:,.0f}")
         print(f"Principal Repaid (all-time): {total_principal_repaid:,.0f}")
+        print(f"Total Interest Accrued: {total_interest_accrued:,.0f}")
+        print(f"Total Interest Paid: {total_interest_paid:,.0f}")
         print(f"KAC Net Balance: {kac_total:,.0f}")
         print("=" * 60)
 
@@ -1990,9 +2017,7 @@ def treasurer_dashboard():
             all_deposits=all_deposits,
             recent_deposits=recent_deposits,
 
-            # ============================================================
             # LOAN ↔ SAVINGS FIGURES
-            # ============================================================
             total_loan_outstanding=total_loan_outstanding,
             total_principal_disbursed=total_principal_disbursed,
             total_principal_repaid=total_principal_repaid,
@@ -2047,7 +2072,6 @@ def treasurer_dashboard():
             conn.close()
         except Exception:
             pass
-
 # ============================================================
 # TREASURER — RECORD SAVINGS DEPOSIT
 # ============================================================
