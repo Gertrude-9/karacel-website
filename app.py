@@ -955,18 +955,31 @@ def generate_loan_reference():
         except Exception:
             pass
 
-
 def get_interest_rate(amount):
-    if 10000 <= amount <= 999999:
-        return 5
-    elif 2000000 <= amount <= 4999999:
-        return 3
-    elif 5000000 <= amount <= 9999999:
-        return 2
-    elif amount >= 10000000:
-        return 1
-    return 0
+    """
+    Monthly flat interest rate based on loan principal:
+      - 10,000      – 999,999       → 5%
+      - 1,000,000   – 4,999,999     → 3%
+      - 5,000,000   – 9,999,999     → 2%
+      - 10,000,000  and above       → 1%
+    """
+    try:
+        amt = float(amount or 0)
+    except (TypeError, ValueError):
+        amt = 0
 
+    if amt >= 10000000:
+        return 1
+    if amt >= 5000000:
+        return 2
+    if amt >= 1000000:
+        return 3
+    if amt >= 10000:
+        return 5
+
+    # Anything below 10,000 is invalid — return the lowest tier so no
+    # loan ever gets 0% by accident.
+    return 5
 
 def check_loan_eligibility(user_id, loan_amount):
     db = get_db()
