@@ -6940,18 +6940,28 @@ def chairperson_dashboard():
     return render_template("chairperson/chairperson-dashboard.html")
 
 # ============================================================
-# SECRETARY DASHBOARD - FULL VERSION
+# SECRETARY DASHBOARD
 # ============================================================
 @app.route("/secretary/dashboard")
 def secretary_dashboard():
-    if session.get("role") != "secretary":
+    # Allow the same roles that other secretary pages allow
+    allowed_roles = {"secretary", "treasurer", "admin", "chairperson"}
+    user_role = (session.get("role") or "").strip().lower()
+
+    if user_role not in allowed_roles:
         flash('Access denied', 'danger')
         return redirect("/login")
+
+    log_action(
+        action="view_secretary_dashboard",
+        target="secretary_dashboard",
+        details=f"Accessed by {session.get('role', 'unknown')}"
+    )
 
     db = get_db()
     try:
         # ============================================================
-        # GET ALL MEMBERS
+        # ALL MEMBERS
         # ============================================================
         members = db.execute("""
             SELECT 
@@ -6981,9 +6991,9 @@ def secretary_dashboard():
             WHERE LOWER(role) = 'member' AND status = 'active'
         """) or 0
 
-        total_loans = fetchval(db, "SELECT COUNT(*) FROM loans") or 0
-        pending_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'pending'") or 0
-        active_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')") or 0
+        total_loans     = fetchval(db, "SELECT COUNT(*) FROM loans") or 0
+        pending_loans   = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'pending'") or 0
+        active_loans    = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status IN ('disbursed', 'active')") or 0
         completed_loans = fetchval(db, "SELECT COUNT(*) FROM loans WHERE status = 'completed'") or 0
 
         total_savings = fetchval(db, """
@@ -7060,13 +7070,55 @@ def secretary_dashboard():
                 'max_tenure': 24
             }
 
+        # ============================================================
+        # KAC QUICK STATS (for a small widget on the dashboard)
+        # ============================================================
+        kac_stats = {
+            'eligible': fetchval(db, """
+                SELECT COUNT(*) FROM users
+                WHERE status = 'active'
+                  AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+                  AND COALESCE(kac_paid, 0) >= 100000
+            """) or 0,
+            'partial': fetchval(db, """
+                SELECT COUNT(*) FROM users
+                WHERE status = 'active'
+                  AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+                  AND COALESCE(kac_paid, 0) > 0
+                  AND COALESCE(kac_paid, 0) < 100000
+            """) or 0,
+            'total_claims': fetchval(db, """
+                SELECT COUNT(*) FROM kac_claims WHERE status = 'active'
+            """) or 0
+        }
+
+        # ============================================================
+        # KS INTEREST QUICK STATS (for a small widget)
+        # ============================================================
+        ks_interest_stats = {
+            'total_interest': fetchval(db, """
+                SELECT COALESCE(SUM(total_interest_earned), 0)
+                FROM ks_interest_records
+            """) or 0,
+            'contingency_fund': fetchval(db, """
+                SELECT COALESCE(SUM(contingency_amount), 0)
+                FROM ks_interest_records
+            """) or 0,
+            'months_recorded': fetchval(db, """
+                SELECT COUNT(*) FROM ks_interest_records
+            """) or 0
+        }
+
         # Debug
         print("=" * 60)
         print("SECRETARY DASHBOARD LOADED")
-        print(f"Total Members: {total_members}")
-        print(f"Active Members: {active_members}")
-        print(f"Total Loans: {total_loans}")
-        print(f"Pending Loans: {pending_loans}")
+        print(f"Role:            {session.get('role')}")
+        print(f"Total Members:   {total_members}")
+        print(f"Active Members:  {active_members}")
+        print(f"Total Loans:     {total_loans}")
+        print(f"Pending Loans:   {pending_loans}")
+        print(f"KAC Eligible:    {kac_stats['eligible']}")
+        print(f"KS Interest:     {ks_interest_stats['total_interest']}")
         print("=" * 60)
 
         return render_template(
@@ -7082,6 +7134,8 @@ def secretary_dashboard():
             recent_activities=recent_activities,
             pending_loan_applications=pending_loan_applications,
             settings=settings,
+            kac_stats=kac_stats,
+            ks_interest_stats=ks_interest_stats,
             now=datetime.now(),
             session=session
         )
@@ -7101,11 +7155,35 @@ def secretary_dashboard():
 # ============================================================
 # SECRETARY — KS INTEREST & CONTINGENCY FUND
 # ============================================================
+
+# Roles allowed to view / manage KS interest
+KS_INTEREST_ROLES = {"secretary", "treasurer", "admin", "chairperson"}
+
+
+def _is_ks_staff():
+    """Return True if the current session may access KS interest data."""
+    role = (session.get("role") or "").strip().lower()
+    return role in KS_INTEREST_ROLES
+
+
+def _deny_ks_page():
+    """Flash + redirect for unauthorized page access."""
+    flash('Access denied. KS Interest is restricted to SACCO staff only.', 'danger')
+    return redirect("/login")
+
+
+def _deny_ks_json():
+    """JSON 403 for unauthorized API access."""
+    return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+
+# ------------------------------------------------------------
+# KS INTEREST PAGE
+# ------------------------------------------------------------
 @app.route("/secretary/ks-interest")
 def secretary_ks_interest():
-    if session.get("role") not in ["secretary", "treasurer", "admin", "chairperson"]:
-        flash('Access denied', 'danger')
-        return redirect("/login")
+    if not _is_ks_staff():
+        return _deny_ks_page()
 
     log_action(
         action="view_ks_interest",
@@ -7131,28 +7209,20 @@ def secretary_ks_interest():
         records = [row_to_dict(r) for r in records_rows]
 
         # ---- Totals ----
-        total_contingency = sum((r.get('contingency_amount') or 0) for r in records)
-        total_distributed = sum((r.get('distributable_amount') or 0) for r in records)
+        total_contingency  = sum((r.get('contingency_amount') or 0) for r in records)
+        total_distributed  = sum((r.get('distributable_amount') or 0) for r in records)
         total_interest_all = sum((r.get('total_interest_earned') or 0) for r in records)
 
-        # ---- Members with KS savings (for the year-end report) ----
+        # ---- Settings ----
         current_year = datetime.now().year
-
-        # Sum of KS savings per member for a given year
-        # KS savings = ks_shares * ks_share_price (per system settings)
         settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         settings_dict = row_to_dict(settings_row) if settings_row else {}
-        ks_share_price = settings_dict.get('ks_share_price') or 10000
+        ks_share_price   = settings_dict.get('ks_share_price') or 10000
         contingency_rate = settings_dict.get('contingency_rate') or 10
 
-        # Per-member KS totals and interest allocations for the year
-        members_rows = conn.execute(f"""
-            SELECT
-                u.id,
-                u.full_name,
-                u.sacco_number,
-                u.ks_shares,
-                u.role
+        # ---- Members with KS savings ----
+        members_rows = conn.execute("""
+            SELECT u.id, u.full_name, u.sacco_number, u.ks_shares, u.role
             FROM users u
             WHERE u.status = 'active'
               AND LOWER(u.role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
@@ -7163,10 +7233,8 @@ def secretary_ks_interest():
         members = []
         for m_row in members_rows:
             m = row_to_dict(m_row)
-
             ks_savings = (m['ks_shares'] or 0) * ks_share_price
 
-            # Sum of all interest allocations for this member this year
             total_interest = fetchval(conn, f"""
                 SELECT COALESCE(SUM(interest_share), 0)
                 FROM ks_interest_allocations
@@ -7184,12 +7252,10 @@ def secretary_ks_interest():
                 'role': m['role']
             })
 
-        # Grand totals
-        total_ks_savings_all = sum(m['ks_savings'] for m in members)
+        total_ks_savings_all       = sum(m['ks_savings'] for m in members)
         total_interest_all_members = sum(m['total_interest'] for m in members)
 
-        # Current year context
-        current_month = datetime.now().month
+        current_month      = datetime.now().month
         current_year_label = f"{current_year}"
 
         return render_template(
@@ -7220,19 +7286,19 @@ def secretary_ks_interest():
             pass
 
 
-# ============================================================
-# SECRETARY — RECORD MONTHLY INTEREST
-# ============================================================
+# ------------------------------------------------------------
+# KS INTEREST — RECORD MONTHLY
+# ------------------------------------------------------------
 @app.route("/secretary/ks-interest/record", methods=["POST"])
 def secretary_record_ks_interest():
-    if session.get("role") not in ["secretary", "treasurer", "admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    if not _is_ks_staff():
+        return _deny_ks_json()
 
     data = request.get_json() or {}
-    year = int(data.get('year') or datetime.now().year)
-    month = int(data.get('month') or datetime.now().month)
+    year           = int(data.get('year') or datetime.now().year)
+    month          = int(data.get('month') or datetime.now().month)
     total_interest = float(data.get('total_interest') or 0)
-    notes = (data.get('notes') or '').strip()
+    notes          = (data.get('notes') or '').strip()
 
     if month < 1 or month > 12:
         return jsonify({'success': False, 'message': 'Invalid month'}), 400
@@ -7243,7 +7309,7 @@ def secretary_record_ks_interest():
     PH = "%s" if DATABASE_URL else "?"
 
     try:
-        # Check if already recorded
+        # Guard against duplicate months
         existing = db.execute(f"""
             SELECT id FROM ks_interest_records
             WHERE year = {PH} AND month = {PH}
@@ -7255,23 +7321,16 @@ def secretary_record_ks_interest():
                 'message': f'Interest for {year}-{month:02d} is already recorded. Delete it first if you need to re-enter.'
             }), 400
 
-        # ---- Load contingency rate ----
+        # ---- Load settings ----
         settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         s = row_to_dict(settings_row) if settings_row else {}
-        contingency_rate = s.get('contingency_rate') or 10
+        contingency_rate  = s.get('contingency_rate') or 10
+        ks_share_price    = s.get('ks_share_price') or 10000
 
         contingency_amount = total_interest * (contingency_rate / 100)
-        distributable = total_interest - contingency_amount
+        distributable      = total_interest - contingency_amount
 
-        # ---- Identify savings to use ----
-        # The savings "at the START of the earning month" — this is the previous month's KS savings
-        # For simplicity, we use the members' current ks_shares at the moment of recording,
-        # BUT the proper way is to freeze each member's KS value at the start of the earning month.
-        #
-        # We'll take the snapshot NOW and store it per member. This is the real accrual.
-        ks_share_price = s.get('ks_share_price') or 10000
-
-        # Fetch all KS savers with their current holdings
+        # ---- KS savers snapshot ----
         ks_savers_rows = db.execute("""
             SELECT id, full_name, COALESCE(ks_shares, 0) AS ks_shares
             FROM users
@@ -7291,7 +7350,6 @@ def secretary_record_ks_interest():
             })
 
         total_ks_savings = sum(k['savings'] for k in ks_savers)
-
         if total_ks_savings <= 0:
             return jsonify({
                 'success': False,
@@ -7343,7 +7401,7 @@ def secretary_record_ks_interest():
             """, (record_id, k['user_id'], year, month,
                   k['savings'], round(share, 2), now_str))
 
-        # ---- Bump system contingency total ----
+        # ---- Bump contingency total ----
         db.execute(f"""
             UPDATE system_settings
             SET contingency_fund_total = COALESCE(contingency_fund_total, 0) + {PH}
@@ -7377,13 +7435,13 @@ def secretary_record_ks_interest():
             pass
 
 
-# ============================================================
-# SECRETARY — DELETE A MONTHLY INTEREST RECORD
-# ============================================================
+# ------------------------------------------------------------
+# KS INTEREST — DELETE
+# ------------------------------------------------------------
 @app.route("/secretary/ks-interest/<int:record_id>/delete", methods=["POST"])
 def secretary_delete_ks_interest(record_id):
-    if session.get("role") not in ["secretary", "admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    if not _is_ks_staff():
+        return _deny_ks_json()
 
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
@@ -7397,7 +7455,7 @@ def secretary_delete_ks_interest(record_id):
 
         rec_d = row_to_dict(rec)
 
-        # Remove per-member allocations
+        # Remove allocations
         db.execute(
             f"DELETE FROM ks_interest_allocations WHERE record_id = {PH}",
             (record_id,)
@@ -7410,7 +7468,7 @@ def secretary_delete_ks_interest(record_id):
             WHERE id = (SELECT id FROM system_settings LIMIT 1)
         """, (rec_d.get('contingency_amount') or 0,))
 
-        # Delete the record itself
+        # Delete the record
         db.execute(
             f"DELETE FROM ks_interest_records WHERE id = {PH}",
             (record_id,)
@@ -7431,13 +7489,14 @@ def secretary_delete_ks_interest(record_id):
             pass
 
 
-# ============================================================
-# SECRETARY — MEMBER INTEREST DETAILS (JSON for the modal)
-# ============================================================
+# ------------------------------------------------------------
+# KS INTEREST — MEMBER DETAILS JSON
+# ------------------------------------------------------------
 @app.route("/secretary/ks-interest/member/<int:user_id>")
 def secretary_member_interest(user_id):
-    if session.get("role") not in ["secretary", "treasurer", "admin", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    # ❌ Members CANNOT see any member's interest, including their own
+    if not _is_ks_staff():
+        return _deny_ks_json()
 
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
@@ -7452,7 +7511,6 @@ def secretary_member_interest(user_id):
 
         user = row_to_dict(user_row)
 
-        # All monthly allocations
         alloc_rows = db.execute(f"""
             SELECT a.*, r.total_interest_earned, r.distributable_amount
             FROM ks_interest_allocations a
@@ -7462,10 +7520,8 @@ def secretary_member_interest(user_id):
         """, (user_id,)).fetchall()
 
         allocations = [row_to_dict(a) for a in alloc_rows]
-
         total_interest = sum((a.get('interest_share') or 0) for a in allocations)
 
-        # Fetch ks_share_price from settings
         settings_row = db.execute("SELECT ks_share_price FROM system_settings LIMIT 1").fetchone()
         ks_price = row_to_dict(settings_row).get('ks_share_price', 10000) if settings_row else 10000
 
@@ -7490,8 +7546,7 @@ def secretary_member_interest(user_id):
             db.close()
         except Exception:
             pass
-
-
+            
 # ============================================================
 # PUBLICITY ROUTES
 # ============================================================
