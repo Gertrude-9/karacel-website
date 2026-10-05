@@ -3477,7 +3477,11 @@ def treasurer_view_loan(loan_id):
 
 
 # ============================================================
-# TREASURER - APPROVE / REJECT LOAN (deducts savings on approval)
+# TREASURER - APPROVE / REJECT LOAN
+# ------------------------------------------------------------
+# Approve → marks as 'approved' ONLY. No money moves.
+# Reject  → marks as 'rejected'. No money moves.
+# Money leaves savings ONLY on disburse (admin/chairperson).
 # ============================================================
 @app.route("/treasurer/loan/action/<int:loan_id>", methods=["POST"])
 def treasurer_approve_loan(loan_id):
@@ -3502,10 +3506,9 @@ def treasurer_approve_loan(loan_id):
     db = get_db()
     PH = "%s" if DATABASE_URL else "?"
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    today   = datetime.now().strftime('%Y-%m-%d')
 
     try:
-        # ---- Load loan + applicant + current savings ----
+        # ---- Load loan + applicant ----
         loan_row = db.execute(f"""
             SELECT
                 l.*,
@@ -3572,7 +3575,8 @@ def treasurer_approve_loan(loan_id):
             })
 
         # ============================================================
-        # APPROVE LOAN — DEDUCT SAVINGS HERE
+        # APPROVE LOAN — marks 'approved' ONLY.
+        # NO money moves at this step. Chairman/Admin disburses later.
         # ============================================================
         if loan['status'] != 'pending':
             return jsonify({
@@ -3583,7 +3587,7 @@ def treasurer_approve_loan(loan_id):
         loan_principal  = float(loan['amount'] or 0)
         current_savings = float(loan['current_savings'] or 0)
 
-        # 10% savings requirement (existing rule)
+        # 10% savings requirement — sanity check before approving
         required = loan_principal * 0.10
         if current_savings < required:
             return jsonify({
@@ -3594,84 +3598,34 @@ def treasurer_approve_loan(loan_id):
                 )
             }), 400
 
-        # ============================================================
-        # The SACCO model: the loan PRINCIPAL is deducted from savings.
-        # Interest is charged on the balance and repaid separately.
-        # If savings < principal → member goes into a saving debt.
-        # ============================================================
-        new_savings = current_savings - loan_principal
-
-        end_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        balance  = float(loan['total_repayment'] or loan['amount'] or 0)
-
-        db.execute("BEGIN TRANSACTION")
-
-        # 1) DEDUCT principal from member's savings
-        db.execute(f"""
-            UPDATE users
-            SET savings_balance = COALESCE(savings_balance, 0) - {PH}
-            WHERE id = {PH}
-        """, (loan_principal, loan['applicant_id']))
-
-        # 2) Audit trail — negative savings_deposits row
-        try:
-            db.execute(f"""
-                INSERT INTO savings_deposits
-                    (user_id, amount, savings_type, deposit_date,
-                     payment_method, receipt_number, notes)
-                VALUES ({PH}, {PH}, 'LOAN_DISBURSEMENT', {PH}, 'internal', {PH}, {PH})
-            """, (
-                loan['applicant_id'],
-                -loan_principal,
-                today,
-                f"DISB-{loan['loan_number']}",
-                f"Loan {loan['loan_number']} approved & disbursed — deducted from savings"
-            ))
-        except Exception as e:
-            print(f"⚠️ Could not log disbursement to savings_deposits: {e}")
-
-        # 3) Flip the loan to approved + disbursed in one shot
         db.execute(f"""
             UPDATE loans
             SET
-                status = 'disbursed',
+                status = 'approved',
                 approved_date = {PH},
-                disbursed_date = {PH},
-                disbursement_date = {PH},
-                disbursed_amount = {PH},
-                loan_start_date = {PH},
-                loan_end_date = {PH},
-                due_date = {PH},
-                current_balance = {PH},
                 approved_by = {PH},
-                approved_by_role = {PH},
-                disbursed_by = {PH},
-                disbursed_by_role = {PH}
+                approved_by_role = {PH}
             WHERE id = {PH}
         """, (
-            today, today, today, loan_principal,
-            today, end_date, end_date,
-            balance,
-            session.get('full_name', 'Treasurer'),
-            session.get('role', 'treasurer'),
+            now_str,
             session.get('full_name', 'Treasurer'),
             session.get('role', 'treasurer'),
             loan_id
         ))
 
-        # 4) Notify the member
+        # Notify member that Treasurer approved, awaiting Chairman
         try:
             db.execute(f"""
                 INSERT INTO notifications
                     (user_id, title, message, notification_type, is_read, created_at)
-                VALUES ({PH}, {PH}, {PH}, 'loan_disbursed', 0, {PH})
+                VALUES ({PH}, {PH}, {PH}, 'loan_approved', 0, {PH})
             """, (
                 loan['applicant_id'],
-                'Loan Approved & Disbursed',
+                'Loan Approved — Awaiting Chairman',
                 (
-                    f"Your loan {loan['loan_number']} has been approved and disbursed. "
-                    f"UGX {loan_principal:,.0f} was deducted from your savings. "
-                    f"Please repay by {end_date}."
+                    f"Your loan {loan['loan_number']} has been approved by the Treasurer. "
+                    f"Final approval from the Chairman/Admin is pending. "
+                    f"You will be notified once funds are disbursed."
                 ),
                 now_str
             ))
@@ -3682,12 +3636,11 @@ def treasurer_approve_loan(loan_id):
 
         try:
             log_action(
-                action="loan_approve",
+                action="loan_treasurer_approve",
                 target=f"loan:{loan_id}",
                 details=(
-                    f"Approved & disbursed loan {loan['loan_number']} for {loan['full_name']}. "
-                    f"Deducted UGX {loan_principal:,.0f} from savings. "
-                    f"New savings: UGX {new_savings:,.0f}."
+                    f"Treasurer approved loan {loan['loan_number']} for {loan['full_name']}. "
+                    f"Awaiting admin/chairperson disbursement."
                 )
             )
         except Exception:
@@ -3696,12 +3649,9 @@ def treasurer_approve_loan(loan_id):
         return jsonify({
             'success': True,
             'message': (
-                f"Loan approved & disbursed. "
-                f"UGX {loan_principal:,.0f} deducted from savings. "
-                f"New savings: UGX {new_savings:,.0f}."
-            ),
-            'deducted': loan_principal,
-            'new_savings': new_savings
+                f"Loan approved. It is now pending final approval by the "
+                f"Chairman/Admin before disbursement."
+            )
         })
 
     except Exception as e:
@@ -3719,8 +3669,12 @@ def treasurer_approve_loan(loan_id):
         except Exception:
             pass
 
+
 # ============================================================
-# TREASURER - DISBURSE LOAN (deducts from member's savings)
+# ADMIN / CHAIRPERSON - DISBURSE LOAN (deducts from savings)
+# ------------------------------------------------------------
+# This is the ONLY place where money leaves member's savings.
+# Role check: admin or chairperson only.
 # ============================================================
 @app.route("/treasurer/loan/disburse/<int:loan_id>", methods=["POST"])
 def treasurer_disburse_loan(loan_id):
@@ -3729,8 +3683,12 @@ def treasurer_disburse_loan(loan_id):
     if "user_id" not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
 
-    if session.get("role") not in ["treasurer", "admin", "secretary", "chairperson"]:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    # Only admin or chairperson may disburse — this is the final approval
+    if session.get("role") not in ["admin", "chairperson"]:
+        return jsonify({
+            'success': False,
+            'message': 'Only the Chairman or Admin can disburse a loan'
+        }), 403
 
     db = get_db()
     db.row_factory = sqlite3.Row
@@ -3757,8 +3715,6 @@ def treasurer_disburse_loan(loan_id):
             }), 400
 
         # ----- Determine loan amount to deduct -----
-        # We deduct the PRINCIPAL (loan['amount']) from savings.
-        # (total_repayment includes interest — interest is NOT taken from savings.)
         loan_principal = float(loan['amount'] or 0)
         member_savings = float(loan['member_savings'] or 0)
 
@@ -3766,7 +3722,6 @@ def treasurer_disburse_loan(loan_id):
             db.close()
             return jsonify({'success': False, 'message': 'Loan amount is invalid'}), 400
 
-        # ----- Check sufficient savings -----
         if member_savings < loan_principal:
             db.close()
             return jsonify({
@@ -3787,7 +3742,7 @@ def treasurer_disburse_loan(loan_id):
         db.execute("BEGIN TRANSACTION")
 
         # ============================================================
-        # 1) DEDUCT from member's savings (money leaves the pool)
+        # 1) DEDUCT from member's savings
         # ============================================================
         db.execute("""
             UPDATE users
@@ -3796,8 +3751,7 @@ def treasurer_disburse_loan(loan_id):
         """, (loan_principal, loan['member_id']))
 
         # ============================================================
-        # 2) Log the outflow as a savings transaction for audit trail
-        #    (Negative amount = money leaving savings)
+        # 2) Audit trail — negative savings_deposits row
         # ============================================================
         try:
             db.execute("""
@@ -3813,8 +3767,6 @@ def treasurer_disburse_loan(loan_id):
                 f"Loan {loan['loan_number']} disbursed — deducted from savings"
             ))
         except Exception as e:
-            # If LOAN_DISBURSEMENT isn't a recognised savings_type,
-            # skip the log but keep the deduction above
             print(f"⚠️ Could not log disbursement to savings_deposits: {e}")
 
         # ============================================================
@@ -3835,13 +3787,48 @@ def treasurer_disburse_loan(loan_id):
         """, (
             today, today, today, end_date, end_date,
             balance,
-            session.get('full_name', 'Treasurer'),
-            session.get('role', 'treasurer'),
+            session.get('full_name', 'Chairman'),
+            session.get('role', 'admin'),
             loan_id
         ))
 
+        # ============================================================
+        # 4) Notify the member
+        # ============================================================
+        try:
+            now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            db.execute("""
+                INSERT INTO notifications
+                    (user_id, title, message, notification_type, is_read, created_at)
+                VALUES (?, ?, ?, 'loan_disbursed', 0, ?)
+            """, (
+                loan['member_id'],
+                'Loan Disbursed',
+                (
+                    f"Your loan {loan['loan_number']} has been disbursed. "
+                    f"UGX {loan_principal:,.0f} has been deducted from your savings. "
+                    f"Please repay by {end_date}."
+                ),
+                now_str
+            ))
+        except Exception as e:
+            print(f"⚠️ Notification insert failed: {e}")
+
         db.commit()
         db.close()
+
+        try:
+            log_action(
+                action="loan_disburse",
+                target=f"loan:{loan_id}",
+                details=(
+                    f"Disbursed loan {loan['loan_number']} for {loan['member_name']}. "
+                    f"Deducted UGX {loan_principal:,.0f} from savings. "
+                    f"New savings: UGX {new_savings:,.0f}."
+                )
+            )
+        except Exception:
+            pass
 
         return jsonify({
             'success': True,
@@ -3860,7 +3847,7 @@ def treasurer_disburse_loan(loan_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+        
 # ============================================================
 # TREASURER - ENTER REPAYMENT
 # GET  → redirect to dashboard (the repayments panel is inside it)
