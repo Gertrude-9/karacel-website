@@ -7468,7 +7468,9 @@ def secretary_ks_interest():
         except Exception:
             pass
 
-        # ---- All recorded months ----
+        # ============================================================
+        # ALL RECORDED MONTHS
+        # ============================================================
         records_rows = conn.execute("""
             SELECT r.*,
                    u.full_name AS entered_by_name
@@ -7478,19 +7480,25 @@ def secretary_ks_interest():
         """).fetchall()
         records = [row_to_dict(r) for r in records_rows]
 
-        # ---- Totals ----
+        # ============================================================
+        # TOTALS
+        # ============================================================
         total_contingency  = sum((r.get('contingency_amount') or 0) for r in records)
         total_distributed  = sum((r.get('distributable_amount') or 0) for r in records)
         total_interest_all = sum((r.get('total_interest_earned') or 0) for r in records)
 
-        # ---- Settings ----
+        # ============================================================
+        # SETTINGS
+        # ============================================================
         current_year = datetime.now().year
         settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         settings_dict = row_to_dict(settings_row) if settings_row else {}
         ks_share_price   = settings_dict.get('ks_share_price') or 10000
         contingency_rate = settings_dict.get('contingency_rate') or 10
 
-        # ---- Members with KS savings ----
+        # ============================================================
+        # MEMBERS WITH KS SAVINGS
+        # ============================================================
         members_rows = conn.execute("""
             SELECT u.id, u.full_name, u.sacco_number, u.ks_shares, u.role
             FROM users u
@@ -7575,6 +7583,22 @@ def secretary_ks_interest():
         year_total_contingency   = sum(mb['contingency'] for mb in monthly_breakdown)
         year_total_distributable = sum(mb['distributable'] for mb in monthly_breakdown)
 
+        # ============================================================
+        # YEAR-OVER-YEAR SUMMARY (optional)
+        # ============================================================
+        # Total per year across all recorded months
+        year_summary_rows = conn.execute("""
+            SELECT year,
+                   COALESCE(SUM(total_interest_earned), 0)  AS total_interest,
+                   COALESCE(SUM(contingency_amount), 0)     AS total_contingency,
+                   COALESCE(SUM(distributable_amount), 0)   AS total_distributable,
+                   COUNT(*)                                 AS months_recorded
+            FROM ks_interest_records
+            GROUP BY year
+            ORDER BY year DESC
+        """).fetchall()
+        year_summary = [row_to_dict(r) for r in year_summary_rows]
+
         current_month      = datetime.now().month
         current_year_label = f"{current_year}"
 
@@ -7596,6 +7620,7 @@ def secretary_ks_interest():
             year_total_interest=year_total_interest,
             year_total_contingency=year_total_contingency,
             year_total_distributable=year_total_distributable,
+            year_summary=year_summary,
             now=datetime.now()
         )
     except Exception as e:
@@ -7608,7 +7633,6 @@ def secretary_ks_interest():
             conn.close()
         except Exception:
             pass
-
 
 # ------------------------------------------------------------
 # KS INTEREST — MANUAL CATCH-UP (staff-triggered)
