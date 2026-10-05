@@ -4082,7 +4082,7 @@ def treasurer_enter_repayment():
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard') + '#repayments')
-        
+
 ## ============================================================
 # TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT) - INCLUDES STAFF
 # ============================================================
@@ -7175,10 +7175,9 @@ def secretary_dashboard():
             pass
 
 # ============================================================
-# SECRETARY — KS INTEREST & CONTINGENCY FUND
+# KS INTEREST & CONTINGENCY FUND
 # ============================================================
 
-# Roles allowed to view / manage KS interest
 KS_INTEREST_ROLES = {"secretary", "treasurer", "admin", "chairperson"}
 
 
@@ -7196,28 +7195,6 @@ def _deny_ks_page():
 
 def _deny_ks_json():
     """JSON 403 for unauthorized API access."""
-    return jsonify({'success': False, 'message': 'Access denied'}), 403
-
-
-# ============================================================
-# KS INTEREST — AUTO CALCULATION
-# ============================================================
-
-KS_INTEREST_ROLES = {"secretary", "treasurer", "admin", "chairperson"}
-
-
-def _is_ks_staff():
-    """True if current session may access KS Interest data."""
-    role = (session.get("role") or "").strip().lower()
-    return role in KS_INTEREST_ROLES
-
-
-def _deny_ks_page():
-    flash('Access denied. KS Interest is restricted to SACCO staff only.', 'danger')
-    return redirect("/login")
-
-
-def _deny_ks_json():
     return jsonify({'success': False, 'message': 'Access denied'}), 403
 
 
@@ -7394,7 +7371,10 @@ def auto_record_ks_interest(target_year=None, target_month=None):
         }
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return {'success': False, 'message': str(e)}
@@ -7413,13 +7393,16 @@ def auto_record_all_pending_ks_months():
     """
     from datetime import datetime as _dt, timedelta
 
+    # Read earliest repayment (own connection, then close)
     db = get_db()
     try:
-        # Earliest repayment date
         earliest = fetchval(db, """
             SELECT MIN(payment_date) FROM repayments
             WHERE status = 'completed' AND interest_paid > 0
         """)
+    except Exception as e:
+        print(f"⚠️ Could not fetch earliest repayment: {e}")
+        earliest = None
     finally:
         try:
             db.close()
@@ -7429,13 +7412,12 @@ def auto_record_all_pending_ks_months():
     if not earliest:
         return []
 
-    # Parse 'YYYY-MM-DD...' or 'YYYY-MM-DD HH:MM:SS'
     try:
         earliest_dt = _dt.strptime(str(earliest)[:10], '%Y-%m-%d')
     except Exception:
         return []
 
-    # Last month (start of the current month, minus one day = last day of prev month)
+    # Last month = (first day of current month) - 1 day
     now = _dt.now()
     last_month_end = now.replace(day=1) - timedelta(days=1)
 
@@ -7443,9 +7425,12 @@ def auto_record_all_pending_ks_months():
     cursor_dt = earliest_dt.replace(day=1)
 
     while cursor_dt <= last_month_end:
-        r = auto_record_ks_interest(cursor_dt.year, cursor_dt.month)
-        if r and not r.get('skipped'):
-            results.append(r)
+        try:
+            r = auto_record_ks_interest(cursor_dt.year, cursor_dt.month)
+            if r and not r.get('skipped'):
+                results.append(r)
+        except Exception as e:
+            print(f"⚠️ Error recording {cursor_dt.year}-{cursor_dt.month:02d}: {e}")
 
         # Advance to next month
         if cursor_dt.month == 12:
@@ -7540,6 +7525,56 @@ def secretary_ks_interest():
         total_ks_savings_all       = sum(m['ks_savings'] for m in members)
         total_interest_all_members = sum(m['total_interest'] for m in members)
 
+        # ============================================================
+        # MONTHLY BREAKDOWN — for the year-in-review card
+        # ============================================================
+        month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        year_records = conn.execute(f"""
+            SELECT month, total_interest_earned,
+                   contingency_amount, distributable_amount
+            FROM ks_interest_records
+            WHERE year = {('%s' if DATABASE_URL else '?')}
+            ORDER BY month ASC
+        """, (current_year,)).fetchall()
+
+        year_map = {}
+        for r in year_records:
+            d = row_to_dict(r)
+            year_map[int(d['month'])] = d
+
+        monthly_breakdown = []
+        running_total = 0
+        for m in range(1, 13):
+            entry = year_map.get(m)
+            if entry:
+                amt = entry['total_interest_earned'] or 0
+                running_total += amt
+                monthly_breakdown.append({
+                    'month': m,
+                    'month_name': month_names[m],
+                    'interest': amt,
+                    'contingency': entry['contingency_amount'] or 0,
+                    'distributable': entry['distributable_amount'] or 0,
+                    'cumulative': running_total,
+                    'recorded': True
+                })
+            else:
+                monthly_breakdown.append({
+                    'month': m,
+                    'month_name': month_names[m],
+                    'interest': 0,
+                    'contingency': 0,
+                    'distributable': 0,
+                    'cumulative': running_total,
+                    'recorded': False
+                })
+
+        year_total_interest      = running_total
+        year_total_contingency   = sum(mb['contingency'] for mb in monthly_breakdown)
+        year_total_distributable = sum(mb['distributable'] for mb in monthly_breakdown)
+
         current_month      = datetime.now().month
         current_year_label = f"{current_year}"
 
@@ -7557,6 +7592,10 @@ def secretary_ks_interest():
             current_year=current_year,
             current_month=current_month,
             current_year_label=current_year_label,
+            monthly_breakdown=monthly_breakdown,
+            year_total_interest=year_total_interest,
+            year_total_contingency=year_total_contingency,
+            year_total_distributable=year_total_distributable,
             now=datetime.now()
         )
     except Exception as e:
@@ -7572,29 +7611,41 @@ def secretary_ks_interest():
 
 
 # ------------------------------------------------------------
-# KS INTEREST — MANUAL CATCH-UP (staff-triggered, still needed for safety)
+# KS INTEREST — MANUAL CATCH-UP (staff-triggered)
 # ------------------------------------------------------------
 @app.route("/secretary/ks-interest/auto-run", methods=["POST"])
 def secretary_ks_interest_auto_run():
     if not _is_ks_staff():
         return _deny_ks_json()
 
-    data = request.get_json() or {}
+    # Defensive: even malformed JSON should not crash
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        data = {}
+
     year  = data.get('year')
     month = data.get('month')
 
-    if year and month:
-        result = auto_record_ks_interest(int(year), int(month))
-    else:
-        # Run catch-up across all pending months
-        results = auto_record_all_pending_ks_months()
-        result = {
-            'success': True,
-            'message': f'Processed {len(results)} month(s).',
-            'results': results
-        }
-
-    return jsonify(result)
+    try:
+        if year and month:
+            result = auto_record_ks_interest(int(year), int(month))
+        else:
+            results = auto_record_all_pending_ks_months()
+            result = {
+                'success': True,
+                'message': f'Processed {len(results)} month(s).',
+                'results': results
+            }
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # ALWAYS return JSON — never let Flask produce an HTML error page
+        return jsonify({
+            'success': False,
+            'message': f'Server error: {str(e)}'
+        }), 500
 
 
 # ------------------------------------------------------------
@@ -7634,12 +7685,14 @@ def secretary_delete_ks_interest(record_id):
         db.commit()
         return jsonify({
             'success': True,
-            'message': 'Interest record deleted and allocations reversed. '
-                       'It will be re-computed automatically next time the page loads.'
+            'message': 'Interest record deleted. It will be re-computed automatically.'
         })
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
