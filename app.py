@@ -957,7 +957,7 @@ def generate_loan_reference():
 
 
 def get_interest_rate(amount):
-    if 10000 <= amount <= 1999999:
+    if 10000 <= amount <= 999999:
         return 5
     elif 2000000 <= amount <= 4999999:
         return 3
