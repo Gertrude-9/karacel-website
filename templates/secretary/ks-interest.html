@@ -73,10 +73,6 @@
         background: rgba(255,107,107,0.15); color: #ff6b6b;
         border: 1px solid rgba(255,107,107,0.2);
     }
-    .ksi-btn-ghost {
-        background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7);
-        border: 1px solid rgba(255,255,255,0.08);
-    }
 
     .ksi-table-wrap { overflow-x: auto; border-radius: 10px; }
     .ksi-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
@@ -136,28 +132,79 @@
         margin-bottom: 3px;
     }
 
-    /* ===== YEAR SUMMARY CARDS ===== */
-    .ksi-year-summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
+    /* ===== LIVE MONTH CARD ===== */
+    .ksi-live-card {
+        background: linear-gradient(135deg, rgba(0,224,255,0.08), rgba(0,224,255,0.02));
+        border: 1px solid rgba(0,224,255,0.25);
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .ksi-live-card::before {
+        content: "";
+        position: absolute;
+        top: -60px; right: -60px;
+        width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(0,224,255,0.15), transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .ksi-live-head {
+        display: flex; align-items: center; gap: 12px;
         margin-bottom: 20px;
     }
-    .ksi-year-box {
-        border-radius: 12px;
-        padding: 16px 18px;
-        border: 1px solid;
+    .ksi-live-pulse {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 0 0 rgba(74,222,128,0.7);
+        animation: ksi-pulse 1.8s infinite;
     }
-    .ksi-year-box .label {
+    @keyframes ksi-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.7); }
+        70%  { box-shadow: 0 0 0 12px rgba(74,222,128,0); }
+        100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+    }
+    .ksi-live-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.25rem;
+        color: #00e0ff;
+        margin: 0;
+    }
+    .ksi-live-sub {
+        margin-left: auto;
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.45);
+        text-align: right;
+        line-height: 1.5;
+    }
+    .ksi-live-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+    }
+    .ksi-live-box {
+        background: rgba(0,0,0,0.2);
+        border-radius: 10px;
+        padding: 16px 18px;
+        border: 1px solid rgba(255,255,255,0.04);
+    }
+    .ksi-live-box .box-label {
         font-size: 0.68rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 6px;
     }
-    .ksi-year-box .value {
-        font-size: 1.4rem;
+    .ksi-live-box .box-value {
+        font-size: 1.5rem;
         font-weight: 700;
         line-height: 1.2;
+    }
+    .ksi-live-box .box-meta {
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.4);
+        margin-top: 4px;
     }
 </style>
 
@@ -168,18 +215,18 @@
 {% set _total_contingency      = (total_contingency      if total_contingency      is not none else 0)    %}
 {% set _total_distributed      = (total_distributed      if total_distributed      is not none else 0)    %}
 {% set _total_ks_savings_all   = (total_ks_savings_all   if total_ks_savings_all   is not none else 0)    %}
+{% set _total_ks_shares_all    = (total_ks_shares_all    if total_ks_shares_all    is not none else 0)    %}
 {% set _total_interest_members = (total_interest_all_members if total_interest_all_members is not none else 0) %}
 {% set _current_year           = (current_year           if current_year           is not none else 2026) %}
 {% set _current_month          = (current_month          if current_month          is not none else 1)    %}
-{% set _year_total_interest    = (year_total_interest    if year_total_interest    is not none else 0)    %}
-{% set _year_total_contingency = (year_total_contingency if year_total_contingency is not none else 0)    %}
-{% set _year_total_distributed = (year_total_distributable if year_total_distributable is not none else 0) %}
+{% set _live_interest          = (live_interest          if live_interest          is not none else 0)    %}
+{% set _live_contingency       = (live_contingency       if live_contingency       is not none else 0)    %}
+{% set _live_distributable     = (live_distributable     if live_distributable     is not none else 0)    %}
+{% set _live_payment_count     = (live_payment_count     if live_payment_count     is not none else 0)    %}
 
 <div class="ksi-page">
 
-    <!-- ============================================================ -->
-    <!-- HEADER                                                       -->
-    <!-- ============================================================ -->
+    <!-- HEADER -->
     <div class="ksi-header">
         <div class="ksi-header-icon"><i class="fas fa-chart-pie"></i></div>
         <div class="ksi-header-text">
@@ -193,9 +240,7 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- STATS                                                        -->
-    <!-- ============================================================ -->
+    <!-- STATS -->
     <div class="ksi-stats">
         <div class="ksi-stat">
             <div class="ksi-stat-icon" style="color:#4ade80;"><i class="fas fa-coins"></i></div>
@@ -208,7 +253,7 @@
             <div class="ksi-stat-icon" style="color:#f5c542;"><i class="fas fa-shield-alt"></i></div>
             <div class="ksi-stat-body">
                 <h3>UGX {{ "{:,.0f}".format(_total_contingency) }}</h3>
-                <p>Contingency Fund ({{ "{:.0f}".format(_contingency_rate) }}%)</p>
+                <p>Contingency Fund</p>
             </div>
         </div>
         <div class="ksi-stat">
@@ -225,11 +270,69 @@
                 <p>Total KS Savings</p>
             </div>
         </div>
+        <div class="ksi-stat">
+            <div class="ksi-stat-icon" style="color:#4ade80;"><i class="fas fa-layer-group"></i></div>
+            <div class="ksi-stat-body">
+                <h3>{{ "{:,}".format(_total_ks_shares_all) }}</h3>
+                <p>Total KS Shares</p>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================ -->
-    <!-- INFO CARD                                                    -->
+    <!-- LIVE CURRENT-MONTH CARD                                      -->
     <!-- ============================================================ -->
+    <div class="ksi-live-card">
+        <div class="ksi-live-head">
+            <div class="ksi-live-pulse"></div>
+            <h3 class="ksi-live-title">Live Interest — {{ month_label }}</h3>
+            <div class="ksi-live-sub">
+                <div>Accumulating in real time</div>
+                <div style="margin-top:2px;">
+                    {% if days_left_in_month > 0 %}
+                        Ends in {{ days_left_in_month }} day{{ 's' if days_left_in_month != 1 else '' }}
+                    {% else %}
+                        Month ends today
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="ksi-live-grid">
+            <div class="ksi-live-box">
+                <div class="box-label" style="color:rgba(74,222,128,0.7);">Interest This Month</div>
+                <div class="box-value" style="color:#4ade80;">
+                    UGX {{ "{:,.0f}".format(_live_interest) }}
+                </div>
+                <div class="box-meta">
+                    from {{ _live_payment_count }} payment{{ 's' if _live_payment_count != 1 else '' }}
+                </div>
+            </div>
+            <div class="ksi-live-box">
+                <div class="box-label" style="color:rgba(245,197,66,0.7);">Contingency ({{ "{:.0f}".format(_contingency_rate) }}%)</div>
+                <div class="box-value" style="color:#f5c542;">
+                    UGX {{ "{:,.0f}".format(_live_contingency) }}
+                </div>
+                <div class="box-meta">to be retained</div>
+            </div>
+            <div class="ksi-live-box">
+                <div class="box-label" style="color:rgba(0,224,255,0.7);">Distributable to KS Savers</div>
+                <div class="box-value" style="color:#00e0ff;">
+                    UGX {{ "{:,.0f}".format(_live_distributable) }}
+                </div>
+                <div class="box-meta">will be shared at month-end</div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(0,224,255,0.15);
+                    font-size:0.75rem; color:rgba(255,255,255,0.5); line-height:1.6;">
+            <i class="fas fa-info-circle" style="color:#00e0ff;"></i>
+            This counter updates as loan repayments come in. At the end of the month, it is
+            automatically recorded and distributed — then a fresh counter starts for the new month.
+        </div>
+    </div>
+
+    <!-- INFO CARD -->
     <div class="ksi-info-card">
         <div class="info-icon"><i class="fas fa-robot"></i></div>
         <div class="info-body">
@@ -243,120 +346,10 @@
                 <li><strong style="color:#00e0ff;">90%</strong> → Distributed to all KS savers</li>
                 <li>Per-member share: <em>(member KS × distributable) ÷ total KS pool</em></li>
             </ul>
-            <p style="margin:10px 0 0; font-size:0.78rem; color:rgba(255,255,255,0.5);">
-                No manual entry required. Any month that has ended but not yet been
-                recorded will be computed the next time someone opens this page or
-                records a loan repayment.
-            </p>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- MONTHLY + ACCUMULATED INTEREST CARD                          -->
-    <!-- ============================================================ -->
-    <div class="ksi-card">
-        <div class="ksi-card-head">
-            <i class="fas fa-calendar-alt"></i>
-            <h3>Interest Breakdown — {{ _current_year }}</h3>
-            <span class="meta">Monthly + running yearly total</span>
-        </div>
-
-        <!-- Year total summary boxes -->
-        <div class="ksi-year-summary">
-            <div class="ksi-year-box" style="background:rgba(74,222,128,0.06); border-color:rgba(74,222,128,0.15);">
-                <div class="label" style="color:rgba(74,222,128,0.7);">Year Total Interest</div>
-                <div class="value" style="color:#4ade80;">
-                    UGX {{ "{:,.0f}".format(_year_total_interest) }}
-                </div>
-            </div>
-            <div class="ksi-year-box" style="background:rgba(245,197,66,0.06); border-color:rgba(245,197,66,0.15);">
-                <div class="label" style="color:rgba(245,197,66,0.7);">Year Contingency</div>
-                <div class="value" style="color:#f5c542;">
-                    UGX {{ "{:,.0f}".format(_year_total_contingency) }}
-                </div>
-            </div>
-            <div class="ksi-year-box" style="background:rgba(0,224,255,0.06); border-color:rgba(0,224,255,0.15);">
-                <div class="label" style="color:rgba(0,224,255,0.7);">Year Distributed to Members</div>
-                <div class="value" style="color:#00e0ff;">
-                    UGX {{ "{:,.0f}".format(_year_total_distributed) }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Monthly breakdown table -->
-        <div class="ksi-table-wrap">
-            <table class="ksi-table">
-                <thead>
-                    <tr>
-                        <th style="width:90px;">Month</th>
-                        <th style="text-align:right;">Monthly Interest</th>
-                        <th style="text-align:right;">Contingency ({{ "{:.0f}".format(_contingency_rate) }}%)</th>
-                        <th style="text-align:right;">Distributable</th>
-                        <th style="text-align:right;">Cumulative Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for mb in monthly_breakdown %}
-                    <tr style="{% if not mb.recorded %}opacity:0.45;{% endif %}">
-                        <td>
-                            <strong style="color:{% if mb.recorded %}#00e0ff{% else %}rgba(255,255,255,0.4){% endif %};
-                                           font-family:monospace;">
-                                {{ mb.month_name }}
-                            </strong>
-                        </td>
-                        <td style="text-align:right; color:{% if mb.interest > 0 %}#4ade80{% else %}rgba(255,255,255,0.3){% endif %};
-                                   font-weight:{% if mb.interest > 0 %}600{% else %}400{% endif %};">
-                            {% if mb.recorded %}
-                                {{ "{:,.0f}".format(mb.interest) }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td style="text-align:right; color:{% if mb.contingency > 0 %}#f5c542{% else %}rgba(255,255,255,0.3){% endif %};">
-                            {% if mb.recorded %}
-                                {{ "{:,.0f}".format(mb.contingency) }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td style="text-align:right; color:{% if mb.distributable > 0 %}#00e0ff{% else %}rgba(255,255,255,0.3){% endif %};">
-                            {% if mb.recorded %}
-                                {{ "{:,.0f}".format(mb.distributable) }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td style="text-align:right; color:{% if mb.cumulative > 0 %}#c084fc{% else %}rgba(255,255,255,0.3){% endif %};
-                                   font-weight:{% if mb.cumulative > 0 %}700{% else %}400{% endif %};">
-                            {{ "{:,.0f}".format(mb.cumulative) }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr style="background:rgba(0,224,255,0.05); font-weight:700; border-top:2px solid rgba(0,224,255,0.15);">
-                        <td style="padding:14px;">YEAR TOTAL</td>
-                        <td style="text-align:right; color:#4ade80; padding:14px;">
-                            {{ "{:,.0f}".format(_year_total_interest) }}
-                        </td>
-                        <td style="text-align:right; color:#f5c542; padding:14px;">
-                            {{ "{:,.0f}".format(_year_total_contingency) }}
-                        </td>
-                        <td style="text-align:right; color:#00e0ff; padding:14px;">
-                            {{ "{:,.0f}".format(_year_total_distributed) }}
-                        </td>
-                        <td style="text-align:right; color:#c084fc; padding:14px;">
-                            {{ "{:,.0f}".format(_year_total_interest) }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- MONTHLY RECORDS                                              -->
-    <!-- ============================================================ -->
+    <!-- MONTHLY RECORDS -->
     <div class="ksi-card">
         <div class="ksi-card-head">
             <i class="fas fa-history"></i>
@@ -443,9 +436,7 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- MEMBER TOTALS                                                -->
-    <!-- ============================================================ -->
+    <!-- MEMBER TOTALS -->
     <div class="ksi-card">
         <div class="ksi-card-head">
             <i class="fas fa-users"></i>
@@ -494,7 +485,10 @@
                 </tbody>
                 <tfoot>
                     <tr style="background:rgba(0,224,255,0.05); font-weight:700;">
-                        <td colspan="4" style="text-align:right; padding:12px 14px;">TOTALS</td>
+                        <td colspan="3" style="text-align:right; padding:12px 14px;">TOTALS</td>
+                        <td style="text-align:right; color:#c084fc;">
+                            {{ "{:,}".format(_total_ks_shares_all) }}
+                        </td>
                         <td style="text-align:right; color:#00e0ff;">
                             {{ "{:,.0f}".format(_total_ks_savings_all) }}
                         </td>
@@ -507,62 +501,12 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- PREVIOUS YEARS SUMMARY                                       -->
-    <!-- ============================================================ -->
-    {% if year_summary and year_summary|length > 0 %}
-    <div class="ksi-card">
-        <div class="ksi-card-head">
-            <i class="fas fa-calendar-check"></i>
-            <h3>Year-by-Year Summary</h3>
-            <span class="meta">All recorded years</span>
-        </div>
-
-        <div class="ksi-table-wrap">
-            <table class="ksi-table">
-                <thead>
-                    <tr>
-                        <th>Year</th>
-                        <th style="text-align:center;">Months Recorded</th>
-                        <th style="text-align:right;">Total Interest</th>
-                        <th style="text-align:right;">Contingency</th>
-                        <th style="text-align:right;">Distributed</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for y in year_summary %}
-                    <tr>
-                        <td>
-                            <strong style="color:#00e0ff; font-family:monospace;">
-                                {{ y.year }}
-                            </strong>
-                        </td>
-                        <td style="text-align:center;">
-                            <span class="ksi-badge ksi-badge-info">{{ y.months_recorded }}</span>
-                        </td>
-                        <td style="text-align:right; color:#4ade80; font-weight:600;">
-                            {{ "{:,.0f}".format(y.total_interest or 0) }}
-                        </td>
-                        <td style="text-align:right; color:#f5c542; font-weight:600;">
-                            {{ "{:,.0f}".format(y.total_contingency or 0) }}
-                        </td>
-                        <td style="text-align:right; color:#00e0ff; font-weight:600;">
-                            {{ "{:,.0f}".format(y.total_distributable or 0) }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
 </div>
 
 
 <script>
 // ============================================================
-// RUN CATCH-UP — defensive against HTML responses
+// RUN CATCH-UP — defensive
 // ============================================================
 async function runCatchUp() {
     if (!confirm(
@@ -587,14 +531,11 @@ async function runCatchUp() {
         });
 
         const text = await res.text();
-
-        // Try to parse as JSON
         let data;
         try {
             data = JSON.parse(text);
         } catch (parseErr) {
             console.error('[Catch-Up] Non-JSON response:', res.status, text.slice(0, 400));
-
             if (res.status === 401 || res.status === 403) {
                 throw new Error('You must be logged in as staff to run this.');
             }

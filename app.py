@@ -7444,6 +7444,9 @@ def auto_record_all_pending_ks_months():
 # ------------------------------------------------------------
 # KS INTEREST PAGE
 # ------------------------------------------------------------
+# ------------------------------------------------------------
+# KS INTEREST PAGE
+# ------------------------------------------------------------
 @app.route("/secretary/ks-interest")
 def secretary_ks_interest():
     if not _is_ks_staff():
@@ -7460,6 +7463,8 @@ def secretary_ks_interest():
         target="secretary_ks_interest",
         details=f"Accessed by {session.get('role', 'unknown')}"
     )
+
+    from datetime import datetime as _dt
 
     conn = get_db()
     try:
@@ -7481,7 +7486,7 @@ def secretary_ks_interest():
         records = [row_to_dict(r) for r in records_rows]
 
         # ============================================================
-        # TOTALS
+        # TOTALS (all-time)
         # ============================================================
         total_contingency  = sum((r.get('contingency_amount') or 0) for r in records)
         total_distributed  = sum((r.get('distributable_amount') or 0) for r in records)
@@ -7490,11 +7495,54 @@ def secretary_ks_interest():
         # ============================================================
         # SETTINGS
         # ============================================================
-        current_year = datetime.now().year
+        current_year  = _dt.now().year
+        current_month = _dt.now().month
         settings_row = conn.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
         settings_dict = row_to_dict(settings_row) if settings_row else {}
         ks_share_price   = settings_dict.get('ks_share_price') or 10000
         contingency_rate = settings_dict.get('contingency_rate') or 10
+
+        # ============================================================
+        # LIVE CURRENT-MONTH INTEREST (not yet recorded)
+        # ------------------------------------------------------------
+        # Sum interest paid since the 1st of the current month.
+        # This grows in real time as repayments come in.
+        # At month-end, the auto-recorder stores it and the live
+        # value resets because the next month's range starts fresh.
+        # ============================================================
+        month_start = _dt(current_year, current_month, 1)
+        # First day of the NEXT month (exclusive upper bound)
+        if current_month == 12:
+            month_end = _dt(current_year + 1, 1, 1)
+        else:
+            month_end = _dt(current_year, current_month + 1, 1)
+
+        month_start_str = month_start.strftime('%Y-%m-%d 00:00:00')
+        month_end_str   = month_end.strftime('%Y-%m-%d 00:00:00')
+
+        live_interest = fetchval(conn, f"""
+            SELECT COALESCE(SUM(interest_paid), 0)
+            FROM repayments
+            WHERE status = 'completed'
+              AND payment_date >= {('%s' if DATABASE_URL else '?')}
+              AND payment_date <  {('%s' if DATABASE_URL else '?')}
+        """, (month_start_str, month_end_str)) or 0
+
+        # Also count the number of payments in this month
+        live_payment_count = fetchval(conn, f"""
+            SELECT COUNT(*)
+            FROM repayments
+            WHERE status = 'completed'
+              AND payment_date >= {('%s' if DATABASE_URL else '?')}
+              AND payment_date <  {('%s' if DATABASE_URL else '?')}
+        """, (month_start_str, month_end_str)) or 0
+
+        # Splits for the current month
+        live_contingency = live_interest * (contingency_rate / 100)
+        live_distributable = live_interest - live_contingency
+
+        month_label = month_start.strftime('%B %Y')
+        days_left_in_month = (month_end - _dt.now()).days
 
         # ============================================================
         # MEMBERS WITH KS SAVINGS
@@ -7532,75 +7580,7 @@ def secretary_ks_interest():
 
         total_ks_savings_all       = sum(m['ks_savings'] for m in members)
         total_interest_all_members = sum(m['total_interest'] for m in members)
-
-        # ============================================================
-        # MONTHLY BREAKDOWN — for the year-in-review card
-        # ============================================================
-        month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-        year_records = conn.execute(f"""
-            SELECT month, total_interest_earned,
-                   contingency_amount, distributable_amount
-            FROM ks_interest_records
-            WHERE year = {('%s' if DATABASE_URL else '?')}
-            ORDER BY month ASC
-        """, (current_year,)).fetchall()
-
-        year_map = {}
-        for r in year_records:
-            d = row_to_dict(r)
-            year_map[int(d['month'])] = d
-
-        monthly_breakdown = []
-        running_total = 0
-        for m in range(1, 13):
-            entry = year_map.get(m)
-            if entry:
-                amt = entry['total_interest_earned'] or 0
-                running_total += amt
-                monthly_breakdown.append({
-                    'month': m,
-                    'month_name': month_names[m],
-                    'interest': amt,
-                    'contingency': entry['contingency_amount'] or 0,
-                    'distributable': entry['distributable_amount'] or 0,
-                    'cumulative': running_total,
-                    'recorded': True
-                })
-            else:
-                monthly_breakdown.append({
-                    'month': m,
-                    'month_name': month_names[m],
-                    'interest': 0,
-                    'contingency': 0,
-                    'distributable': 0,
-                    'cumulative': running_total,
-                    'recorded': False
-                })
-
-        year_total_interest      = running_total
-        year_total_contingency   = sum(mb['contingency'] for mb in monthly_breakdown)
-        year_total_distributable = sum(mb['distributable'] for mb in monthly_breakdown)
-
-        # ============================================================
-        # YEAR-OVER-YEAR SUMMARY (optional)
-        # ============================================================
-        # Total per year across all recorded months
-        year_summary_rows = conn.execute("""
-            SELECT year,
-                   COALESCE(SUM(total_interest_earned), 0)  AS total_interest,
-                   COALESCE(SUM(contingency_amount), 0)     AS total_contingency,
-                   COALESCE(SUM(distributable_amount), 0)   AS total_distributable,
-                   COUNT(*)                                 AS months_recorded
-            FROM ks_interest_records
-            GROUP BY year
-            ORDER BY year DESC
-        """).fetchall()
-        year_summary = [row_to_dict(r) for r in year_summary_rows]
-
-        current_month      = datetime.now().month
-        current_year_label = f"{current_year}"
+        total_ks_shares_all        = sum(m['ks_shares'] for m in members)
 
         return render_template(
             "secretary/ks-interest.html",
@@ -7610,18 +7590,19 @@ def secretary_ks_interest():
             total_distributed=total_distributed,
             total_interest_all=total_interest_all,
             total_ks_savings_all=total_ks_savings_all,
+            total_ks_shares_all=total_ks_shares_all,
             total_interest_all_members=total_interest_all_members,
             ks_share_price=ks_share_price,
             contingency_rate=contingency_rate,
             current_year=current_year,
             current_month=current_month,
-            current_year_label=current_year_label,
-            monthly_breakdown=monthly_breakdown,
-            year_total_interest=year_total_interest,
-            year_total_contingency=year_total_contingency,
-            year_total_distributable=year_total_distributable,
-            year_summary=year_summary,
-            now=datetime.now()
+            month_label=month_label,
+            days_left_in_month=days_left_in_month,
+            live_interest=live_interest,
+            live_contingency=live_contingency,
+            live_distributable=live_distributable,
+            live_payment_count=live_payment_count,
+            now=_dt.now()
         )
     except Exception as e:
         import traceback
