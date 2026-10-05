@@ -60,24 +60,6 @@
         margin-left: auto; font-size: 0.75rem; color: rgba(255,255,255,0.4);
     }
 
-    .ksi-field { margin-bottom: 16px; }
-    .ksi-field label {
-        display: block; font-size: 0.78rem; color: rgba(255,255,255,0.55);
-        margin-bottom: 6px; font-weight: 500;
-    }
-    .ksi-field label .req { color: #ff6b6b; }
-    .ksi-field input,
-    .ksi-field select,
-    .ksi-field textarea {
-        width: 100%; padding: 12px 14px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 8px; color: #fff; font-size: 0.88rem;
-        font-family: inherit;
-    }
-    .ksi-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    @media (max-width: 700px) { .ksi-row { grid-template-columns: 1fr; } }
-
     .ksi-btn {
         display: inline-flex; align-items: center; gap: 8px;
         padding: 11px 22px; border-radius: 8px; border: none;
@@ -90,6 +72,10 @@
     .ksi-btn-danger {
         background: rgba(255,107,107,0.15); color: #ff6b6b;
         border: 1px solid rgba(255,107,107,0.2);
+    }
+    .ksi-btn-ghost {
+        background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7);
+        border: 1px solid rgba(255,255,255,0.08);
     }
 
     .ksi-table-wrap { overflow-x: auto; border-radius: 10px; }
@@ -116,57 +102,43 @@
     .ksi-badge-success { background: rgba(74,222,128,0.15); color: #4ade80; }
     .ksi-badge-info    { background: rgba(0,224,255,0.12); color: #00e0ff; }
     .ksi-badge-warning { background: rgba(245,197,66,0.15); color: #f5c542; }
+    .ksi-badge-muted   { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); }
 
     .ksi-empty {
         text-align: center; padding: 50px 20px; color: rgba(255,255,255,0.3);
     }
     .ksi-empty i { font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 12px; }
 
-    .ksi-preview {
-        display: none; background: rgba(0,224,255,0.05);
+    .ksi-info-card {
+        background: rgba(0,224,255,0.04);
         border: 1px solid rgba(0,224,255,0.15);
-        border-radius: 10px; padding: 16px 20px; margin-top: 12px;
+        border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
+        display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
     }
-    .ksi-preview.show { display: block; }
-    .ksi-preview-row {
-        display: flex; justify-content: space-between; padding: 6px 0;
-        font-size: 0.85rem; color: rgba(255,255,255,0.7);
+    .ksi-info-card .info-icon {
+        width: 46px; height: 46px; border-radius: 10px;
+        background: rgba(0,224,255,0.12);
+        display: flex; align-items: center; justify-content: center;
+        color: #00e0ff; font-size: 1.2rem; flex-shrink: 0;
     }
-    .ksi-preview-row.total {
-        border-top: 1px solid rgba(0,224,255,0.2);
-        margin-top: 6px; padding-top: 10px;
-        font-weight: 700; font-size: 1rem; color: #00e0ff;
+    .ksi-info-card .info-body {
+        flex: 1; min-width: 260px; font-size: 0.85rem;
+        line-height: 1.6; color: rgba(255,255,255,0.75);
     }
-
-    .ksi-modal {
-        display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,0.85); z-index: 9999;
-        backdrop-filter: blur(8px); align-items: center;
-        justify-content: center; padding: 20px;
+    .ksi-info-card .info-body h4 {
+        margin: 0 0 8px; color: #00e0ff;
+        font-size: 0.95rem; font-weight: 600;
     }
-    .ksi-modal.show { display: flex; }
-    .ksi-modal-box {
-        background: #1a1a2e; border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 16px; padding: 26px;
-        max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
+    .ksi-info-card ul {
+        margin: 6px 0 0; padding-left: 20px;
     }
-    .ksi-modal-head {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 20px; padding-bottom: 14px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .ksi-modal-head h3 { margin: 0; font-size: 1.05rem; color: #00e0ff; }
-    .ksi-modal-close {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        color: rgba(255,255,255,0.5);
-        width: 34px; height: 34px; border-radius: 50%;
-        cursor: pointer;
+    .ksi-info-card ul li {
+        margin-bottom: 3px;
     }
 </style>
 
 
-{# ===== Safe defaults for optional context values ===== #}
+{# ===== Safe defaults ===== #}
 {% set _contingency_rate       = (contingency_rate       if contingency_rate       is not none else 10)   %}
 {% set _total_interest_all     = (total_interest_all     if total_interest_all     is not none else 0)    %}
 {% set _total_contingency      = (total_contingency      if total_contingency      is not none else 0)    %}
@@ -178,11 +150,17 @@
 
 <div class="ksi-page">
 
+    <!-- HEADER -->
     <div class="ksi-header">
         <div class="ksi-header-icon"><i class="fas fa-chart-pie"></i></div>
         <div class="ksi-header-text">
-            <h2>KS Interest & Contingency Fund</h2>
-            <p>Record monthly interest, allocate to KS savers, track contingency fund</p>
+            <h2>KS Interest &amp; Contingency Fund</h2>
+            <p>Interest is calculated automatically at the end of every month</p>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="ksi-btn ksi-btn-primary" onclick="runCatchUp()">
+                <i class="fas fa-play"></i> Run Catch-Up Now
+            </button>
         </div>
     </div>
 
@@ -218,68 +196,29 @@
         </div>
     </div>
 
-    <!-- RECORD FORM -->
-    <div class="ksi-card">
-        <div class="ksi-card-head">
-            <i class="fas fa-plus-circle"></i>
-            <h3>Record Monthly Interest</h3>
-            <span class="meta">Distributed to KS savers only</span>
+    <!-- INFO CARD -->
+    <div class="ksi-info-card">
+        <div class="info-icon"><i class="fas fa-robot"></i></div>
+        <div class="info-body">
+            <h4>Fully Automatic</h4>
+            <p style="margin:0;">
+                The system computes KS interest automatically at the end of every month,
+                using the <strong>interest paid on loan repayments</strong> received during that month.
+            </p>
+            <ul>
+                <li><strong style="color:#f5c542;">10%</strong> → Contingency fund</li>
+                <li><strong style="color:#00e0ff;">90%</strong> → Distributed to all KS savers</li>
+                <li>Per-member share: <em>(member KS × distributable) ÷ total KS pool</em></li>
+            </ul>
+            <p style="margin:10px 0 0; font-size:0.78rem; color:rgba(255,255,255,0.5);">
+                No manual entry required. Any month that has ended but not yet been
+                recorded will be computed the next time someone opens this page or
+                records a loan repayment.
+            </p>
         </div>
-
-        <form id="ksiForm" onsubmit="submitInterestRecord(event)">
-            <div class="ksi-row">
-                <div class="ksi-field">
-                    <label>Year <span class="req">*</span></label>
-                    <input type="number" id="intYear" required
-                           value="{{ _current_year }}" min="2020" max="2100">
-                </div>
-                <div class="ksi-field">
-                    <label>Month <span class="req">*</span></label>
-                    <select id="intMonth" required>
-                        {% for m in range(1, 13) %}
-                        <option value="{{ m }}" {% if m == _current_month %}selected{% endif %}>
-                            {{ ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m] }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="ksi-field">
-                    <label>Total Interest Earned (UGX) <span class="req">*</span></label>
-                    <input type="number" id="intAmount" required step="0.01" min="1"
-                           placeholder="e.g. 500000" oninput="updatePreview()">
-                </div>
-            </div>
-
-            <div class="ksi-field">
-                <label>Notes</label>
-                <textarea id="intNotes" rows="2"
-                          placeholder="Optional — e.g. source of interest, remarks..."></textarea>
-            </div>
-
-            <div class="ksi-preview" id="ksiPreview">
-                <div class="ksi-preview-row">
-                    <span>Contingency fund ({{ "{:.0f}".format(_contingency_rate) }}%)</span>
-                    <span style="color:#f5c542; font-weight:600;" id="prevContingency">UGX 0</span>
-                </div>
-                <div class="ksi-preview-row">
-                    <span>Distributable to KS savers</span>
-                    <span style="color:#00e0ff; font-weight:600;" id="prevDistributable">UGX 0</span>
-                </div>
-                <div class="ksi-preview-row total">
-                    <span>Total KS savings pool</span>
-                    <span>UGX {{ "{:,.0f}".format(_total_ks_savings_all) }}</span>
-                </div>
-            </div>
-
-            <div style="margin-top:20px;">
-                <button type="submit" class="ksi-btn ksi-btn-primary">
-                    <i class="fas fa-check"></i> Record &amp; Distribute
-                </button>
-            </div>
-        </form>
     </div>
 
-    <!-- RECORDS TABLE -->
+    <!-- MONTHLY RECORDS -->
     <div class="ksi-card">
         <div class="ksi-card-head">
             <i class="fas fa-history"></i>
@@ -329,8 +268,18 @@
                             </span>
                         </td>
                         <td style="font-size:0.75rem; color:rgba(255,255,255,0.4);">
-                            {{ r.entered_by_name or '—' }}<br>
-                            {{ r.entered_at[:10] if r.entered_at else '' }}
+                            {% if r.status == 'auto' %}
+                                <span class="ksi-badge ksi-badge-muted">
+                                    <i class="fas fa-robot"></i> AUTO
+                                </span>
+                            {% else %}
+                                <span class="ksi-badge ksi-badge-muted">
+                                    <i class="fas fa-user"></i> {{ r.entered_by_name or 'Manual' }}
+                                </span>
+                            {% endif %}
+                            <div style="margin-top:4px;">
+                                {{ r.entered_at[:10] if r.entered_at else '' }}
+                            </div>
                         </td>
                         <td style="text-align:center;">
                             <button type="button"
@@ -346,7 +295,7 @@
                         <td colspan="9">
                             <div class="ksi-empty">
                                 <i class="fas fa-chart-pie"></i>
-                                <p>No interest recorded yet.</p>
+                                <p>No interest recorded yet. It will appear here automatically at the end of the next month.</p>
                             </div>
                         </td>
                     </tr>
@@ -361,7 +310,7 @@
         <div class="ksi-card-head">
             <i class="fas fa-users"></i>
             <h3>Member Interest — {{ _current_year }}</h3>
-            <span class="meta">Year-to-date allocations per KS saver</span>
+            <span class="meta">Year-to-date totals per KS saver</span>
         </div>
 
         <div class="ksi-table-wrap">
@@ -374,7 +323,6 @@
                         <th style="text-align:right;">KS Shares</th>
                         <th style="text-align:right;">KS Savings (UGX)</th>
                         <th style="text-align:right;">Total Interest (YTD)</th>
-                        <th style="text-align:center;">Details</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -392,17 +340,10 @@
                         <td style="text-align:right; color:#4ade80; font-weight:600;">
                             {{ "{:,.0f}".format(m.total_interest or 0) }}
                         </td>
-                        <td style="text-align:center;">
-                            <button type="button"
-                                    class="ksi-btn ksi-btn-primary ksi-btn-sm"
-                                    data-member-id="{{ m.id }}">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7">
+                        <td colspan="6">
                             <div class="ksi-empty">
                                 <i class="fas fa-users"></i>
                                 <p>No KS savers yet.</p>
@@ -420,7 +361,6 @@
                         <td style="text-align:right; color:#4ade80;">
                             {{ "{:,.0f}".format(_total_interest_members) }}
                         </td>
-                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -430,90 +370,35 @@
 </div>
 
 
-<!-- MEMBER INTEREST DETAILS MODAL -->
-<div class="ksi-modal" id="memberInterestModal">
-    <div class="ksi-modal-box">
-        <div class="ksi-modal-head">
-            <h3><i class="fas fa-user"></i> <span id="miName">Member</span></h3>
-            <button class="ksi-modal-close" onclick="closeMemberInterest()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div id="memberInterestBody">
-            <div style="text-align:center; padding:40px;">
-                <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#00e0ff;"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="ksInterestSettings" data-contingency-rate="{{ _contingency_rate|tojson }}" hidden></div>
-
 <script>
-const CONTINGENCY_RATE = Number(document.getElementById('ksInterestSettings').dataset.contingencyRate || 0);
-
 // ============================================================
-// PREVIEW
+// RUN CATCH-UP
 // ============================================================
-function updatePreview() {
-    const amount = Number(document.getElementById('intAmount').value) || 0;
-    const preview = document.getElementById('ksiPreview');
-    if (amount <= 0) {
-        preview.classList.remove('show');
-        return;
-    }
-    const contingency = amount * (CONTINGENCY_RATE / 100);
-    const distributable = amount - contingency;
-
-    document.getElementById('prevContingency').textContent = 'UGX ' + contingency.toLocaleString();
-    document.getElementById('prevDistributable').textContent = 'UGX ' + distributable.toLocaleString();
-    preview.classList.add('show');
-}
-
-// ============================================================
-// SUBMIT
-// ============================================================
-function submitInterestRecord(e) {
-    e.preventDefault();
-
-    const year = Number(document.getElementById('intYear').value);
-    const month = Number(document.getElementById('intMonth').value);
-    const amount = Number(document.getElementById('intAmount').value);
-    const notes = document.getElementById('intNotes').value.trim();
-
-    if (!year || !month || amount <= 0) {
-        alert('Please fill all fields with valid values.');
-        return;
-    }
-
-    const contingency = amount * (CONTINGENCY_RATE / 100);
+function runCatchUp() {
     if (!confirm(
-        `Record interest for ${year}-${String(month).padStart(2,'0')}?\n\n` +
-        `Total:         UGX ${amount.toLocaleString()}\n` +
-        `Contingency:   UGX ${contingency.toLocaleString()} (${CONTINGENCY_RATE}%)\n` +
-        `Distributable: UGX ${(amount - contingency).toLocaleString()}\n\n` +
-        `This will be shared among ALL KS savers.`
+        'Run automatic interest recording for all pending months?\n\n' +
+        'This will compute any month that has ended but is not yet recorded.'
     )) return;
 
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = event.target.closest('button');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording…';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…';
     btn.disabled = true;
 
-    fetch('/secretary/ks-interest/record', {
+    fetch('/secretary/ks-interest/auto-run', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({year, month, total_interest: amount, notes})
+        headers: {'Content-Type': 'application/json'}
     })
     .then(r => r.json())
     .then(res => {
         btn.innerHTML = orig;
         btn.disabled = false;
+
         if (res.success) {
-            alert('✅ ' + res.message);
+            alert('✅ ' + (res.message || 'Done.'));
             location.reload();
         } else {
-            alert('❌ ' + (res.message || 'Failed to record'));
+            alert('❌ ' + (res.message || 'Failed'));
         }
     })
     .catch(err => {
@@ -526,130 +411,39 @@ function submitInterestRecord(e) {
 // ============================================================
 // DELETE
 // ============================================================
-function deleteInterestRecord(id, label) {
-    if (!confirm(`⚠️ Delete interest record for ${label}?\n\nThis will reverse ALL allocations for that month.`)) return;
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-delete-interest-id]');
+    if (!btn) return;
+
+    const id = btn.getAttribute('data-delete-interest-id');
+    const label = btn.getAttribute('data-delete-interest-label');
+
+    if (!confirm(
+        `⚠️ Delete interest record for ${label}?\n\n` +
+        `This will reverse ALL allocations for that month.\n` +
+        `The month will be auto-recomputed on the next page load.`
+    )) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     fetch('/secretary/ks-interest/' + id + '/delete', {method: 'POST'})
         .then(r => r.json())
         .then(res => {
-            alert(res.success ? '✅ ' + res.message : '❌ ' + res.message);
-            if (res.success) location.reload();
-        })
-        .catch(err => alert('❌ ' + err.message));
-}
-
-// ============================================================
-// VIEW MEMBER INTEREST
-// ============================================================
-function viewMemberInterest(userId) {
-    const modal = document.getElementById('memberInterestModal');
-    const body = document.getElementById('memberInterestBody');
-    modal.classList.add('show');
-    body.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#00e0ff;"></i></div>';
-
-    fetch('/secretary/ks-interest/member/' + userId)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) {
-                body.innerHTML = `<div style="color:#ff6b6b; padding:20px;">${data.message || 'Error'}</div>`;
-                return;
+            if (res.success) {
+                alert('✅ ' + res.message);
+                location.reload();
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash"></i>';
+                alert('❌ ' + res.message);
             }
-            renderMemberInterest(data);
         })
-        .catch(err => body.innerHTML = `<div style="color:#ff6b6b; padding:20px;">Network error: ${err.message}</div>`);
-}
-
-function renderMemberInterest(data) {
-    const body = document.getElementById('memberInterestBody');
-    const m = data.member || {};
-    const allocs = data.allocations || [];
-
-    document.getElementById('miName').textContent = m.full_name || 'Member';
-
-    const monthNames = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-    let html = `
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-            <div style="background:rgba(255,255,255,0.02); padding:12px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.35); font-size:0.68rem; text-transform:uppercase;">SACCO No.</div>
-                <div style="color:#f5c542; font-family:monospace; font-weight:600; margin-top:3px;">
-                    ${m.sacco_number || '—'}
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.02); padding:12px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.35); font-size:0.68rem; text-transform:uppercase;">KS Shares</div>
-                <div style="color:#fff; font-weight:600; margin-top:3px;">${m.ks_shares || 0}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.02); padding:12px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.35); font-size:0.68rem; text-transform:uppercase;">KS Savings</div>
-                <div style="color:#00e0ff; font-weight:600; margin-top:3px;">
-                    UGX ${Number(m.ks_savings || 0).toLocaleString()}
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.02); padding:12px 14px; border-radius:8px;">
-                <div style="color:rgba(255,255,255,0.35); font-size:0.68rem; text-transform:uppercase;">Total Interest YTD</div>
-                <div style="color:#4ade80; font-weight:700; margin-top:3px; font-size:1.05rem;">
-                    UGX ${Number(m.total_interest || 0).toLocaleString()}
-                </div>
-            </div>
-        </div>
-
-        <h4 style="margin:0 0 12px; color:rgba(255,255,255,0.7); font-size:0.9rem;">
-            <i class="fas fa-list" style="color:#00e0ff;"></i>
-            Monthly Breakdown (${allocs.length})
-        </h4>
-        <div style="max-height:400px; overflow-y:auto; border:1px solid rgba(255,255,255,0.04); border-radius:8px;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                <thead>
-                    <tr style="background:rgba(255,255,255,0.03);">
-                        <th style="text-align:left; padding:8px 12px; color:rgba(255,255,255,0.4); font-weight:500;">Month</th>
-                        <th style="text-align:right; padding:8px 12px; color:rgba(255,255,255,0.4); font-weight:500;">KS Savings</th>
-                        <th style="text-align:right; padding:8px 12px; color:rgba(255,255,255,0.4); font-weight:500;">Pool</th>
-                        <th style="text-align:right; padding:8px 12px; color:rgba(255,255,255,0.4); font-weight:500;">Share</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    if (allocs.length === 0) {
-        html += `<tr><td colspan="4" style="padding:20px; text-align:center; color:rgba(255,255,255,0.3);">
-            No interest allocated yet
-        </td></tr>`;
-    } else {
-        allocs.forEach(a => {
-            html += `
-                <tr style="border-top:1px solid rgba(255,255,255,0.03);">
-                    <td style="padding:8px 12px; color:#00e0ff; font-family:monospace;">
-                        ${a.year}-${String(a.month).padStart(2,'0')} (${monthNames[a.month] || ''})
-                    </td>
-                    <td style="padding:8px 12px; text-align:right; color:rgba(255,255,255,0.7);">
-                        ${Number(a.ks_savings_at_month || 0).toLocaleString()}
-                    </td>
-                    <td style="padding:8px 12px; text-align:right; color:rgba(255,255,255,0.5);">
-                        ${Number(a.distributable_amount || 0).toLocaleString()}
-                    </td>
-                    <td style="padding:8px 12px; text-align:right; color:#4ade80; font-weight:700;">
-                        ${Number(a.interest_share || 0).toLocaleString()}
-                    </td>
-                </tr>
-            `;
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash"></i>';
+            alert('❌ ' + err.message);
         });
-    }
-
-    html += `</tbody></table></div>`;
-    body.innerHTML = html;
-}
-
-function closeMemberInterest() {
-    document.getElementById('memberInterestModal').classList.remove('show');
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeMemberInterest();
-});
-document.addEventListener('click', e => {
-    const modal = document.getElementById('memberInterestModal');
-    if (modal && e.target === modal) closeMemberInterest();
 });
 </script>
 
