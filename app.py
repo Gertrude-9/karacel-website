@@ -3827,7 +3827,8 @@ def treasurer_disburse_loan(loan_id):
 # ============================================================
 # TREASURER - ENTER REPAYMENT
 # GET  → redirect to dashboard (the repayments panel is inside it)
-# POST → save the repayment, credit principal back to savings
+# POST → save the repayment, credit principal back to savings,
+#        AND trigger auto KS interest recording if a month has ended
 # ============================================================
 @app.route("/treasurer/repayment/enter", methods=["GET", "POST"])
 def treasurer_enter_repayment():
@@ -3944,8 +3945,6 @@ def treasurer_enter_repayment():
                     f"Principal repayment for loan {loan['loan_number']} — credited to savings"
                 ))
             except Exception as e:
-                # If savings_deposits schema doesn't allow LOAN_REPAYMENT type,
-                # skip the log — the savings credit above still works
                 print(f"⚠️ Could not log repayment to savings_deposits: {e}")
 
         # ============================================================
@@ -3996,24 +3995,6 @@ def treasurer_enter_repayment():
                 principal_paid,
                 loan_id
             ))
-
-            db.commit()
-            db.close()
-
-            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
-            flash(
-                f'📊 Interest paid: UGX {interest_paid:,.0f} | '
-                f'Principal paid: UGX {principal_paid:,.0f}',
-                'info'
-            )
-            if principal_paid > 0:
-                flash(
-                    f'💰 UGX {principal_paid:,.0f} returned to '
-                    f'{loan["full_name"]}\'s savings. '
-                    f'New savings: UGX {member_savings_after:,.0f}',
-                    'success'
-                )
-
         else:
             db.execute("""
                 UPDATE loans 
@@ -4033,23 +4014,64 @@ def treasurer_enter_repayment():
                 loan_id
             ))
 
-            db.commit()
-            db.close()
+        # ============================================================
+        # 4) COMMIT BEFORE triggering KS interest (so the newly
+        #    recorded interest is visible to the KS engine)
+        # ============================================================
+        db.commit()
 
+        # ============================================================
+        # 5) AUTO-RECORD KS INTEREST IF ANY MONTH HAS ENDED
+        #    Idempotent — safe to call on every repayment.
+        #    Runs in a separate connection so a KS failure never
+        #    rolls back the repayment.
+        # ============================================================
+        ks_result = None
+        try:
+            ks_result = auto_record_all_pending_ks_months()
+            if ks_result:
+                months = ', '.join(r.get('period', '?') for r in ks_result)
+                print(f"✅ KS interest auto-recorded for: {months}")
+        except Exception as ks_err:
+            # Silent failure — the KS page load will retry
+            print(f"⚠️ KS interest auto-record failed: {ks_err}")
+
+        db.close()
+
+        # ============================================================
+        # 6) FLASH MESSAGES
+        # ============================================================
+        if is_completed:
+            flash(f'✅ LOAN COMPLETED! Final payment of UGX {amount:,.0f} made.', 'success')
+        else:
             flash(f'✅ Payment of UGX {amount:,.0f} recorded successfully!', 'success')
+
+        flash(
+            f'📊 Interest paid: UGX {interest_paid:,.0f} | '
+            f'Principal paid: UGX {principal_paid:,.0f}',
+            'info'
+        )
+
+        if principal_paid > 0:
             flash(
-                f'📊 Interest paid: UGX {interest_paid:,.0f} | '
-                f'Principal paid: UGX {principal_paid:,.0f}',
+                f'💰 UGX {principal_paid:,.0f} returned to '
+                f'{loan["full_name"]}\'s savings. '
+                f'New savings: UGX {member_savings_after:,.0f}',
+                'success'
+            )
+
+        if not is_completed:
+            flash(f'💳 Remaining loan balance: UGX {new_balance:,.0f}', 'info')
+
+        # ---- Mention any newly recorded KS interest months ----
+        if ks_result:
+            months = ', '.join(r.get('period', '?') for r in ks_result)
+            total_int = sum((r.get('total_interest') or 0) for r in ks_result)
+            flash(
+                f'📈 KS interest auto-recorded for {months}. '
+                f'Total interest: UGX {total_int:,.0f}',
                 'info'
             )
-            if principal_paid > 0:
-                flash(
-                    f'💰 UGX {principal_paid:,.0f} returned to '
-                    f'{loan["full_name"]}\'s savings. '
-                    f'New savings: UGX {member_savings_after:,.0f}',
-                    'success'
-                )
-            flash(f'💳 Remaining loan balance: UGX {new_balance:,.0f}', 'info')
 
         return redirect(url_for('treasurer_dashboard') + '#repayments')
 
@@ -4060,7 +4082,7 @@ def treasurer_enter_repayment():
         traceback.print_exc()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('treasurer_dashboard') + '#repayments')
-    
+        
 ## ============================================================
 # TREASURER - ADD MEMBER (WITH SAVINGS TYPE SUPPORT) - INCLUDES STAFF
 # ============================================================
@@ -7177,6 +7199,263 @@ def _deny_ks_json():
     return jsonify({'success': False, 'message': 'Access denied'}), 403
 
 
+# ============================================================
+# KS INTEREST — AUTO CALCULATION
+# ============================================================
+
+KS_INTEREST_ROLES = {"secretary", "treasurer", "admin", "chairperson"}
+
+
+def _is_ks_staff():
+    """True if current session may access KS Interest data."""
+    role = (session.get("role") or "").strip().lower()
+    return role in KS_INTEREST_ROLES
+
+
+def _deny_ks_page():
+    flash('Access denied. KS Interest is restricted to SACCO staff only.', 'danger')
+    return redirect("/login")
+
+
+def _deny_ks_json():
+    return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+
+# ------------------------------------------------------------
+# CORE — compute and store a month's interest
+# ------------------------------------------------------------
+def auto_record_ks_interest(target_year=None, target_month=None):
+    """
+    Compute interest earned in a given month and distribute it.
+
+    Trigger: interest actually PAID on loans during that month.
+    Source:  repayments.interest_paid where payment_date starts with YYYY-MM.
+
+    - 10% goes to contingency fund
+    - 90% is shared among KS savers weighted by their KS savings
+      formula: (member KS savings × distributable) ÷ total KS pool
+
+    Idempotent: if the month is already recorded, does nothing.
+    """
+    from datetime import datetime as _dt
+
+    # Default to LAST month
+    if target_year is None or target_month is None:
+        now = _dt.now()
+        y, m = now.year, now.month
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+        target_year, target_month = y, m
+
+    db = get_db()
+    PH = "%s" if DATABASE_URL else "?"
+
+    try:
+        # ---- Skip if already recorded ----
+        existing = db.execute(f"""
+            SELECT id FROM ks_interest_records
+            WHERE year = {PH} AND month = {PH}
+        """, (target_year, target_month)).fetchone()
+
+        if existing:
+            return {
+                'success': True,
+                'skipped': True,
+                'reason': 'already_recorded',
+                'period': f'{target_year}-{target_month:02d}'
+            }
+
+        # ---- Sum interest paid in the month ----
+        month_prefix = f"{target_year}-{target_month:02d}%"
+
+        total_interest = fetchval(db, f"""
+            SELECT COALESCE(SUM(interest_paid), 0)
+            FROM repayments
+            WHERE status = 'completed'
+              AND payment_date LIKE {PH}
+        """, (month_prefix,)) or 0
+
+        if total_interest <= 0:
+            return {
+                'success': True,
+                'skipped': True,
+                'reason': 'no_interest',
+                'period': f'{target_year}-{target_month:02d}'
+            }
+
+        # ---- Settings ----
+        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
+        s = row_to_dict(settings_row) if settings_row else {}
+        contingency_rate = s.get('contingency_rate') or 10
+        ks_share_price   = s.get('ks_share_price') or 10000
+
+        contingency_amount = total_interest * (contingency_rate / 100)
+        distributable      = total_interest - contingency_amount
+
+        # ---- KS savers snapshot ----
+        ks_savers_rows = db.execute("""
+            SELECT id, full_name, COALESCE(ks_shares, 0) AS ks_shares
+            FROM users
+            WHERE status = 'active'
+              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
+              AND COALESCE(ks_shares, 0) > 0
+        """).fetchall()
+
+        ks_savers = []
+        for r in ks_savers_rows:
+            d = row_to_dict(r)
+            savings_amount = (d['ks_shares'] or 0) * ks_share_price
+            ks_savers.append({
+                'user_id': d['id'],
+                'ks_shares': d['ks_shares'],
+                'savings': savings_amount
+            })
+
+        total_ks_savings = sum(k['savings'] for k in ks_savers)
+        if total_ks_savings <= 0:
+            return {
+                'success': True,
+                'skipped': True,
+                'reason': 'no_ks_savers',
+                'period': f'{target_year}-{target_month:02d}'
+            }
+
+        now_str = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # ---- Insert record ----
+        if DATABASE_URL:
+            row = db.execute(f"""
+                INSERT INTO ks_interest_records (
+                    year, month, total_interest_earned,
+                    contingency_amount, distributable_amount,
+                    total_ks_savings, total_members_credited,
+                    status, entered_by, entered_at, notes
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},
+                          'auto', NULL, {PH}, {PH})
+                RETURNING id
+            """, (target_year, target_month, total_interest,
+                  contingency_amount, distributable,
+                  total_ks_savings, len(ks_savers),
+                  now_str, 'Auto-computed from loan repayments')).fetchone()
+            record_id = row['id'] if isinstance(row, dict) else row[0]
+        else:
+            cur = db.cursor()
+            cur.execute("""
+                INSERT INTO ks_interest_records (
+                    year, month, total_interest_earned,
+                    contingency_amount, distributable_amount,
+                    total_ks_savings, total_members_credited,
+                    status, entered_by, entered_at, notes
+                ) VALUES (?,?,?,?,?,?,?,'auto',NULL,?,?)
+            """, (target_year, target_month, total_interest,
+                  contingency_amount, distributable,
+                  total_ks_savings, len(ks_savers),
+                  now_str, 'Auto-computed from loan repayments'))
+            record_id = cur.lastrowid
+
+        # ---- Allocate to each KS saver ----
+        for k in ks_savers:
+            share = (k['savings'] * distributable) / total_ks_savings \
+                    if total_ks_savings > 0 else 0
+
+            db.execute(f"""
+                INSERT INTO ks_interest_allocations (
+                    record_id, user_id, year, month,
+                    ks_savings_at_month, interest_share,
+                    paid, created_at
+                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},0,{PH})
+            """, (record_id, k['user_id'], target_year, target_month,
+                  k['savings'], round(share, 2), now_str))
+
+        # ---- Bump contingency total ----
+        db.execute(f"""
+            UPDATE system_settings
+            SET contingency_fund_total = COALESCE(contingency_fund_total, 0) + {PH}
+            WHERE id = (SELECT id FROM system_settings LIMIT 1)
+        """, (contingency_amount,))
+
+        db.commit()
+
+        print(f"✅ Auto-recorded KS interest for {target_year}-{target_month:02d}: "
+              f"UGX {total_interest:,.0f} interest, "
+              f"UGX {contingency_amount:,.0f} contingency, "
+              f"UGX {distributable:,.0f} distributed to {len(ks_savers)} savers")
+
+        return {
+            'success': True,
+            'record_id': record_id,
+            'period': f'{target_year}-{target_month:02d}',
+            'total_interest': total_interest,
+            'contingency': contingency_amount,
+            'distributable': distributable,
+            'members_credited': len(ks_savers)
+        }
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        return {'success': False, 'message': str(e)}
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def auto_record_all_pending_ks_months():
+    """
+    Catch-up: record every unrecorded month since the earliest repayment
+    in the system, up to last month. Runs on the KS Interest page load
+    so nothing is ever missed.
+    """
+    from datetime import datetime as _dt, timedelta
+
+    db = get_db()
+    try:
+        # Earliest repayment date
+        earliest = fetchval(db, """
+            SELECT MIN(payment_date) FROM repayments
+            WHERE status = 'completed' AND interest_paid > 0
+        """)
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+    if not earliest:
+        return []
+
+    # Parse 'YYYY-MM-DD...' or 'YYYY-MM-DD HH:MM:SS'
+    try:
+        earliest_dt = _dt.strptime(str(earliest)[:10], '%Y-%m-%d')
+    except Exception:
+        return []
+
+    # Last month (start of the current month, minus one day = last day of prev month)
+    now = _dt.now()
+    last_month_end = now.replace(day=1) - timedelta(days=1)
+
+    results = []
+    cursor_dt = earliest_dt.replace(day=1)
+
+    while cursor_dt <= last_month_end:
+        r = auto_record_ks_interest(cursor_dt.year, cursor_dt.month)
+        if r and not r.get('skipped'):
+            results.append(r)
+
+        # Advance to next month
+        if cursor_dt.month == 12:
+            cursor_dt = cursor_dt.replace(year=cursor_dt.year + 1, month=1)
+        else:
+            cursor_dt = cursor_dt.replace(month=cursor_dt.month + 1)
+
+    return results
+
+
 # ------------------------------------------------------------
 # KS INTEREST PAGE
 # ------------------------------------------------------------
@@ -7184,6 +7463,12 @@ def _deny_ks_json():
 def secretary_ks_interest():
     if not _is_ks_staff():
         return _deny_ks_page()
+
+    # ---- Auto-compute any unrecorded months before rendering ----
+    try:
+        auto_record_all_pending_ks_months()
+    except Exception as e:
+        print(f"⚠️ Auto KS interest catch-up failed: {e}")
 
     log_action(
         action="view_ks_interest",
@@ -7287,156 +7572,33 @@ def secretary_ks_interest():
 
 
 # ------------------------------------------------------------
-# KS INTEREST — RECORD MONTHLY
+# KS INTEREST — MANUAL CATCH-UP (staff-triggered, still needed for safety)
 # ------------------------------------------------------------
-@app.route("/secretary/ks-interest/record", methods=["POST"])
-def secretary_record_ks_interest():
+@app.route("/secretary/ks-interest/auto-run", methods=["POST"])
+def secretary_ks_interest_auto_run():
     if not _is_ks_staff():
         return _deny_ks_json()
 
     data = request.get_json() or {}
-    year           = int(data.get('year') or datetime.now().year)
-    month          = int(data.get('month') or datetime.now().month)
-    total_interest = float(data.get('total_interest') or 0)
-    notes          = (data.get('notes') or '').strip()
+    year  = data.get('year')
+    month = data.get('month')
 
-    if month < 1 or month > 12:
-        return jsonify({'success': False, 'message': 'Invalid month'}), 400
-    if total_interest <= 0:
-        return jsonify({'success': False, 'message': 'Interest must be greater than zero'}), 400
-
-    db = get_db()
-    PH = "%s" if DATABASE_URL else "?"
-
-    try:
-        # Guard against duplicate months
-        existing = db.execute(f"""
-            SELECT id FROM ks_interest_records
-            WHERE year = {PH} AND month = {PH}
-        """, (year, month)).fetchone()
-
-        if existing:
-            return jsonify({
-                'success': False,
-                'message': f'Interest for {year}-{month:02d} is already recorded. Delete it first if you need to re-enter.'
-            }), 400
-
-        # ---- Load settings ----
-        settings_row = db.execute("SELECT * FROM system_settings LIMIT 1").fetchone()
-        s = row_to_dict(settings_row) if settings_row else {}
-        contingency_rate  = s.get('contingency_rate') or 10
-        ks_share_price    = s.get('ks_share_price') or 10000
-
-        contingency_amount = total_interest * (contingency_rate / 100)
-        distributable      = total_interest - contingency_amount
-
-        # ---- KS savers snapshot ----
-        ks_savers_rows = db.execute("""
-            SELECT id, full_name, COALESCE(ks_shares, 0) AS ks_shares
-            FROM users
-            WHERE status = 'active'
-              AND LOWER(role) IN ('member','admin','chairperson','treasurer','secretary','publicity')
-              AND COALESCE(ks_shares, 0) > 0
-        """).fetchall()
-
-        ks_savers = []
-        for r in ks_savers_rows:
-            d = row_to_dict(r)
-            savings_amount = (d['ks_shares'] or 0) * ks_share_price
-            ks_savers.append({
-                'user_id': d['id'],
-                'ks_shares': d['ks_shares'],
-                'savings': savings_amount
-            })
-
-        total_ks_savings = sum(k['savings'] for k in ks_savers)
-        if total_ks_savings <= 0:
-            return jsonify({
-                'success': False,
-                'message': 'No KS savings recorded in the system — nothing to allocate.'
-            }), 400
-
-        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # ---- Insert the record ----
-        if DATABASE_URL:
-            row = db.execute(f"""
-                INSERT INTO ks_interest_records (
-                    year, month, total_interest_earned,
-                    contingency_amount, distributable_amount,
-                    total_ks_savings, total_members_credited,
-                    status, entered_by, entered_at, notes
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},'recorded',{PH},{PH},{PH})
-                RETURNING id
-            """, (year, month, total_interest,
-                  contingency_amount, distributable,
-                  total_ks_savings, len(ks_savers),
-                  session['user_id'], now_str, notes)).fetchone()
-            record_id = row['id'] if isinstance(row, dict) else row[0]
-        else:
-            cur = db.cursor()
-            cur.execute("""
-                INSERT INTO ks_interest_records (
-                    year, month, total_interest_earned,
-                    contingency_amount, distributable_amount,
-                    total_ks_savings, total_members_credited,
-                    status, entered_by, entered_at, notes
-                ) VALUES (?,?,?,?,?,?,?,'recorded',?,?,?)
-            """, (year, month, total_interest,
-                  contingency_amount, distributable,
-                  total_ks_savings, len(ks_savers),
-                  session['user_id'], now_str, notes))
-            record_id = cur.lastrowid
-
-        # ---- Allocate per member ----
-        for k in ks_savers:
-            share = (k['savings'] * distributable) / total_ks_savings if total_ks_savings > 0 else 0
-
-            db.execute(f"""
-                INSERT INTO ks_interest_allocations (
-                    record_id, user_id, year, month,
-                    ks_savings_at_month, interest_share,
-                    paid, created_at
-                ) VALUES ({PH},{PH},{PH},{PH},{PH},{PH},0,{PH})
-            """, (record_id, k['user_id'], year, month,
-                  k['savings'], round(share, 2), now_str))
-
-        # ---- Bump contingency total ----
-        db.execute(f"""
-            UPDATE system_settings
-            SET contingency_fund_total = COALESCE(contingency_fund_total, 0) + {PH}
-            WHERE id = (SELECT id FROM system_settings LIMIT 1)
-        """, (contingency_amount,))
-
-        db.commit()
-
-        return jsonify({
+    if year and month:
+        result = auto_record_ks_interest(int(year), int(month))
+    else:
+        # Run catch-up across all pending months
+        results = auto_record_all_pending_ks_months()
+        result = {
             'success': True,
-            'message': (
-                f'Recorded interest for {year}-{month:02d}. '
-                f'Contingency: UGX {contingency_amount:,.0f}, '
-                f'Distributed to {len(ks_savers)} KS savers.'
-            ),
-            'record_id': record_id,
-            'contingency_amount': contingency_amount,
-            'distributable': distributable,
-            'members_credited': len(ks_savers)
-        })
+            'message': f'Processed {len(results)} month(s).',
+            'results': results
+        }
 
-    except Exception as e:
-        db.rollback()
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        try:
-            db.close()
-        except Exception:
-            pass
+    return jsonify(result)
 
 
 # ------------------------------------------------------------
-# KS INTEREST — DELETE
+# KS INTEREST — DELETE (kept for correction, staff-only)
 # ------------------------------------------------------------
 @app.route("/secretary/ks-interest/<int:record_id>/delete", methods=["POST"])
 def secretary_delete_ks_interest(record_id):
@@ -7455,27 +7617,26 @@ def secretary_delete_ks_interest(record_id):
 
         rec_d = row_to_dict(rec)
 
-        # Remove allocations
         db.execute(
             f"DELETE FROM ks_interest_allocations WHERE record_id = {PH}",
             (record_id,)
         )
-
-        # Reverse contingency total
         db.execute(f"""
             UPDATE system_settings
             SET contingency_fund_total = COALESCE(contingency_fund_total, 0) - {PH}
             WHERE id = (SELECT id FROM system_settings LIMIT 1)
         """, (rec_d.get('contingency_amount') or 0,))
-
-        # Delete the record
         db.execute(
             f"DELETE FROM ks_interest_records WHERE id = {PH}",
             (record_id,)
         )
 
         db.commit()
-        return jsonify({'success': True, 'message': 'Interest record deleted and allocations reversed.'})
+        return jsonify({
+            'success': True,
+            'message': 'Interest record deleted and allocations reversed. '
+                       'It will be re-computed automatically next time the page loads.'
+        })
 
     except Exception as e:
         db.rollback()
@@ -7494,7 +7655,6 @@ def secretary_delete_ks_interest(record_id):
 # ------------------------------------------------------------
 @app.route("/secretary/ks-interest/member/<int:user_id>")
 def secretary_member_interest(user_id):
-    # ❌ Members CANNOT see any member's interest, including their own
     if not _is_ks_staff():
         return _deny_ks_json()
 
@@ -7522,8 +7682,11 @@ def secretary_member_interest(user_id):
         allocations = [row_to_dict(a) for a in alloc_rows]
         total_interest = sum((a.get('interest_share') or 0) for a in allocations)
 
-        settings_row = db.execute("SELECT ks_share_price FROM system_settings LIMIT 1").fetchone()
-        ks_price = row_to_dict(settings_row).get('ks_share_price', 10000) if settings_row else 10000
+        settings_row = db.execute(
+            "SELECT ks_share_price FROM system_settings LIMIT 1"
+        ).fetchone()
+        ks_price = row_to_dict(settings_row).get('ks_share_price', 10000) \
+                   if settings_row else 10000
 
         return jsonify({
             'success': True,
@@ -7546,7 +7709,7 @@ def secretary_member_interest(user_id):
             db.close()
         except Exception:
             pass
-            
+
 # ============================================================
 # PUBLICITY ROUTES
 # ============================================================
