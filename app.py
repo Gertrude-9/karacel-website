@@ -3144,6 +3144,7 @@ def treasurer_kac_year_rollover():
         for m_row in members:
             m = row_to_dict(m_row)
 
+            # Skip if a row for new_year already exists for this user
             existing = db.execute(f"""
                 SELECT id FROM kac_year_contributions
                 WHERE user_id = {PH} AND year = {PH}
@@ -3151,17 +3152,12 @@ def treasurer_kac_year_rollover():
             if existing:
                 continue
 
+            # Create the fresh-year row. This is the ONLY place year data lives.
             db.execute(f"""
                 INSERT INTO kac_year_contributions
                     (user_id, year, paid, used, target, created_at, updated_at)
                 VALUES ({PH},{PH},0,0,100000,{PH},{PH})
             """, (m['id'], new_year, now_str, now_str))
-
-            db.execute(f"""
-                UPDATE users
-                SET kac_year = {PH}, kac_year_paid = 0
-                WHERE id = {PH}
-            """, (new_year, m['id']))
 
             created += 1
 
@@ -3197,7 +3193,6 @@ def treasurer_kac_year_rollover():
             db.close()
         except Exception:
             pass
-
 
 # Backwards-compatible alias
 @app.route("/treasurer/kac/year-reset", methods=["POST"])
