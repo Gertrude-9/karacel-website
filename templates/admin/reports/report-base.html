@@ -14,18 +14,23 @@
         .logo {
             display: flex;
             align-items: center;
-            gap: 14px;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 10px;
         }
 
         .logo-img {
-            height: 100px;          /* bigger logo */
-            width: auto;            /* keep aspect ratio */
+            height: 90px;          /* big and clear */
+            width: auto;           /* keep aspect ratio */
             object-fit: contain;
         }
 
         .logo span {
-            font-size: 2rem;
-            font-weight: 700;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #1a1a2e;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -40,6 +45,7 @@
                 <img src="{{ url_for('static', filename='images/karacel-logo.png') }}"
                      alt="Karacel SACCO Logo"
                      class="logo-img">
+                <span>KARACEL ASSOCIATION</span>
             </div>
             <div class="subtitle">{% block report_title %}Report{% endblock %}</div>
 
